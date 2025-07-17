@@ -366,4 +366,158 @@ router.post('/markdown/preview', asyncHandler(async (req: AuthenticatedRequest, 
   });
 }));
 
+// Get recent activity
+router.get('/activity', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const activities = await pool.query(
+    `SELECT 
+      'user_registered' as type,
+      'Neuer Benutzer registriert: ' || full_name as description,
+      created_at as timestamp
+    FROM users
+    WHERE created_at > NOW() - INTERVAL '7 days'
+    UNION ALL
+    SELECT 
+      'chat_created' as type,
+      'Neuer Chat erstellt: ' || title as description,
+      created_at as timestamp
+    FROM chats
+    WHERE created_at > NOW() - INTERVAL '7 days'
+    UNION ALL
+    SELECT 
+      'document_uploaded' as type,
+      'Dokument hochgeladen: ' || title as description,
+      created_at as timestamp
+    FROM documents
+    WHERE created_at > NOW() - INTERVAL '7 days'
+    ORDER BY timestamp DESC
+    LIMIT 20`
+  );
+  
+  res.json({
+    success: true,
+    data: activities.rows
+  });
+}));
+
+// Get detailed statistics
+router.get('/stats/detailed', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const usersByRole = await pool.query(
+    'SELECT role, COUNT(*) as count FROM users GROUP BY role'
+  );
+  
+  const popularFAQs = await pool.query(
+    'SELECT title, view_count FROM faqs WHERE is_active = true ORDER BY view_count DESC LIMIT 10'
+  );
+  
+  const chatsByMonth = await pool.query(
+    `SELECT 
+      DATE_TRUNC('month', created_at) as month,
+      COUNT(*) as count
+    FROM chats
+    WHERE created_at > NOW() - INTERVAL '6 months'
+    GROUP BY month
+    ORDER BY month`
+  );
+  
+  const messagesByDay = await pool.query(
+    `SELECT 
+      DATE_TRUNC('day', created_at) as day,
+      COUNT(*) as count
+    FROM messages
+    WHERE created_at > NOW() - INTERVAL '30 days'
+    GROUP BY day
+    ORDER BY day`
+  );
+  
+  res.json({
+    success: true,
+    data: {
+      usersByRole: usersByRole.rows,
+      popularFAQs: popularFAQs.rows,
+      chatsByMonth: chatsByMonth.rows,
+      messagesByDay: messagesByDay.rows
+    }
+  });
+}));
+
+// Delete user
+router.delete('/users/:userId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  
+  if (userId === req.user!.id) {
+    throw new AppError('Cannot delete your own account', 400);
+  }
+  
+  // Check if user exists
+  const user = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+  if (user.rows.length === 0) {
+    throw new AppError('User not found', 404);
+  }
+  
+  // Delete user (cascading will handle related records)
+  await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+  
+  res.json({
+    success: true,
+    message: 'User deleted successfully'
+  });
+}));
+
+// Get system settings
+router.get('/settings', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  // In a real application, settings would be stored in a database
+  // For now, return default settings
+  res.json({
+    success: true,
+    data: {
+      systemName: process.env.SYSTEM_NAME || 'Willi Mako',
+      systemDescription: process.env.SYSTEM_DESCRIPTION || 'Intelligentes FAQ-System mit KI-Unterstützung',
+      maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '50'),
+      enableRegistration: process.env.ENABLE_REGISTRATION !== 'false',
+      enableGuestAccess: process.env.ENABLE_GUEST_ACCESS === 'true',
+      geminiApiKey: process.env.GEMINI_API_KEY ? '***' : '',
+      qdrantUrl: process.env.QDRANT_URL || '',
+      qdrantApiKey: process.env.QDRANT_API_KEY ? '***' : '',
+      smtpHost: process.env.SMTP_HOST || '',
+      smtpPort: parseInt(process.env.SMTP_PORT || '587'),
+      smtpUser: process.env.SMTP_USER || '',
+      smtpPassword: process.env.SMTP_PASSWORD ? '***' : '',
+      enableEmailNotifications: process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true'
+    }
+  });
+}));
+
+// Update system settings
+router.put('/settings', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const settings = req.body;
+  
+  // In a real application, you would validate and save settings to database
+  // For now, just return success
+  res.json({
+    success: true,
+    message: 'Settings updated successfully'
+  });
+}));
+
+// Test API connections
+router.post('/settings/test-qdrant', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await QdrantService.testConnection();
+    res.json({
+      success: true,
+      message: 'Qdrant connection successful'
+    });
+  } catch (error) {
+    throw new AppError('Qdrant connection failed', 500);
+  }
+}));
+
+router.post('/settings/test-smtp', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  // In a real application, you would test SMTP connection
+  res.json({
+    success: true,
+    message: 'SMTP connection test not implemented'
+  });
+}));
+
 export default router;

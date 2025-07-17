@@ -13,6 +13,7 @@ import Documents from './pages/Documents';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import FAQList from './pages/FAQList';
+import FAQDetail from './pages/FAQDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const theme = createTheme({
@@ -101,6 +102,7 @@ function App() {
                 <Route path="chat/:chatId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
                 <Route path="faq" element={<FAQList />} />
+                <Route path="faqs/:id" element={<FAQDetail />} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
               </Route>

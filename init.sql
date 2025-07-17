@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
+    company VARCHAR(255),
     role VARCHAR(50) DEFAULT 'user',
     is_active BOOLEAN DEFAULT true,
     preferences JSONB DEFAULT '{}',
@@ -59,15 +61,20 @@ CREATE TABLE IF NOT EXISTS messages (
 -- Dokumente-Tabelle (für File-Upload)
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    file_path VARCHAR(500),
+    file_size INTEGER,
+    mime_type VARCHAR(100),
+    is_active BOOLEAN DEFAULT true,
+    uploaded_by UUID REFERENCES users(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     filename VARCHAR(255) NOT NULL,
     original_name VARCHAR(255) NOT NULL,
-    mime_type VARCHAR(100),
-    file_size INTEGER,
-    file_path VARCHAR(500),
     processed BOOLEAN DEFAULT false,
     metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Vektor-Embeddings Tabelle (für Qdrant-Synchronisation)
@@ -131,9 +138,9 @@ CREATE TRIGGER update_chats_updated_at BEFORE UPDATE ON chats
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Beispiel-Daten für Demo-Zwecke
-INSERT INTO users (id, email, password_hash, name, role) VALUES 
-(uuid_generate_v4(), 'admin@willimako.com', '$2a$12$yKLbo5Go3FOIcsKvFZNoCu2c6WgHmNyHqRK4MByrAYT45QgwFDwli', 'Admin User', 'admin'),
-(uuid_generate_v4(), 'user@willimako.com', '$2a$12$g.04qKkbtSyWWPQ8Y3lD4e8bdqIAUhO22Rkw.1bzBtfv9UPtfg3JK', 'Test User', 'user')
+INSERT INTO users (id, email, password_hash, full_name, name, company, role) VALUES 
+(uuid_generate_v4(), 'admin@willimako.com', '$2a$12$yKLbo5Go3FOIcsKvFZNoCu2c6WgHmNyHqRK4MByrAYT45QgwFDwli', 'Admin User', 'Admin User', 'Willi Mako GmbH', 'admin'),
+(uuid_generate_v4(), 'user@willimako.com', '$2a$12$g.04qKkbtSyWWPQ8Y3lD4e8bdqIAUhO22Rkw.1bzBtfv9UPtfg3JK', 'Test User', 'Test User', 'Test Company', 'user')
 ON CONFLICT (email) DO NOTHING;
 
 -- Beispiel-FAQs

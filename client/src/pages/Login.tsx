@@ -132,7 +132,10 @@ const Login: React.FC = () => {
                     </Typography>
                   </Box>
                   <Typography variant="h4" component="h2" sx={{ mb: 2, opacity: 0.9 }}>
-                    Digital Energy Infrastructure for tomorrow
+                    Ihr täglicher KI-Experte für Marktkommunikation in der Energiewirtschaft
+                  </Typography>
+                  <Typography variant="h6" sx={{ mb: 3, opacity: 0.85, fontWeight: 400, lineHeight: 1.4 }}>
+                    Sofortiges Fachwissen zu MaKo – speziell für Sachbearbeiter, die keine Zeit für lange Schulungen haben. Inklusive KI-Chat und umfassender FAQ-Sammlung.
                   </Typography>
                   <Typography variant="h6" sx={{ mb: 4, opacity: 0.8, fontWeight: 300 }}>
                     Powered by Mako Willi - Ihr intelligenter AI-Coach
@@ -140,7 +143,7 @@ const Login: React.FC = () => {
                   
                   <Box sx={{ mb: 4 }}>
                     <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-                      Ihre Premium-Plattform für Energiewirtschaft
+                      Ihre Premium-Plattform für die Energiewirtschaft
                     </Typography>
                     <Box sx={{ 
                       display: 'grid', 
@@ -239,7 +242,7 @@ const Login: React.FC = () => {
                       <Typography variant="body2" color="text.secondary">
                         Noch kein Konto?{' '}
                         <Link to="/register" style={{ color: '#147a50', textDecoration: 'none', fontWeight: 600 }}>
-                          Hier registrieren
+                          Jetzt registrieren &amp; sofort starten
                         </Link>
                       </Typography>
                     </Box>
@@ -254,10 +257,10 @@ const Login: React.FC = () => {
       {/* Features Section */}
       <Container maxWidth="lg" sx={{ py: 8 }}>
         <Typography variant="h3" component="h2" textAlign="center" sx={{ mb: 2, fontWeight: 600 }}>
-          Warum Stromhaltig?
+          Warum Stromhaltig Ihre Arbeit erleichtert
         </Typography>
         <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 6 }}>
-          Die professionelle Lösung für Energieunternehmen und Fachkräfte
+          Speziell entwickelt für den Arbeitsalltag von Sachbearbeitern in der Energiewirtschaft
         </Typography>
         
         <Box sx={{ 
@@ -267,37 +270,83 @@ const Login: React.FC = () => {
         }}>
           <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
             <CardContent>
-              <AIIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
+              <SpeedIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
-                KI-Powered Expertise
+                Punktuelles Wissen sofort verfügbar
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Mako Willi, basierend auf Gemini 2.5 Pro, beantwortet komplexe Fragen zur Energiewirtschaft und Marktkommunikation mit höchster Präzision.
+                Täglich andere Fragen zur Marktkommunikation? Erhalten Sie schnelle und präzise Antworten auf alle MaKo-Themen - ohne langes Suchen oder Nachfragen.
               </Typography>
             </CardContent>
           </Card>
           
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+            <CardContent>
+              <TrendingIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
+              <Typography variant="h5" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
+                Keine zeitaufwändigen Schulungen
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Starten Sie sofort durch! Unser System bietet schnellen Zugang zu Fachwissen ohne langwierige Einarbeitung oder kostspielige Weiterbildungen.
+              </Typography>
+            </CardContent>
+          </Card>
+          
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+            <CardContent>
+              <AIIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
+              <Typography variant="h5" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
+                KI-gestützte Antworten
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Mako Willi liefert präzise, kontextbezogene Antworten auf Ihre spezifischen Fragen - basierend auf aktuellen Regelwerken und Praxiserfahrungen.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+        
+        {/* Additional Benefits Row */}
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+          gap: 4,
+          mt: 4
+        }}>
           <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
             <CardContent>
               <AnalyticsIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
-                Marktanalysen
+                Immer auf dem neuesten Stand
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Personalisierte Einblicke in Marktentwicklungen, Regulierungsänderungen und Geschäftschancen für Ihr Unternehmen.
+                Das System passt sich kontinuierlich an die sich ändernden Anforderungen der Energiewirtschaft an. Sie arbeiten immer mit aktuellen Informationen.
               </Typography>
             </CardContent>
           </Card>
           
-          <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3, bgcolor: 'rgba(20, 122, 80, 0.05)' }}>
             <CardContent>
-              <SecurityIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
+              <BusinessIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
-                Enterprise Security
+                Unternehmenslösungen
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Höchste Sicherheitsstandards, rollenbasierte Zugriffskontrolle und sichere Datenverarbeitung für Ihr Vertrauen.
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                Sie sind ein größeres Energieversorgungsunternehmen? Sprechen Sie uns auf unsere günstigen Bündeltarife an!
               </Typography>
+              <Button 
+                variant="outlined" 
+                size="small"
+                sx={{ 
+                  borderColor: '#147a50',
+                  color: '#147a50',
+                  '&:hover': {
+                    borderColor: '#147a50',
+                    bgcolor: 'rgba(20, 122, 80, 0.04)'
+                  }
+                }}
+              >
+                Jetzt Kontakt aufnehmen
+              </Button>
             </CardContent>
           </Card>
         </Box>
@@ -307,10 +356,14 @@ const Login: React.FC = () => {
       <Box sx={{ bgcolor: 'grey.50', py: 8 }}>
         <Container maxWidth="lg">
           <Typography variant="h3" component="h2" textAlign="center" sx={{ mb: 2, fontWeight: 600 }}>
-            Häufig gestellte Fragen
+            Ein Blick in unsere Wissensdatenbank
           </Typography>
-          <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 6 }}>
-            Entdecken Sie die häufigsten Fragen aus der Energiewirtschaft
+          <Typography variant="h6" textAlign="center" color="text.secondary" sx={{ mb: 3 }}>
+            Die FAQs werden laufend und automatisch durch unser System generiert
+          </Typography>
+          <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ mb: 6, maxWidth: 800, mx: 'auto', lineHeight: 1.6 }}>
+            Sie erhalten einen Vorgeschmack auf die Tiefe und Breite des Wissens, das unser KI-Chat für Sie bereithält. 
+            Jede FAQ zeigt exemplarisch, wie präzise und praxisnah Mako Willi Ihre Fragen zur Marktkommunikation beantwortet.
           </Typography>
           
           {faqLoading ? (
