@@ -23,6 +23,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
+import ClarificationUI from '../components/ClarificationUI';
 import axios from 'axios';
 
 interface Message {
@@ -30,6 +31,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  metadata?: any;
 }
 
 interface ChatSession {
@@ -37,6 +39,21 @@ interface ChatSession {
   title: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ClarificationResult {
+  needsClarification: boolean;
+  ambiguityScore: number;
+  detectedTopics: string[];
+  suggestedQuestions: Array<{
+    id: string;
+    question: string;
+    category: 'scope' | 'context' | 'detail_level' | 'stakeholder' | 'energy_type';
+    options?: string[];
+    priority: number;
+  }>;
+  reasoning: string;
+  sessionId?: string;
 }
 
 const Chat: React.FC = () => {
@@ -51,6 +68,8 @@ const Chat: React.FC = () => {
   const [chatLoading, setChatLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [pendingClarification, setPendingClarification] = useState<ClarificationResult | null>(null);
+  const [clarificationLoading, setClarificationLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -160,7 +179,7 @@ const Chat: React.FC = () => {
         throw new Error('Invalid response format: missing data');
       }
 
-      const { userMessage, assistantMessage, updatedChatTitle } = response.data.data;
+      const { userMessage, assistantMessage, updatedChatTitle, type } = response.data.data;
       
       // Validate required fields
       if (!userMessage || !assistantMessage) {
@@ -169,8 +188,21 @@ const Chat: React.FC = () => {
 
       console.log('User message:', userMessage);
       console.log('Assistant message:', assistantMessage);
+      console.log('Response type:', type);
       
-      setMessages(prev => [...prev, userMessage, assistantMessage]);
+      // Handle clarification response
+      if (type === 'clarification' && assistantMessage.metadata?.type === 'clarification') {
+        // Parse clarification data from message content
+        const clarificationData = JSON.parse(assistantMessage.content);
+        setPendingClarification(clarificationData.clarificationResult);
+        
+        // Add user message to display
+        setMessages(prev => [...prev, userMessage]);
+      } else {
+        // Normal response
+        setMessages(prev => [...prev, userMessage, assistantMessage]);
+        setPendingClarification(null);
+      }
       
       // Update chat in the list and current chat if title was updated
       if (updatedChatTitle) {
@@ -209,6 +241,41 @@ const Chat: React.FC = () => {
       setLoading(false);
       setIsTyping(false);
     }
+  };
+
+  const handleClarificationSubmit = async (responses: { questionId: string; answer: string }[]) => {
+    if (!currentChat || !pendingClarification?.sessionId) {
+      showSnackbar('Fehler: Keine aktive Clarification-Session', 'error');
+      return;
+    }
+
+    setClarificationLoading(true);
+
+    try {
+      const response = await axios.post(`/chat/chats/${currentChat.id}/clarification`, {
+        sessionId: pendingClarification.sessionId,
+        responses
+      });
+
+      console.log('Clarification response:', response);
+
+      if (response.data?.data?.assistantMessage) {
+        setMessages(prev => [...prev, response.data.data.assistantMessage]);
+        setPendingClarification(null);
+        showSnackbar('Präzisierte Antwort erhalten!', 'success');
+      }
+    } catch (error) {
+      console.error('Error submitting clarification:', error);
+      showSnackbar('Fehler beim Verarbeiten der Präzisierung', 'error');
+    } finally {
+      setClarificationLoading(false);
+    }
+  };
+
+  const handleClarificationSkip = () => {
+    // TODO: Implement skip functionality - generate response without clarification
+    setPendingClarification(null);
+    showSnackbar('Präzisierung übersprungen', 'info');
   };
 
   const formatTime = (dateString: string) => {
@@ -457,6 +524,18 @@ const Chat: React.FC = () => {
                       </Paper>
                     </ListItem>
                   ))}
+                  
+                  {/* Clarification UI */}
+                  {pendingClarification && (
+                    <ListItem sx={{ alignItems: 'flex-start', mb: 2, px: 0 }}>
+                      <ClarificationUI
+                        clarificationResult={pendingClarification}
+                        onSubmit={handleClarificationSubmit}
+                        onSkip={handleClarificationSkip}
+                        loading={clarificationLoading}
+                      />
+                    </ListItem>
+                  )}
                   
                   {/* Typing indicator */}
                   {isTyping && (

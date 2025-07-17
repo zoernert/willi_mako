@@ -8,7 +8,7 @@ import { AuthenticatedRequest, requireAdmin } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import pool from '../config/database';
 import QdrantService from '../services/qdrant';
-import GeminiService from '../services/gemini';
+import geminiService from '../services/gemini';
 
 const router = Router();
 
@@ -172,7 +172,7 @@ async function processDocumentForVectorStorage(documentId: string, text: string,
     const points = [];
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const embedding = await GeminiService.generateEmbedding(chunk);
+      const embedding = await geminiService.generateEmbedding(chunk);
       
       points.push({
         id: `${documentId}-chunk-${i}`,

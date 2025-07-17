@@ -9,8 +9,8 @@ echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
 
 # Konfiguration
-PROD_SERVER="root@10.0.0.2"
-PROD_PORT="2110"
+PROD_SERVER=${1:-"root@10.0.0.2"}
+PROD_PORT=${2:-"2110"}
 POSTGRES_PORT="5117"
 APP_NAME="willi_mako"
 DEPLOY_DIR="/opt/willi_mako"
@@ -18,6 +18,9 @@ POSTGRES_CONTAINER="willi_mako_postgres"
 POSTGRES_DB="willi_mako"
 POSTGRES_USER="willi_user"
 POSTGRES_PASSWORD="willi_password"
+
+# Extrahiere Server-IP für API-URL
+SERVER_IP=$(echo $PROD_SERVER | cut -d'@' -f2)
 
 # Generiere einen zufälligen JWT Secret
 generate_jwt_secret() {
@@ -43,6 +46,9 @@ build_application() {
     echo "📦 Baue Client..."
     cd client
     npm install
+    
+    # Build für Produktion (verwendet relative API-Pfade)
+    echo "🌐 Baue Client für Produktion mit relativen API-Pfaden..."
     npm run build
     cd ..
     
@@ -341,8 +347,10 @@ trap cleanup EXIT
 main() {
     echo "Starte schnelles Deployment für Willi Mako"
     echo "Server: $PROD_SERVER"
+    echo "Server-IP: $SERVER_IP"
     echo "Port: $PROD_PORT"
     echo "PostgreSQL Port: $POSTGRES_PORT"
+    echo "API-URL: Relative Pfade (/api)"
     echo ""
     
     check_ssh_connection
@@ -361,12 +369,16 @@ main() {
     
     echo ""
     echo "🎉 Deployment erfolgreich abgeschlossen!"
-    echo "Anwendung läuft auf: http://10.0.0.2:$PROD_PORT"
+    echo "Anwendung läuft auf: http://$SERVER_IP:$PROD_PORT"
+    echo "API verfügbar unter: http://$SERVER_IP:$PROD_PORT/api (relativer Pfad: /api)"
     echo ""
     echo "Nützliche Befehle:"
     echo "  ./monitor.sh status"
     echo "  ./monitor.sh logs"
     echo "  ssh $PROD_SERVER 'pm2 restart $APP_NAME'"
+    echo ""
+    echo "Verwendung: $0 [server] [port]"
+    echo "Beispiel: $0 root@10.0.0.2 2110"
 }
 
 # Script ausführen
