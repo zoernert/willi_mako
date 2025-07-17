@@ -1,5 +1,5 @@
 import pool from '../config/database';
-import GeminiService from './gemini';
+import geminiService from './gemini';
 
 export interface UserProfile {
   expertise_level: 'beginner' | 'intermediate' | 'advanced';
@@ -20,10 +20,8 @@ export interface UserProfile {
 }
 
 export class UserProfileService {
-  private geminiService: GeminiService;
-
   constructor() {
-    this.geminiService = new GeminiService();
+    // No need to initialize geminiService since it's already a singleton
   }
 
   /**
@@ -137,7 +135,11 @@ Beispiel-Antwortformat:
 }
 `;
 
-      const result = await this.geminiService.generateContent(prompt);
+      const result = await geminiService.generateResponse(
+        [{ role: 'user', content: prompt }],
+        '',
+        {}
+      );
       const cleanedResult = result.trim();
       
       if (cleanedResult === 'null' || cleanedResult.toLowerCase() === 'null') {

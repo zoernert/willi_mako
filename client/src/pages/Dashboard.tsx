@@ -303,7 +303,24 @@ const Dashboard: React.FC = () => {
                 </Button>
               </Box>
             ) : (
-              <List>
+              <List sx={{ 
+                maxHeight: '300px', 
+                overflow: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#f1f1f1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#c1c1c1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#a8a8a8',
+                },
+              }}>
                 {recentChats.map((chat) => (
                   <ListItem key={chat.id} sx={{ borderRadius: 1, mb: 1, p: 0 }}>
                     <ListItemButton
@@ -347,7 +364,24 @@ const Dashboard: React.FC = () => {
                 </Typography>
               </Box>
             ) : (
-              <List>
+              <List sx={{ 
+                maxHeight: '300px', 
+                overflow: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: '#f1f1f1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#c1c1c1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#a8a8a8',
+                },
+              }}>
                 {documents.map((doc) => (
                   <ListItem key={doc.id} sx={{ borderRadius: 1, mb: 1, p: 0 }}>
                     <ListItemButton

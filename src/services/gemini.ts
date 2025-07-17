@@ -21,11 +21,12 @@ export class GeminiService {
   async generateResponse(
     messages: ChatMessage[],
     context: string = '',
-    userPreferences: any = {}
+    userPreferences: any = {},
+    isEnhancedQuery: boolean = false
   ): Promise<string> {
     try {
       // Prepare system prompt with context
-      const systemPrompt = this.buildSystemPrompt(context, userPreferences);
+      const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery);
       
       // Format conversation history
       const conversationHistory = messages
@@ -44,7 +45,7 @@ export class GeminiService {
     }
   }
 
-  private buildSystemPrompt(context: string, userPreferences: any): string {
+  private buildSystemPrompt(context: string, userPreferences: any, isEnhancedQuery: boolean = false): string {
     const basePrompt = `Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du hilfst Nutzern bei Fragen rund um:
 
 - Energiemarkt und Marktkommunikation
@@ -62,6 +63,11 @@ Deine Antworten sollen:
 Du kannst auf Deutsch und Englisch antworten, bevorzuge aber Deutsch.`;
 
     let enhancedPrompt = basePrompt;
+
+    // Add special instruction for enhanced queries
+    if (isEnhancedQuery) {
+      enhancedPrompt += `\n\nWICHTIG: Die Benutzerfrage wurde bereits durch Präzisierungsfragen erweitert. Gib eine detaillierte, finale Antwort basierend auf den bereitgestellten Kontexten. Stelle KEINE weiteren Rückfragen.`;
+    }
 
     // Add context if available
     if (context && context.trim()) {

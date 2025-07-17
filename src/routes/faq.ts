@@ -2,7 +2,7 @@ import { Router, Response, Request } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 import pool from '../config/database';
-import GeminiService from '../services/gemini';
+import geminiService from '../services/gemini';
 import QdrantService from '../services/qdrant';
 
 const router = Router();
@@ -207,7 +207,7 @@ router.post('/admin/chats/:chatId/create-faq', asyncHandler(async (req: Authenti
   const messages = messagesResult.rows;
   
   // Generate FAQ content using LLM
-  const faqContent = await GeminiService.generateFAQContent(messages);
+  const faqContent = await geminiService.generateFAQContent(messages);
   
   // Create FAQ with auto-generated content
   const faqResult = await pool.query(`
@@ -278,7 +278,7 @@ router.put('/admin/faqs/:id', asyncHandler(async (req: AuthenticatedRequest, res
       }
       
       // Enhance FAQ with LLM using the search context
-      const enhancedFAQ = await GeminiService.enhanceFAQWithContext(finalFAQData, searchContext);
+      const enhancedFAQ = await geminiService.enhanceFAQWithContext(finalFAQData, searchContext);
       finalFAQData = enhancedFAQ;
     } catch (error) {
       console.error('Error enhancing FAQ with context:', error);
