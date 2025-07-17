@@ -151,6 +151,16 @@ export class QdrantService {
       throw error;
     }
   }
+
+  async testConnection(): Promise<void> {
+    try {
+      const response = await qdrantClient.get('/collections');
+      console.log('Qdrant connection test successful');
+    } catch (error) {
+      console.error('Qdrant connection test failed:', error);
+      throw error;
+    }
+  }
 }
 
 export default new QdrantService();

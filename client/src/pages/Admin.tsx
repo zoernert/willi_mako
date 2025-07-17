@@ -50,39 +50,607 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Admin components (simplified for demo)
-const AdminDashboard = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h5" gutterBottom>
-      Admin Dashboard
-    </Typography>
-    <Typography variant="body1">
-      Willkommen im Admin-Bereich. Hier können Sie Benutzer verwalten, Dokumente hochladen, FAQs erstellen und Systemstatistiken einsehen.
-    </Typography>
-  </Paper>
-);
+// Admin components - Full implementation
+const AdminDashboard = () => {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalDocuments: 0,
+    totalChats: 0,
+    totalMessages: 0,
+    recentUsers: 0,
+    recentChats: 0
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { showSnackbar } = useSnackbar();
 
-const AdminUsers = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h5" gutterBottom>
-      Benutzerverwaltung
-    </Typography>
-    <Typography variant="body1">
-      Hier können Sie Benutzer verwalten, Rollen zuweisen und Aktivitäten überwachen.
-    </Typography>
-  </Paper>
-);
+  useEffect(() => {
+    fetchStats();
+    fetchRecentActivity();
+  }, []);
 
-const AdminDocuments = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h5" gutterBottom>
-      Dokumentenverwaltung
-    </Typography>
-    <Typography variant="body1">
-      Laden Sie PDF-Dokumente hoch, bearbeiten Sie Spickzettel und verwalten Sie kuratierte Inhalte.
-    </Typography>
-  </Paper>
-);
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/admin/stats');
+      setStats(response.data.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      showSnackbar('Fehler beim Laden der Statistiken', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecentActivity = async () => {
+    try {
+      const response = await axios.get('/admin/activity');
+      setRecentActivity(response.data.data);
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Admin Dashboard
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Willkommen im Admin-Bereich. Hier haben Sie einen Überblick über das System.
+      </Typography>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Benutzer
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalUsers}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {stats.recentUsers} neue in den letzten 30 Tagen
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Dokumente
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalDocuments}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Hochgeladene Dokumente
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Chats
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalChats}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {stats.recentChats} neue in den letzten 30 Tagen
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Nachrichten
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalMessages}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Gesamt ausgetauschte Nachrichten
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Recent Activity */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Letzte Aktivitäten
+            </Typography>
+            <List>
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity: any, index) => (
+                  <ListItem key={index}>
+                    <Typography variant="body2">
+                      {activity.description} - {new Date(activity.timestamp).toLocaleString('de-DE')}
+                    </Typography>
+                  </ListItem>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Keine aktuellen Aktivitäten verfügbar
+                </Typography>
+              )}
+            </List>
+          </Paper>
+        </>
+      )}
+    </Box>
+  );
+};
+
+const AdminUsers = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userForm, setUserForm] = useState({
+    id: '',
+    email: '',
+    name: '',
+    role: 'user',
+    isActive: true
+  });
+  const { showSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/admin/users');
+      setUsers(response.data.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      showSnackbar('Fehler beim Laden der Benutzer', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setUserForm({
+      id: user.id,
+      email: user.email,
+      name: user.full_name || user.name,
+      role: user.role,
+      isActive: user.is_active !== false
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    try {
+      await axios.put(`/admin/users/${userForm.id}/role`, {
+        role: userForm.role
+      });
+      showSnackbar('Benutzer erfolgreich aktualisiert', 'success');
+      setEditDialogOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      showSnackbar('Fehler beim Aktualisieren des Benutzers', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/admin/users/${userId}`);
+      showSnackbar('Benutzer erfolgreich gelöscht', 'success');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showSnackbar('Fehler beim Löschen des Benutzers', 'error');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Benutzerverwaltung
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Verwalten Sie Benutzer, Rollen und Berechtigungen.
+      </Typography>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>E-Mail</TableCell>
+                <TableCell>Rolle</TableCell>
+                <TableCell>Firma</TableCell>
+                <TableCell>Registriert</TableCell>
+                <TableCell>Aktionen</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.map((user: any) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.full_name || user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={user.role} 
+                      color={user.role === 'admin' ? 'primary' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>{user.company || '-'}</TableCell>
+                  <TableCell>{formatDate(user.created_at)}</TableCell>
+                  <TableCell>
+                    <Tooltip title="Bearbeiten">
+                      <IconButton onClick={() => handleEditUser(user)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Löschen">
+                      <IconButton color="error" onClick={() => handleDeleteUser(user.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Benutzer bearbeiten</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Name"
+            value={userForm.name}
+            disabled
+            sx={{ mb: 2, mt: 1 }}
+          />
+          <TextField
+            fullWidth
+            label="E-Mail"
+            value={userForm.email}
+            disabled
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Rolle</InputLabel>
+            <Select
+              value={userForm.role}
+              onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
+            >
+              <MenuItem value="user">Benutzer</MenuItem>
+              <MenuItem value="admin">Administrator</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Abbrechen</Button>
+          <Button variant="contained" onClick={handleUpdateUser}>
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+const AdminDocuments = () => {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [documentForm, setDocumentForm] = useState({
+    id: '',
+    title: '',
+    description: '',
+    isActive: true
+  });
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    file: null as File | null
+  });
+  const { showSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/admin/documents');
+      setDocuments(response.data.data);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      showSnackbar('Fehler beim Laden der Dokumente', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!uploadForm.file || !uploadForm.title) {
+      showSnackbar('Bitte füllen Sie alle Pflichtfelder aus', 'warning');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', uploadForm.file);
+      formData.append('title', uploadForm.title);
+      formData.append('description', uploadForm.description);
+
+      await axios.post('/admin/documents', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      showSnackbar('Dokument erfolgreich hochgeladen', 'success');
+      setUploadDialogOpen(false);
+      setUploadForm({ title: '', description: '', file: null });
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      showSnackbar('Fehler beim Hochladen des Dokuments', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEditDocument = (document: any) => {
+    setSelectedDocument(document);
+    setDocumentForm({
+      id: document.id,
+      title: document.title,
+      description: document.description || '',
+      isActive: document.is_active !== false
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateDocument = async () => {
+    try {
+      await axios.put(`/admin/documents/${documentForm.id}`, {
+        title: documentForm.title,
+        description: documentForm.description,
+        isActive: documentForm.isActive
+      });
+      showSnackbar('Dokument erfolgreich aktualisiert', 'success');
+      setEditDialogOpen(false);
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error updating document:', error);
+      showSnackbar('Fehler beim Aktualisieren des Dokuments', 'error');
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!window.confirm('Sind Sie sicher, dass Sie dieses Dokument löschen möchten?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/admin/documents/${documentId}`);
+      showSnackbar('Dokument erfolgreich gelöscht', 'success');
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      showSnackbar('Fehler beim Löschen des Dokuments', 'error');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <div>
+          <Typography variant="h5" gutterBottom>
+            Dokumentenverwaltung
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Verwalten Sie hochgeladene Dokumente und deren Inhalte.
+          </Typography>
+        </div>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setUploadDialogOpen(true)}
+        >
+          Dokument hochladen
+        </Button>
+      </Box>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Titel</TableCell>
+                <TableCell>Beschreibung</TableCell>
+                <TableCell>Dateigröße</TableCell>
+                <TableCell>Hochgeladen von</TableCell>
+                <TableCell>Hochgeladen am</TableCell>
+                <TableCell>Aktionen</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {documents.map((document: any) => (
+                <TableRow key={document.id}>
+                  <TableCell>{document.title}</TableCell>
+                  <TableCell>{document.description || '-'}</TableCell>
+                  <TableCell>{formatFileSize(document.file_size)}</TableCell>
+                  <TableCell>{document.uploaded_by_name || '-'}</TableCell>
+                  <TableCell>{formatDate(document.created_at)}</TableCell>
+                  <TableCell>
+                    <Tooltip title="Bearbeiten">
+                      <IconButton onClick={() => handleEditDocument(document)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Löschen">
+                      <IconButton color="error" onClick={() => handleDeleteDocument(document.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Dokument hochladen</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Titel *"
+            value={uploadForm.title}
+            onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+            sx={{ mb: 2, mt: 1 }}
+            required
+          />
+          <TextField
+            fullWidth
+            label="Beschreibung"
+            multiline
+            rows={3}
+            value={uploadForm.description}
+            onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <Box sx={{ mb: 2 }}>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
+              style={{ display: 'none' }}
+              id="document-upload"
+            />
+            <label htmlFor="document-upload">
+              <Button variant="outlined" component="span" fullWidth>
+                {uploadForm.file ? uploadForm.file.name : 'Datei auswählen (PDF)'}
+              </Button>
+            </label>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialogOpen(false)}>Abbrechen</Button>
+          <Button variant="contained" onClick={handleUploadDocument} disabled={uploading}>
+            {uploading ? <CircularProgress size={20} /> : 'Hochladen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Dokument bearbeiten</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Titel *"
+            value={documentForm.title}
+            onChange={(e) => setDocumentForm({ ...documentForm, title: e.target.value })}
+            sx={{ mb: 2, mt: 1 }}
+            required
+          />
+          <TextField
+            fullWidth
+            label="Beschreibung"
+            multiline
+            rows={3}
+            value={documentForm.description}
+            onChange={(e) => setDocumentForm({ ...documentForm, description: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={documentForm.isActive ? 'active' : 'inactive'}
+              onChange={(e) => setDocumentForm({ ...documentForm, isActive: e.target.value === 'active' })}
+            >
+              <MenuItem value="active">Aktiv</MenuItem>
+              <MenuItem value="inactive">Inaktiv</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Abbrechen</Button>
+          <Button variant="contained" onClick={handleUpdateDocument}>
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
 
 const AdminFAQ = () => {
   const [activeSubTab, setActiveSubTab] = useState(0);
@@ -661,27 +1229,449 @@ const AdminFAQ = () => {
   );
 };
 
-const AdminSettings = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h5" gutterBottom>
-      Systemeinstellungen
-    </Typography>
-    <Typography variant="body1">
-      Konfigurieren Sie Systemeinstellungen, API-Schlüssel und andere administrative Optionen.
-    </Typography>
-  </Paper>
-);
+const AdminSettings = () => {
+  const [settings, setSettings] = useState({
+    systemName: 'Willi Mako',
+    systemDescription: 'Intelligentes FAQ-System mit KI-Unterstützung',
+    maxFileSize: 50,
+    enableRegistration: true,
+    enableGuestAccess: false,
+    geminiApiKey: '',
+    qdrantUrl: '',
+    qdrantApiKey: '',
+    smtpHost: '',
+    smtpPort: 587,
+    smtpUser: '',
+    smtpPassword: '',
+    enableEmailNotifications: false
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const { showSnackbar } = useSnackbar();
 
-const AdminStats = () => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h5" gutterBottom>
-      Statistiken
-    </Typography>
-    <Typography variant="body1">
-      Einsehen von Nutzungsstatistiken, Chat-Aktivitäten und Systemmetriken.
-    </Typography>
-  </Paper>
-);
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/admin/settings');
+      setSettings(response.data.data);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      showSnackbar('Fehler beim Laden der Einstellungen', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      await axios.put('/admin/settings', settings);
+      showSnackbar('Einstellungen erfolgreich gespeichert', 'success');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      showSnackbar('Fehler beim Speichern der Einstellungen', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTestConnection = async (type: string) => {
+    try {
+      await axios.post(`/admin/settings/test-${type}`);
+      showSnackbar(`${type.toUpperCase()} Verbindung erfolgreich getestet`, 'success');
+    } catch (error) {
+      console.error(`Error testing ${type} connection:`, error);
+      showSnackbar(`Fehler beim Testen der ${type.toUpperCase()} Verbindung`, 'error');
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Systemeinstellungen
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Konfigurieren Sie Systemeinstellungen, API-Schlüssel und andere administrative Optionen.
+      </Typography>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Paper sx={{ mb: 3 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label="Allgemein" />
+              <Tab label="API-Konfiguration" />
+              <Tab label="E-Mail-Einstellungen" />
+              <Tab label="Sicherheit" />
+            </Tabs>
+          </Paper>
+
+          <Paper sx={{ p: 3 }}>
+            {activeTab === 0 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Allgemeine Einstellungen
+                </Typography>
+                <TextField
+                  fullWidth
+                  label="Systemname"
+                  value={settings.systemName}
+                  onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Systembeschreibung"
+                  multiline
+                  rows={3}
+                  value={settings.systemDescription}
+                  onChange={(e) => setSettings({ ...settings, systemDescription: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Maximale Dateigröße (MB)"
+                  type="number"
+                  value={settings.maxFileSize}
+                  onChange={(e) => setSettings({ ...settings, maxFileSize: parseInt(e.target.value) })}
+                  sx={{ mb: 2 }}
+                />
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Registrierung aktiviert</InputLabel>
+                  <Select
+                    value={settings.enableRegistration ? 'enabled' : 'disabled'}
+                    onChange={(e) => setSettings({ ...settings, enableRegistration: e.target.value === 'enabled' })}
+                  >
+                    <MenuItem value="enabled">Aktiviert</MenuItem>
+                    <MenuItem value="disabled">Deaktiviert</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Gastzugang</InputLabel>
+                  <Select
+                    value={settings.enableGuestAccess ? 'enabled' : 'disabled'}
+                    onChange={(e) => setSettings({ ...settings, enableGuestAccess: e.target.value === 'enabled' })}
+                  >
+                    <MenuItem value="enabled">Aktiviert</MenuItem>
+                    <MenuItem value="disabled">Deaktiviert</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+
+            {activeTab === 1 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  API-Konfiguration
+                </Typography>
+                <TextField
+                  fullWidth
+                  label="Gemini API-Schlüssel"
+                  type="password"
+                  value={settings.geminiApiKey}
+                  onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Qdrant URL"
+                    value={settings.qdrantUrl}
+                    onChange={(e) => setSettings({ ...settings, qdrantUrl: e.target.value })}
+                  />
+                  <Button variant="outlined" onClick={() => handleTestConnection('qdrant')}>
+                    Testen
+                  </Button>
+                </Box>
+                <TextField
+                  fullWidth
+                  label="Qdrant API-Schlüssel"
+                  type="password"
+                  value={settings.qdrantApiKey}
+                  onChange={(e) => setSettings({ ...settings, qdrantApiKey: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+              </Box>
+            )}
+
+            {activeTab === 2 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  E-Mail-Einstellungen
+                </Typography>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>E-Mail-Benachrichtigungen</InputLabel>
+                  <Select
+                    value={settings.enableEmailNotifications ? 'enabled' : 'disabled'}
+                    onChange={(e) => setSettings({ ...settings, enableEmailNotifications: e.target.value === 'enabled' })}
+                  >
+                    <MenuItem value="enabled">Aktiviert</MenuItem>
+                    <MenuItem value="disabled">Deaktiviert</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  label="SMTP-Host"
+                  value={settings.smtpHost}
+                  onChange={(e) => setSettings({ ...settings, smtpHost: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="SMTP-Port"
+                  type="number"
+                  value={settings.smtpPort}
+                  onChange={(e) => setSettings({ ...settings, smtpPort: parseInt(e.target.value) })}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="SMTP-Benutzername"
+                  value={settings.smtpUser}
+                  onChange={(e) => setSettings({ ...settings, smtpUser: e.target.value })}
+                  sx={{ mb: 2 }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="SMTP-Passwort"
+                    type="password"
+                    value={settings.smtpPassword}
+                    onChange={(e) => setSettings({ ...settings, smtpPassword: e.target.value })}
+                  />
+                  <Button variant="outlined" onClick={() => handleTestConnection('smtp')}>
+                    Testen
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {activeTab === 3 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Sicherheitseinstellungen
+                </Typography>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Sicherheitseinstellungen werden in einer zukünftigen Version verfügbar sein.
+                </Alert>
+                <TextField
+                  fullWidth
+                  label="Session-Timeout (Minuten)"
+                  type="number"
+                  value={60}
+                  disabled
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Maximale Login-Versuche"
+                  type="number"
+                  value={5}
+                  disabled
+                  sx={{ mb: 2 }}
+                />
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+              <Button
+                variant="contained"
+                onClick={handleSaveSettings}
+                disabled={saving}
+                startIcon={saving ? <CircularProgress size={20} /> : null}
+              >
+                {saving ? 'Speichern...' : 'Einstellungen speichern'}
+              </Button>
+            </Box>
+          </Paper>
+        </>
+      )}
+    </Box>
+  );
+};
+
+const AdminStats = () => {
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalDocuments: 0,
+    totalChats: 0,
+    totalMessages: 0,
+    recentUsers: 0,
+    recentChats: 0
+  });
+  const [detailedStats, setDetailedStats] = useState({
+    usersByRole: [],
+    chatsByMonth: [],
+    messagesByDay: [],
+    popularFAQs: []
+  });
+  const [loading, setLoading] = useState(false);
+  const { showSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchStats();
+    fetchDetailedStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/admin/stats');
+      setStats(response.data.data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      showSnackbar('Fehler beim Laden der Statistiken', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDetailedStats = async () => {
+    try {
+      const response = await axios.get('/admin/stats/detailed');
+      setDetailedStats(response.data.data);
+    } catch (error) {
+      console.error('Error fetching detailed stats:', error);
+    }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Statistiken
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Detaillierte Einblicke in die Nutzung und Performance des Systems.
+      </Typography>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={3}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Main Stats Grid */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Benutzer-Statistiken
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalUsers}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Gesamt registrierte Benutzer
+                </Typography>
+                <Typography variant="body2" color="success.main">
+                  +{stats.recentUsers} neue in den letzten 30 Tagen
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Content-Statistiken
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalDocuments}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Hochgeladene Dokumente
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Chat-Aktivität
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalChats}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Gesamt erstellte Chats
+                </Typography>
+                <Typography variant="body2" color="success.main">
+                  +{stats.recentChats} neue in den letzten 30 Tagen
+                </Typography>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Nachrichten
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {stats.totalMessages}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Gesamt ausgetauschte Nachrichten
+                </Typography>
+                <Typography variant="body2" color="info.main">
+                  ⌀ {stats.totalChats > 0 ? Math.round(stats.totalMessages / stats.totalChats) : 0} Nachrichten pro Chat
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Detailed Stats */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 2 }}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Benutzer nach Rollen
+              </Typography>
+              <List>
+                {detailedStats.usersByRole.map((role: any, index) => (
+                  <ListItem key={index}>
+                    <Typography variant="body1">
+                      {role.role === 'admin' ? 'Administratoren' : 'Benutzer'}: {role.count}
+                    </Typography>
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Beliebteste FAQs
+              </Typography>
+              <List>
+                {detailedStats.popularFAQs.map((faq: any, index) => (
+                  <ListItem key={index}>
+                    <Box>
+                      <Typography variant="body1">
+                        {faq.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {faq.view_count} Aufrufe
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
+        </>
+      )}
+    </Box>
+  );
+};
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState(0);

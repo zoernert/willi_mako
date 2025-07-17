@@ -50,6 +50,7 @@ const Chat: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +74,9 @@ const Chat: React.FC = () => {
 
   const fetchChats = async () => {
     try {
+      console.log('Fetching chats...');
       const response = await axios.get('/chat/chats');
+      console.log('Chats fetched:', response.data.data);
       setChats(response.data.data);
     } catch (error) {
       console.error('Error fetching chats:', error);
@@ -83,8 +86,13 @@ const Chat: React.FC = () => {
 
   const fetchChat = async (id: string) => {
     try {
+      console.log('Fetching chat:', id);
       setChatLoading(true);
+      // Reset loading state for message sending when switching chats
+      setLoading(false);
+      setIsTyping(false);
       const response = await axios.get(`/chat/chats/${id}`);
+      console.log('Chat fetched:', response.data.data);
       setCurrentChat(response.data.data.chat);
       setMessages(response.data.data.messages || []);
       setError(null);
@@ -92,19 +100,25 @@ const Chat: React.FC = () => {
       console.error('Error fetching chat:', error);
       setError('Fehler beim Laden des Chats');
     } finally {
+      console.log('Setting chatLoading to false');
       setChatLoading(false);
     }
   };
 
   const createNewChat = async () => {
     try {
+      console.log('Creating new chat...');
       const response = await axios.post('/chat/chats', { 
         title: 'Neuer Chat' 
       });
+      console.log('New chat created:', response.data.data);
       const newChat = response.data.data;
       setChats([newChat, ...chats]);
       setCurrentChat(newChat);
       setMessages([]);
+      // Reset loading states when creating new chat
+      setLoading(false);
+      setIsTyping(false);
       window.history.pushState({}, '', `/chat/${newChat.id}`);
     } catch (error) {
       console.error('Error creating new chat:', error);
@@ -122,18 +136,45 @@ const Chat: React.FC = () => {
     const messageContent = newMessage.trim();
     setNewMessage('');
     setLoading(true);
+    setIsTyping(true);
+
+    console.log('Sending message:', messageContent);
+
+    // Timeout-Promise für 30 Sekunden
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000);
+    });
 
     try {
-      const response = await axios.post(`/chat/chats/${currentChat.id}/messages`, {
-        content: messageContent
-      });
+      const response = await Promise.race([
+        axios.post(`/chat/chats/${currentChat.id}/messages`, {
+          content: messageContent
+        }),
+        timeoutPromise
+      ]) as any;
+
+      console.log('API Response:', response);
+
+      // Validate response structure
+      if (!response.data || !response.data.data) {
+        throw new Error('Invalid response format: missing data');
+      }
 
       const { userMessage, assistantMessage, updatedChatTitle } = response.data.data;
+      
+      // Validate required fields
+      if (!userMessage || !assistantMessage) {
+        throw new Error('Invalid response format: missing userMessage or assistantMessage');
+      }
+
+      console.log('User message:', userMessage);
+      console.log('Assistant message:', assistantMessage);
       
       setMessages(prev => [...prev, userMessage, assistantMessage]);
       
       // Update chat in the list and current chat if title was updated
       if (updatedChatTitle) {
+        console.log('Updating chat title:', updatedChatTitle);
         const updatedChat = { ...currentChat, title: updatedChatTitle, updated_at: new Date().toISOString() };
         setCurrentChat(updatedChat);
         setChats(prev => prev.map(chat => 
@@ -150,11 +191,23 @@ const Chat: React.FC = () => {
         ));
       }
 
-    } catch (error) {
+      console.log('Message sent successfully');
+
+    } catch (error: any) {
       console.error('Error sending message:', error);
-      showSnackbar('Fehler beim Senden der Nachricht', 'error');
+      
+      // Restore the message input if there was an error
+      setNewMessage(messageContent);
+      
+      if (error?.message === 'Request timeout') {
+        showSnackbar('Anfrage ist abgelaufen. Bitte versuchen Sie es erneut.', 'error');
+      } else {
+        showSnackbar('Fehler beim Senden der Nachricht', 'error');
+      }
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
+      setIsTyping(false);
     }
   };
 
@@ -189,6 +242,9 @@ const Chat: React.FC = () => {
               }}
               onClick={() => {
                 setCurrentChat(chat);
+                // Reset loading states when switching chats
+                setLoading(false);
+                setIsTyping(false);
                 fetchChat(chat.id);
                 window.history.pushState({}, '', `/chat/${chat.id}`);
               }}
@@ -401,6 +457,42 @@ const Chat: React.FC = () => {
                       </Paper>
                     </ListItem>
                   ))}
+                  
+                  {/* Typing indicator */}
+                  {isTyping && (
+                    <ListItem
+                      sx={{
+                        alignItems: 'flex-start',
+                        mb: 2,
+                        flexDirection: 'row',
+                      }}
+                    >
+                      <Avatar
+                        sx={{
+                          mx: 1,
+                          bgcolor: 'secondary.main',
+                        }}
+                      >
+                        <BotIcon />
+                      </Avatar>
+                      <Paper
+                        sx={{
+                          p: 2,
+                          maxWidth: '70%',
+                          bgcolor: 'grey.100',
+                          color: 'text.primary',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CircularProgress size={16} />
+                          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                            Mako Willi tippt...
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </ListItem>
+                  )}
+                  
                   <div ref={messagesEndRef} />
                 </List>
               )}
