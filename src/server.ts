@@ -12,10 +12,14 @@ import chatRoutes from './routes/chat';
 import adminRoutes from './routes/admin';
 import userRoutes from './routes/user';
 import faqRoutes from './routes/faq';
+import createQuizRoutes from './routes/quiz';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
 import { authenticateToken } from './middleware/auth';
+
+// Import database
+import db from './config/database';
 
 // Initialize environment variables
 dotenv.config();
@@ -56,6 +60,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/quiz', createQuizRoutes(db)); // Quiz routes with gamification BEFORE other routes
 app.use('/api/chat', authenticateToken, chatRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/user', authenticateToken, userRoutes);

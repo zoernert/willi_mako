@@ -523,7 +523,7 @@ const Login: React.FC = () => {
               border: '1px solid rgba(20, 122, 80, 0.2)'
             }}>
               <Typography variant="h6" color="#147a50" fontWeight="bold">
-                Stundensatz eines Energieberaters: €150-250
+                Stundensatz eines MaKo-Beraters: €150-250
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Stromhaltig zahlt sich bereits nach der ersten gesparten Beratungsstunde aus.

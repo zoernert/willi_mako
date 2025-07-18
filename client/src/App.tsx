@@ -14,6 +14,8 @@ import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import FAQList from './pages/FAQList';
 import FAQDetail from './pages/FAQDetail';
+import QuizDashboard from './components/Quiz/QuizDashboard';
+import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const theme = createTheme({
@@ -103,6 +105,8 @@ function App() {
                 <Route path="documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
                 <Route path="faq" element={<FAQList />} />
                 <Route path="faqs/:id" element={<FAQDetail />} />
+                <Route path="quiz" element={<ProtectedRoute><QuizDashboard /></ProtectedRoute>} />
+                <Route path="quiz/:quizId" element={<ProtectedRoute><QuizPlayer /></ProtectedRoute>} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
               </Route>
