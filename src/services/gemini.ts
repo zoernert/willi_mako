@@ -35,7 +35,7 @@ export class GeminiService {
 
       const fullPrompt = `${systemPrompt}\n\nKonversationsverlauf:\n${conversationHistory}\n\nAssistant:`;
 
-      const result = await this.model.generateContent(fullPrompt);
+      const result = await this.generateWithRetry(fullPrompt);
       const response = await result.response;
       
       return response.text();
@@ -373,7 +373,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
 }`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       let responseText = response.text().trim();
@@ -488,6 +488,38 @@ Antworte nur als JSON ohne Markdown-Formatierung:
         improvementTips: []
       };
     }
+  }
+
+  async generateText(prompt: string): Promise<string> {
+    try {
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error generating text:', error);
+      throw new Error('Failed to generate text from Gemini');
+    }
+  }
+
+  private async generateWithRetry(prompt: string, maxRetries: number = 3): Promise<any> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.model.generateContent(prompt);
+      } catch (error: any) {
+        if (error.status === 429 && attempt < maxRetries) {
+          // Rate limit exceeded, wait and retry
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`Rate limit exceeded. Waiting ${delay}ms before retry ${attempt}/${maxRetries}`);
+          await this.sleep(delay);
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

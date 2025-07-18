@@ -38,6 +38,7 @@ import {
   Quiz as QuizIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import IntelligentQuizCreator from './IntelligentQuizCreator';
 
 interface Quiz {
   id: string;
@@ -230,13 +231,17 @@ const AdminQuizManager: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4">Quiz-Verwaltung</Typography>
-        <Button variant="contained" startIcon={<AddIcon />}>
-          Neues Quiz
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <IntelligentQuizCreator onQuizCreated={fetchQuizzes} />
+          <Button variant="outlined" startIcon={<AddIcon />}>
+            Manuelles Quiz
+          </Button>
+        </Box>
       </Box>
 
       <Alert severity="info" sx={{ mb: 3 }}>
         Hier können Sie alle Quizzes verwalten, bearbeiten und löschen. 
+        Das intelligente Quiz-System erstellt automatisch relevante Fragen basierend auf Ihren FAQs.
         Aktive Quizzes sind für alle Benutzer sichtbar.
       </Alert>
 
