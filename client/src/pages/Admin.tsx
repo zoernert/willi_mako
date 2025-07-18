@@ -40,6 +40,7 @@ import {
   Settings as SettingsIcon,
   BarChart as StatsIcon,
   QuestionAnswer as FAQIcon,
+  Quiz as QuizIcon,
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -48,6 +49,7 @@ import {
 import { useSnackbar } from '../contexts/SnackbarContext';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import AdminQuizManager from '../components/AdminQuizManager';
 import remarkGfm from 'remark-gfm';
 
 // Admin components - Full implementation
@@ -1685,6 +1687,7 @@ const Admin: React.FC = () => {
     { label: 'Benutzer', icon: <UsersIcon />, component: <AdminUsers /> },
     { label: 'Dokumente', icon: <DocumentsIcon />, component: <AdminDocuments /> },
     { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
+    { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
     { label: 'Statistiken', icon: <StatsIcon />, component: <AdminStats /> },
     { label: 'Einstellungen', icon: <SettingsIcon />, component: <AdminSettings /> },
   ];

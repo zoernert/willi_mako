@@ -338,6 +338,157 @@ Antwort nur als JSON ohne Markdown-Formatierung:`;
       return faqData;
     }
   }
+
+  async generateMultipleChoiceQuestion(
+    content: string,
+    difficulty: 'easy' | 'medium' | 'hard',
+    topicArea: string
+  ): Promise<{
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  }> {
+    const difficultyInstructions = {
+      easy: 'Erstelle eine einfache Frage mit offensichtlichen Antworten',
+      medium: 'Erstelle eine mittelschwere Frage mit plausiblen Distraktoren',
+      hard: 'Erstelle eine schwere Frage mit sehr ähnlichen Antworten'
+    };
+
+    const prompt = `Basierend auf folgendem Inhalt, erstelle eine Multiple-Choice-Frage zum Thema "${topicArea}":
+
+${content}
+
+Schwierigkeit: ${difficulty}
+${difficultyInstructions[difficulty]}
+
+Erstelle eine Frage mit 4 Antwortoptionen. Eine davon muss korrekt sein, die anderen 3 sollen plausible aber falsche Antworten sein.
+
+Antworte nur als JSON ohne Markdown-Formatierung:
+{
+  "question": "Die Frage",
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "correctIndex": 0,
+  "explanation": "Erklärung warum die Antwort korrekt ist"
+}`;
+
+    try {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      
+      let responseText = response.text().trim();
+      
+      // Remove markdown code blocks if present
+      if (responseText.startsWith('```json') && responseText.endsWith('```')) {
+        responseText = responseText.slice(7, -3).trim();
+      } else if (responseText.startsWith('```') && responseText.endsWith('```')) {
+        const firstNewline = responseText.indexOf('\n');
+        const lastNewline = responseText.lastIndexOf('\n');
+        if (firstNewline > 0 && lastNewline > firstNewline) {
+          responseText = responseText.slice(firstNewline + 1, lastNewline).trim();
+        }
+      }
+      
+      const parsedResponse = JSON.parse(responseText);
+      
+      return {
+        question: parsedResponse.question,
+        options: parsedResponse.options,
+        correctIndex: parsedResponse.correctIndex,
+        explanation: parsedResponse.explanation
+      };
+    } catch (error) {
+      console.error('Error generating multiple choice question:', error);
+      throw new Error('Failed to generate quiz question');
+    }
+  }
+
+  async generateQuizQuestions(
+    sourceContent: string[],
+    questionCount: number,
+    difficulty: 'easy' | 'medium' | 'hard',
+    topicArea: string
+  ): Promise<{
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  }[]> {
+    const questions = [];
+    
+    for (let i = 0; i < Math.min(questionCount, sourceContent.length); i++) {
+      try {
+        const question = await this.generateMultipleChoiceQuestion(
+          sourceContent[i],
+          difficulty,
+          topicArea
+        );
+        questions.push(question);
+      } catch (error) {
+        console.error(`Error generating question ${i + 1}:`, error);
+      }
+    }
+    
+    return questions;
+  }
+
+  async evaluateAnswerWithExplanation(
+    question: string,
+    userAnswer: string,
+    correctAnswer: string
+  ): Promise<{
+    isCorrect: boolean;
+    explanation: string;
+    improvementTips: string[];
+  }> {
+    const prompt = `Bewerte folgende Antwort auf eine Quiz-Frage:
+
+Frage: ${question}
+Benutzerantwort: ${userAnswer}
+Korrekte Antwort: ${correctAnswer}
+
+Erkläre warum die Antwort richtig oder falsch ist und gib Verbesserungstipps.
+
+Antworte nur als JSON ohne Markdown-Formatierung:
+{
+  "isCorrect": true/false,
+  "explanation": "Detaillierte Erklärung",
+  "improvementTips": ["Tipp 1", "Tipp 2", "Tipp 3"]
+}`;
+
+    try {
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      
+      let responseText = response.text().trim();
+      
+      // Remove markdown code blocks if present
+      if (responseText.startsWith('```json') && responseText.endsWith('```')) {
+        responseText = responseText.slice(7, -3).trim();
+      } else if (responseText.startsWith('```') && responseText.endsWith('```')) {
+        const firstNewline = responseText.indexOf('\n');
+        const lastNewline = responseText.lastIndexOf('\n');
+        if (firstNewline > 0 && lastNewline > firstNewline) {
+          responseText = responseText.slice(firstNewline + 1, lastNewline).trim();
+        }
+      }
+      
+      const parsedResponse = JSON.parse(responseText);
+      
+      return {
+        isCorrect: parsedResponse.isCorrect,
+        explanation: parsedResponse.explanation,
+        improvementTips: parsedResponse.improvementTips || []
+      };
+    } catch (error) {
+      console.error('Error evaluating answer:', error);
+      return {
+        isCorrect: false,
+        explanation: 'Fehler bei der Bewertung',
+        improvementTips: []
+      };
+    }
+  }
 }
 
 export default new GeminiService();
