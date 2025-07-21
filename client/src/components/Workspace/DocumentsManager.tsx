@@ -14,9 +14,6 @@ import {
   Chip,
   Menu,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
   Pagination,
   LinearProgress,
   Alert,
@@ -24,8 +21,7 @@ import {
   Switch,
   FormControlLabel,
   CircularProgress,
-  Divider,
-  Input
+  Divider
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
@@ -41,6 +37,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import DocumentPreview from './DocumentPreview';
+import DocumentUpload from './DocumentUpload';
 
 interface Document {
   id: string;
@@ -70,6 +67,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
   // Dialog states
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showAdvancedUpload, setShowAdvancedUpload] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [documentTitle, setDocumentTitle] = useState('');
   const [documentDescription, setDocumentDescription] = useState('');
@@ -455,20 +453,49 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
               }
             </Typography>
             
-            <Button
-              variant="contained"
-              startIcon={<UploadIcon />}
-              sx={{ mt: 1 }}
-            >
-              Dateien auswählen
-            </Button>
-            
-            <Typography variant="caption" display="block" sx={{ mt: 2 }}>
-              Unterstützte Formate: PDF, DOC, DOCX, TXT, MD (max. 50MB pro Datei)
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button
+                variant="outlined"
+                onClick={() => setShowAdvancedUpload(!showAdvancedUpload)}
+              >
+                {showAdvancedUpload ? 'Einfacher Upload' : 'Erweiterte Upload-Optionen'}
+              </Button>
+            </Box>
           </Box>
         </CardContent>
       </Card>
+
+      {/* Advanced Upload Component */}
+      {showAdvancedUpload && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Erweiterte Upload-Optionen
+            </Typography>
+            <DocumentUpload
+              onUploadComplete={(documentId) => {
+                fetchDocuments();
+                onStatsUpdate();
+                showSnackbar('Dokument erfolgreich hochgeladen!', 'success');
+              }}
+              maxFileSize={50}
+              allowedTypes={['pdf', 'doc', 'docx', 'txt', 'md']}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Documents Grid */}
+      <Box sx={{ mb: 3 }}>
+        <Button
+          variant="contained"
+          startIcon={<RefreshIcon />}
+          onClick={fetchDocuments}
+          disabled={loading}
+        >
+          Aktualisieren
+        </Button>
+      </Box>
 
       {loading && <LinearProgress sx={{ mb: 3 }} />}
 
