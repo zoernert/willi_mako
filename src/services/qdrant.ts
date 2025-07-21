@@ -161,6 +161,195 @@ export class QdrantService {
       throw error;
     }
   }
+
+  /**
+   * Store user document chunk in vector database
+   */
+  async storeUserDocumentChunk(
+    vectorId: string,
+    chunkText: string,
+    documentId: string,
+    documentTitle: string,
+    chunkIndex: number
+  ): Promise<void> {
+    try {
+      // Generate embedding for chunk text
+      const GeminiService = require('./gemini').default;
+      const vector = await GeminiService.generateEmbedding(chunkText);
+      
+      const point: QdrantPoint = {
+        id: vectorId,
+        vector: vector,
+        payload: {
+          text: chunkText,
+          source: 'user_document',
+          metadata: {
+            document_id: documentId,
+            document_title: documentTitle,
+            chunk_index: chunkIndex,
+            type: 'user_document_chunk'
+          },
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      await this.insertPoints([point]);
+      
+    } catch (error) {
+      console.error('Error storing user document chunk:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a specific vector by ID
+   */
+  async deleteVector(vectorId: string): Promise<void> {
+    try {
+      await this.deletePoints([vectorId]);
+    } catch (error) {
+      console.error('Error deleting vector:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search user documents with personalized context
+   */
+  async searchUserDocuments(
+    queryText: string,
+    userId: string,
+    limit: number = 5,
+    scoreThreshold: number = 0.7
+  ): Promise<SearchResult[]> {
+    try {
+      // Generate embedding for query
+      const GeminiService = require('./gemini').default;
+      const queryVector = await GeminiService.generateEmbedding(queryText);
+      
+      // Search with user document filter
+      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
+        vector: queryVector,
+        limit: limit,
+        score_threshold: scoreThreshold,
+        filter: {
+          must: [
+            {
+              key: 'metadata.type',
+              match: { value: 'user_document_chunk' }
+            },
+            {
+              key: 'metadata.user_id',
+              match: { value: userId }
+            }
+          ]
+        }
+      });
+      
+      return response.data.result || [];
+      
+    } catch (error) {
+      console.error('Error searching user documents:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all vectors for a specific document
+   */
+  async getDocumentVectors(documentId: string): Promise<SearchResult[]> {
+    try {
+      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
+        vector: Array(1536).fill(0), // Dummy vector for filter-only search
+        limit: 1000,
+        filter: {
+          must: [
+            {
+              key: 'metadata.document_id',
+              match: { value: documentId }
+            }
+          ]
+        }
+      });
+      
+      return response.data.result || [];
+      
+    } catch (error) {
+      console.error('Error getting document vectors:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search combining public and user content
+   */
+  async searchMixed(
+    queryText: string,
+    userId: string,
+    includeUserContent: boolean = true,
+    limit: number = 10,
+    scoreThreshold: number = 0.7
+  ): Promise<{
+    public_results: SearchResult[];
+    user_results: SearchResult[];
+  }> {
+    try {
+      const GeminiService = require('./gemini').default;
+      const queryVector = await GeminiService.generateEmbedding(queryText);
+      
+      // Search public content
+      const publicResponse = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
+        vector: queryVector,
+        limit: Math.ceil(limit / 2),
+        score_threshold: scoreThreshold,
+        filter: {
+          must_not: [
+            {
+              key: 'metadata.type',
+              match: { value: 'user_document_chunk' }
+            }
+          ]
+        }
+      });
+      
+      let userResults: SearchResult[] = [];
+      
+      if (includeUserContent) {
+        // Search user content
+        const userResponse = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
+          vector: queryVector,
+          limit: Math.ceil(limit / 2),
+          score_threshold: scoreThreshold,
+          filter: {
+            must: [
+              {
+                key: 'metadata.type',
+                match: { value: 'user_document_chunk' }
+              },
+              {
+                key: 'metadata.user_id',
+                match: { value: userId }
+              }
+            ]
+          }
+        });
+        
+        userResults = userResponse.data.result || [];
+      }
+      
+      return {
+        public_results: publicResponse.data.result || [],
+        user_results: userResults
+      };
+      
+    } catch (error) {
+      console.error('Error in mixed search:', error);
+      return {
+        public_results: [],
+        user_results: []
+      };
+    }
+  }
 }
 
 export default new QdrantService();

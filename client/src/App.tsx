@@ -14,6 +14,7 @@ import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import FAQList from './pages/FAQList';
 import FAQDetail from './pages/FAQDetail';
+import Workspace from './pages/Workspace';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -103,6 +104,7 @@ function App() {
                 <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="chat/:chatId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+                <Route path="workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
                 <Route path="faq" element={<FAQList />} />
                 <Route path="faqs/:id" element={<FAQDetail />} />
                 <Route path="quiz" element={<ProtectedRoute><QuizDashboard /></ProtectedRoute>} />

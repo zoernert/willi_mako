@@ -24,6 +24,10 @@ import {
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
+import QuickNoteButton from '../components/Workspace/QuickNoteButton';
+import ContextIndicator from '../components/Workspace/ContextIndicator';
+import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
+import { useTextSelection } from '../hooks/useTextSelection';
 import axios from 'axios';
 
 interface Message {
@@ -72,6 +76,13 @@ const Chat: React.FC = () => {
   const [clarificationLoading, setClarificationLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Text selection for creating notes
+  const textSelection = useTextSelection({
+    sourceType: 'chat',
+    sourceId: chatId || 'unknown',
+    containerId: 'chat-messages-container'
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -373,7 +384,10 @@ const Chat: React.FC = () => {
             </Box>
 
             {/* Messages */}
-            <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+            <Box 
+              id="chat-messages-container"
+              sx={{ flex: 1, overflowY: 'auto', p: 2 }}
+            >
               {chatLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                   <CircularProgress />
@@ -406,111 +420,133 @@ const Chat: React.FC = () => {
                         }}
                       >
                         {message.role === 'user' ? (
-                          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ whiteSpace: 'pre-wrap' }}
+                            className="chat-message user-message"
+                          >
                             {message.content}
                           </Typography>
                         ) : (
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => (
-                                <Typography variant="body1" sx={{ mb: 1 }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              h1: ({ children }) => (
-                                <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              h2: ({ children }) => (
-                                <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              h3: ({ children }) => (
-                                <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              ul: ({ children }) => (
-                                <Box component="ul" sx={{ mb: 1, pl: 2 }}>
-                                  {children}
-                                </Box>
-                              ),
-                              ol: ({ children }) => (
-                                <Box component="ol" sx={{ mb: 1, pl: 2 }}>
-                                  {children}
-                                </Box>
-                              ),
-                              li: ({ children }) => (
-                                <Typography component="li" variant="body1" sx={{ mb: 0.5 }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              strong: ({ children }) => (
-                                <Typography component="strong" sx={{ fontWeight: 'bold' }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              em: ({ children }) => (
-                                <Typography component="em" sx={{ fontStyle: 'italic' }}>
-                                  {children}
-                                </Typography>
-                              ),
-                              code: ({ children }) => (
-                                <Typography
-                                  component="code"
-                                  sx={{
-                                    backgroundColor: 'rgba(0,0,0,0.1)',
-                                    padding: '2px 4px',
-                                    borderRadius: '4px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.9em',
-                                  }}
-                                >
-                                  {children}
-                                </Typography>
-                              ),
-                              pre: ({ children }) => (
-                                <Paper
-                                  sx={{
-                                    p: 1,
-                                    backgroundColor: 'rgba(0,0,0,0.1)',
-                                    overflow: 'auto',
-                                    mb: 1,
-                                  }}
-                                >
+                          <div className="chat-message assistant-message">
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => (
+                                  <Typography variant="body1" sx={{ mb: 1 }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                h1: ({ children }) => (
+                                  <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                h2: ({ children }) => (
+                                  <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                h3: ({ children }) => (
+                                  <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                ul: ({ children }) => (
+                                  <Box component="ul" sx={{ mb: 1, pl: 2 }}>
+                                    {children}
+                                  </Box>
+                                ),
+                                ol: ({ children }) => (
+                                  <Box component="ol" sx={{ mb: 1, pl: 2 }}>
+                                    {children}
+                                  </Box>
+                                ),
+                                li: ({ children }) => (
+                                  <Typography component="li" variant="body1" sx={{ mb: 0.5 }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                strong: ({ children }) => (
+                                  <Typography component="strong" sx={{ fontWeight: 'bold' }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                em: ({ children }) => (
+                                  <Typography component="em" sx={{ fontStyle: 'italic' }}>
+                                    {children}
+                                  </Typography>
+                                ),
+                                code: ({ children }) => (
                                   <Typography
-                                    component="pre"
+                                    component="code"
                                     sx={{
+                                      backgroundColor: 'rgba(0,0,0,0.1)',
+                                      padding: '2px 4px',
+                                      borderRadius: '4px',
                                       fontFamily: 'monospace',
                                       fontSize: '0.9em',
-                                      whiteSpace: 'pre-wrap',
-                                      margin: 0,
                                     }}
                                   >
                                     {children}
                                   </Typography>
-                                </Paper>
-                              ),
-                              blockquote: ({ children }) => (
-                                <Paper
-                                  sx={{
-                                    p: 1,
-                                    borderLeft: '4px solid',
-                                    borderLeftColor: 'primary.main',
-                                    backgroundColor: 'rgba(0,0,0,0.05)',
-                                    mb: 1,
-                                  }}
-                                >
-                                  {children}
-                                </Paper>
-                              ),
-                            }}
-                          >
-                            {message.content}
-                          </ReactMarkdown>
+                                ),
+                                pre: ({ children }) => (
+                                  <Paper
+                                    sx={{
+                                      p: 1,
+                                      backgroundColor: 'rgba(0,0,0,0.1)',
+                                      overflow: 'auto',
+                                      mb: 1,
+                                    }}
+                                  >
+                                    <Typography
+                                      component="pre"
+                                      sx={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.9em',
+                                        whiteSpace: 'pre-wrap',
+                                        margin: 0,
+                                      }}
+                                    >
+                                      {children}
+                                    </Typography>
+                                  </Paper>
+                                ),
+                                blockquote: ({ children }) => (
+                                  <Paper
+                                    sx={{
+                                      p: 1,
+                                      borderLeft: '4px solid',
+                                      borderLeftColor: 'primary.main',
+                                      backgroundColor: 'rgba(0,0,0,0.05)',
+                                      mb: 1,
+                                    }}
+                                  >
+                                    {children}
+                                  </Paper>
+                                ),
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
                         )}
+                        
+                        {/* Context Indicator for assistant messages */}
+                        {message.role !== 'user' && message.metadata && (
+                          <ContextIndicator
+                            contextInfo={message.metadata.userContextUsed ? {
+                              userContextUsed: message.metadata.userContextUsed || false,
+                              userDocumentsUsed: message.metadata.userDocumentsUsed || 0,
+                              userNotesUsed: message.metadata.userNotesUsed || 0,
+                              contextSummary: message.metadata.contextSummary || '',
+                              contextReason: message.metadata.contextReason || '',
+                              suggestedDocuments: message.metadata.suggestedDocuments || [],
+                              relatedNotes: message.metadata.relatedNotes || []
+                            } : null}
+                          />
+                        )}
+                        
                         <Typography
                           variant="caption"
                           sx={{
@@ -609,8 +645,27 @@ const Chat: React.FC = () => {
                 </Button>
               </Box>
             </Box>
+
+            {/* Quick Note Button */}
+            <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+              <QuickNoteButton 
+                sourceType="chat"
+                sourceId={currentChat.id}
+                position="relative"
+              />
+            </Box>
           </>
         )}
+        
+        {/* Text Selection Menu */}
+        <TextSelectionMenu
+          anchorEl={textSelection.anchorEl}
+          selectedText={textSelection.selectedText}
+          sourceType={textSelection.sourceType}
+          sourceId={textSelection.sourceId}
+          sourceContext={textSelection.sourceContext}
+          onClose={textSelection.onClose}
+        />
       </Paper>
     </Box>
   );

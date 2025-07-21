@@ -521,6 +521,148 @@ Antworte nur als JSON ohne Markdown-Formatierung:
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+
+  /**
+   * Generate tags for note content using AI
+   */
+  async generateTagsForNote(content: string): Promise<string[]> {
+    try {
+      const prompt = `Analysiere den folgenden Text und erstelle 3-5 relevante Tags (Schlagwörter) auf Deutsch. 
+      Die Tags sollen kurz und prägnant sein und den Inhalt gut beschreiben.
+      
+      Text: ${content}
+      
+      Antworte nur mit den Tags, getrennt durch Kommas. Beispiel: Energie, Marktkommunikation, Stromhandel`;
+      
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      const tagsText = response.text().trim();
+      
+      // Parse and clean tags
+      const tags = tagsText
+        .split(',')
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag.length > 0 && tag.length <= 30)
+        .slice(0, 5); // Limit to 5 tags
+      
+      return tags;
+      
+    } catch (error) {
+      console.error('Error generating tags for note:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate tags for document content using AI
+   */
+  async generateTagsForDocument(content: string, title: string): Promise<string[]> {
+    try {
+      const prompt = `Analysiere das folgende Dokument und erstelle 3-5 relevante Tags (Schlagwörter) auf Deutsch.
+      Die Tags sollen den Inhalt und das Thema des Dokuments gut beschreiben.
+      
+      Titel: ${title}
+      Inhalt: ${content.substring(0, 2000)}...
+      
+      Antworte nur mit den Tags, getrennt durch Kommas. Beispiel: Energie, Marktkommunikation, Stromhandel`;
+      
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      const tagsText = response.text().trim();
+      
+      // Parse and clean tags
+      const tags = tagsText
+        .split(',')
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag.length > 0 && tag.length <= 30)
+        .slice(0, 5); // Limit to 5 tags
+      
+      return tags;
+      
+    } catch (error) {
+      console.error('Error generating tags for document:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate response with user context (documents and notes)
+   */
+  async generateResponseWithUserContext(
+    messages: ChatMessage[],
+    publicContext: string,
+    userDocuments: string[],
+    userNotes: string[],
+    userPreferences: any = {}
+  ): Promise<string> {
+    try {
+      // Build enhanced context
+      let enhancedContext = publicContext;
+      
+      if (userDocuments.length > 0) {
+        enhancedContext += '\n\n=== PERSÖNLICHE DOKUMENTE ===\n';
+        enhancedContext += userDocuments.join('\n\n');
+      }
+      
+      if (userNotes.length > 0) {
+        enhancedContext += '\n\n=== PERSÖNLICHE NOTIZEN ===\n';
+        enhancedContext += userNotes.join('\n\n');
+      }
+      
+      // Add instruction for using personal context
+      if (userDocuments.length > 0 || userNotes.length > 0) {
+        enhancedContext += '\n\n=== ANWEISUNGEN ===\n';
+        enhancedContext += 'Du hast Zugang zu persönlichen Dokumenten und Notizen des Nutzers. ';
+        enhancedContext += 'Beziehe diese in deine Antwort ein, wenn sie relevant sind. ';
+        enhancedContext += 'Weise darauf hin, wenn du Informationen aus persönlichen Quellen verwendest.';
+      }
+      
+      return await this.generateResponse(messages, enhancedContext, userPreferences, true);
+      
+    } catch (error) {
+      console.error('Error generating response with user context:', error);
+      throw new Error('Failed to generate response with user context');
+    }
+  }
+
+  /**
+   * Suggest related content based on query
+   */
+  async suggestRelatedContent(userId: string, query: string): Promise<any[]> {
+    try {
+      const prompt = `Basierend auf der folgenden Anfrage, schlage verwandte Themen und Suchbegriffe vor:
+      
+      Anfrage: ${query}
+      
+      Antworte mit einem JSON-Array von verwandten Begriffen und Themen. 
+      Beispiel: ["Energiehandel", "Marktkommunikation", "Strompreise"]`;
+      
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      const suggestionsText = response.text().trim();
+      
+      // Try to parse JSON
+      try {
+        const suggestions = JSON.parse(suggestionsText);
+        return Array.isArray(suggestions) ? suggestions : [];
+      } catch (parseError) {
+        // If JSON parsing fails, try to extract suggestions from text
+        const lines = suggestionsText.split('\n');
+        return lines
+          .filter((line: string) => line.trim().length > 0)
+          .map((line: string) => line.replace(/^[-*]\s*/, '').trim())
+          .slice(0, 10);
+      }
+      
+    } catch (error) {
+      console.error('Error suggesting related content:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate embedding for text (for vector search)
+   */
 }
 
 export default new GeminiService();

@@ -1,4 +1,4 @@
-import { Router, Response, Request } from 'express';
+import { Router, Response, Request, NextFunction } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 import pool from '../config/database';
@@ -126,16 +126,16 @@ router.get('/faq-tags', asyncHandler(async (req: Request, res: Response) => {
   });
 }));
 
-// Admin routes - require admin authentication
-router.use((req: AuthenticatedRequest, res, next) => {
+// Admin middleware - only for admin routes
+const requireAdminForFaq = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== 'admin') {
     throw new AppError('Admin access required', 403);
   }
   next();
-});
+};
 
 // Get all chats for admin (to create FAQs from)
-router.get('/admin/chats', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/chats', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { limit = 50, offset = 0 } = req.query;
   
   const result = await pool.query(`
@@ -159,7 +159,7 @@ router.get('/admin/chats', asyncHandler(async (req: AuthenticatedRequest, res: R
 }));
 
 // Get specific chat details for admin
-router.get('/admin/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/chats/:chatId', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { chatId } = req.params;
   
   const chatResult = await pool.query(`
@@ -191,7 +191,7 @@ router.get('/admin/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest
 }));
 
 // Create FAQ from chat
-router.post('/admin/chats/:chatId/create-faq', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { chatId } = req.params;
   const userId = req.user!.id;
   
@@ -232,7 +232,7 @@ router.post('/admin/chats/:chatId/create-faq', asyncHandler(async (req: Authenti
 }));
 
 // Get all FAQs for admin management
-router.get('/admin/faqs', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/faqs', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { limit = 20, offset = 0 } = req.query;
   
   const result = await pool.query(`
@@ -252,7 +252,7 @@ router.get('/admin/faqs', asyncHandler(async (req: AuthenticatedRequest, res: Re
 }));
 
 // Update FAQ
-router.put('/admin/faqs/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { title, description, context, answer, additional_info, tags, is_active, enhance_with_context } = req.body;
   
@@ -314,7 +314,7 @@ router.put('/admin/faqs/:id', asyncHandler(async (req: AuthenticatedRequest, res
 }));
 
 // Delete FAQ
-router.delete('/admin/faqs/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   
   const result = await pool.query('DELETE FROM faqs WHERE id = $1', [id]);
