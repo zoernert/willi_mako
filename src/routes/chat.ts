@@ -6,6 +6,7 @@ import pool from '../config/database';
 import geminiService from '../services/gemini';
 import QdrantService from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
+import contextManager from '../services/contextManager';
 
 const router = Router();
 
@@ -261,21 +262,54 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     10
   );
   
-  const context = contextResults
+  const publicContext = contextResults
     .map(result => result.payload.text)
     .join('\n\n');
-  
-  // Generate AI response
-  const aiResponse = await geminiService.generateResponse(
-    previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
-    context,
-    userPreferences.rows[0] || {}
+
+  // NEW: Determine optimal context using ContextManager
+  const { userContext, contextDecision } = await contextManager.determineOptimalContext(
+    content,
+    userId,
+    previousMessages.rows.slice(-5) // Last 5 messages for context
   );
+
+  let aiResponse: string;
+  let responseMetadata: any = { 
+    contextSources: contextResults.length,
+    userContextUsed: contextDecision.useUserContext,
+    contextReason: contextDecision.reason
+  };
+
+  // Generate AI response with or without user context
+  if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
+    // Use enhanced response with user context
+    aiResponse = await geminiService.generateResponseWithUserContext(
+      previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
+      publicContext,
+      userContext.userDocuments,
+      userContext.userNotes,
+      userPreferences.rows[0] || {}
+    );
+    
+    responseMetadata = {
+      ...responseMetadata,
+      userDocumentsUsed: userContext.userDocuments.length,
+      userNotesUsed: userContext.userNotes.length,
+      contextSummary: userContext.contextSummary
+    };
+  } else {
+    // Use standard response with public context only
+    aiResponse = await geminiService.generateResponse(
+      previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
+      publicContext,
+      userPreferences.rows[0] || {}
+    );
+  }
   
-  // Save AI response
+  // Save AI response with enhanced metadata
   const assistantMessage = await pool.query(
     'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
-    [chatId, 'assistant', aiResponse, JSON.stringify({ contextSources: contextResults.length })]
+    [chatId, 'assistant', aiResponse, JSON.stringify(responseMetadata)]
   );
    
   // Update chat timestamp

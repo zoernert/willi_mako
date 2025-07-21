@@ -13,6 +13,9 @@ import adminRoutes from './routes/admin';
 import userRoutes from './routes/user';
 import faqRoutes from './routes/faq';
 import createQuizRoutes from './routes/quiz';
+import workspaceRoutes from './routes/workspace';
+import notesRoutes from './routes/notes';
+import documentsRoutes from './routes/documents';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -65,6 +68,9 @@ app.use('/api/chat', authenticateToken, chatRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 app.use('/api/user', authenticateToken, userRoutes);
 app.use('/api', faqRoutes); // Some FAQ routes are public
+app.use('/api/workspace', workspaceRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/documents', documentsRoutes);
 
 // Serve React app
 const clientBuildPath = path.join(__dirname, '../client/build');

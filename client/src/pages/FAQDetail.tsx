@@ -20,6 +20,9 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import QuickNoteButton from '../components/Workspace/QuickNoteButton';
+import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
+import { useTextSelection } from '../hooks/useTextSelection';
 import axios from 'axios';
 
 interface FAQ {
@@ -43,6 +46,13 @@ const FAQDetail: React.FC = () => {
   const [faq, setFaq] = useState<FAQ | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Text selection for creating notes
+  const textSelection = useTextSelection({
+    sourceType: 'faq',
+    sourceId: id || 'unknown',
+    containerId: 'faq-content-container'
+  });
 
   useEffect(() => {
     if (id) {
@@ -144,7 +154,10 @@ const FAQDetail: React.FC = () => {
         </Box>
 
         {/* FAQ Content */}
-        <Paper sx={{ p: 4 }}>
+        <Paper 
+          id="faq-content-container"
+          sx={{ p: 4 }}
+        >
           <Typography variant="h5" gutterBottom fontWeight="bold">
             {faq.title}
           </Typography>
@@ -200,9 +213,11 @@ const FAQDetail: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Antwort
           </Typography>
-          <MarkdownRenderer>
-            {faq.answer}
-          </MarkdownRenderer>
+          <div className="faq-content answer-content">
+            <MarkdownRenderer>
+              {faq.answer}
+            </MarkdownRenderer>
+          </div>
           
           {faq.additional_info && (
             <>
@@ -210,15 +225,17 @@ const FAQDetail: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Zusätzliche Informationen
               </Typography>
-              <MarkdownRenderer>
-                {faq.additional_info}
-              </MarkdownRenderer>
+              <div className="faq-content additional-info-content">
+                <MarkdownRenderer>
+                  {faq.additional_info}
+                </MarkdownRenderer>
+              </div>
             </>
           )}
           
           <Divider sx={{ my: 3 }} />
           
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <Button
               variant="contained"
               onClick={handleStartChatFromFAQ}
@@ -234,8 +251,25 @@ const FAQDetail: React.FC = () => {
             >
               Zurück zur FAQ-Liste
             </Button>
+            
+            {/* Quick Note Button */}
+            <QuickNoteButton
+              sourceType="faq"
+              sourceId={faq.id}
+              position="relative"
+            />
           </Box>
         </Paper>
+        
+        {/* Text Selection Menu */}
+        <TextSelectionMenu
+          anchorEl={textSelection.anchorEl}
+          selectedText={textSelection.selectedText}
+          sourceType={textSelection.sourceType}
+          sourceId={textSelection.sourceId}
+          sourceContext={textSelection.sourceContext}
+          onClose={textSelection.onClose}
+        />
       </Box>
     </Container>
   );
