@@ -1,0 +1,1 @@
+Erstelle mir einen Plan, um in diesem Projekt zunächst den Code aufzuräumen, so dass keine doppelten Implementationen vorhanden sind und danach eine Optimierung, dass es einfacher ist, weitere Funktionen zu ergänzen, ohne immer die ganze Codebase im Blick haben zu müssen. Erstelle vorallem Markdown Dokumente als Plan, die als einzelne Aufgaben ausgeführt werden können.
