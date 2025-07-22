@@ -21,6 +21,7 @@ import {
   Fullscreen as FullscreenIcon,
   Print as PrintIcon
 } from '@mui/icons-material';
+import { documentsApi } from '../../services/documentsApi';
 
 interface DocumentPreviewProps {
   open: boolean;
@@ -47,18 +48,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/documents/${documentId}/preview`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load document preview');
-      }
-
-      const blob = await response.blob();
+      const blob = await documentsApi.getDocumentPreview(documentId);
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
     } catch (err) {
@@ -81,18 +71,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   const handleDownload = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/documents/${documentId}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download document');
-      }
-
-      const blob = await response.blob();
+      const blob = await documentsApi.downloadDocument(documentId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -29,8 +29,8 @@
     "src/**/*"
   ],
   "exclude": [
+    "src/routes/archived/**/*",
     "node_modules",
-    "dist",
-    "client"
+    "dist"
   ]
 }

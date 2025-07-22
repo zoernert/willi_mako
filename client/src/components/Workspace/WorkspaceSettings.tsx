@@ -33,28 +33,15 @@ import {
   Info as InfoIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
-
-interface WorkspaceSettingsData {
-  ai_context_enabled: boolean;
-  auto_tag_enabled: boolean;
-  storage_used_mb: number;
-  storage_limit_mb: number;
-  settings: {
-    default_ai_context: boolean;
-    auto_process_documents: boolean;
-    notification_preferences: {
-      processing_complete: boolean;
-      storage_warnings: boolean;
-    };
-  };
-}
+import { workspaceApi } from '../../services/workspaceApi';
+import { WorkspaceSettings as WorkspaceSettingsType } from '../../types/workspace';
 
 interface WorkspaceSettingsProps {
   onStatsUpdate: () => void;
 }
 
 const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ onStatsUpdate }) => {
-  const [settings, setSettings] = useState<WorkspaceSettingsData | null>(null);
+  const [settings, setSettings] = useState<WorkspaceSettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -68,19 +55,7 @@ const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ onStatsUpdate }) 
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/workspace/settings', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-
-      const data = await response.json();
+      const data = await workspaceApi.getSettings();
       
       // Ensure nested objects exist with default values
       const normalizedData = {
@@ -105,7 +80,7 @@ const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ onStatsUpdate }) 
     }
   };
 
-  const handleSettingsChange = (key: keyof WorkspaceSettingsData, value: any) => {
+  const handleSettingsChange = (key: keyof WorkspaceSettingsType, value: any) => {
     if (!settings) return;
     
     setSettings({
@@ -147,23 +122,11 @@ const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ onStatsUpdate }) 
 
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/workspace/settings', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(settings)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
-      }
-
+      await workspaceApi.updateSettings(settings);
       showSnackbar('Einstellungen erfolgreich gespeichert', 'success');
       onStatsUpdate();
     } catch (err) {
+      console.error('Error saving settings:', err);
       showSnackbar('Fehler beim Speichern der Einstellungen', 'error');
     } finally {
       setSaving(false);
@@ -172,22 +135,12 @@ const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ onStatsUpdate }) 
 
   const handleDeleteAllData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/workspace/delete-all', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete workspace data');
-      }
-
+      await workspaceApi.deleteAllData();
       showSnackbar('Alle Workspace-Daten wurden gelöscht', 'success');
       setIsDeleteDialogOpen(false);
       onStatsUpdate();
     } catch (err) {
+      console.error('Error deleting workspace data:', err);
       showSnackbar('Fehler beim Löschen der Workspace-Daten', 'error');
     }
   };

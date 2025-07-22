@@ -38,20 +38,8 @@ import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import DocumentPreview from './DocumentPreview';
 import DocumentUpload from './DocumentUpload';
-
-interface Document {
-  id: string;
-  title: string;
-  description?: string;
-  original_name: string;
-  file_size: number;
-  mime_type: string;
-  is_processed: boolean;
-  is_ai_context_enabled: boolean;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { documentsApi } from '../../services/documentsApi';
+import { Document } from '../../types/workspace';
 
 interface DocumentsManagerProps {
   onStatsUpdate: () => void;
@@ -91,27 +79,15 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '12'
+      const data = await documentsApi.getWorkspaceDocuments({
+        page: currentPage,
+        limit: 12
       });
-
-      const response = await fetch(`/api/workspace/documents?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch documents');
-      }
-
-      const data = await response.json();
+      
       setDocuments(data.documents || []);
-      setTotalPages(Math.ceil((data.total || 0) / 12));
+      setTotalPages(data.totalPages || Math.ceil((data.total || 0) / 12));
     } catch (err) {
+      console.error('Error fetching documents:', err);
       showSnackbar('Fehler beim Laden der Dokumente', 'error');
     } finally {
       setLoading(false);
@@ -231,10 +207,10 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   const handleEditDocument = (document: Document) => {
     setEditingDocument(document);
-    setDocumentTitle(document.title);
+    setDocumentTitle(document.title || document.name || '');
     setDocumentDescription(document.description || '');
-    setDocumentTags(document.tags);
-    setAiContextEnabled(document.is_ai_context_enabled);
+    setDocumentTags(document.tags || []);
+    setAiContextEnabled(document.is_ai_context_enabled || false);
     setIsEditDialogOpen(true);
     setAnchorEl(null);
   };
@@ -243,24 +219,12 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
     if (!editingDocument) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/workspace/documents/${editingDocument.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: documentTitle,
-          description: documentDescription,
-          tags: documentTags,
-          is_ai_context_enabled: aiContextEnabled
-        })
+      await documentsApi.updateDocument(editingDocument.id, {
+        title: documentTitle,
+        description: documentDescription,
+        tags: documentTags,
+        is_ai_context_enabled: aiContextEnabled
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update document');
-      }
 
       showSnackbar('Dokument erfolgreich aktualisiert', 'success');
       setIsEditDialogOpen(false);
@@ -273,22 +237,13 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/workspace/documents/${documentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete document');
-      }
-
+      await documentsApi.deleteDocument(documentId);
+      
       showSnackbar('Dokument erfolgreich gelöscht', 'success');
       fetchDocuments();
       onStatsUpdate();
     } catch (err) {
+      console.error('Error deleting document:', err);
       showSnackbar('Fehler beim Löschen des Dokuments', 'error');
     }
     setAnchorEl(null);
@@ -296,18 +251,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   const handleDownloadDocument = async (documentId: string, filename: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/documents/${documentId}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download document');
-      }
-
-      const blob = await response.blob();
+      const blob = await documentsApi.downloadDocument(documentId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -318,6 +262,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
+      console.error('Error downloading document:', err);
       showSnackbar('Fehler beim Herunterladen des Dokuments', 'error');
     }
     setAnchorEl(null);
@@ -325,28 +270,15 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   const handleToggleAIContext = async (document: Document) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/workspace/documents/${document.id}/ai-context`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          enabled: !document.is_ai_context_enabled
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle AI context');
-      }
-
+      await documentsApi.toggleAIContext(document.id, !(document.is_ai_context_enabled || false));
+      
       showSnackbar(
         `KI-Kontext ${!document.is_ai_context_enabled ? 'aktiviert' : 'deaktiviert'}`,
         'success'
       );
       fetchDocuments();
     } catch (err) {
+      console.error('Error toggling AI context:', err);
       showSnackbar('Fehler beim Ändern des KI-Kontexts', 'error');
     }
     setAnchorEl(null);
@@ -354,22 +286,12 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   const handleReprocessDocument = async (documentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/workspace/documents/${documentId}/reprocess`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reprocess document');
-      }
-
+      await documentsApi.reprocessDocument(documentId);
+      
       showSnackbar('Dokument wird neu verarbeitet', 'success');
       fetchDocuments();
     } catch (err) {
+      console.error('Error reprocessing document:', err);
       showSnackbar('Fehler beim Neu-Verarbeiten des Dokuments', 'error');
     }
     setAnchorEl(null);
@@ -512,7 +434,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Typography variant="h6" component="h3" noWrap sx={{ flexGrow: 1 }}>
-                      {document.title}
+                      {document.title || document.name}
                     </Typography>
                     <IconButton
                       size="small"
@@ -574,7 +496,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
                         {formatFileSize(document.file_size)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {formatDate(document.updated_at)}
+                        {formatDate(document.updated_at || document.uploaded_at || new Date().toISOString())}
                       </Typography>
                     </Box>
                     
@@ -591,7 +513,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
                       <Button
                         size="small"
                         startIcon={<DownloadIcon />}
-                        onClick={() => handleDownloadDocument(document.id, document.original_name)}
+                        onClick={() => handleDownloadDocument(document.id, document.original_name || document.name)}
                         sx={{ flex: 1 }}
                       >
                         Download
@@ -630,7 +552,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
           <EditIcon sx={{ mr: 1 }} /> Bearbeiten
         </MenuItem>
         <MenuItem 
-          onClick={() => selectedDocument && handleDownloadDocument(selectedDocument.id, selectedDocument.original_name)}
+          onClick={() => selectedDocument && handleDownloadDocument(selectedDocument.id, selectedDocument.original_name || selectedDocument.name || 'document')}
         >
           <DownloadIcon sx={{ mr: 1 }} /> Herunterladen
         </MenuItem>
@@ -828,7 +750,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
           open={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           documentId={previewDocument.id}
-          documentName={previewDocument.title}
+          documentName={previewDocument.title || previewDocument.name || 'Document'}
           mimeType={previewDocument.mime_type}
         />
       )}

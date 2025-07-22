@@ -79,23 +79,31 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       // Fetch user stats
-      const statsResponse = await axios.get('/user/stats');
-      setStats(statsResponse.data.data);
+      const statsResponse = await axios.get('/api/v2/user/stats');
+      setStats(statsResponse.data.data || {});
       
       // Fetch recent chats
-      const chatsResponse = await axios.get('/chat/chats');
-      setRecentChats(chatsResponse.data.data.slice(0, 5));
+      const chatsResponse = await axios.get('/api/chat/chats');
+      const chatsData = chatsResponse.data.data || [];
+      setRecentChats(Array.isArray(chatsData) ? chatsData.slice(0, 5) : []);
       
       // Fetch documents
-      const documentsResponse = await axios.get('/user/documents');
-      setDocuments(documentsResponse.data.data.slice(0, 5));
+      const documentsResponse = await axios.get('/api/documents');
+      const documentsData = documentsResponse.data.data || [];
+      setDocuments(Array.isArray(documentsData) ? documentsData.slice(0, 5) : []);
       
       // Fetch latest FAQs
-      const faqsResponse = await axios.get('/faqs?limit=3');
-      setFaqs(faqsResponse.data.data);
+      const faqsResponse = await axios.get('/api/faqs?limit=3');
+      const faqsData = faqsResponse.data.data || [];
+      setFaqs(Array.isArray(faqsData) ? faqsData : []);
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Set default values on error to prevent further errors
+      setStats(null);
+      setRecentChats([]);
+      setDocuments([]);
+      setFaqs([]);
     } finally {
       setLoading(false);
     }

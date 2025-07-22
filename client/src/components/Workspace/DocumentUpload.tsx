@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from '../../contexts/SnackbarContext';
+import { documentsApi } from '../../services/documentsApi';
 
 interface UploadFile {
   file: File;
@@ -109,48 +110,22 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     try {
       updateFileStatus({ status: 'uploading', progress: 0 });
 
-      const formData = new FormData();
-      formData.append('file', uploadFile.file);
-      formData.append('title', uploadFile.title || uploadFile.file.name);
-      formData.append('description', uploadFile.description || '');
-
-      const token = localStorage.getItem('token');
-      const xhr = new XMLHttpRequest();
-
-      // Track upload progress
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 70); // 70% for upload
+      // Use the new documentsApi service with progress tracking
+      const response = await documentsApi.uploadDocumentWithProgress(
+        uploadFile.file,
+        (progress) => {
           updateFileStatus({ progress });
         }
-      });
+      );
 
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          updateFileStatus({ 
-            status: 'processing', 
-            progress: 80,
-            documentId: response.document.id
-          });
-          
-          // Poll for processing completion
-          pollProcessingStatus(uploadFile.id, response.document.id);
-        } else {
-          throw new Error(`Upload failed: ${xhr.statusText}`);
-        }
+      updateFileStatus({ 
+        status: 'processing', 
+        progress: 80,
+        documentId: response.document.id
       });
-
-      xhr.addEventListener('error', () => {
-        updateFileStatus({ 
-          status: 'error', 
-          error: 'Upload failed due to network error'
-        });
-      });
-
-      xhr.open('POST', '/api/documents/upload');
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.send(formData);
+      
+      // Poll for processing completion
+      pollProcessingStatus(uploadFile.id, response.document.id);
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -169,34 +144,22 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     };
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/documents/${documentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const document = await response.json();
+      const document = await documentsApi.getDocument(documentId);
+      
+      if (document.processed) {
+        updateFileStatus({ 
+          status: 'completed', 
+          progress: 100 
+        });
+        showSnackbar('Dokument erfolgreich verarbeitet', 'success');
         
-        if (document.is_processed) {
-          updateFileStatus({ 
-            status: 'completed', 
-            progress: 100 
-          });
-          showSnackbar('Dokument erfolgreich verarbeitet', 'success');
-          
-          if (onUploadComplete) {
-            onUploadComplete(documentId);
-          }
-        } else {
-          // Continue polling
-          updateFileStatus({ progress: 90 });
-          setTimeout(() => pollProcessingStatus(fileId, documentId), 2000);
+        if (onUploadComplete) {
+          onUploadComplete(documentId);
         }
       } else {
-        throw new Error('Failed to check processing status');
+        // Continue polling
+        updateFileStatus({ progress: 90 });
+        setTimeout(() => pollProcessingStatus(fileId, documentId), 2000);
       }
     } catch (error) {
       updateFileStatus({ 

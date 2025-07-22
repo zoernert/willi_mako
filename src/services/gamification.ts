@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { UserPoints, UserExpertise, LeaderboardEntry, Achievement, ExpertiseUpdate } from '../types/quiz';
+import { UserPoints, UserExpertise, LeaderboardEntry, Achievement, ExpertiseUpdate } from '../modules/quiz/quiz.interface';
 
 export class GamificationService {
   private db: Pool;
@@ -74,7 +74,7 @@ export class GamificationService {
           topic_area: topicArea,
           old_level: 'beginner',
           new_level: newLevel,
-          points_gained: totalPoints
+          points_earned: totalPoints
         });
       } else {
         const currentExpertise = currentResult.rows[0];
@@ -93,7 +93,7 @@ export class GamificationService {
             topic_area: topicArea,
             old_level: oldLevel,
             new_level: newLevel,
-            points_gained: totalPoints - currentExpertise.points_in_topic
+            points_earned: totalPoints - currentExpertise.points_in_topic
           });
         }
       }
@@ -178,7 +178,9 @@ export class GamificationService {
         title: 'Quiz-Meister',
         description: '10 Quizzes erfolgreich abgeschlossen',
         type: 'quiz_master',
-        earned_at: new Date()
+        user_id: userId,
+        earned_at: new Date(),
+        is_visible: true
       });
     }
     
@@ -188,7 +190,9 @@ export class GamificationService {
         title: 'Perfektionist',
         description: '5 Quizzes mit 100% Punktzahl',
         type: 'streak',
-        earned_at: new Date()
+        user_id: userId,
+        earned_at: new Date(),
+        is_visible: true
       });
     }
     
@@ -198,7 +202,9 @@ export class GamificationService {
         title: 'Punkte-Sammler',
         description: '1000 Punkte gesammelt',
         type: 'points_milestone',
-        earned_at: new Date()
+        user_id: userId,
+        earned_at: new Date(),
+        is_visible: true
       });
     }
     

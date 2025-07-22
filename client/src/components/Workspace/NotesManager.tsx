@@ -34,18 +34,8 @@ import {
   MoreVert as MoreIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  source_type?: string;
-  source_id?: string;
-  source_context?: string;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { notesApi } from '../../services/notesApi';
+import { Note } from '../../types/workspace';
 
 interface NotesManagerProps {
   onStatsUpdate: () => void;
@@ -78,27 +68,15 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
   const fetchNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '10',
+      const params = {
+        page: currentPage,
+        limit: 10,
         ...(searchQuery && { search: searchQuery }),
-        ...(selectedTags.length > 0 && { tags: selectedTags.join(',') }),
+        ...(selectedTags.length > 0 && { tags: selectedTags }),
         ...(sourceFilter !== 'all' && { source_type: sourceFilter })
-      });
+      };
 
-      const response = await fetch(`/api/notes?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch notes');
-      }
-
-      const data = await response.json();
+      const data = await notesApi.getNotes(params);
       setNotes(data.notes || []);
       setTotalPages(Math.ceil((data.total || 0) / 10));
     } catch (err) {
@@ -108,29 +86,19 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
     }
   }, [searchQuery, selectedTags, sourceFilter, currentPage, showSnackbar]);
 
-  const fetchAvailableTags = useCallback(async () => {
+  const fetchAvailableTags = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/notes/tags', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableTags(data.tags || []);
-      }
+      const tags = await notesApi.getAvailableTags();
+      setAvailableTags(tags || []);
     } catch (err) {
       console.error('Error fetching tags:', err);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchNotes();
     fetchAvailableTags();
-  }, [fetchNotes, fetchAvailableTags]);
+  }, [fetchNotes]); // fetchAvailableTags is now a stable function
 
   const handleCreateNote = () => {
     setEditingNote(null);
@@ -151,18 +119,7 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete note');
-      }
-
+      await notesApi.deleteNote(noteId);
       showSnackbar('Notiz erfolgreich gelöscht', 'success');
       fetchNotes();
       onStatsUpdate();
@@ -174,31 +131,20 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
 
   const handleSaveNote = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const method = editingNote ? 'PUT' : 'POST';
-      const url = editingNote ? `/api/notes/${editingNote.id}` : '/api/notes';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: noteTitle,
-          content: noteContent,
-          tags: noteTags
-        })
-      });
+      const noteData = {
+        title: noteTitle,
+        content: noteContent,
+        tags: noteTags
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save note');
+      if (editingNote) {
+        await notesApi.updateNote(editingNote.id, noteData);
+        showSnackbar('Notiz erfolgreich aktualisiert', 'success');
+      } else {
+        await notesApi.createNote(noteData);
+        showSnackbar('Notiz erfolgreich erstellt', 'success');
       }
 
-      showSnackbar(
-        editingNote ? 'Notiz erfolgreich aktualisiert' : 'Notiz erfolgreich erstellt',
-        'success'
-      );
       setIsNoteDialogOpen(false);
       fetchNotes();
       fetchAvailableTags();

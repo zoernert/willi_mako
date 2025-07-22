@@ -37,36 +37,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   Quiz as QuizIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { quizApi } from '../services/quizApi';
 import IntelligentQuizCreator from './IntelligentQuizCreator';
-
-interface Quiz {
-  id: string;
-  title: string;
-  description: string;
-  difficulty_level: string;
-  topic_area: string;
-  time_limit_minutes: number;
-  question_count: number;
-  attempt_count: number;
-  is_active: boolean;
-  creator_name: string;
-  created_at: string;
-}
-
-interface QuizQuestion {
-  id: string;
-  quiz_id: string;
-  question_text: string;
-  question_type: string;
-  correct_answer_index: number;
-  answer_options: string[];
-  explanation: string;
-  difficulty_level: string;
-  points: number;
-  source_faq_id?: string;
-  source_chat_id?: string;
-}
+import { Quiz, QuizQuestion } from '../types/quiz';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -112,6 +85,7 @@ const AdminQuizManager: React.FC = () => {
     quiz: null
   });
   const [expandedQuiz, setExpandedQuiz] = useState<string | false>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuizzes();
@@ -119,10 +93,13 @@ const AdminQuizManager: React.FC = () => {
 
   const fetchQuizzes = async () => {
     try {
-      const response = await axios.get('/api/quiz/admin/all-quizzes');
-      setQuizzes(response.data);
-    } catch (error) {
+      setLoading(true);
+      setError(null);
+      const response = await quizApi.getAdminQuizzes(); 
+      setQuizzes(response);
+    } catch (error: any) {
       console.error('Error fetching quizzes:', error);
+      setError(error.response?.data?.message || 'Fehler beim Laden der Quizzes.');
     } finally {
       setLoading(false);
     }
@@ -130,10 +107,11 @@ const AdminQuizManager: React.FC = () => {
 
   const fetchQuizQuestions = async (quizId: string) => {
     try {
-      const response = await axios.get(`/api/quiz/admin/quizzes/${quizId}/questions`);
-      setQuestions(prev => ({ ...prev, [quizId]: response.data }));
+      const response = await quizApi.getAdminQuizQuestions(quizId);
+      setQuestions(prev => ({ ...prev, [quizId]: response }));
     } catch (error) {
       console.error('Error fetching quiz questions:', error);
+      setError(`Fehler beim Laden der Fragen für Quiz ${quizId}.`);
     }
   };
 
@@ -157,60 +135,52 @@ const AdminQuizManager: React.FC = () => {
   };
 
   const handleSaveEdit = async (quiz: Quiz) => {
+    if (!quiz) return;
     try {
-      await axios.put(`/api/quiz/admin/quizzes/${quiz.id}`, {
-        title: quiz.title,
-        description: quiz.description,
-        is_active: quiz.is_active,
-        difficulty_level: quiz.difficulty_level,
-        topic_area: quiz.topic_area,
-        time_limit_minutes: quiz.time_limit_minutes
-      });
+      await quizApi.updateAdminQuiz(quiz.id, quiz);
       setEditDialog({ open: false, quiz: null });
       fetchQuizzes();
     } catch (error) {
       console.error('Error updating quiz:', error);
+      setError('Fehler beim Speichern des Quiz.');
     }
   };
 
   const handleSaveEditQuestion = async (question: QuizQuestion) => {
+    if (!question || !question.id) return;
     try {
-      await axios.put(`/api/quiz/admin/questions/${question.id}`, {
-        question_text: question.question_text,
-        answer_options: question.answer_options,
-        correct_answer_index: question.correct_answer_index,
-        explanation: question.explanation,
-        difficulty_level: question.difficulty_level,
-        points: question.points
-      });
+      await quizApi.updateAdminQuizQuestion(question.id, question);
       setEditQuestionDialog({ open: false, question: null });
-      // Refresh questions for the specific quiz
       if (question.quiz_id) {
         fetchQuizQuestions(question.quiz_id);
       }
     } catch (error) {
       console.error('Error updating quiz question:', error);
+      setError('Fehler beim Speichern der Frage.');
     }
   };
 
   const handleConfirmDelete = async () => {
     if (deleteDialog.quiz) {
       try {
-        await axios.delete(`/api/quiz/admin/quizzes/${deleteDialog.quiz.id}`);
+        await quizApi.deleteAdminQuiz(deleteDialog.quiz.id);
         setDeleteDialog({ open: false, quiz: null });
         fetchQuizzes();
       } catch (error) {
         console.error('Error deleting quiz:', error);
+        setError('Fehler beim Löschen des Quiz.');
       }
     }
   };
 
-  const handleDeleteQuestion = async (questionId: string, quizId: string) => {
+  const handleDeleteQuestion = async (questionId: string | undefined, quizId: string) => {
+    if(!questionId) return;
     try {
-      await axios.delete(`/api/quiz/admin/questions/${questionId}`);
+      await quizApi.deleteAdminQuizQuestion(questionId);
       fetchQuizQuestions(quizId);
     } catch (error) {
       console.error('Error deleting question:', error);
+      setError('Fehler beim Löschen der Frage.');
     }
   };
 
@@ -229,19 +199,18 @@ const AdminQuizManager: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Quiz-Verwaltung</Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <IntelligentQuizCreator onQuizCreated={fetchQuizzes} />
-          <Button variant="outlined" startIcon={<AddIcon />}>
-            Manuelles Quiz
-          </Button>
         </Box>
       </Box>
 
+      {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>{error}</Alert>}
+
       <Alert severity="info" sx={{ mb: 3 }}>
         Hier können Sie alle Quizzes verwalten, bearbeiten und löschen. 
-        Das intelligente Quiz-System erstellt automatisch relevante Fragen basierend auf Ihren FAQs.
+        Das intelligente Quiz-System erstellt automatisch relevante Fragen basierend auf Ihren Dokumenten.
         Aktive Quizzes sind für alle Benutzer sichtbar.
       </Alert>
 
@@ -277,21 +246,26 @@ const AdminQuizManager: React.FC = () => {
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>{quiz.question_count}</TableCell>
-                  <TableCell>{quiz.attempt_count}</TableCell>
-                  <TableCell>{quiz.creator_name}</TableCell>
+                  <TableCell>{quiz.question_count || 'N/A'}</TableCell>
+                  <TableCell>{quiz.attempt_count || 0}</TableCell>
+                  <TableCell>{quiz.created_by || 'System'}</TableCell>
                   <TableCell>
-                    <Chip 
+                    <FormControlLabel 
+                      control={
+                        <Switch
+                          checked={quiz.is_active}
+                          onChange={(e) => handleSaveEdit({ ...quiz, is_active: e.target.checked })}
+                          color="primary"
+                        />
+                      }
                       label={quiz.is_active ? 'Aktiv' : 'Inaktiv'}
-                      color={quiz.is_active ? 'success' : 'default'}
-                      size="small"
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleEdit(quiz)}>
+                    <IconButton onClick={() => handleEdit(quiz)} size="small">
                       <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => handleDelete(quiz)}>
+                    <IconButton onClick={() => handleDelete(quiz)} size="small">
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -313,11 +287,11 @@ const AdminQuizManager: React.FC = () => {
             onChange={handleQuizAccordionChange(quiz.id)}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
                 <QuizIcon />
                 <Typography variant="h6">{quiz.title}</Typography>
                 <Chip 
-                  label={`${quiz.question_count} Fragen`}
+                  label={`${questions[quiz.id]?.length || quiz.question_count || 0} Fragen`}
                   size="small"
                   color="primary"
                 />
@@ -339,23 +313,23 @@ const AdminQuizManager: React.FC = () => {
                                 key={optionIndex}
                                 variant="body2"
                                 sx={{ 
-                                  color: optionIndex === question.correct_answer_index ? 'success.main' : 'text.secondary',
-                                  fontWeight: optionIndex === question.correct_answer_index ? 'bold' : 'normal'
+                                  color: question.correct_answers.includes(option) ? 'success.main' : 'text.secondary',
+                                  fontWeight: question.correct_answers.includes(option) ? 'bold' : 'normal'
                                 }}
                               >
                                 {String.fromCharCode(65 + optionIndex)}) {option}
                               </Typography>
                             ))}
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            {question.explanation}
+                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                            <strong>Erklärung:</strong> {question.explanation}
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton onClick={() => handleEditQuestion(question)}>
+                          <IconButton onClick={() => handleEditQuestion(question)} size="small">
                             <EditIcon />
                           </IconButton>
-                          <IconButton onClick={() => handleDeleteQuestion(question.id, quiz.id)}>
+                          <IconButton onClick={() => handleDeleteQuestion(question.id, quiz.id)} size="small">
                             <DeleteIcon />
                           </IconButton>
                         </Box>
@@ -434,10 +408,13 @@ const AdminQuizManager: React.FC = () => {
                   label="Zeitlimit (Minuten)"
                   type="number"
                   value={editDialog.quiz.time_limit_minutes}
-                  onChange={(e) => setEditDialog({
-                    ...editDialog,
-                    quiz: { ...editDialog.quiz!, time_limit_minutes: parseInt(e.target.value) }
-                  })}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    setEditDialog({
+                      ...editDialog,
+                      quiz: { ...editDialog.quiz!, time_limit_minutes: isNaN(value) ? 0 : value }
+                    });
+                  }}
                 />
               </Box>
               <FormControlLabel
@@ -490,29 +467,35 @@ const AdminQuizManager: React.FC = () => {
               />
               
               {editQuestionDialog.question.answer_options.map((option, index) => (
-                <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
                   <TextField
                     fullWidth
                     label={`Antwort ${String.fromCharCode(65 + index)}`}
                     value={option}
                     onChange={(e) => {
-                      const newOptions = [...editQuestionDialog.question!.answer_options];
+                      if (!editQuestionDialog.question) return;
+                      const newOptions = [...editQuestionDialog.question.answer_options];
                       newOptions[index] = e.target.value;
                       setEditQuestionDialog({
                         ...editQuestionDialog,
-                        question: { ...editQuestionDialog.question!, answer_options: newOptions }
+                        question: { ...editQuestionDialog.question, answer_options: newOptions }
                       });
                     }}
                   />
                   <FormControlLabel
                     control={
                       <Switch
-                        checked={editQuestionDialog.question?.correct_answer_index === index}
+                        checked={editQuestionDialog.question?.correct_answers.includes(option)}
                         onChange={(e) => {
-                          if (e.target.checked && editQuestionDialog.question) {
+                          if (editQuestionDialog.question) {
+                            const currentCorrectAnswers = editQuestionDialog.question.correct_answers || [];
+                            const newCorrectAnswers = e.target.checked
+                              ? [...currentCorrectAnswers, option]
+                              : currentCorrectAnswers.filter(ans => ans !== option);
+                            
                             setEditQuestionDialog({
                               ...editQuestionDialog,
-                              question: { ...editQuestionDialog.question, correct_answer_index: index }
+                              question: { ...editQuestionDialog.question, correct_answers: newCorrectAnswers }
                             });
                           }
                         }}
@@ -535,15 +518,13 @@ const AdminQuizManager: React.FC = () => {
                 })}
                 sx={{ mb: 2 }}
               />
-              
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <FormControl fullWidth>
+               <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Schwierigkeit</InputLabel>
                   <Select
                     value={editQuestionDialog.question.difficulty_level}
                     onChange={(e) => setEditQuestionDialog({
                       ...editQuestionDialog,
-                      question: { ...editQuestionDialog.question!, difficulty_level: e.target.value }
+                      question: { ...editQuestionDialog.question!, difficulty_level: e.target.value as 'easy' | 'medium' | 'hard' }
                     })}
                   >
                     <MenuItem value="easy">Einfach</MenuItem>
@@ -551,17 +532,19 @@ const AdminQuizManager: React.FC = () => {
                     <MenuItem value="hard">Schwer</MenuItem>
                   </Select>
                 </FormControl>
-                <TextField
+                 <TextField
                   fullWidth
                   label="Punkte"
                   type="number"
                   value={editQuestionDialog.question.points}
-                  onChange={(e) => setEditQuestionDialog({
-                    ...editQuestionDialog,
-                    question: { ...editQuestionDialog.question!, points: parseInt(e.target.value) }
-                  })}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    setEditQuestionDialog({
+                      ...editQuestionDialog,
+                      question: { ...editQuestionDialog.question!, points: isNaN(value) ? 0 : value }
+                    });
+                  }}
                 />
-              </Box>
             </Box>
           )}
         </DialogContent>
@@ -575,20 +558,23 @@ const AdminQuizManager: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, quiz: null })}>
-        <DialogTitle>Quiz löschen</DialogTitle>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, quiz: null })}
+      >
+        <DialogTitle>Quiz wirklich löschen?</DialogTitle>
         <DialogContent>
           <Typography>
-            Sind Sie sicher, dass Sie das Quiz "{deleteDialog.quiz?.title}" löschen möchten?
-            Diese Aktion kann nicht rückgängig gemacht werden.
+            Sind Sie sicher, dass Sie das Quiz "{deleteDialog.quiz?.title}" endgültig löschen möchten? 
+            Alle zugehörigen Fragen und Versuche werden ebenfalls gelöscht.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, quiz: null })}>
             Abbrechen
           </Button>
-          <Button onClick={handleConfirmDelete} variant="contained" color="error">
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">
             Löschen
           </Button>
         </DialogActions>

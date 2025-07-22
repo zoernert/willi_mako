@@ -133,8 +133,8 @@ export const initDatabase = async () => {
     // Create admin user if not exists
     const adminEmail = 'admin@willi-mako.com';
     const adminPassword = 'admin123'; // Change this in production
-    const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash(adminPassword, 12);
+    const bcryptjs = require('bcryptjs');
+    const hashedPassword = await bcryptjs.hash(adminPassword, 12);
     
     await dbClient.query(`
       INSERT INTO users (email, password_hash, role, full_name)

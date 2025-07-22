@@ -37,17 +37,42 @@ Eine hochwertige Webanwendung für einen AI-gestützten Coach "Mako Willi" in de
 ## 🏗️ Architektur
 
 ### Backend (Node.js + TypeScript)
-- **Framework**: Express.js
+- **Framework**: Express.js mit modular aufgebauter Architektur
 - **Datenbank**: PostgreSQL
 - **Vector Store**: Qdrant
 - **AI Service**: Google Gemini 2.5 Pro
 - **Authentifizierung**: JWT
 - **File Upload**: Multer
 
+#### Modular Architecture
+```
+src/
+├── modules/                    # Business Logic Modules
+│   ├── user/                  # User Management
+│   │   ├── user.service.ts    # Business logic
+│   │   └── user.interface.ts  # Type definitions
+│   └── quiz/                  # Quiz & Gamification
+│       ├── quiz.service.ts    # Business logic
+│       ├── gamification.service.ts
+│       └── quiz.interface.ts  # Type definitions
+├── presentation/              # HTTP Layer
+│   └── http/
+│       ├── controllers/       # Request handlers
+│       └── routes/           # API routes
+├── utils/                     # Shared utilities
+│   ├── database.ts           # Database helpers
+│   ├── response.ts           # API responses
+│   └── errors.ts             # Error handling
+└── services/                  # External integrations
+    ├── gemini.ts             # AI service
+    └── qdrant.ts             # Vector database
+```
+
 ### Frontend (React + TypeScript)
 - **Framework**: React 18 mit TypeScript
 - **UI Library**: Material-UI (MUI)
 - **Routing**: React Router
+- **API Client**: Standardized service layer
 - **State Management**: Context API
 - **HTTP Client**: Axios
 

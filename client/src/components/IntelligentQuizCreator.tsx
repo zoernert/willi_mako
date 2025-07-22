@@ -32,28 +32,27 @@ import {
   Search as SearchIcon,
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { quizApi } from '../services/quizApi';
+import { Quiz } from '../types/quiz';
 
 interface IntelligentQuizCreatorProps {
-  onQuizCreated?: (quiz: any) => void;
+  onQuizCreated?: (quiz: Quiz) => void;
 }
 
 const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizCreated }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
+    topic: '',
     difficulty: 'medium',
     questionCount: 5
   });
   const [loading, setLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [createdQuiz, setCreatedQuiz] = useState<any>(null);
+  const [createdQuiz, setCreatedQuiz] = useState<Quiz | null>(null);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const steps = [
-    'Quiz-Details eingeben',
-    'Relevante FAQs suchen',
+    'Thema definieren',
     'Quiz erstellen',
     'Fertig'
   ];
@@ -66,59 +65,30 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
     setActiveStep(prev => prev - 1);
   };
 
-  const handleSearchFAQs = async () => {
-    try {
-      setLoading(true);
-      
-      // Mock search for now - in real implementation, this would search the FAQ database
-      const mockSearchResults = [
-        {
-          id: '1',
-          title: 'APERAK Grundlagen',
-          context: 'Grundlagen der APERAK Nachrichtenverarbeitung',
-          answer: 'APERAK ist ein EDI-Standard für...',
-          relevance: 0.95
-        },
-        {
-          id: '2',
-          title: 'Anwendungsfehler behandeln',
-          context: 'Behandlung von Anwendungsfehlern in APERAK',
-          answer: 'Bei Anwendungsfehlern sollten Sie...',
-          relevance: 0.87
-        }
-      ];
-      
-      setSearchResults(mockSearchResults);
-      handleNext();
-      
-    } catch (error) {
-      console.error('Error searching FAQs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateQuiz = async () => {
     try {
       setLoading(true);
+      setError(null);
+      handleNext(); // Move to "in progress" step
+
+      const response = await quizApi.createIntelligentQuiz(
+        formData.topic,
+        formData.questionCount,
+        formData.difficulty
+      );
       
-      const response = await axios.post('/api/quiz/quizzes/create-intelligent', {
-        title: formData.title,
-        description: formData.description,
-        difficulty: formData.difficulty,
-        questionCount: formData.questionCount
-      });
-      
-      setCreatedQuiz(response.data.quiz);
+      setCreatedQuiz(response);
       
       if (onQuizCreated) {
-        onQuizCreated(response.data.quiz);
+        onQuizCreated(response);
       }
       
-      handleNext();
+      handleNext(); // Move to "finished" step
       
-    } catch (error) {
-      console.error('Error creating intelligent quiz:', error);
+    } catch (err: any) {
+      console.error('Error creating intelligent quiz:', err);
+      setError(err.response?.data?.message || 'Ein unbekannter Fehler ist aufgetreten.');
+      setActiveStep(0); // Go back to the first step on error
     } finally {
       setLoading(false);
     }
@@ -127,13 +97,12 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
   const handleReset = () => {
     setActiveStep(0);
     setFormData({
-      title: '',
-      description: '',
+      topic: '',
       difficulty: 'medium',
       questionCount: 5
     });
-    setSearchResults([]);
     setCreatedQuiz(null);
+    setError(null);
     setOpen(false);
   };
 
@@ -166,9 +135,11 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
         </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 3 }}>
-            Das intelligente Quiz-System durchsucht automatisch relevante FAQs 
+            Das intelligente Quiz-System durchsucht automatisch relevante Dokumente
             und erstellt passende Fragen zu Ihrem Thema.
           </Alert>
+
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           <Stepper activeStep={activeStep} orientation="vertical">
             <Step>
@@ -177,21 +148,11 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
                 <Box sx={{ mt: 2 }}>
                   <TextField
                     fullWidth
-                    label="Quiz-Titel"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    label="Quiz-Thema"
+                    value={formData.topic}
+                    onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
                     sx={{ mb: 2 }}
-                    placeholder="z.B. APERAK - Arbeiten mit Anwendungsfehlern"
-                  />
-                  <TextField
-                    fullWidth
-                    label="Beschreibung"
-                    multiline
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    sx={{ mb: 2 }}
-                    placeholder="Detaillierte Beschreibung des Quiz-Themas..."
+                    placeholder="z.B. APERAK, Marktkommunikation, Bilanzkreismanagement"
                   />
                   <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                     <FormControl fullWidth>
@@ -217,61 +178,8 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
                   <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                     <Button
                       variant="contained"
-                      onClick={handleSearchFAQs}
-                      disabled={!formData.title || !formData.description || loading}
-                      startIcon={<SearchIcon />}
-                    >
-                      Relevante FAQs suchen
-                    </Button>
-                  </Box>
-                </Box>
-              </StepContent>
-            </Step>
-
-            <Step>
-              <StepLabel>Relevante FAQs gefunden</StepLabel>
-              <StepContent>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Gefundene FAQs für "{formData.title}"
-                  </Typography>
-                  <List>
-                    {searchResults.map((faq, index) => (
-                      <React.Fragment key={faq.id}>
-                        <ListItem>
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="subtitle1">{faq.title}</Typography>
-                                <Chip
-                                  label={`${Math.round(faq.relevance * 100)}% relevant`}
-                                  color="primary"
-                                  size="small"
-                                />
-                              </Box>
-                            }
-                            secondary={
-                              <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                  {faq.context}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {faq.answer.substring(0, 100)}...
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {index < searchResults.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                    <Button onClick={handleBack}>Zurück</Button>
-                    <Button
-                      variant="contained"
                       onClick={handleCreateQuiz}
-                      disabled={loading}
+                      disabled={!formData.topic || loading}
                       startIcon={<QuizIcon />}
                     >
                       {loading ? <CircularProgress size={24} /> : 'Quiz erstellen'}
@@ -302,6 +210,7 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="success" sx={{ mb: 2 }}>
                     <Typography variant="h6">Quiz erfolgreich erstellt!</Typography>
+                    <Typography variant="body2">Das Quiz ist initial inaktiv und kann in der Übersicht aktiviert werden.</Typography>
                   </Alert>
                   {createdQuiz && (
                     <Card>
@@ -320,7 +229,7 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
                             size="small"
                           />
                           <Chip
-                            label={`${createdQuiz.question_count} Fragen`}
+                            label={`${createdQuiz.questions?.length || createdQuiz.question_count} Fragen`}
                             color="primary"
                             size="small"
                           />
@@ -333,6 +242,19 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
                         <Typography variant="body2">
                           Thema: {createdQuiz.topic_area}
                         </Typography>
+                        {createdQuiz.questions && createdQuiz.questions.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2">Fragenvorschau:</Typography>
+                            <List dense>
+                              {createdQuiz.questions.slice(0, 3).map((q, i) => (
+                                <ListItem key={i} sx={{ pl: 1 }}>
+                                  <ListItemText primary={`${i + 1}. ${q.question_text}`} />
+                                </ListItem>
+                              ))}
+                              {createdQuiz.questions.length > 3 && <ListItemText sx={{ pl: 1 }} primary="..." />}
+                            </List>
+                          </Box>
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -349,6 +271,11 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
             </Step>
           </Stepper>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={handleReset}>
+            {activeStep === 2 ? 'Neues Quiz' : 'Abbrechen'}
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );

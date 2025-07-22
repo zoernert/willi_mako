@@ -1,0 +1,438 @@
+import { DatabaseHelper } from '../../utils/database';
+import { AppError } from '../../utils/errors';
+import { PasswordUtils } from '../../utils/password';
+import jwt from 'jsonwebtoken';
+import { User, UserProfile, CreateUserRequest, LoginRequest, LoginResponse, AuthenticatedUser } from './interfaces/user.interface';
+import { UserPreferences } from './user.interface';
+import geminiService from '../../services/gemini'; // Assuming gemini service is still needed
+
+export class UserService {
+  /**
+   * Register a new user
+   */
+  async registerUser(userData: CreateUserRequest): Promise<AuthenticatedUser> {
+    const { email, name, password, role = 'user' } = userData;
+
+    // Check if user already exists
+    const existingUser = await DatabaseHelper.executeQuerySingle<User>(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser) {
+      throw new AppError('User with this email already exists', 409);
+    }
+
+    // Validate password strength
+    const passwordValidation = PasswordUtils.validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      throw new AppError(`Invalid password: ${passwordValidation.errors.join(', ')}`, 400);
+    }
+
+    // Hash password
+    const passwordHash = await PasswordUtils.hash(password);
+
+    // Create user
+    const newUser = await DatabaseHelper.executeQuerySingle<User>(
+      `INSERT INTO users (email, password_hash, role, full_name) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, email, role, full_name as name, created_at`,
+      [email, passwordHash, role, name]
+    );
+
+    if (!newUser) {
+      throw new AppError('Failed to create user', 500);
+    }
+
+    return {
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      role: newUser.role
+    };
+  }
+
+  /**
+   * Authenticate user login
+   */
+  async loginUser(loginData: LoginRequest): Promise<LoginResponse> {
+    const { email, password } = loginData;
+
+    // Find user by email
+    const user = await DatabaseHelper.executeQuerySingle<User>(
+      'SELECT id, email, password_hash, role, full_name as name FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (!user) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    // Verify password
+    const isValidPassword = await PasswordUtils.compare(password, user.password_hash!);
+    if (!isValidPassword) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback-secret-key',
+      { expiresIn: '24h' }
+    );
+
+    // Update last login
+    await DatabaseHelper.executeQuery(
+      'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
+    const authenticatedUser: AuthenticatedUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    };
+
+    return {
+      user: authenticatedUser,
+      token
+    };
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(userId: string): Promise<User> {
+    const user = await DatabaseHelper.executeQuerySingle<User>(
+      'SELECT id, email, full_name, company, created_at, user_profile FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return user;
+  }
+
+  /**
+   * Update user's basic profile information
+   */
+  async updateUser(userId: string, fullName: string, company: string): Promise<User> {
+    const user = await DatabaseHelper.executeQuerySingle<User>(
+      'UPDATE users SET full_name = $1, company = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, email, full_name, company, created_at',
+      [fullName, company, userId]
+    );
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return user;
+  }
+
+  /**
+   * Get user preferences from database
+   */
+  async getUserPreferences(userId: string): Promise<UserPreferences> {
+    const preferences = await DatabaseHelper.executeQuerySingle<UserPreferences>(
+      'SELECT companies_of_interest, preferred_topics, notification_settings FROM user_preferences WHERE user_id = $1',
+      [userId]
+    );
+
+    if (!preferences) {
+      // Create default preferences if they don't exist
+      await DatabaseHelper.executeQuery(
+        'INSERT INTO user_preferences (user_id) VALUES ($1)',
+        [userId]
+      );
+      return {
+        companies_of_interest: [],
+        preferred_topics: [],
+        notification_settings: {}
+      };
+    }
+    
+    return preferences;
+  }
+
+  /**
+   * Update user preferences
+   */
+  async updateUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<UserPreferences> {
+    const currentPrefs = await this.getUserPreferences(userId);
+    
+    const newPrefs = {
+        companies_of_interest: preferences.companies_of_interest || currentPrefs.companies_of_interest,
+        preferred_topics: preferences.preferred_topics || currentPrefs.preferred_topics,
+        notification_settings: preferences.notification_settings || currentPrefs.notification_settings,
+    };
+
+    const updatedPrefs = await DatabaseHelper.executeQuerySingle<UserPreferences>(
+      `UPDATE user_preferences 
+       SET companies_of_interest = $1, preferred_topics = $2, notification_settings = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $4 
+       RETURNING companies_of_interest, preferred_topics, notification_settings`,
+      [
+        JSON.stringify(newPrefs.companies_of_interest),
+        JSON.stringify(newPrefs.preferred_topics),
+        JSON.stringify(newPrefs.notification_settings),
+        userId
+      ]
+    );
+
+    if (!updatedPrefs) {
+        throw new AppError('Preferences not found for user', 404);
+    }
+
+    return updatedPrefs;
+  }
+
+
+  /**
+   * Get user profile from database
+   */
+  async getUserProfile(userId: string): Promise<UserProfile> {
+    const profile = await DatabaseHelper.executeQuerySingle<{ user_profile: UserProfile }>(
+      'SELECT user_profile FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (!profile || !profile.user_profile) {
+      // Return a default profile if none exists
+      return this.getDefaultProfile();
+    }
+
+    return profile.user_profile;
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<UserProfile> {
+    const currentProfile = await this.getUserProfile(userId);
+
+    // Merge new data with current profile
+    const newProfile: UserProfile = {
+      ...currentProfile,
+      ...profileData,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Ensure nested objects are handled correctly
+    if (profileData.learning_progress) {
+      newProfile.learning_progress = { ...currentProfile.learning_progress, ...profileData.learning_progress };
+    }
+    if (profileData.interaction_patterns) {
+      newProfile.interaction_patterns = { ...currentProfile.interaction_patterns, ...profileData.interaction_patterns };
+    }
+
+    const result = await DatabaseHelper.executeQuerySingle<{ user_profile: UserProfile }>(
+      'UPDATE users SET user_profile = $1 WHERE id = $2 RETURNING user_profile',
+      [JSON.stringify(newProfile), userId]
+    );
+
+    if (!result) {
+      throw new AppError('User not found or profile could not be updated', 404);
+    }
+
+    return result.user_profile;
+  }
+
+  /**
+   * Update user profile with new insights from conversation
+   */
+  async updateUserProfileWithInsights(userId: string, userMessage: string, aiResponse: string): Promise<void> {
+    const currentProfile = await this.getUserProfile(userId);
+
+    // Generate insights about the user from the conversation
+    const insights = await this.generateUserInsights(userMessage, aiResponse, currentProfile);
+    
+    if (insights) {
+      // Merge insights with current profile
+      const updatedProfile = await this.mergeProfileInsights(currentProfile, insights);
+      
+      // Save updated profile to database
+      await this.saveUserProfile(userId, updatedProfile);
+      
+      // Consider using a logger here instead of console.log
+      console.log('User profile updated for user:', userId);
+    }
+  }
+
+  /**
+   * Save user profile to the database
+   */
+  private async saveUserProfile(userId: string, profile: UserProfile): Promise<void> {
+    await DatabaseHelper.executeQuery('UPDATE users SET user_profile = $1 WHERE id = $2', [
+      profile,
+      userId,
+    ]);
+  }
+
+  /**
+   * Generate insights about user from conversation using Gemini
+   */
+  private async generateUserInsights(
+    userMessage: string, 
+    aiResponse: string, 
+    currentProfile: UserProfile
+  ): Promise<Partial<UserProfile> | null> {
+    const prompt = `
+Analysiere die folgende Konversation und die bestehenden Nutzerprofilinformationen, um neue Erkenntnisse über den Nutzer zu gewinnen:
+
+AKTUELLE NUTZERPROFILINFORMATIONEN:
+${JSON.stringify(currentProfile, null, 2)}
+
+NEUE KONVERSATION:
+Nutzer: ${userMessage}
+Assistent: ${aiResponse}
+
+Analysiere die Nutzernachricht und extrahiere neue Erkenntnisse über:
+
+1. FACHLICHE EXPERTISE:
+   - Welches Fachwissen zeigt der Nutzer?
+   - Welche Fachbereiche sind für ihn relevant?
+   - Welche Unternehmensgröße/Art scheint er zu vertreten?
+
+2. KOMMUNIKATIONSSTIL:
+   - Ist der Stil formell, informell, technisch?
+   - Verwendet der Nutzer spezifische Terminologie?
+
+3. LERNFORTSCHRITT & INTERESSEN:
+   - Welche Themen hat der Nutzer abgeschlossen oder verstanden?
+   - Worauf liegt sein aktueller Fokus?
+   - Welche Themen scheinen ihn zu interessieren?
+
+4. INTERAKTIONSMUSTER:
+   - Stellt der Nutzer offene oder geschlossene Fragen?
+   - Bevorzugt er knappe oder ausführliche Antworten?
+
+Basierend auf deiner Analyse, gib ein JSON-Objekt zurück, das NUR die NEUEN oder AKTUALISIERTEN Profilinformationen enthält. Verwende das folgende Format und lasse Felder aus, für die es keine neuen Erkenntnisse gibt:
+{
+  "expertise_level": "beginner" | "intermediate" | "advanced",
+  "communication_style": "formal" | "casual" | "technical" | "professional",
+  "preferred_terminology": ["Begriff1", "Begriff2"],
+  "knowledge_areas": ["Bereich1", "Bereich2"],
+  "company_type": "Startup | Mittelstand | Konzern | Freelancer",
+  "experience_topics": ["Thema1", "Thema2"],
+  "learning_progress": {
+    "completed_topics": ["ThemaA"],
+    "current_focus": "ThemaB"
+  },
+  "interaction_patterns": {
+    "question_types": ["offen", "spezifisch"],
+    "response_preferences": ["ausführlich", "mit Beispielen"]
+  }
+}
+`;
+    try {
+        const insightsJson = await geminiService.generateText(prompt);
+        return JSON.parse(insightsJson);
+    } catch (error) {
+        console.error('Error generating user insights:', error);
+        return null;
+    }
+  }
+
+  /**
+   * Merge new insights with the current user profile
+   */
+  private async mergeProfileInsights(
+    currentProfile: UserProfile,
+    insights: Partial<UserProfile>
+  ): Promise<UserProfile> {
+    const updatedProfile = { ...currentProfile };
+
+    // Merge expertise_level and communication_style
+    if (insights.expertise_level) updatedProfile.expertise_level = insights.expertise_level;
+    if (insights.communication_style) updatedProfile.communication_style = insights.communication_style;
+    if (insights.company_type) updatedProfile.company_type = insights.company_type;
+
+    // Merge arrays, avoiding duplicates
+    if (insights.preferred_terminology) {
+      updatedProfile.preferred_terminology = [
+        ...new Set([...currentProfile.preferred_terminology, ...insights.preferred_terminology]),
+      ];
+    }
+    if (insights.knowledge_areas) {
+      updatedProfile.knowledge_areas = [
+        ...new Set([...currentProfile.knowledge_areas, ...insights.knowledge_areas]),
+      ];
+    }
+    if (insights.experience_topics) {
+        updatedProfile.experience_topics = [
+          ...new Set([...currentProfile.experience_topics, ...insights.experience_topics]),
+        ];
+      }
+
+    // Merge learning_progress
+    if (insights.learning_progress) {
+      if (insights.learning_progress.completed_topics) {
+        updatedProfile.learning_progress.completed_topics = [
+          ...new Set([
+            ...currentProfile.learning_progress.completed_topics,
+            ...insights.learning_progress.completed_topics,
+          ]),
+        ];
+      }
+      if (insights.learning_progress.current_focus) {
+        updatedProfile.learning_progress.current_focus = insights.learning_progress.current_focus;
+      }
+    }
+
+    // Merge interaction_patterns
+    if (insights.interaction_patterns) {
+        if (insights.interaction_patterns.question_types) {
+            updatedProfile.interaction_patterns.question_types = [
+                ...new Set([
+                    ...currentProfile.interaction_patterns.question_types,
+                    ...insights.interaction_patterns.question_types,
+                ]),
+            ];
+        }
+        if (insights.interaction_patterns.response_preferences) {
+            updatedProfile.interaction_patterns.response_preferences = [
+                ...new Set([
+                    ...currentProfile.interaction_patterns.response_preferences,
+                    ...insights.interaction_patterns.response_preferences,
+                ]),
+            ];
+        }
+    }
+    
+    updatedProfile.last_updated = new Date().toISOString();
+
+    return updatedProfile;
+  }
+
+  /**
+   * Get a default user profile
+   */
+  private getDefaultProfile(): UserProfile {
+    return {
+      expertise_level: 'beginner',
+      communication_style: 'casual',
+      preferred_terminology: [],
+      knowledge_areas: [],
+      company_type: '',
+      experience_topics: [],
+      learning_progress: {
+        completed_topics: [],
+        current_focus: '',
+      },
+      interaction_patterns: {
+        question_types: [],
+        response_preferences: [],
+      },
+      last_updated: new Date().toISOString(),
+    };
+  }
+}
+
+export const userService = new UserService();

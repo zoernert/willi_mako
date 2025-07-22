@@ -41,41 +41,15 @@ import {
   Person
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-interface Quiz {
-  id: string;
-  title: string;
-  description: string;
-  difficulty_level: 'easy' | 'medium' | 'hard';
-  topic_area: string;
-  time_limit_minutes: number;
-  question_count: number;
-  attempt_count: number;
-  best_score: number;
-  created_at: string;
-}
-
-interface QuizSuggestion {
-  quiz: Quiz;
-  reason: string;
-  relevance_score: number;
-}
-
-interface UserStats {
-  total_attempts: number;
-  completed_attempts: number;
-  avg_score: number;
-  best_score: number;
-  total_points_earned: number;
-}
-
-interface LeaderboardEntry {
-  display_name: string;
-  total_points: number;
-  quiz_count: number;
-  average_score: number;
-}
+import { quizApi } from '../../services/quizApi';
+import { 
+  Quiz, 
+  QuizSuggestion, 
+  UserStats, 
+  LeaderboardEntry,
+  QuizGenerateRequest,
+  QuizGenerateFromChatsRequest
+} from '../../types/quiz';
 
 const QuizDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -102,17 +76,17 @@ const QuizDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [quizzesRes, suggestionsRes, statsRes, leaderboardRes] = await Promise.all([
-        axios.get('/quiz/quizzes'),
-        axios.get('/quiz/suggestions'),
-        axios.get('/quiz/stats'),
-        axios.get('/quiz/leaderboard')
+      const [quizzes, suggestions, stats, leaderboard] = await Promise.all([
+        quizApi.getQuizzes(),
+        quizApi.getSuggestions(),
+        quizApi.getUserStats(),
+        quizApi.getLeaderboard()
       ]);
 
-      setQuizzes(quizzesRes.data);
-      setSuggestions(suggestionsRes.data);
-      setUserStats(statsRes.data);
-      setLeaderboard(leaderboardRes.data);
+      setQuizzes(quizzes);
+      setSuggestions(suggestions);
+      setUserStats(stats);
+      setLeaderboard(leaderboard);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setError('Fehler beim Laden der Quiz-Daten');
@@ -123,8 +97,8 @@ const QuizDashboard: React.FC = () => {
 
   const handleStartQuiz = async (quizId: string) => {
     try {
-      const response = await axios.post(`/quiz/quizzes/${quizId}/start`);
-      navigate(`/quiz/${quizId}`, { state: { attemptId: response.data.id } });
+      const response = await quizApi.startQuiz(quizId);
+      navigate(`/quiz/${quizId}`, { state: { attemptId: response.id } });
     } catch (err) {
       console.error('Error starting quiz:', err);
       setError('Fehler beim Starten des Quiz');
@@ -134,16 +108,16 @@ const QuizDashboard: React.FC = () => {
   const handleGenerateQuiz = async () => {
     try {
       setGenerating(true);
-      const response = await axios.post('/quiz/quizzes/generate', generateForm);
+      const response = await quizApi.generateQuiz(generateForm);
       setGenerateDialogOpen(false);
       setGenerateForm({ topicArea: '', difficulty: 'medium', questionCount: 5 });
       
       // Reload quizzes
-      const quizzesRes = await axios.get('/quiz/quizzes');
-      setQuizzes(quizzesRes.data);
+      const quizzes = await quizApi.getQuizzes();
+      setQuizzes(quizzes);
       
       // Navigate to new quiz
-      navigate(`/quiz/${response.data.quiz.id}`);
+      navigate(`/quiz/${response.quiz.id}`);
     } catch (err) {
       console.error('Error generating quiz:', err);
       setError('Fehler beim Generieren des Quiz');
@@ -155,12 +129,12 @@ const QuizDashboard: React.FC = () => {
   const handleGenerateFromChats = async () => {
     try {
       setGenerating(true);
-      const response = await axios.post('/quiz/quizzes/generate-from-chats', {
+      const response = await quizApi.generateQuizFromChats({
         questionCount: 5
       });
       
       // Navigate to new quiz
-      navigate(`/quiz/${response.data.quiz.id}`);
+      navigate(`/quiz/${response.quiz.id}`);
     } catch (err) {
       console.error('Error generating quiz from chats:', err);
       setError('Fehler beim Generieren des Quiz aus Chats');
