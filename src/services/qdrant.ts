@@ -169,6 +169,7 @@ export class QdrantService {
     vectorId: string,
     chunkText: string,
     documentId: string,
+    userId: string,
     documentTitle: string,
     chunkIndex: number
   ): Promise<void> {
@@ -185,6 +186,7 @@ export class QdrantService {
           source: 'user_document',
           metadata: {
             document_id: documentId,
+            user_id: userId,
             document_title: documentTitle,
             chunk_index: chunkIndex,
             type: 'user_document_chunk'

@@ -76,15 +76,21 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
         ...(sourceFilter !== 'all' && { source_type: sourceFilter })
       };
 
+      console.log('Fetching notes with params:', params);
       const data = await notesApi.getNotes(params);
+      console.log('Notes API response:', data);
+      
       setNotes(data.notes || []);
       setTotalPages(Math.ceil((data.total || 0) / 10));
     } catch (err: any) {
-      // Only show error for actual server errors, not for empty results
-      if (err.response?.status !== 404 && err.response?.status !== 204) {
-        showSnackbar('Fehler beim Laden der Notizen', 'error');
-      }
-      // Set empty state for 404/no content
+      console.error('Error fetching notes:', err);
+      console.error('Error response:', err.response);
+      console.error('Error message:', err.message);
+      
+      // Show error for all cases during debugging
+      showSnackbar(`Fehler beim Laden der Notizen: ${err.message}`, 'error');
+      
+      // Set empty state for errors
       setNotes([]);
       setTotalPages(0);
     } finally {

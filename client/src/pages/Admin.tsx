@@ -47,7 +47,7 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 import ReactMarkdown from 'react-markdown';
 import AdminQuizManager from '../components/AdminQuizManager';
 import remarkGfm from 'remark-gfm';
@@ -74,8 +74,8 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/stats');
-      setStats(response.data.data);
+      const response = (await apiClient.get('/admin/stats')) as any;
+      setStats(response as any);
     } catch (error) {
       console.error('Error fetching stats:', error);
       showSnackbar('Fehler beim Laden der Statistiken', 'error');
@@ -86,8 +86,8 @@ const AdminDashboard = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      const response = await axios.get('/admin/activity');
-      setRecentActivity(response.data.data);
+      const response = (await apiClient.get('/admin/activity')) as any;
+      setRecentActivity(response as any);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
     }
@@ -215,8 +215,8 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/users');
-      setUsers(response.data.data);
+      const response = (await apiClient.get('/admin/users')) as any;
+      setUsers(response as any);
     } catch (error) {
       console.error('Error fetching users:', error);
       showSnackbar('Fehler beim Laden der Benutzer', 'error');
@@ -239,7 +239,7 @@ const AdminUsers = () => {
 
   const handleUpdateUser = async () => {
     try {
-      await axios.put(`/admin/users/${userForm.id}/role`, {
+      await apiClient.put(`/admin/users/${userForm.id}/role`, {
         role: userForm.role
       });
       showSnackbar('Benutzer erfolgreich aktualisiert', 'success');
@@ -257,7 +257,7 @@ const AdminUsers = () => {
     }
 
     try {
-      await axios.delete(`/admin/users/${userId}`);
+      await apiClient.delete(`/admin/users/${userId}`);
       showSnackbar('Benutzer erfolgreich gelöscht', 'success');
       fetchUsers();
     } catch (error) {
@@ -402,8 +402,8 @@ const AdminDocuments = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/documents');
-      setDocuments(response.data.data);
+      const response = (await apiClient.get('/admin/documents')) as any;
+      setDocuments(response as any);
     } catch (error) {
       console.error('Error fetching documents:', error);
       showSnackbar('Fehler beim Laden der Dokumente', 'error');
@@ -425,7 +425,7 @@ const AdminDocuments = () => {
       formData.append('title', uploadForm.title);
       formData.append('description', uploadForm.description);
 
-      await axios.post('/admin/documents', formData, {
+      await apiClient.post('/admin/documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -456,7 +456,7 @@ const AdminDocuments = () => {
 
   const handleUpdateDocument = async () => {
     try {
-      await axios.put(`/admin/documents/${documentForm.id}`, {
+      await apiClient.put(`/admin/documents/${documentForm.id}`, {
         title: documentForm.title,
         description: documentForm.description,
         isActive: documentForm.isActive
@@ -476,7 +476,7 @@ const AdminDocuments = () => {
     }
 
     try {
-      await axios.delete(`/admin/documents/${documentId}`);
+      await apiClient.delete(`/admin/documents/${documentId}`);
       showSnackbar('Dokument erfolgreich gelöscht', 'success');
       fetchDocuments();
     } catch (error) {
@@ -690,8 +690,8 @@ const AdminFAQ = () => {
   const fetchChats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/chats');
-      setChats(response.data.data);
+      const response = (await apiClient.get('/admin/chats')) as any;
+      setChats(response as any);
     } catch (error) {
       console.error('Error fetching chats:', error);
       showSnackbar('Fehler beim Laden der Chats', 'error');
@@ -703,8 +703,8 @@ const AdminFAQ = () => {
   const fetchFAQs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/faqs');
-      setFaqs(response.data.data);
+      const response = (await apiClient.get('/admin/faqs')) as any;
+      setFaqs(response as any);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
       showSnackbar('Fehler beim Laden der FAQs', 'error');
@@ -715,8 +715,8 @@ const AdminFAQ = () => {
 
   const fetchAvailableTags = async () => {
     try {
-      const response = await axios.get('/faq-tags');
-      setAvailableTags(response.data.data);
+      const response = (await apiClient.get('/faq-tags')) as any;
+      setAvailableTags(response as any);
     } catch (error) {
       console.error('Error fetching tags:', error);
     }
@@ -724,9 +724,9 @@ const AdminFAQ = () => {
 
   const fetchChatDetails = async (chatId: string) => {
     try {
-      const response = await axios.get(`/admin/chats/${chatId}`);
-      setSelectedChat(response.data.data.chat);
-      setChatMessages(response.data.data.messages);
+      const response = (await apiClient.get(`/admin/chats/${chatId}`)) as any;
+      setSelectedChat(response.chat);
+      setChatMessages(response.messages);
     } catch (error) {
       console.error('Error fetching chat details:', error);
       showSnackbar('Fehler beim Laden der Chat-Details', 'error');
@@ -741,8 +741,8 @@ const AdminFAQ = () => {
 
     try {
       setGeneratingFAQ(true);
-      const response = await axios.post(`/admin/chats/${selectedChat.id}/create-faq`);
-      const generatedFAQ = response.data.data;
+      const response = (await apiClient.post(`/admin/chats/${selectedChat.id}/create-faq`)) as any;
+      const generatedFAQ = response;
       
       console.log('Generated FAQ data:', generatedFAQ);
       
@@ -798,7 +798,7 @@ const AdminFAQ = () => {
 
       if (faqForm.id) {
         // Update existing FAQ
-        const response = await axios.put(`/admin/faqs/${faqForm.id}`, {
+        const response = (await apiClient.put(`/admin/faqs/${faqForm.id}`, {
           title: faqForm.title.trim(),
           description: faqForm.description.trim(),
           context: faqForm.context.trim(),
@@ -807,11 +807,11 @@ const AdminFAQ = () => {
           tags: faqForm.tags,
           is_active: faqForm.isActive,
           enhance_with_context: enhanceWithContext
-        });
+        })) as any;
 
         if (enhanceWithContext) {
           // Update form with enhanced data
-          const enhancedFAQ = response.data.data;
+          const enhancedFAQ = response;
           setFaqForm({
             ...faqForm,
             title: enhancedFAQ.title,
@@ -863,7 +863,7 @@ const AdminFAQ = () => {
     }
 
     try {
-      await axios.delete(`/admin/faqs/${faqId}`);
+      await apiClient.delete(`/admin/faqs/${faqId}`);
       showSnackbar('FAQ erfolgreich gelöscht', 'success');
       fetchFAQs();
     } catch (error) {
@@ -1259,8 +1259,8 @@ const AdminSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/settings');
-      setSettings(response.data.data);
+      const response = (await apiClient.get('/admin/settings')) as any;
+      setSettings(response as any);
     } catch (error) {
       console.error('Error fetching settings:', error);
       showSnackbar('Fehler beim Laden der Einstellungen', 'error');
@@ -1272,7 +1272,7 @@ const AdminSettings = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      await axios.put('/admin/settings', settings);
+      await apiClient.put('/admin/settings', settings);
       showSnackbar('Einstellungen erfolgreich gespeichert', 'success');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -1284,7 +1284,7 @@ const AdminSettings = () => {
 
   const handleTestConnection = async (type: string) => {
     try {
-      await axios.post(`/admin/settings/test-${type}`);
+      await apiClient.post(`/admin/settings/test-${type}`);
       showSnackbar(`${type.toUpperCase()} Verbindung erfolgreich getestet`, 'success');
     } catch (error) {
       console.error(`Error testing ${type} connection:`, error);
@@ -1530,8 +1530,8 @@ const AdminStats = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/stats');
-      setStats(response.data.data);
+      const response = (await apiClient.get('/admin/stats')) as any;
+      setStats(response);
     } catch (error) {
       console.error('Error fetching stats:', error);
       showSnackbar('Fehler beim Laden der Statistiken', 'error');
@@ -1542,8 +1542,8 @@ const AdminStats = () => {
 
   const fetchDetailedStats = async () => {
     try {
-      const response = await axios.get('/admin/stats/detailed');
-      setDetailedStats(response.data.data);
+      const response = (await apiClient.get('/admin/stats/detailed')) as any;
+      setDetailedStats(response as any);
     } catch (error) {
       console.error('Error fetching detailed stats:', error);
     }
