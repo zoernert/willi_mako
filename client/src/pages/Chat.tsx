@@ -80,7 +80,7 @@ const Chat: React.FC = () => {
   // Text selection for creating notes
   const textSelection = useTextSelection({
     sourceType: 'chat',
-    sourceId: chatId || 'unknown',
+    sourceId: chatId || null,
     containerId: 'chat-messages-container',
     ready: !chatLoading && messages.length > 0 // Wait for chat to load and have messages
   });

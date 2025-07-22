@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 
 interface UseTextSelectionProps {
   sourceType: 'chat' | 'faq';
-  sourceId: string;
+  sourceId: string | null;
   containerId?: string;
   ready?: boolean; // Indicates when the container should be available
 }
@@ -21,15 +21,10 @@ export const useTextSelection = ({ sourceType, sourceId, containerId, ready = tr
   });
 
   const handleTextSelection = useCallback((event: Event) => {
-    console.log('handleTextSelection triggered by event:', event.type);
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim();
-    
-    console.log('Text selection detected:', selectedText);
-    console.log('Selected text length:', selectedText?.length || 0);
 
     if (selectedText && selectedText.length > 5) {
-      console.log('Selected text is valid, creating menu...');
       // Get the context around the selection
       const range = selection?.getRangeAt(0);
       const container = range?.commonAncestorContainer;
@@ -92,21 +87,15 @@ export const useTextSelection = ({ sourceType, sourceId, containerId, ready = tr
 
   useEffect(() => {
     if (!ready) {
-      console.log('useTextSelection: Not ready yet, skipping setup');
       return;
     }
-    
-    console.log('useTextSelection: Setting up event listener for containerId:', containerId);
     
     const setupEventListener = () => {
       const container = containerId 
         ? document.getElementById(containerId)
         : document;
 
-      console.log('useTextSelection: Container found:', container ? 'yes' : 'no');
-
       if (container) {
-        console.log('useTextSelection: Adding mouseup event listener');
         container.addEventListener('mouseup', handleTextSelection);
         return container;
       }
@@ -118,8 +107,6 @@ export const useTextSelection = ({ sourceType, sourceId, containerId, ready = tr
     
     // If container not found and we have a specific containerId, retry after delays
     if (!container && containerId) {
-      console.log('useTextSelection: Container not found, retrying...');
-      
       // Retry after short delays
       const retryTimeouts: NodeJS.Timeout[] = [];
       
@@ -138,7 +125,6 @@ export const useTextSelection = ({ sourceType, sourceId, containerId, ready = tr
         
         // Remove event listener if container was found
         if (container) {
-          console.log('useTextSelection: Removing mouseup event listener');
           container.removeEventListener('mouseup', handleTextSelection);
         }
       };
@@ -146,7 +132,6 @@ export const useTextSelection = ({ sourceType, sourceId, containerId, ready = tr
     
     return () => {
       if (container) {
-        console.log('useTextSelection: Removing mouseup event listener');
         container.removeEventListener('mouseup', handleTextSelection);
       }
     };
