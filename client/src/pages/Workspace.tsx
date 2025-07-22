@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Box,
@@ -106,6 +106,7 @@ const Workspace: React.FC = () => {
 
   useEffect(() => {
     fetchWorkspaceStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // No dependencies needed for one-time fetch
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
