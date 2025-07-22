@@ -13,6 +13,7 @@ import faqRoutes from './routes/faq';
 import workspaceRoutes from './routes/workspace';
 import notesRoutes from './routes/notes';
 import documentsRoutes from './routes/documents';
+import adminRoutes from './routes/admin';
 import { messageAnalyzerRoutes } from './routes/message-analyzer';
 
 // New Presentation Layer Routes
@@ -72,6 +73,9 @@ app.use('/api/v2/user', userRoutesV2); // v2 user endpoints
 // New v2 routes  
 app.use('/api/v2/quiz', quizRoutesV2);
 app.use('/admin', authenticateToken, adminQuizRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // Legacy routes (still active)
 app.use('/api/chat', authenticateToken, chatRoutes);

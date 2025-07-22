@@ -41,7 +41,7 @@ export class DocumentProcessorService {
       const chunks = this.createTextChunks(textContent);
       
       // Store chunks in database and vector DB
-      await this.createDocumentChunks(documentId, chunks, document.title);
+      await this.createDocumentChunks(documentId, userId, chunks, document.title);
       
       // Update document as processed
       await client.query(
@@ -129,7 +129,7 @@ export class DocumentProcessorService {
   /**
    * Create document chunks and store in vector database
    */
-  async createDocumentChunks(documentId: string, chunks: string[], documentTitle: string): Promise<void> {
+  async createDocumentChunks(documentId: string, userId: string, chunks: string[], documentTitle: string): Promise<void> {
     const client = await pool.connect();
     
     try {
@@ -148,6 +148,7 @@ export class DocumentProcessorService {
           vectorId,
           chunkText,
           documentId,
+          userId,
           documentTitle,
           i
         );
@@ -174,9 +175,9 @@ export class DocumentProcessorService {
   /**
    * Update vector database with new chunks
    */
-  async updateVectorDatabase(documentId: string, chunks: string[]): Promise<void> {
+  async updateVectorDatabase(documentId: string, userId: string, chunks: string[]): Promise<void> {
     // This method is covered by createDocumentChunks
-    await this.createDocumentChunks(documentId, chunks, '');
+    await this.createDocumentChunks(documentId, userId, chunks, '');
   }
 
   /**
