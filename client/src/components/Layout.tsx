@@ -31,6 +31,7 @@ import {
   ElectricBolt as EnergyIcon,
   QuestionAnswer as FAQIcon,
   Quiz as QuizIcon,
+  Rule as RuleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -70,6 +71,7 @@ const Layout: React.FC = () => {
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },
+    { text: 'Message Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
       : []

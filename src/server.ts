@@ -13,6 +13,7 @@ import faqRoutes from './routes/faq';
 import workspaceRoutes from './routes/workspace';
 import notesRoutes from './routes/notes';
 import documentsRoutes from './routes/documents';
+import { messageAnalyzerRoutes } from './routes/message-analyzer';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -78,6 +79,7 @@ app.use('/api', faqRoutes); // Some FAQ routes are public
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/documents', documentsRoutes);
+app.use('/api/message-analyzer', authenticateToken, messageAnalyzerRoutes);
 
 // Serve React app
 const clientBuildPath = path.join(__dirname, '../client/build');

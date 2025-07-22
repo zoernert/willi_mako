@@ -50,8 +50,9 @@ const FAQDetail: React.FC = () => {
   // Text selection for creating notes
   const textSelection = useTextSelection({
     sourceType: 'faq',
-    sourceId: id || 'unknown',
-    containerId: 'faq-content-container'
+    sourceId: id || null,
+    containerId: 'faq-content-container',
+    ready: !loading && faq !== null
   });
 
   useEffect(() => {

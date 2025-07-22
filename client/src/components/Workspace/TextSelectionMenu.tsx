@@ -28,7 +28,7 @@ interface TextSelectionMenuProps {
   anchorEl: HTMLElement | null;
   selectedText: string;
   sourceType: 'chat' | 'faq';
-  sourceId: string;
+  sourceId: string | null;
   sourceContext?: string;
   onClose: () => void;
 }
@@ -67,7 +67,9 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
 
   // Debug: Log when selectedText changes
   useEffect(() => {
-    console.log('TextSelectionMenu received selectedText:', selectedText);
+    if (selectedText) {
+      console.log('TextSelectionMenu received selectedText:', selectedText);
+    }
   }, [selectedText]);
 
   const fetchUserNotes = async () => {
@@ -89,7 +91,6 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
   };
 
   const handleCreateNewNote = () => {
-    console.log('Creating new note with selected text:', selectedText);
     setNoteTitle('');
     setNoteContent(selectedText);
     setNoteTags([]);
@@ -117,7 +118,7 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
         content: noteContent,
         tags: noteTags,
         source_type: sourceType,
-        source_id: sourceId,
+        source_id: sourceId || undefined,
         source_context: sourceContext
       };
 
@@ -157,7 +158,7 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
       const noteData = {
         content: updatedContent,
         source_type: sourceType,
-        source_id: sourceId,
+        source_id: sourceId || undefined,
         source_context: sourceContext
       };
 

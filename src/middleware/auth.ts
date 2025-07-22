@@ -50,3 +50,6 @@ export const requireUser = (
   }
   next();
 };
+
+// Alias for authenticateToken - commonly used name for auth middleware
+export const requireAuth = authenticateToken;
