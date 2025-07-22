@@ -45,6 +45,7 @@ const MessageAnalyzerPage: React.FC = () => {
     try {
       const analysisResult = await messageAnalyzerApi.analyze(message);
       clearTimeout(progressTimer);
+      console.log('📄 Analysis Result:', analysisResult);
       setResult(analysisResult);
       showSnackbar('Analysis completed successfully!', 'success');
     } catch (error: any) {
@@ -62,11 +63,11 @@ const MessageAnalyzerPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Market Communication Message Analyzer
+        Energiemarkt-Nachrichten Analyzer
       </Typography>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Enter EDIFACT or XML Message
+          EDIFACT oder XML Nachricht eingeben
         </Typography>
         <TextField
           multiline
@@ -75,7 +76,7 @@ const MessageAnalyzerPage: React.FC = () => {
           variant="outlined"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Paste your EDIFACT or XML message here..."
+          placeholder="Fügen Sie Ihre EDIFACT- oder XML-Nachricht hier ein..."
           sx={{ mb: 2, fontFamily: 'monospace' }}
         />
         <Button
@@ -84,30 +85,39 @@ const MessageAnalyzerPage: React.FC = () => {
           disabled={loading}
           startIcon={loading ? <CircularProgress size={20} /> : null}
         >
-          {loading ? 'Analyzing... (up to 60s)' : 'Analyze Message'}
+          {loading ? 'Analysiere... (bis zu 60s)' : 'Nachricht analysieren'}
         </Button>
         {loading && (
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            Analyzing EDIFACT structure and enriching with documentation... Please wait.
+            EDIFACT-Struktur wird analysiert und mit Dokumentation angereichert... Bitte warten.
           </Typography>
         )}
       </Paper>
 
       {result && (
         <Box>
+          {/* Debug info */}
+          <Paper sx={{ p: 1, mb: 2, bgcolor: '#f5f5f5' }}>
+            <Typography variant="caption">
+              Debug: Result format = {result.format}, Summary length = {result.summary?.length || 0}, 
+              Checks count = {result.plausibilityChecks?.length || 0}, 
+              Segments count = {result.structuredData?.segments?.length || 0}
+            </Typography>
+          </Paper>
+
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">AI Summary & Plausibility</Typography>
+              <Typography variant="h6">KI-Zusammenfassung & Plausibilität</Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="subtitle1" gutterBottom>
-                  Summary
+                  Zusammenfassung
                 </Typography>
                 <Alert severity="info" sx={{ mb: 2 }}>{result.summary}</Alert>
 
                 <Typography variant="subtitle1" gutterBottom>
-                  Plausibility Checks
+                  Plausibilitätsprüfungen
                 </Typography>
                 {result.plausibilityChecks.length > 0 ? (
                   result.plausibilityChecks.map((check, index) => (
@@ -116,7 +126,7 @@ const MessageAnalyzerPage: React.FC = () => {
                     </Alert>
                   ))
                 ) : (
-                  <Alert severity="success">No issues found.</Alert>
+                  <Alert severity="success">Keine Probleme gefunden.</Alert>
                 )}
               </Paper>
             </AccordionDetails>
@@ -124,7 +134,7 @@ const MessageAnalyzerPage: React.FC = () => {
 
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">Structured Data ({result.format})</Typography>
+              <Typography variant="h6">Strukturierte Daten ({result.format})</Typography>
             </AccordionSummary>
             <AccordionDetails>
               <TableContainer component={Paper}>
@@ -132,8 +142,8 @@ const MessageAnalyzerPage: React.FC = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Segment</TableCell>
-                      <TableCell>Description</TableCell>
-                      <TableCell>Elements</TableCell>
+                      <TableCell>Beschreibung</TableCell>
+                      <TableCell>Elemente</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>

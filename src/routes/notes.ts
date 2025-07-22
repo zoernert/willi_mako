@@ -19,20 +19,25 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
+    // Handle pagination: convert page to offset
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    const offset = (page - 1) * limit;
+    
     const filters = {
       source_type: req.query.source_type as ('chat' | 'faq' | 'document' | 'manual' | undefined),
       tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
       search: req.query.search as string,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-      offset: req.query.offset ? parseInt(req.query.offset as string) : undefined
+      limit,
+      offset
     };
     
-    const notes = await notesService.getUserNotes(userId, filters);
+    const result = await notesService.getUserNotesWithCount(userId, filters);
     
     // Return structured response for frontend compatibility
     return res.json({
-      notes: notes || [],
-      total: notes ? notes.length : 0
+      notes: result.notes || [],
+      total: result.total || 0
     });
     
   } catch (error) {
