@@ -26,21 +26,8 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
-
-interface SearchResult {
-  id: string;
-  type: 'document' | 'note';
-  title: string;
-  snippet: string;
-  highlights: string[];
-  score: number;
-  metadata?: {
-    created_at: string;
-    tags?: string[];
-    file_size?: number;
-    mime_type?: string;
-  };
-}
+import { workspaceApi } from '../../services/workspaceApi';
+import { SearchResult } from '../../types/workspace';
 
 interface GlobalSearchProps {
   open: boolean;
@@ -86,27 +73,19 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams({
-        q: searchQuery,
-        type: searchType,
-        limit: '20'
-      });
-
-      const response = await fetch(`/api/workspace/search?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Suche fehlgeschlagen');
-      }
-
-      const data = await response.json();
-      setResults(data.results || []);
+      const searchData = await workspaceApi.searchSimple(searchQuery);
+      
+      // Map the results to include backward compatibility
+      const mappedResults = searchData.map(result => ({
+        ...result,
+        snippet: result.content ? result.content.substring(0, 200) + '...' : '',
+        score: result.relevance_score,
+        highlights: [] // This would need to come from the backend
+      }));
+      
+      setResults(mappedResults);
     } catch (err) {
+      console.error('Search error:', err);
       setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
       showSnackbar('Fehler bei der Suche', 'error');
     } finally {
@@ -283,7 +262,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
                             color="text.secondary"
                             sx={{ ml: 'auto' }}
                           >
-                            Relevanz: {Math.round(result.score * 100)}%
+                            Relevanz: {Math.round((result.score || result.relevance_score) * 100)}%
                           </Typography>
                         </Box>
                       }
@@ -293,7 +272,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
                             variant="body2" 
                             color="text.secondary"
                             dangerouslySetInnerHTML={{
-                              __html: highlightText(result.snippet, result.highlights)
+                              __html: highlightText(result.snippet || result.content || '', result.highlights || [])
                             }}
                             sx={{ mb: 1 }}
                           />

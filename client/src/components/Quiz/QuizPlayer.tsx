@@ -30,51 +30,18 @@ import {
   Quiz as QuizIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-
-interface Quiz {
-  id: string;
-  title: string;
-  description: string;
-  difficulty_level: string;
-  topic_area: string;
-  time_limit_minutes: number;
-  question_count: number;
-  questions: QuizQuestion[];
-}
-
-interface QuizQuestion {
-  id: string;
-  question_text: string;
-  answer_options: string[];
-  correct_answer_index: number;
-  explanation: string;
-  points: number;
-}
-
-interface UserAnswer {
-  question_id: string;
-  selected_answer_index: number;
-  selected_answer_text: string;
-  is_correct: boolean;
-}
-
-interface QuizResult {
-  attempt: any;
-  points_earned: number;
-  expertise_updates: any[];
-  achievements: any[];
-}
+import { quizApi } from '../../services/quizApi';
+import { Quiz, QuizQuestion, UserAnswer, QuizResult } from '../../types/quiz';
 
 const QuizPlayer: React.FC = () => {
-  const { quizId } = useParams();
+  const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<{ [key: string]: number }>({});
+  const [answers, setAnswers] = useState<{ [key: string]: string[] }>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +53,9 @@ const QuizPlayer: React.FC = () => {
   const [results, setResults] = useState<QuizResult | null>(null);
 
   useEffect(() => {
-    loadQuiz();
+    if (quizId) {
+      loadQuiz();
+    }
   }, [quizId]);
 
   useEffect(() => {
@@ -107,10 +76,11 @@ const QuizPlayer: React.FC = () => {
   }, [timeLeft, quizStarted]);
 
   const loadQuiz = async () => {
+    if (!quizId) return;
     try {
-      const response = await axios.get(`/quiz/quizzes/${quizId}`);
-      setQuiz(response.data);
-      setTimeLeft(response.data.time_limit_minutes * 60);
+      const response = await quizApi.getQuiz(quizId);
+      setQuiz(response);
+      setTimeLeft(response.time_limit_minutes * 60);
       
       // Check if we have an attempt ID from navigation state
       if (location.state?.attemptId) {
@@ -129,8 +99,8 @@ const QuizPlayer: React.FC = () => {
     if (!quiz) return;
     
     try {
-      const response = await axios.post(`/quiz/quizzes/${quiz.id}/start`);
-      setAttemptId(response.data.id);
+      const response = await quizApi.startQuiz(quiz.id);
+      setAttemptId(response.id);
       setQuizStarted(true);
       setTimeLeft(quiz.time_limit_minutes * 60);
     } catch (err) {
@@ -139,11 +109,22 @@ const QuizPlayer: React.FC = () => {
     }
   };
 
-  const handleAnswerChange = (questionId: string, answerIndex: number) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answerIndex
-    }));
+  const handleAnswerChange = (questionId: string, answerValue: string) => {
+    const currentQuestion = quiz?.questions?.find(q => q.id === questionId);
+    if (!currentQuestion) return;
+
+    setAnswers(prev => {
+      const existingAnswers = prev[questionId] || [];
+      if (currentQuestion.question_type === 'multiple-choice') {
+        if (existingAnswers.includes(answerValue)) {
+          return { ...prev, [questionId]: existingAnswers.filter(a => a !== answerValue) };
+        } else {
+          return { ...prev, [questionId]: [...existingAnswers, answerValue] };
+        }
+      } else {
+        return { ...prev, [questionId]: [answerValue] };
+      }
+    });
   };
 
   const handleSubmit = async () => {
@@ -152,21 +133,14 @@ const QuizPlayer: React.FC = () => {
     try {
       setSubmitting(true);
       
-      const userAnswers: UserAnswer[] = quiz.questions.map(question => ({
-        question_id: question.id,
-        selected_answer_index: answers[question.id] ?? -1,
-        selected_answer_text: answers[question.id] !== undefined 
-          ? question.answer_options[answers[question.id]] 
-          : '',
-        is_correct: answers[question.id] === question.correct_answer_index
+      const userAnswers: UserAnswer[] = (quiz.questions || []).map(question => ({
+        question_id: question.id!,
+        answer: answers[question.id!] || [],
       }));
 
-      const response = await axios.post(`/quiz/quizzes/${quiz.id}/submit`, {
-        attemptId,
-        answers: userAnswers
-      });
+      const response = await quizApi.submitQuiz(quiz.id, attemptId, userAnswers);
 
-      setResults(response.data);
+      setResults(response);
       setShowResults(true);
       
       // Clear timer
@@ -198,14 +172,10 @@ const QuizPlayer: React.FC = () => {
   const getTimeColor = () => {
     if (timeLeft > 300) return 'success'; // > 5 minutes
     if (timeLeft > 60) return 'warning'; // > 1 minute
-    return 'error'; // < 1 minute
+    return 'error';
   };
 
-  const getProgress = () => {
-    return ((currentQuestionIndex + 1) / (quiz?.questions?.length || 1)) * 100;
-  };
-
-  const currentQuestion = quiz?.questions[currentQuestionIndex];
+  const progress = quiz ? ((currentQuestionIndex + 1) / quiz.question_count) * 100 : 0;
 
   if (loading) {
     return (
@@ -216,96 +186,46 @@ const QuizPlayer: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
+    return <Container sx={{ mt: 4 }}><Alert severity="error">{error}</Alert></Container>;
   }
 
   if (!quiz) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error">Quiz nicht gefunden</Alert>
-      </Container>
-    );
+    return <Container sx={{ mt: 4 }}><Alert severity="info">Kein Quiz gefunden.</Alert></Container>;
   }
 
   if (showResults && results) {
+    const { attempt, correct_answers, total_questions, feedback, badge_earned } = results;
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <CheckCircle color="success" /> Quiz Abgeschlossen!
-          </Typography>
-          
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 4 }}>
-            <Box sx={{ flex: 1, textAlign: 'center' }}>
-              <Typography variant="h3" color="primary">
-                {Math.round(results.attempt.percentage)}%
-              </Typography>
-              <Typography variant="h6">Punktzahl</Typography>
-            </Box>
-            <Box sx={{ flex: 1, textAlign: 'center' }}>
-              <Typography variant="h3" color="success.main">
-                {results.points_earned}
-              </Typography>
-              <Typography variant="h6">Punkte Erhalten</Typography>
-            </Box>
+      <Container maxWidth="md" sx={{ my: 4 }}>
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography variant="h4" gutterBottom align="center">Quiz-Ergebnisse</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Stack direction="row" justifyContent="space-around" sx={{ my: 3 }}>
+            <Chip label={`Punkte: ${attempt.score}`} color="primary" variant="outlined" />
+            <Chip label={`Genauigkeit: ${attempt.percentage.toFixed(2)}%`} color="secondary" variant="outlined" />
+            <Chip label={`Zeit: ${attempt.time_taken_seconds}s`} color="info" variant="outlined" />
           </Stack>
-
-          <Typography variant="h6" gutterBottom>
-            Ergebnis-Details:
-          </Typography>
-          <Typography>
-            • Richtige Antworten: {results.attempt.score} von {results.attempt.max_score} Punkten
-          </Typography>
-          <Typography>
-            • Zeitverbrauch: {Math.round(results.attempt.time_spent_seconds / 60)} Minuten
-          </Typography>
-          
-          {results.expertise_updates.length > 0 && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Expertenstatus Updates:
-              </Typography>
-              {results.expertise_updates.map((update, index) => (
-                <Chip
-                  key={index}
-                  label={`${update.topic_area}: ${update.old_level} → ${update.new_level}`}
-                  color="primary"
-                  sx={{ mr: 1, mb: 1 }}
-                />
-              ))}
-            </Box>
+          <Typography variant="h6" gutterBottom>Detaillierte Auswertung:</Typography>
+          {feedback.map((fb, index) => (
+            <Card key={fb.question_id} sx={{ mb: 2, bgcolor: fb.is_correct ? '#e8f5e9' : '#ffebee' }}>
+              <CardContent>
+                <Typography variant="body1" sx={{ mb: 1 }}><strong>Frage {index + 1}:</strong> {fb.question_text}</Typography>
+                <Typography variant="body2">Deine Antwort: {fb.user_answer.join(', ')}</Typography>
+                {!fb.is_correct && (
+                  <Typography variant="body2" color="success.main">Korrekte Antwort: {fb.correct_answers.join(', ')}</Typography>
+                )}
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="caption"><em>Erklärung: {fb.explanation}</em></Typography>
+              </CardContent>
+            </Card>
+          ))}
+          {badge_earned && (
+            <Alert severity="success" sx={{ mt: 3 }}>
+              Glückwunsch! Du hast ein neues Abzeichen erhalten: {badge_earned.name}
+            </Alert>
           )}
-
-          {results.achievements.length > 0 && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Neue Erfolge:
-              </Typography>
-              {results.achievements.map((achievement, index) => (
-                <Alert key={index} severity="success" sx={{ mb: 1 }}>
-                  <strong>{achievement.title}</strong>: {achievement.description}
-                </Alert>
-              ))}
-            </Box>
-          )}
-
-          <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              onClick={() => navigate('/quiz')}
-            >
-              Zurück zur Übersicht
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => window.location.reload()}
-            >
-              Quiz Wiederholen
-            </Button>
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Button variant="contained" onClick={() => navigate('/quiz')}>Zurück zur Quiz-Übersicht</Button>
           </Box>
         </Paper>
       </Container>
@@ -314,175 +234,115 @@ const QuizPlayer: React.FC = () => {
 
   if (!quizStarted) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <QuizIcon /> {quiz.title}
-          </Typography>
-          
-          <Typography variant="body1" paragraph>
-            {quiz.description}
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <QuizIcon color="primary" sx={{ fontSize: 60 }} />
+          <Typography variant="h4" gutterBottom>{quiz.title}</Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>{quiz.description}</Typography>
+          <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+            <Chip label={`Schwierigkeit: ${quiz.difficulty_level}`} />
             <Chip label={`${quiz.question_count} Fragen`} />
             <Chip label={`${quiz.time_limit_minutes} Minuten`} />
-            <Chip label={quiz.difficulty_level} />
-            {quiz.topic_area && <Chip label={quiz.topic_area} />}
-          </Box>
-
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <Typography variant="body2">
-              • Sie haben {quiz.time_limit_minutes} Minuten Zeit<br />
-              • {quiz.question_count} Fragen zu beantworten<br />
-              • Nach dem Start können Sie das Quiz nicht pausieren<br />
-              • Wählen Sie die beste Antwort für jede Frage
-            </Typography>
-          </Alert>
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={startQuiz}
-            >
-              Quiz Starten
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/quiz')}
-            >
-              Abbrechen
-            </Button>
-          </Box>
+          </Stack>
+          <Button variant="contained" size="large" onClick={startQuiz}>Quiz starten</Button>
         </Paper>
       </Container>
     );
   }
 
+  const currentQuestion = quiz.questions?.[currentQuestionIndex];
+
+  if (!currentQuestion) {
+    return <Container sx={{ mt: 4 }}><Alert severity="warning">Frage nicht gefunden.</Alert></Container>;
+  }
+
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      {/* Header */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">{quiz.title}</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip
-              icon={<Timer />}
-              label={formatTime(timeLeft)}
-              color={getTimeColor()}
-            />
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleExit}
-            >
-              Beenden
-            </Button>
-          </Box>
-        </Box>
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            Frage {currentQuestionIndex + 1} von {quiz.questions.length}
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={getProgress()}
-            sx={{ mt: 1 }}
+    <Container maxWidth="md" sx={{ my: 4 }}>
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5">{quiz.title}</Typography>
+          <Chip
+            icon={<Timer />}
+            label={formatTime(timeLeft)}
+            color={getTimeColor()}
+            variant="outlined"
           />
         </Box>
-      </Paper>
-
-      {/* Question */}
-      {currentQuestion && (
-        <Card sx={{ mb: 3 }}>
+        <LinearProgress variant="determinate" value={progress} sx={{ mb: 2 }} />
+        
+        <Card>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              {currentQuestion.question_text}
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Frage {currentQuestionIndex + 1} von {quiz.question_count}
             </Typography>
+            <Typography variant="body1" sx={{ mb: 3 }}>{currentQuestion.question_text}</Typography>
             
             <RadioGroup
-              value={answers[currentQuestion.id] ?? ''}
-              onChange={(e) => handleAnswerChange(currentQuestion.id, parseInt(e.target.value))}
+              value={answers[currentQuestion.id!]?.[0] || ''}
+              onChange={(e) => handleAnswerChange(currentQuestion.id!, e.target.value)}
             >
               {currentQuestion.answer_options.map((option, index) => (
-                <FormControlLabel
-                  key={index}
-                  value={index}
-                  control={<Radio />}
-                  label={option}
+                <FormControlLabel 
+                  key={index} 
+                  value={option} 
+                  control={<Radio />} 
+                  label={option} 
+                  sx={{ mb: 1 }}
                 />
               ))}
             </RadioGroup>
           </CardContent>
         </Card>
-      )}
 
-      {/* Navigation */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Button
-          variant="outlined"
-          startIcon={<NavigateBefore />}
-          onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
-          disabled={currentQuestionIndex === 0}
-        >
-          Zurück
-        </Button>
-
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {quiz.questions.map((_, index) => (
-            <Box
-              key={index}
-              sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: index === currentQuestionIndex
-                  ? 'primary.main'
-                  : answers[quiz.questions[index].id] !== undefined
-                  ? 'success.main'
-                  : 'grey.300',
-                cursor: 'pointer'
-              }}
-              onClick={() => setCurrentQuestionIndex(index)}
-            />
-          ))}
-        </Box>
-
-        {currentQuestionIndex === quiz.questions.length - 1 ? (
-          <Button
-            variant="contained"
-            color="success"
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+          <Button 
+            variant="outlined" 
+            startIcon={<NavigateBefore />}
+            disabled={currentQuestionIndex === 0}
+            onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
+          >
+            Zurück
+          </Button>
+          <Button 
+            variant="outlined" 
             startIcon={<Flag />}
-            onClick={handleSubmit}
-            disabled={submitting}
+            onClick={() => { /* Mark for review logic */ }}
           >
-            {submitting ? 'Einreichen...' : 'Einreichen'}
+            Markieren
           </Button>
-        ) : (
-          <Button
-            variant="outlined"
-            endIcon={<NavigateNext />}
-            onClick={() => setCurrentQuestionIndex(Math.min(quiz.questions.length - 1, currentQuestionIndex + 1))}
-          >
-            Weiter
-          </Button>
-        )}
-      </Box>
+          {currentQuestionIndex < quiz.question_count - 1 ? (
+            <Button 
+              variant="contained" 
+              endIcon={<NavigateNext />}
+              onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+            >
+              Weiter
+            </Button>
+          ) : (
+            <Button 
+              variant="contained" 
+              color="success"
+              endIcon={<CheckCircle />}
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? 'Wird eingereicht...' : 'Quiz beenden'}
+            </Button>
+          )}
+        </Box>
+        <Box sx={{ mt: 3, textAlign: 'right' }}>
+          <Button color="error" onClick={handleExit}>Quiz abbrechen</Button>
+        </Box>
+      </Paper>
 
-      {/* Exit Dialog */}
       <Dialog open={showExitDialog} onClose={() => setShowExitDialog(false)}>
-        <DialogTitle>Quiz Beenden</DialogTitle>
+        <DialogTitle>Quiz abbrechen?</DialogTitle>
         <DialogContent>
-          <Typography>
-            Sind Sie sicher, dass Sie das Quiz beenden möchten? Ihr Fortschritt geht verloren.
-          </Typography>
+          <Typography>Möchtest du das Quiz wirklich abbrechen? Dein Fortschritt geht verloren.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowExitDialog(false)}>Abbrechen</Button>
-          <Button onClick={confirmExit} color="error">
-            Beenden
-          </Button>
+          <Button onClick={() => setShowExitDialog(false)}>Weiter im Quiz</Button>
+          <Button onClick={confirmExit} color="error">Abbrechen bestätigen</Button>
         </DialogActions>
       </Dialog>
     </Container>

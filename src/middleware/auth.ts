@@ -1,13 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AppError } from './errorHandler';
+import { AppError } from '../utils/errors';
+import { User } from '../modules/user/user.interface';
 
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: 'admin' | 'user';
-  };
+  user?: User;
 }
 
 export const authenticateToken = (

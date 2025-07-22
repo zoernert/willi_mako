@@ -21,13 +21,8 @@ import {
   Cancel as CancelIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-}
+import { notesApi } from '../../services/notesApi';
+import { Note } from '../../types/workspace';
 
 interface TextSelectionMenuProps {
   anchorEl: HTMLElement | null;
@@ -72,18 +67,8 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
 
   const fetchUserNotes = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/notes', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableNotes(data.notes || []);
-      }
+      const data = await notesApi.getNotes();
+      setAvailableNotes(data.notes || []);
     } catch (error) {
       console.error('Error fetching notes:', error);
     }
@@ -91,18 +76,8 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
 
   const fetchAvailableTags = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/notes/tags', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableTags(data.tags || []);
-      }
+      const data = await notesApi.getTags();
+      setAvailableTags(data.tags || []);
     } catch (error) {
       console.error('Error fetching tags:', error);
     }

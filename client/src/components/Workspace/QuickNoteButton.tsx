@@ -15,6 +15,8 @@ import {
   NoteAdd as NoteIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
+import { notesApi } from '../../services/notesApi';
+import { Note } from '../../types/workspace';
 
 interface QuickNoteButtonProps {
   sourceType: 'chat' | 'faq';
@@ -46,32 +48,23 @@ const QuickNoteButton: React.FC<QuickNoteButtonProps> = ({
 
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: noteTitle || 'Schnelle Notiz',
-          content: noteContent,
-          source_type: sourceType,
-          source_id: sourceId,
-          source_context: selectedText,
-          tags: noteTags
-        })
-      });
+      const noteData: Omit<Note, 'id' | 'created_at' | 'updated_at' | 'user_id'> = {
+        title: noteTitle || 'Schnelle Notiz',
+        content: noteContent,
+        source_type: sourceType,
+        source_id: sourceId,
+        source_context: selectedText,
+        tags: noteTags
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to create note');
-      }
-
+      await notesApi.createNote(noteData);
+      
       showSnackbar('Notiz erfolgreich erstellt', 'success');
       setIsDialogOpen(false);
       resetForm();
     } catch (err) {
+      console.error('Error creating note:', err);
       showSnackbar('Fehler beim Erstellen der Notiz', 'error');
     } finally {
       setSaving(false);

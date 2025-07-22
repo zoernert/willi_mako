@@ -75,6 +75,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 interface AuthContextType {
   state: AuthState;
+  dispatch: React.Dispatch<AuthAction>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, company?: string) => Promise<void>;
   logout: () => void;
@@ -210,13 +211,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'LOGOUT' });
   };
 
-  const clearError = (): void => {
-    dispatch({ type: 'CLEAR_ERROR' });
+  const clearError = () => dispatch({ type: 'CLEAR_ERROR' });
+
+  const value = {
+    state,
+    dispatch,
+    login,
+    register,
+    logout,
+    clearError,
   };
 
-  return (
-    <AuthContext.Provider value={{ state, login, register, logout, clearError }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

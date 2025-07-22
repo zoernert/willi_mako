@@ -1,0 +1,13 @@
+{
+  "name": "example-plugin",
+  "version": "1.0.0",
+  "description": "Example plugin demonstrating the plugin system capabilities",
+  "main": "index.js",
+  "author": "System",
+  "license": "MIT",
+  "keywords": ["plugin", "example"],
+  "pluginMetadata": {
+    "apiVersion": "1.0.0",
+    "dependencies": []
+  }
+}

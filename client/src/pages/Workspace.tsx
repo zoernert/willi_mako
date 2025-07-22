@@ -78,11 +78,11 @@ const Workspace: React.FC = () => {
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
 
-  const fetchWorkspaceStats = useCallback(async () => {
+  const fetchWorkspaceStats = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/workspace/dashboard', {
+      const response = await fetch('/api/workspace/settings', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -102,11 +102,11 @@ const Workspace: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [showSnackbar]);
+  };
 
   useEffect(() => {
     fetchWorkspaceStats();
-  }, [fetchWorkspaceStats]);
+  }, []); // No dependencies needed for one-time fetch
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);

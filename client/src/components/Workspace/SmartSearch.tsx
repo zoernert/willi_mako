@@ -25,16 +25,8 @@ import {
   Clear as ClearIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
-
-interface SearchResult {
-  id: string;
-  type: 'note' | 'document';
-  title: string;
-  content: string;
-  tags: string[];
-  created_at: string;
-  relevance_score?: number;
-}
+import { workspaceApi } from '../../services/workspaceApi';
+import { SearchResult } from '../../types/workspace';
 
 interface SmartSearchProps {
   onResultSelect?: (result: SearchResult) => void;
@@ -67,21 +59,10 @@ const SmartSearch: React.FC<SmartSearchProps> = ({
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/workspace/search?q=${encodeURIComponent(searchQuery)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setResults(data.results || []);
-        setSuggestions(data.suggestions || []);
-      } else {
-        throw new Error('Search failed');
-      }
+      const data = await workspaceApi.searchSimple(searchQuery);
+      setResults(data || []);
+      // Note: suggestions would need to be added to the API response
+      setSuggestions([]);
     } catch (error) {
       console.error('Error searching workspace:', error);
       showSnackbar('Fehler bei der Suche', 'error');
@@ -136,8 +117,17 @@ const SmartSearch: React.FC<SmartSearchProps> = ({
     setOpen(false);
   };
 
-  const getResultIcon = (type: 'note' | 'document') => {
-    return type === 'note' ? <NoteIcon /> : <DocumentIcon />;
+  const getResultIcon = (type: 'note' | 'document' | 'chat') => {
+    switch (type) {
+      case 'note':
+        return <NoteIcon />;
+      case 'document':
+        return <DocumentIcon />;
+      case 'chat':
+        return <ChatIcon />;
+      default:
+        return <DocumentIcon />;
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -238,7 +228,7 @@ const SmartSearch: React.FC<SmartSearchProps> = ({
                               {result.content.slice(0, 100)}...
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                              {result.tags.slice(0, 3).map((tag) => (
+                              {result.metadata?.tags?.slice(0, 3).map((tag: string) => (
                                 <Chip key={tag} label={tag} size="small" variant="outlined" />
                               ))}
                               <Typography variant="caption" sx={{ ml: 'auto' }}>

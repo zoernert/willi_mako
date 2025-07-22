@@ -9,13 +9,15 @@ import dotenv from 'dotenv';
 // Import routes
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chat';
-import adminRoutes from './routes/admin';
-import userRoutes from './routes/user';
 import faqRoutes from './routes/faq';
-import createQuizRoutes from './routes/quiz';
 import workspaceRoutes from './routes/workspace';
 import notesRoutes from './routes/notes';
 import documentsRoutes from './routes/documents';
+
+// New Presentation Layer Routes
+import userRoutesV2 from './presentation/http/routes/user.routes';
+import quizRoutesV2 from './presentation/http/routes/quiz.routes';
+import adminQuizRoutes from './presentation/http/routes/admin/quiz.routes';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -62,11 +64,16 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/quiz', createQuizRoutes(db)); // Quiz routes with gamification BEFORE other routes
+// Use new authentication routes instead of legacy auth routes
+app.use('/api/auth', userRoutesV2); // New authentication endpoints
+app.use('/api/v2/user', userRoutesV2); // v2 user endpoints
+
+// New v2 routes  
+app.use('/api/v2/quiz', quizRoutesV2);
+app.use('/admin', authenticateToken, adminQuizRoutes);
+
+// Legacy routes (still active)
 app.use('/api/chat', authenticateToken, chatRoutes);
-app.use('/api/admin', authenticateToken, adminRoutes);
-app.use('/api/user', authenticateToken, userRoutes);
 app.use('/api', faqRoutes); // Some FAQ routes are public
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/notes', notesRoutes);
