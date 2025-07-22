@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       // Verify token and get user info
-      axios.get('/user/profile')
+      axios.get('/v2/user/profile')
         .then(response => {
           dispatch({
             type: 'LOGIN_SUCCESS',

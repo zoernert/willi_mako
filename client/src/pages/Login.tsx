@@ -35,7 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -55,8 +55,8 @@ const Login: React.FC = () => {
   const fetchLatestFAQs = async () => {
     try {
       setFaqLoading(true);
-      const response = await axios.get('/faqs?limit=10');
-      setFaqs(response.data.data);
+      const response = await apiClient.get('/faqs?limit=10');
+      setFaqs(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
     } finally {

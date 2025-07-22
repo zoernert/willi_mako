@@ -79,12 +79,18 @@ const NotesManager: React.FC<NotesManagerProps> = ({ onStatsUpdate }) => {
       const data = await notesApi.getNotes(params);
       setNotes(data.notes || []);
       setTotalPages(Math.ceil((data.total || 0) / 10));
-    } catch (err) {
-      showSnackbar('Fehler beim Laden der Notizen', 'error');
+    } catch (err: any) {
+      // Only show error for actual server errors, not for empty results
+      if (err.response?.status !== 404 && err.response?.status !== 204) {
+        showSnackbar('Fehler beim Laden der Notizen', 'error');
+      }
+      // Set empty state for 404/no content
+      setNotes([]);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedTags, sourceFilter, currentPage, showSnackbar]);
+  }, [searchQuery, selectedTags, sourceFilter, currentPage]); // Remove showSnackbar to prevent infinite loop
 
   const fetchAvailableTags = async () => {
     try {
