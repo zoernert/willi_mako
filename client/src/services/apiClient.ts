@@ -97,23 +97,39 @@ class ApiClient {
 
   // HTTP Methods
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get<ApiResponse<T>>(url, config);
-    return response.data.data as T;
+    const response = await this.client.get<T | ApiResponse<T>>(url, config);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, data, config);
-    return response.data.data as T;
+    const response = await this.client.post<T | ApiResponse<T>>(url, data, config);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
   }
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data, config);
-    return response.data.data as T;
+    const response = await this.client.put<T | ApiResponse<T>>(url, data, config);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete<ApiResponse<T>>(url, config);
-    return response.data.data as T;
+    const response = await this.client.delete<T | ApiResponse<T>>(url, config);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
   }
 
   // File Upload

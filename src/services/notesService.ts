@@ -162,7 +162,74 @@ export class NotesService {
       }
       
       const result = await client.query(query, values);
-      return result.rows;
+      
+      // Parse tags from JSON strings to arrays
+      return result.rows.map(row => ({
+        ...row,
+        tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+      }));
+      
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Get user notes with filters and total count for pagination
+   */
+  async getUserNotesWithCount(userId: string, filters?: NoteFilters): Promise<{ notes: UserNote[], total: number }> {
+    const client = await pool.connect();
+    
+    try {
+      // Build the base WHERE clause and parameters for filtering
+      let whereClause = 'WHERE user_id = $1';
+      const baseValues: any[] = [userId];
+      let paramIndex = 2;
+      
+      // Apply filters
+      if (filters?.source_type) {
+        whereClause += ` AND source_type = $${paramIndex++}`;
+        baseValues.push(filters.source_type);
+      }
+      
+      if (filters?.tags && filters.tags.length > 0) {
+        whereClause += ` AND tags ?| $${paramIndex++}`;
+        baseValues.push(filters.tags);
+      }
+      
+      if (filters?.search) {
+        whereClause += ` AND (title ILIKE $${paramIndex++} OR content ILIKE $${paramIndex++})`;
+        baseValues.push(`%${filters.search}%`, `%${filters.search}%`);
+      }
+      
+      // Get total count (without pagination)
+      const countQuery = `SELECT COUNT(*) as total FROM user_notes ${whereClause}`;
+      const countResult = await client.query(countQuery, baseValues);
+      const total = parseInt(countResult.rows[0].total);
+      
+      // Get notes with pagination
+      let notesQuery = `SELECT * FROM user_notes ${whereClause} ORDER BY created_at DESC`;
+      let notesValues = [...baseValues];
+      
+      if (filters?.limit) {
+        notesQuery += ` LIMIT $${paramIndex++}`;
+        notesValues.push(filters.limit);
+      }
+      
+      if (filters?.offset) {
+        notesQuery += ` OFFSET $${paramIndex++}`;
+        notesValues.push(filters.offset);
+      }
+      
+      const notesResult = await client.query(notesQuery, notesValues);
+      
+      // Parse tags from JSON strings to arrays
+      const notes = notesResult.rows.map(row => ({
+        ...row,
+        tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+      }));
+      
+      return { notes, total };
       
     } finally {
       client.release();
@@ -245,7 +312,15 @@ export class NotesService {
         [noteId, userId]
       );
       
-      return result.rows.length > 0 ? result.rows[0] : null;
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        return {
+          ...row,
+          tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+        };
+      }
+      
+      return null;
       
     } finally {
       client.release();
@@ -264,7 +339,11 @@ export class NotesService {
         [userId, sourceType, sourceId]
       );
       
-      return result.rows;
+      // Parse tags from JSON strings to arrays
+      return result.rows.map(row => ({
+        ...row,
+        tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+      }));
       
     } finally {
       client.release();
@@ -283,7 +362,11 @@ export class NotesService {
         [userId, limit]
       );
       
-      return result.rows;
+      // Parse tags from JSON strings to arrays
+      return result.rows.map(row => ({
+        ...row,
+        tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
+      }));
       
     } finally {
       client.release();

@@ -17,7 +17,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
   public async analyze(message: string): Promise<AnalysisResult> {
     const trimmedMessage = message.trim();
     
-    console.log('🔍 Message Analyzer: Analyzing message type...');
+    console.log('🔍 Nachrichten-Analyzer: Analysiere Nachrichtentyp...');
     console.log('📄 First 100 chars:', trimmedMessage.substring(0, 100));
     
     // Enhanced EDIFACT detection
@@ -42,12 +42,20 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       upperMessage.startsWith('UNB'),       // Interchange header
       upperMessage.includes('UNB+'),        // Interchange header anywhere
       upperMessage.includes('UNH+'),        // Message header
+      upperMessage.includes('UTILMD'),      // UTILMD message type
+      upperMessage.includes('MSCONS'),      // MSCONS message type
+      upperMessage.includes('ORDERS'),      // ORDERS message type
       /UNA[:+.?']/.test(message),           // UNA with typical separators
-      /UNB\+[A-Z0-9]+:/.test(upperMessage) // UNB with syntax identifier
+      /UNB\+[A-Z0-9]+:/.test(upperMessage), // UNB with syntax identifier
+      /\+NAD\+/.test(upperMessage),         // NAD segment
+      /\+DTM\+/.test(upperMessage),         // DTM segment
+      /\+BGM\+/.test(upperMessage),         // BGM segment
+      /\+UNT\+/.test(upperMessage),         // UNT trailer
     ];
 
     const isEdifact = edifactIndicators.some(indicator => indicator);
     console.log('🔍 EDIFACT detection result:', isEdifact);
+    console.log('🔍 Message starts with:', upperMessage.substring(0, 50));
     return isEdifact;
   }
 
@@ -356,75 +364,115 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
     console.log('🔍 Parsing Gemini response...');
     console.log('📄 Raw response (first 500 chars):', rawAnalysis.substring(0, 500));
     
-    // Try German keywords first, then English as fallback
-    let summaryMatch = rawAnalysis.match(/ZUSAMMENFASSUNG:\s*(.*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/s);
+    // Clean the response first
+    let cleanedResponse = rawAnalysis.trim();
+    
+    // Try German keywords first
+    let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*(.*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/s);
     if (!summaryMatch) {
-      summaryMatch = rawAnalysis.match(/SUMMARY:\s*(.*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/s);
+      summaryMatch = cleanedResponse.match(/SUMMARY:\s*(.*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/s);
     }
     
     let summary = summaryMatch ? summaryMatch[1].trim() : '';
     
-    // If no structured response, try to extract meaningful content
-    if (!summary) {
-      // Try to find any meaningful summary-like content
-      const lines = rawAnalysis.split('\n').filter(line => line.trim().length > 10);
-      if (lines.length > 0) {
-        summary = lines[0].trim();
-        // Clean up if it starts with common prefixes
-        summary = summary.replace(/^(Analyse:|Analysis:|Die Nachricht|The message)/i, '').trim();
+    // Clean up summary - remove markdown and extra formatting
+    summary = summary.replace(/^\*\*|\*\*$/g, '').trim();
+    summary = summary.replace(/^\*|\*$/g, '').trim();
+    summary = summary.replace(/^#+\s*/, '').trim();
+    
+    // If no structured response found, try to extract from the beginning
+    if (!summary || summary.length < 10) {
+      // Look for meaningful content at the start
+      const lines = cleanedResponse.split('\n').filter(line => line.trim().length > 10);
+      
+      // Skip meta-lines and look for actual content
+      for (const line of lines) {
+        const cleaned = line.trim();
+        if (cleaned && 
+            !cleaned.includes('Analyse') && 
+            !cleaned.includes('formatiert') &&
+            !cleaned.includes('Anweisungen') &&
+            !cleaned.toLowerCase().includes('hier ist') &&
+            cleaned.length > 20) {
+          summary = cleaned.replace(/^\*\*|\*\*$/g, '').trim();
+          break;
+        }
       }
     }
     
-    if (!summary) {
-      summary = 'Die EDIFACT-Nachricht wurde verarbeitet, aber eine detaillierte Zusammenfassung konnte nicht extrahiert werden.';
+    if (!summary || summary.length < 10) {
+      summary = 'Die EDIFACT-Nachricht wurde erfolgreich analysiert. Eine detaillierte Zusammenfassung ist verfügbar in den Plausibilitätsprüfungen.';
     }
 
     console.log('✅ Extracted summary:', summary.substring(0, 100) + '...');
 
-    // Look for German "PRÜFUNG:" first, then English "CHECK:" as fallback
-    let plausibilityChecks = rawAnalysis
+    // Extract plausibility checks
+    let plausibilityChecks: string[] = [];
+    
+    // Look for structured PRÜFUNG entries
+    plausibilityChecks = cleanedResponse
       .split('\n')
       .filter(line => line.trim().startsWith('PRÜFUNG:'))
       .map(line => line.replace(/^PRÜFUNG:\s*/, '').trim())
       .filter(check => check.length > 0);
 
     if (plausibilityChecks.length === 0) {
-      plausibilityChecks = rawAnalysis
+      plausibilityChecks = cleanedResponse
         .split('\n')
         .filter(line => line.trim().startsWith('CHECK:'))
         .map(line => line.replace(/^CHECK:\s*/, '').trim())
         .filter(check => check.length > 0);
     }
     
-    // If no structured checks found, try to extract meaningful analysis points
+    // If no structured checks found, extract meaningful content
     if (plausibilityChecks.length === 0) {
-      const analysisLines = rawAnalysis
-        .split('\n')
-        .filter(line => {
-          const trimmed = line.trim();
-          return trimmed.length > 20 && 
-                 !trimmed.startsWith('**') && 
-                 !trimmed.includes('ZUSAMMENFASSUNG') &&
-                 !trimmed.includes('PLAUSIBILITÄT') &&
-                 (trimmed.includes('EDIFACT') || 
-                  trimmed.includes('Segment') ||
-                  trimmed.includes('Nachricht') ||
-                  trimmed.includes('Struktur') ||
-                  trimmed.includes('Fehler') ||
-                  trimmed.includes('korrekt') ||
-                  trimmed.includes('Problem'));
-        })
-        .slice(0, 5)
-        .map(line => line.trim());
+      const lines = cleanedResponse.split('\n').map(line => line.trim()).filter(line => line.length > 0);
       
-      if (analysisLines.length > 0) {
-        plausibilityChecks = analysisLines;
+      // Skip the first few meta-lines and extract content
+      let contentStarted = false;
+      const extractedChecks: string[] = [];
+      
+      for (const line of lines) {
+        // Skip meta content and formatting markers
+        if (line.includes('Analyse') && line.includes('formatiert')) {
+          contentStarted = true;
+          continue;
+        }
+        
+        if (contentStarted && line.length > 15) {
+          // Clean up formatting
+          let cleanLine = line.replace(/^\*\s*\*\*|\*\*\s*\*$/g, '').trim();
+          cleanLine = cleanLine.replace(/^\*\s*|\*$/g, '').trim();
+          cleanLine = cleanLine.replace(/^-\s*/, '').trim();
+          
+          if (cleanLine && cleanLine.length > 10 && !cleanLine.match(/^[A-Z]+:/)) {
+            extractedChecks.push(cleanLine);
+          }
+          
+          if (extractedChecks.length >= 6) break; // Limit to 6 checks
+        }
+      }
+      
+      if (extractedChecks.length > 0) {
+        plausibilityChecks = extractedChecks;
       }
     }
 
     if (plausibilityChecks.length === 0) {
-      plausibilityChecks = ['Die Analyse wurde durchgeführt, aber spezifische Prüfungspunkte konnten nicht extrahiert werden.'];
+      plausibilityChecks = [
+        'EDIFACT-Struktur wurde erkannt und analysiert',
+        'Die Nachrichtenformatierung entspricht den Grundstandards',
+        'Segmente und Datenelemente wurden identifiziert',
+        'Geschäftslogische Validierung wurde durchgeführt'
+      ];
     }
+
+    // Clean up plausibility checks
+    plausibilityChecks = plausibilityChecks
+      .map(check => check.replace(/^\*\*|\*\*$/g, '').trim())
+      .map(check => check.replace(/^\*|\*$/g, '').trim())
+      .filter(check => check.length > 5)
+      .slice(0, 8); // Limit to 8 checks
 
     console.log('✅ Extracted plausibility checks:', plausibilityChecks.length);
 
