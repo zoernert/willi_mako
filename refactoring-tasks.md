@@ -111,6 +111,8 @@ Dieses Dokument gliedert den gesamten Refactoring-Prozess in einzelne, atomare A
 - ✅ Auth endpoints properly configured for `/auth/` paths
 - ✅ Frontend builds successfully with updated endpoint configuration
 - ✅ Existing AuthContext integration continues to work
+- ✅ **CRITICAL FIX:** Infinite loop problems resolved in Workspace, NotesManager, and DocumentsManager components
+- ✅ Dashboard API endpoint mismatches fixed to prevent rate limit exhaustion
 
 **Referenzen:**
 -   `docs/new-architecture.md` (Abschnitt API Gateway)

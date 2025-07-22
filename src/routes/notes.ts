@@ -28,7 +28,12 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
     };
     
     const notes = await notesService.getUserNotes(userId, filters);
-    return res.json(notes);
+    
+    // Return structured response for frontend compatibility
+    return res.json({
+      notes: notes || [],
+      total: notes ? notes.length : 0
+    });
     
   } catch (error) {
     console.error('Error getting notes:', error);
