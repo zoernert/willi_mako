@@ -65,6 +65,11 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
     }
   }, [createNoteDialog, addToNoteDialog]);
 
+  // Debug: Log when selectedText changes
+  useEffect(() => {
+    console.log('TextSelectionMenu received selectedText:', selectedText);
+  }, [selectedText]);
+
   const fetchUserNotes = async () => {
     try {
       const data = await notesApi.getNotes();
@@ -84,11 +89,12 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
   };
 
   const handleCreateNewNote = () => {
+    console.log('Creating new note with selected text:', selectedText);
     setNoteTitle('');
     setNoteContent(selectedText);
     setNoteTags([]);
     setCreateNoteDialog(true);
-    onClose();
+    // Don't close the menu immediately - wait for dialog to open
   };
 
   const handleAddToExistingNote = () => {
@@ -115,21 +121,15 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
         source_context: sourceContext
       };
 
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(noteData)
-      });
-
-      if (response.ok) {
+      const newNote = await notesApi.createNote(noteData);
+      
+      if (newNote) {
         showSnackbar('Notiz erfolgreich erstellt', 'success');
         setCreateNoteDialog(false);
         setNoteTitle('');
         setNoteContent('');
         setNoteTags([]);
+        onClose(); // Close the menu after successful save
       } else {
         throw new Error('Failed to create note');
       }
@@ -161,19 +161,13 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
         source_context: sourceContext
       };
 
-      const response = await fetch(`/api/notes/${selectedNote.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(noteData)
-      });
-
-      if (response.ok) {
+      const updatedNote = await notesApi.updateNote(selectedNote.id, noteData);
+      
+      if (updatedNote) {
         showSnackbar('Text zur Notiz hinzugefügt', 'success');
         setAddToNoteDialog(false);
         setSelectedNote(null);
+        onClose();
       } else {
         throw new Error('Failed to update note');
       }
@@ -217,7 +211,10 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
       {/* Create New Note Dialog */}
       <Dialog 
         open={createNoteDialog} 
-        onClose={() => setCreateNoteDialog(false)}
+        onClose={() => {
+          setCreateNoteDialog(false);
+          onClose(); // Close the menu when dialog closes
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -270,7 +267,10 @@ const TextSelectionMenu: React.FC<TextSelectionMenuProps> = ({
         </DialogContent>
         <DialogActions>
           <Button 
-            onClick={() => setCreateNoteDialog(false)}
+            onClick={() => {
+              setCreateNoteDialog(false);
+              onClose(); // Close menu when canceling
+            }}
             startIcon={<CancelIcon />}
           >
             Abbrechen

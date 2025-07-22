@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Snackbar, Alert, AlertColor } from '@mui/material';
 
 interface SnackbarState {
@@ -32,13 +32,13 @@ export const SnackbarProvider: React.FC<SnackbarProviderProps> = ({ children }) 
     severity: 'info',
   });
 
-  const showSnackbar = (message: string, severity: AlertColor = 'info') => {
+  const showSnackbar = useCallback((message: string, severity: AlertColor = 'info') => {
     setSnackbar({
       open: true,
       message,
       severity,
     });
-  };
+  }, []);
 
   const handleClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') {

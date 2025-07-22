@@ -81,7 +81,8 @@ const Chat: React.FC = () => {
   const textSelection = useTextSelection({
     sourceType: 'chat',
     sourceId: chatId || 'unknown',
-    containerId: 'chat-messages-container'
+    containerId: 'chat-messages-container',
+    ready: !chatLoading && messages.length > 0 // Wait for chat to load and have messages
   });
 
   const scrollToBottom = () => {
