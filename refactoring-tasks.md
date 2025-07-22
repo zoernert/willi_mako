@@ -113,6 +113,8 @@ Dieses Dokument gliedert den gesamten Refactoring-Prozess in einzelne, atomare A
 - ✅ Existing AuthContext integration continues to work
 - ✅ **CRITICAL FIX:** Infinite loop problems resolved in Workspace, NotesManager, and DocumentsManager components
 - ✅ Dashboard API endpoint mismatches fixed to prevent rate limit exhaustion
+- ✅ **TEXT SELECTION FIX:** Text selection functionality working in Chat and FAQ pages for creating notes
+- ✅ **DOCUMENTS FIX:** Documents infinite loop resolved, proper API endpoint created
 
 **Referenzen:**
 -   `docs/new-architecture.md` (Abschnitt API Gateway)

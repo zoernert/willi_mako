@@ -68,6 +68,52 @@ const upload = multer({
 router.use(authenticateToken);
 
 /**
+ * GET /api/documents
+ * Get all documents for the authenticated user with pagination
+ */
+router.get('/', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 12;
+    const search = req.query.search as string;
+    const processed = req.query.processed as string;
+
+    // Calculate offset from page
+    const offset = (page - 1) * limit;
+
+    // Get documents with filters
+    const documents = await workspaceService.getUserDocuments(userId, {
+      limit,
+      offset,
+      is_processed: processed !== undefined ? processed === 'true' : undefined
+    });
+
+    // For now, return a simple structure - we can optimize the count later
+    const totalPages = Math.ceil((documents?.length || 0) / limit) || 1;
+
+    return res.json({
+      documents: documents || [],
+      total: documents?.length || 0,
+      page,
+      totalPages
+    });
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    return res.status(500).json({ 
+      documents: [],
+      total: 0,
+      page: 1,
+      totalPages: 1
+    });
+  }
+});
+
+/**
  * POST /api/documents/upload
  * Upload and process a document
  */
@@ -270,53 +316,9 @@ router.get('/:id/download', async (req: AuthenticatedRequest, res) => {
 
 /**
  * GET /api/documents/:id/preview
- * Preview document content (for text files)
- */
-router.get('/:id/preview', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const documentId = req.params.id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    // Get document
-    const document = await workspaceService.getDocumentById(documentId, userId);
-    if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    // Check if file exists
-    if (!document.file_path || !fs.existsSync(document.file_path)) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-
-    // Only allow preview for text files
-    if (document.mime_type !== 'text/plain' && document.mime_type !== 'text/markdown') {
-      return res.status(400).json({ error: 'Preview not available for this file type' });
-    }
-
-    // Read file content
-    const content = fs.readFileSync(document.file_path, 'utf-8');
-    
-    return res.json({
-      content: content.substring(0, 10000), // Limit to 10KB for preview
-      is_truncated: content.length > 10000,
-      original_length: content.length
-    });
-
-  } catch (error) {
-    console.error('Error previewing document:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * GET /api/documents/:id/preview
  * Stream document content for preview (for DocumentPreview component)
  */
-router.get('/:id/preview', authenticateToken, async (req: AuthenticatedRequest, res) => {
+router.get('/:id/preview', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
     const documentId = req.params.id;

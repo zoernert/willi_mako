@@ -141,7 +141,7 @@ export const documentsApi = {
     if (params?.search) searchParams.set('search', params.search);
     if (params?.processed !== undefined) searchParams.set('processed', params.processed.toString());
     
-    const url = `/api/workspace/documents${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    const url = `${API_ENDPOINTS.documents.list}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     return apiClient.get(url);
   },
 
