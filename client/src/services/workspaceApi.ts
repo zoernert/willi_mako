@@ -8,6 +8,26 @@ export const workspaceApi = {
     return apiClient.get(API_ENDPOINTS.workspace.settings);
   },
 
+  // Get workspace dashboard data (stats, usage, etc.)
+  getDashboard: (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.dashboard);
+  },
+
+  // Get storage usage information
+  getStorageUsage: (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.storage);
+  },
+
+  // Clean up unused storage
+  cleanupStorage: (): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.workspace.cleanup);
+  },
+
+  // Export user workspace data
+  exportData: (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.export);
+  },
+
   // Update workspace settings
   updateSettings: (settings: Partial<WorkspaceSettings>): Promise<WorkspaceSettings> => {
     return apiClient.put(API_ENDPOINTS.workspace.settings, settings);
@@ -15,7 +35,7 @@ export const workspaceApi = {
 
   // Delete all workspace data
   deleteAllData: (): Promise<void> => {
-    return apiClient.delete('/api/workspace/delete-all');
+    return apiClient.delete(API_ENDPOINTS.workspace.deleteData);
   },
 
   // Global search across documents, notes, and chats

@@ -6,7 +6,6 @@ import {
   Tab,
   Typography,
   Paper,
-  Grid,
   Card,
   CardContent,
   LinearProgress,
@@ -26,6 +25,7 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
+import { workspaceApi } from '../services/workspaceApi';
 import NotesManager from '../components/Workspace/NotesManager';
 import DocumentsManager from '../components/Workspace/DocumentsManager';
 import WorkspaceSettings from '../components/Workspace/WorkspaceSettings';
@@ -81,19 +81,7 @@ const Workspace: React.FC = () => {
   const fetchWorkspaceStats = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/workspace/settings', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch workspace stats');
-      }
-
-      const data = await response.json();
+      const data = await workspaceApi.getDashboard();
       setStats(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -264,16 +252,6 @@ const Workspace: React.FC = () => {
                     Workspace-Übersicht
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip 
-                      label={`${stats.totalDocuments} Docs`} 
-                      size="small" 
-                      color="primary" 
-                    />
-                    <Chip 
-                      label={`${stats.totalNotes} Notizen`} 
-                      size="small" 
-                      color="secondary" 
-                    />
                     <IconButton size="small">
                       {showMobileStats ? '▲' : '▼'}
                     </IconButton>
@@ -306,44 +284,15 @@ const Workspace: React.FC = () => {
 
           {/* Desktop: Full Stats Grid */}
           {!isMobile && (
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <DocumentsIcon color="primary" />
-                      <Box>
-                        <Typography variant="h6" component="div">
-                          {stats.totalDocuments}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Dokumente
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <NotesIcon color="primary" />
-                      <Box>
-                        <Typography variant="h6" component="div">
-                          {stats.totalNotes}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Notizen
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 3, 
+                mb: 4 
+              }}
+            >
+              <Box sx={{ flexGrow: 1, minWidth: { xs: '100%', sm: '45%', md: '22%' } }}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -365,9 +314,9 @@ const Workspace: React.FC = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
 
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Box sx={{ flexGrow: 1, minWidth: { xs: '100%', sm: '45%', md: '22%' } }}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -385,8 +334,8 @@ const Workspace: React.FC = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           )}
         </>
       )}

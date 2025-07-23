@@ -190,21 +190,16 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     throw new AppError('Message content is required', 400);
   }
   
-  // Verify chat belongs to user
-  const chat = await pool.query(
-    'SELECT id FROM chats WHERE id = $1 AND user_id = $2',
+  // Verify chat belongs to user and get flip_mode_used status
+  const chatResult = await pool.query(
+    'SELECT id, flip_mode_used FROM chats WHERE id = $1 AND user_id = $2',
     [chatId, userId]
   );
   
-  if (chat.rows.length === 0) {
+  if (chatResult.rows.length === 0) {
     throw new AppError('Chat not found', 404);
   }
-  
-  // Get user preferences
-  const userPreferences = await pool.query(
-    'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
-    [userId]
-  );
+  const chat = chatResult.rows[0];
   
   // Save user message
   const userMessage = await pool.query(
@@ -212,77 +207,66 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     [chatId, 'user', content]
   );
   
-  // Get previous messages for context
+  // Check if Flip Mode should be activated
+  if (!chat.flip_mode_used) {
+    const clarificationResult = await flipModeService.analyzeClarificationNeed(content, userId);
+    if (clarificationResult.needsClarification) {
+      const clarificationMessageContent = JSON.stringify({
+          type: 'clarification',
+          clarificationResult,
+      });
+      const assistantMessage = await pool.query(
+        'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
+        [chatId, 'assistant', clarificationMessageContent, { type: 'clarification' }]
+      );
+      await pool.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
+      return res.json({
+        success: true,
+        data: {
+          userMessage: userMessage.rows[0],
+          assistantMessage: assistantMessage.rows[0],
+          type: 'clarification'
+        }
+      });
+    }
+  }
+
+  // Proceed with normal response generation if flip mode is not needed or already used
   const previousMessages = await pool.query(
     'SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
     [chatId]
   );
-  
-  // Check if Flip Mode should be activated BEFORE getting extensive context
-  const clarificationResult = await flipModeService.analyzeClarificationNeed(content, userId);
-  
-  if (clarificationResult.needsClarification) {
-    // Save AI response with clarification
-    const clarificationMessage = {
-      type: 'clarification',
-      content: 'Ich möchte Ihnen die bestmögliche Antwort geben! Mit ein paar zusätzlichen Informationen kann ich Ihnen eine viel zielgerichtetere Antwort liefern.',
-      clarificationResult,
-      reasoning: clarificationResult.reasoning
-    };
-    
-    const assistantMessage = await pool.query(
-      'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
-      [chatId, 'assistant', JSON.stringify(clarificationMessage), JSON.stringify({ 
-        type: 'clarification', 
-        sessionId: clarificationResult.sessionId,
-        ambiguityScore: clarificationResult.ambiguityScore
-      })]
-    );
-    
-    // Update chat timestamp
-    await pool.query(
-      'UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [chatId]
-    );
-    
-    return res.json({
-      success: true,
-      data: {
-        userMessage: userMessage.rows[0],
-        assistantMessage: assistantMessage.rows[0],
-        type: 'clarification'
-      }
-    });
-  }
-
-  // Get relevant context using advanced retrieval ONLY if no clarification needed
+  const userPreferences = await pool.query(
+    'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
+    [userId]
+  );
   const contextResults = await retrieval.getContextualCompressedResults(
     content,
     userPreferences.rows[0] || {},
     10
   );
-  
-  const publicContext = contextResults
-    .map(result => result.payload.text)
-    .join('\n\n');
-
-  // NEW: Determine optimal context using ContextManager
+  const publicContext = contextResults.map(result => result.payload.text).join('\n\n');
   const { userContext, contextDecision } = await contextManager.determineOptimalContext(
     content,
     userId,
-    previousMessages.rows.slice(-5) // Last 5 messages for context
+    previousMessages.rows.slice(-5)
   );
 
-  let aiResponse: string;
-  let responseMetadata: any = { 
+  let aiResponse;
+  let responseMetadata: {
+    contextSources: number;
+    userContextUsed: boolean;
+    contextReason: string;
+    userDocumentsUsed?: number;
+    userNotesUsed?: number;
+    contextSummary?: string;
+  } = { 
     contextSources: contextResults.length,
     userContextUsed: contextDecision.useUserContext,
     contextReason: contextDecision.reason
   };
 
-  // Generate AI response with or without user context
   if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
-    // Use enhanced response with user context
     aiResponse = await geminiService.generateResponseWithUserContext(
       previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
       publicContext,
@@ -290,7 +274,6 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
       userContext.userNotes,
       userPreferences.rows[0] || {}
     );
-    
     responseMetadata = {
       ...responseMetadata,
       userDocumentsUsed: userContext.userDocuments.length,
@@ -298,7 +281,6 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
       contextSummary: userContext.contextSummary
     };
   } else {
-    // Use standard response with public context only
     aiResponse = await geminiService.generateResponse(
       previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
       publicContext,
@@ -306,43 +288,22 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     );
   }
   
-  // Save AI response with enhanced metadata
   const assistantMessage = await pool.query(
     'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
     [chatId, 'assistant', aiResponse, JSON.stringify(responseMetadata)]
   );
    
-  // Update chat timestamp
-  await pool.query(
-    'UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-    [chatId]
-  );
+  await pool.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
 
-  // Check if this is the first assistant message in this chat
-  const messageCount = await pool.query(
-    'SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2',
-    [chatId, 'assistant']
-  );
-
+  const messageCountResult = await pool.query('SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2', [chatId, 'assistant']);
   let updatedChatTitle = null;
-
-  // Generate and update chat title if this is the first AI response
-  if (parseInt(messageCount.rows[0].count) === 1) {
+  if (parseInt(messageCountResult.rows[0].count) === 1) {
     try {
-      const generatedTitle = await geminiService.generateChatTitle(
-        userMessage.rows[0].content,
-        aiResponse
-      );
-      
-      await pool.query(
-        'UPDATE chats SET title = $1 WHERE id = $2',
-        [generatedTitle, chatId]
-      );
-      
+      const generatedTitle = await geminiService.generateChatTitle(userMessage.rows[0].content, aiResponse);
+      await pool.query('UPDATE chats SET title = $1 WHERE id = $2', [generatedTitle, chatId]);
       updatedChatTitle = generatedTitle;
     } catch (error) {
       console.error('Error generating chat title:', error);
-      // Continue without updating title if generation fails
     }
   }
 
@@ -351,124 +312,85 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     data: {
       userMessage: userMessage.rows[0],
       assistantMessage: assistantMessage.rows[0],
-      updatedChatTitle: updatedChatTitle,
+      updatedChatTitle,
       type: 'normal'
     }
   });
 }));
 
-// Handle clarification response
-router.post('/chats/:chatId/clarification', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { chatId } = req.params;
-  const { sessionId, responses } = req.body;
-  const userId = req.user!.id;
-  
-  if (!sessionId || !responses) {
-    throw new AppError('Session ID and responses are required', 400);
-  }
-  
-  // Verify chat belongs to user
-  const chat = await pool.query(
-    'SELECT id FROM chats WHERE id = $1 AND user_id = $2',
-    [chatId, userId]
-  );
-  
-  if (chat.rows.length === 0) {
-    throw new AppError('Chat not found', 404);
-  }
-  
-  // Record clarification responses
-  for (const response of responses) {
-    await flipModeService.recordClarificationResponse(
-      sessionId,
-      response.questionId,
-      response.answer
+// Generate response (with or without clarification)
+router.post('/chats/:chatId/generate', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { chatId } = req.params;
+    const { originalQuery, clarificationResponses } = req.body;
+    const userId = req.user!.id;
+
+    if (!originalQuery) {
+        throw new AppError('Original query is required', 400);
+    }
+
+    // Verify chat belongs to user
+    const chat = await pool.query('SELECT id FROM chats WHERE id = $1 AND user_id = $2', [chatId, userId]);
+    if (chat.rows.length === 0) {
+        throw new AppError('Chat not found', 404);
+    }
+
+    // Build enhanced query with clarification context (live or from profile)
+    const enhancedQuery = await flipModeService.buildEnhancedQuery(originalQuery, userId, clarificationResponses);
+
+    // Get user preferences for retrieval
+    const userPreferences = await pool.query(
+        'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
+        [userId]
     );
-  }
-  
-  // Build enhanced query with clarification context
-  const enhancedQuery = await flipModeService.buildEnhancedQuery(sessionId);
-  
-  // Get user preferences
-  const userPreferences = await pool.query(
-    'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
-    [userId]
-  );
-  
-  // Get relevant context using enhanced query
-  const contextResults = await retrieval.getContextualCompressedResults(
-    enhancedQuery,
-    userPreferences.rows[0] || {},
-    10
-  );
-  
-  const context = contextResults
-    .map(result => result.payload.text)
-    .join('\n\n');
-  
-  // Get previous messages for context, but exclude clarification messages
-  const previousMessages = await pool.query(
-    'SELECT role, content, metadata FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
-    [chatId]
-  );
 
-  // Filter out clarification messages and get original user query
-  const filteredMessages = previousMessages.rows.filter(msg => {
-    try {
-      const metadata = msg.metadata ? 
-        (typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata) : {};
-      return metadata.type !== 'clarification';
-    } catch (error) {
-      console.error('Error parsing metadata:', error, msg.metadata);
-      return true; // Include message if metadata parsing fails
-    }
-  });
+    // Get relevant context using enhanced query
+    const contextResults = await retrieval.getContextualCompressedResults(
+        enhancedQuery,
+        userPreferences.rows[0] || {},
+        10
+    );
+    const context = contextResults.map(result => result.payload.text).join('\n\n');
 
-  // Use the enhanced query as the latest user message
-  const messagesForGeneration = filteredMessages.map(msg => ({ role: msg.role, content: msg.content }));
-  
-  // Replace the last user message with the enhanced query
-  if (messagesForGeneration.length > 0 && messagesForGeneration[messagesForGeneration.length - 1].role === 'user') {
-    messagesForGeneration[messagesForGeneration.length - 1].content = enhancedQuery;
-  } else {
+    // Get previous messages for context
+    const previousMessages = await pool.query(
+        'SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
+        [chatId]
+    );
+    const messagesForGeneration = previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content }));
+    
+    // Add the enhanced query as the current user turn
     messagesForGeneration.push({ role: 'user', content: enhancedQuery });
-  }
 
-  // Generate enhanced AI response
-  const aiResponse = await geminiService.generateResponse(
-    messagesForGeneration,
-    context,
-    userPreferences.rows[0] || {},
-    true // isEnhancedQuery = true
-  );
+    // Generate enhanced AI response
+    const aiResponse = await geminiService.generateResponse(
+        messagesForGeneration,
+        context,
+        userPreferences.rows[0] || {},
+        true // isEnhancedQuery = true
+    );
 
-  // Save AI response
-  const assistantMessage = await pool.query(
-    'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
-    [chatId, 'assistant', aiResponse, JSON.stringify({ 
-      contextSources: contextResults.length,
-      clarificationSessionId: sessionId,
-      enhancedQuery: true
-    })]
-  );
-  
-  // Update chat timestamp
-  await pool.query(
-    'UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-    [chatId]
-  );
-  
-  // Mark session as complete
-  await flipModeService.completeSession(sessionId);
-  
-  res.json({
-    success: true,
-    data: {
-      assistantMessage: assistantMessage.rows[0],
-      type: 'enhanced_response'
-    }
-  });
+    // Save AI response
+    const assistantMessage = await pool.query(
+        'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
+        [chatId, 'assistant', aiResponse, JSON.stringify({
+            contextSources: contextResults.length,
+            enhancedQuery: true,
+            originalQuery: originalQuery,
+        })]
+    );
+
+    // Mark flip mode as used for this chat and update timestamp
+    await pool.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP, flip_mode_used = TRUE WHERE id = $1', [chatId]);
+
+    res.json({
+        success: true,
+        data: {
+            assistantMessage: assistantMessage.rows[0],
+            type: 'enhanced_response'
+        }
+    });
 }));
+
 
 // Delete chat
 router.delete('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

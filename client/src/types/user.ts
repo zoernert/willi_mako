@@ -7,6 +7,14 @@ export interface UserPreferences {
     };
   }
   
+  export interface FlipModePreferences {
+    energy_type?: string;
+    stakeholder_perspective?: string;
+    context_specificity?: string;
+    detail_level?: string;
+    topic_focus?: string;
+  }
+  
   export interface UserProfile {
     name: string;
     company: string;
@@ -20,4 +28,5 @@ export interface UserPreferences {
     role: 'admin' | 'user';
     created_at: string;
     preferences?: UserPreferences;
+    flip_mode_preferences?: FlipModePreferences;
   }

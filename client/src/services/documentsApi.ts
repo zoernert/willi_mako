@@ -101,7 +101,7 @@ export const documentsApi = {
 
   // Get document preview (returns blob)
   getDocumentPreview: async (documentId: string): Promise<Blob> => {
-    const response = await fetch(API_ENDPOINTS.documents.preview(documentId), {
+    const response = await fetch(`${apiClient.getBaseURL()}${API_ENDPOINTS.documents.preview(documentId)}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
@@ -116,7 +116,7 @@ export const documentsApi = {
 
   // Download document (returns blob)
   downloadDocument: async (documentId: string): Promise<Blob> => {
-    const response = await fetch(API_ENDPOINTS.documents.download(documentId), {
+    const response = await fetch(`${apiClient.getBaseURL()}${API_ENDPOINTS.documents.download(documentId)}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },

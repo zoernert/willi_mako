@@ -23,7 +23,7 @@ import {
   DateRange as DateIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 
 interface Document {
   id: string;
@@ -46,12 +46,14 @@ const Documents: React.FC = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/user/documents');
-      setDocuments(response.data.data);
+      // For now, use the admin documents endpoint - this might need to be changed to a public library endpoint
+      const documentsData = await apiClient.get<Document[]>('/admin/documents');
+      setDocuments(Array.isArray(documentsData) ? documentsData : []);
       setError(null);
     } catch (error) {
       console.error('Error fetching documents:', error);
       setError('Fehler beim Laden der Dokumente');
+      setDocuments([]); // Ensure documents is always an array
     } finally {
       setLoading(false);
     }
@@ -75,7 +77,7 @@ const Documents: React.FC = () => {
 
   const handleDownload = async (documentId: string, title: string) => {
     try {
-      const response = await axios.get(`/user/documents/${documentId}`);
+      await apiClient.get(`/admin/documents/${documentId}/download`);
       // In a real implementation, this would download the file
       showSnackbar(`Download für "${title}" gestartet`, 'info');
     } catch (error) {

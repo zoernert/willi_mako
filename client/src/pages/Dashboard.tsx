@@ -30,7 +30,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 
 interface UserStats {
   totalChats: number;
@@ -79,22 +79,22 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       // Fetch user stats
-      const statsResponse = await axios.get('/api/v2/user/stats');
-      setStats(statsResponse.data.data || {});
+      const statsResponse = await apiClient.get<UserStats>('/v2/user/stats');
+      setStats(statsResponse || null);
       
       // Fetch recent chats
-      const chatsResponse = await axios.get('/api/chat/chats');
-      const chatsData = chatsResponse.data.data || [];
+      const chatsResponse = await apiClient.get<RecentChat[]>('/chat/chats');
+      const chatsData = chatsResponse || [];
       setRecentChats(Array.isArray(chatsData) ? chatsData.slice(0, 5) : []);
       
       // Fetch documents
-      const documentsResponse = await axios.get('/api/documents');
-      const documentsData = documentsResponse.data.data || [];
+      const documentsResponse = await apiClient.get<{ documents: Document[] }>('/documents');
+      const documentsData = documentsResponse?.documents || [];
       setDocuments(Array.isArray(documentsData) ? documentsData.slice(0, 5) : []);
       
       // Fetch latest FAQs
-      const faqsResponse = await axios.get('/api/faqs?limit=3');
-      const faqsData = faqsResponse.data.data || [];
+      const faqsResponse = await apiClient.get<FAQ[]>('/faqs?limit=3');
+      const faqsData = faqsResponse || [];
       setFaqs(Array.isArray(faqsData) ? faqsData : []);
       
     } catch (error) {
@@ -111,10 +111,10 @@ const Dashboard: React.FC = () => {
 
   const handleStartNewChat = async () => {
     try {
-      const response = await axios.post('/chat/chats', { 
+      const response = await apiClient.post<{ id: string }>('/chat/chats', { 
         title: 'Neuer Chat' 
       });
-      navigate(`/chat/${response.data.data.id}`);
+      navigate(`/chat/${response.id}`);
     } catch (error) {
       console.error('Error creating new chat:', error);
     }
@@ -122,8 +122,8 @@ const Dashboard: React.FC = () => {
 
   const handleStartChatFromFAQ = async (faqId: string) => {
     try {
-      const response = await axios.post(`/faqs/${faqId}/start-chat`);
-      navigate(`/chat/${response.data.data.chat.id}`);
+      const response = await apiClient.post<{ chat: { id: string } }>(`/faqs/${faqId}/start-chat`);
+      navigate(`/chat/${response.chat.id}`);
     } catch (error) {
       console.error('Error starting chat from FAQ:', error);
     }
@@ -359,16 +359,16 @@ const Dashboard: React.FC = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2, height: 400 }}>
             <Typography variant="h6" gutterBottom>
-              Verfügbare Dokumente
+              Meine Dokumente
             </Typography>
             <Divider sx={{ mb: 2 }} />
             {documents.length === 0 ? (
               <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="300px">
                 <DocumentIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
                 <Typography variant="body2" color="text.secondary" textAlign="center">
-                  Noch keine Dokumente verfügbar.
+                  Noch keine Dokumente in Ihrem Workspace.
                   <br />
-                  Dokumente werden von Administratoren bereitgestellt.
+                  Laden Sie Dokumente in Ihrem Workspace hoch.
                 </Typography>
               </Box>
             ) : (
@@ -393,7 +393,7 @@ const Dashboard: React.FC = () => {
                 {documents.map((doc) => (
                   <ListItem key={doc.id} sx={{ borderRadius: 1, mb: 1, p: 0 }}>
                     <ListItemButton
-                      onClick={() => navigate('/documents')}
+                      onClick={() => navigate('/workspace')}
                       sx={{ borderRadius: 1 }}
                     >
                       <ListItemIcon>
