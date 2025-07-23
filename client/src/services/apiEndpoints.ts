@@ -34,15 +34,15 @@ export const API_ENDPOINTS = {
 
   // Documents
   documents: {
-    list: '/documents',
-    upload: '/documents/upload',
-    uploadMultiple: '/documents/upload-multiple',
-    detail: (documentId: string) => `/documents/${documentId}`,
-    update: (documentId: string) => `/documents/${documentId}`,
-    preview: (documentId: string) => `/documents/${documentId}/preview`,
-    download: (documentId: string) => `/documents/${documentId}/download`,
-    delete: (documentId: string) => `/documents/${documentId}`,
-    reprocess: (documentId: string) => `/documents/${documentId}/reprocess`,
+    list: '/api/documents',
+    upload: '/api/documents/upload',
+    uploadMultiple: '/api/documents/upload-multiple',
+    detail: (documentId: string) => `/api/documents/${documentId}`,
+    update: (documentId: string) => `/api/documents/${documentId}`,
+    preview: (documentId: string) => `/api/documents/${documentId}/preview`,
+    download: (documentId: string) => `/api/documents/${documentId}/download`,
+    delete: (documentId: string) => `/api/documents/${documentId}`,
+    reprocess: (documentId: string) => `/api/documents/${documentId}/reprocess`,
   },
 
   // Workspace
