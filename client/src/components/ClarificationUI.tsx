@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -12,7 +12,6 @@ import {
   Stack,
   Alert,
   Divider,
-  IconButton,
   Tooltip,
   LinearProgress,
 } from '@mui/material';
@@ -24,6 +23,8 @@ import {
   ArrowForward as ArrowForwardIcon,
   SkipNext as SkipNextIcon,
 } from '@mui/icons-material';
+import { userApi } from '../services/userApi';
+import { FlipModePreferences } from '../types/user';
 
 interface ClarificationQuestion {
   id: string;
@@ -46,6 +47,7 @@ interface ClarificationUIProps {
   clarificationResult: ClarificationResult;
   onSubmit: (responses: { questionId: string; answer: string }[]) => void;
   onSkip: () => void;
+  onGenerate: (responses?: { questionId: string; answer: string }[]) => Promise<void>;
   loading?: boolean;
 }
 
@@ -69,11 +71,26 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
   clarificationResult,
   onSubmit,
   onSkip,
+  onGenerate,
   loading = false,
 }) => {
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   
+  useEffect(() => {
+    const fetchPreferences = async () => {
+        try {
+            const prefs = await userApi.getFlipModePreferences();
+            if (prefs) {
+                setResponses(prefs as Record<string, string>);
+            }
+        } catch (error) {
+            console.error("Failed to fetch flip mode preferences", error);
+        }
+    };
+    fetchPreferences();
+  }, []);
+
   const { suggestedQuestions, reasoning, ambiguityScore, detectedTopics } = clarificationResult;
   const currentQuestion = suggestedQuestions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === suggestedQuestions.length - 1;
@@ -102,13 +119,18 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
       questionId,
       answer,
     }));
-    
     onSubmit(responseArray);
+    onGenerate(responseArray);
   };
+
+  const handleSkip = () => {
+    onSkip();
+    onGenerate(); // Generate with saved preferences
+  }
   
   const canProceed = responses[currentQuestion?.id];
-  const answeredCount = Object.keys(responses).length;
-  const progressPercentage = (answeredCount / suggestedQuestions.length) * 100;
+  const answeredCount = Object.keys(responses).filter(key => suggestedQuestions.some(q => q.id === key)).length;
+  const progressPercentage = suggestedQuestions.length > 0 ? (answeredCount / suggestedQuestions.length) * 100 : 0;
   
   if (!currentQuestion) {
     return null;
@@ -143,7 +165,7 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
             Ich möchte Ihnen die bestmögliche Antwort geben! Mit ein paar zusätzlichen Informationen 
-            kann ich Ihnen eine viel zielgerichtetere Antwort liefern.
+            kann ich Ihnen eine viel zielgerichtetere Antwort liefern. Ihre Antworten werden für zukünftige Anfragen gespeichert.
           </Typography>
         </Alert>
         
@@ -160,15 +182,6 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
           <LinearProgress
             variant="determinate"
             value={progressPercentage}
-            sx={{
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: '#e0e0e0',
-              '& .MuiLinearProgress-bar': {
-                borderRadius: 3,
-                backgroundColor: '#1976d2',
-              },
-            }}
           />
         </Box>
         
@@ -214,25 +227,13 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
                 <RadioGroup
                   value={responses[currentQuestion.id] || ''}
                   onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                  sx={{ gap: 1 }}
                 >
-                  {currentQuestion.options.map((option, index) => (
+                  {currentQuestion.options.map((option) => (
                     <FormControlLabel
-                      key={index}
+                      key={option}
                       value={option}
                       control={<Radio />}
                       label={option}
-                      sx={{
-                        mx: 0,
-                        p: 1,
-                        borderRadius: 1,
-                        '&:hover': {
-                          backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                        },
-                        '& .MuiFormControlLabel-label': {
-                          fontSize: '0.95rem',
-                        },
-                      }}
                     />
                   ))}
                 </RadioGroup>
@@ -259,11 +260,11 @@ const ClarificationUI: React.FC<ClarificationUIProps> = ({
         </Box>
         
         <Box>
-          <Tooltip title="Ohne Präzisierung fortfahren">
+          <Tooltip title="Ohne Präzisierung fortfahren und gespeicherte Voreinstellungen nutzen">
             <Button
               variant="outlined"
               color="secondary"
-              onClick={onSkip}
+              onClick={handleSkip}
               size="small"
               startIcon={<SkipNextIcon />}
               sx={{ mr: 1 }}

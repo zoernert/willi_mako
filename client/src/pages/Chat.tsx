@@ -28,7 +28,8 @@ import QuickNoteButton from '../components/Workspace/QuickNoteButton';
 import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import { useTextSelection } from '../hooks/useTextSelection';
-import axios from 'axios';
+import { chatApi } from '../services/chatApi';
+import { userApi } from '../services/userApi';
 
 interface Message {
   id: string;
@@ -106,9 +107,9 @@ const Chat: React.FC = () => {
   const fetchChats = async () => {
     try {
       console.log('Fetching chats...');
-      const response = await axios.get('/chat/chats');
-      console.log('Chats fetched:', response.data.data);
-      setChats(response.data.data);
+      const chats = await chatApi.getChats();
+      console.log('Chats fetched:', chats);
+      setChats(chats);
     } catch (error) {
       console.error('Error fetching chats:', error);
       setError('Fehler beim Laden der Chats');
@@ -122,10 +123,10 @@ const Chat: React.FC = () => {
       // Reset loading state for message sending when switching chats
       setLoading(false);
       setIsTyping(false);
-      const response = await axios.get(`/chat/chats/${id}`);
-      console.log('Chat fetched:', response.data.data);
-      setCurrentChat(response.data.data.chat);
-      setMessages(response.data.data.messages || []);
+      const chatData = await chatApi.getChat(id);
+      console.log('Chat fetched:', chatData);
+      setCurrentChat(chatData.chat);
+      setMessages(chatData.messages || []);
       setError(null);
     } catch (error) {
       console.error('Error fetching chat:', error);
@@ -139,11 +140,8 @@ const Chat: React.FC = () => {
   const createNewChat = async () => {
     try {
       console.log('Creating new chat...');
-      const response = await axios.post('/chat/chats', { 
-        title: 'Neuer Chat' 
-      });
-      console.log('New chat created:', response.data.data);
-      const newChat = response.data.data;
+      const newChat = await chatApi.createChat('Neuer Chat');
+      console.log('New chat created:', newChat);
       setChats([newChat, ...chats]);
       setCurrentChat(newChat);
       setMessages([]);
@@ -178,20 +176,14 @@ const Chat: React.FC = () => {
 
     try {
       const response = await Promise.race([
-        axios.post(`/chat/chats/${currentChat.id}/messages`, {
-          content: messageContent
-        }),
+        chatApi.sendMessage(currentChat.id, messageContent),
         timeoutPromise
       ]) as any;
 
       console.log('API Response:', response);
 
-      // Validate response structure
-      if (!response.data || !response.data.data) {
-        throw new Error('Invalid response format: missing data');
-      }
-
-      const { userMessage, assistantMessage, updatedChatTitle, type } = response.data.data;
+      // The chatApi returns the data directly, no need to access .data.data
+      const { userMessage, assistantMessage, updatedChatTitle, type } = response;
       
       // Validate required fields
       if (!userMessage || !assistantMessage) {
@@ -255,8 +247,23 @@ const Chat: React.FC = () => {
     }
   };
 
-  const handleClarificationSubmit = async (responses: { questionId: string; answer: string }[]) => {
-    if (!currentChat || !pendingClarification?.sessionId) {
+  const handleClarificationPreferenceSubmit = async (responses: { questionId: string; answer: string }[]) => {
+    try {
+      const preferencesToUpdate: { [key: string]: string } = responses.reduce((acc, r) => {
+        acc[r.questionId] = r.answer;
+        return acc;
+      }, {} as { [key: string]: string });
+      
+      await userApi.updateFlipModePreferences(preferencesToUpdate);
+      showSnackbar('Flip Mode Voreinstellungen gespeichert.', 'success');
+    } catch (error) {
+      console.error('Fehler beim Speichern der Flip Mode Voreinstellungen:', error);
+      showSnackbar('Fehler beim Speichern der Voreinstellungen.', 'error');
+    }
+  };
+
+  const handleClarificationSubmit = async (responses?: { questionId: string; answer: string }[]) => {
+    if (!currentChat || !pendingClarification) {
       showSnackbar('Fehler: Keine aktive Clarification-Session', 'error');
       return;
     }
@@ -264,15 +271,16 @@ const Chat: React.FC = () => {
     setClarificationLoading(true);
 
     try {
-      const response = await axios.post(`/chat/chats/${currentChat.id}/clarification`, {
-        sessionId: pendingClarification.sessionId,
-        responses
-      });
+      // Get the original query from the last user message
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const originalQuery = lastUserMessage?.content || '';
+
+      const response = await chatApi.generateResponse(currentChat.id, originalQuery, responses);
 
       console.log('Clarification response:', response);
 
-      if (response.data?.data?.assistantMessage) {
-        setMessages(prev => [...prev, response.data.data.assistantMessage]);
+      if (response.assistantMessage) {
+        setMessages(prev => [...prev, response.assistantMessage]);
         setPendingClarification(null);
         showSnackbar('Präzisierte Antwort erhalten!', 'success');
       }
@@ -567,7 +575,8 @@ const Chat: React.FC = () => {
                     <ListItem sx={{ alignItems: 'flex-start', mb: 2, px: 0 }}>
                       <ClarificationUI
                         clarificationResult={pendingClarification}
-                        onSubmit={handleClarificationSubmit}
+                        onSubmit={handleClarificationPreferenceSubmit}
+                        onGenerate={handleClarificationSubmit}
                         onSkip={handleClarificationSkip}
                         loading={clarificationLoading}
                       />

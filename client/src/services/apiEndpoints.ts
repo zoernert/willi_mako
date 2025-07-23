@@ -7,6 +7,19 @@ export const API_ENDPOINTS = {
   user: {
     profile: '/v2/user/profile',
     preferences: '/v2/user/preferences',
+    flipModePreferences: '/v2/user/flip-mode-preferences',
+  },
+
+  // Chat
+  chat: {
+    list: '/chat/chats',
+    detail: (chatId: string) => `/chat/chats/${chatId}`,
+    create: '/chat/chats',
+    sendMessage: (chatId: string) => `/chat/chats/${chatId}/messages`,
+    generate: (chatId: string) => `/chat/chats/${chatId}/generate`,
+    clarification: (chatId: string) => `/chat/chats/${chatId}/clarification`,
+    update: (chatId: string) => `/chat/chats/${chatId}`,
+    delete: (chatId: string) => `/chat/chats/${chatId}`,
   },
 
   // Quiz
@@ -48,6 +61,11 @@ export const API_ENDPOINTS = {
   // Workspace
   workspace: {
     settings: '/workspace/settings',
+    dashboard: '/workspace/dashboard', 
+    storage: '/workspace/storage',
+    cleanup: '/workspace/cleanup',
+    export: '/workspace/export',
+    deleteData: '/workspace/data',
     search: '/workspace/search',
     context: '/workspace/context',
   },

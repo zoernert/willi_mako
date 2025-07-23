@@ -5,6 +5,7 @@ import { PasswordUtils } from '../../../utils/password';
 import { DatabaseHelper } from '../../../utils/database';
 import { AppError } from '../../../utils/errors';
 import jwt from 'jsonwebtoken';
+import UserPreferencesService from '../../../modules/user/user.service';
 
 export class UserController {
 
@@ -189,4 +190,67 @@ export class UserController {
             next(error);
         }
     };
+
+    public getFlipModePreferences = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = req.user!.id;
+            const preferences = await UserPreferencesService.getFlipModePreferences(userId);
+            ResponseUtils.success(res, preferences, 'Flip mode preferences retrieved successfully.');
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public updateFlipModePreferences = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = req.user!.id;
+            const preferences = req.body;
+            const updatedPreferences = await UserPreferencesService.saveFlipModePreferences(userId, preferences);
+            ResponseUtils.success(res, updatedPreferences, 'Flip mode preferences updated successfully.');
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public getUserStats = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            if (!req.user) {
+                throw new AppError('User not authenticated', 401);
+            }
+            
+            const userId = req.user.id;
+
+            // Get total chats count
+            const totalChatsResult = await DatabaseHelper.executeQuerySingle<{ count: string }>(
+                'SELECT COUNT(*) as count FROM chats WHERE user_id = $1',
+                [userId]
+            );
+
+            // Get total messages count (user messages only)
+            const totalMessagesResult = await DatabaseHelper.executeQuerySingle<{ count: string }>(
+                'SELECT COUNT(*) as count FROM messages m JOIN chats c ON m.chat_id = c.id WHERE c.user_id = $1 AND m.role = $2',
+                [userId, 'user']
+            );
+
+            // Get recent activity (messages in last 30 days)
+            const recentActivityResult = await DatabaseHelper.executeQuerySingle<{ count: string }>(
+                `SELECT COUNT(*) as count FROM messages m 
+                 JOIN chats c ON m.chat_id = c.id 
+                 WHERE c.user_id = $1 AND m.role = $2 AND m.created_at >= NOW() - INTERVAL '30 days'`,
+                [userId, 'user']
+            );
+
+            const stats = {
+                totalChats: parseInt(totalChatsResult?.count || '0'),
+                totalMessages: parseInt(totalMessagesResult?.count || '0'),
+                recentActivity: parseInt(recentActivityResult?.count || '0')
+            };
+
+            ResponseUtils.success(res, stats, 'User statistics retrieved successfully');
+        } catch (error) {
+            console.error('Error fetching user stats:', error);
+            next(error);
+        }
+    };
 }
+

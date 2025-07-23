@@ -67,7 +67,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [open, documentId, loadDocument, previewUrl]);
+  }, [open, documentId, loadDocument]);
 
   const handleDownload = async () => {
     try {

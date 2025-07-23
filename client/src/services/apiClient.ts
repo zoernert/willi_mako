@@ -61,6 +61,10 @@ class ApiClient {
     );
   }
 
+  public getBaseURL(): string {
+    return this.client.defaults.baseURL || '';
+  }
+
   private formatError(error: AxiosError<ApiResponse>): Error {
     if (error.response?.data?.error) {
       return new Error(error.response.data.error);

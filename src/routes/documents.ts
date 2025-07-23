@@ -338,34 +338,34 @@ router.get('/:id/preview', async (req: AuthenticatedRequest, res) => {
       return res.status(500).json({ error: 'Document metadata incomplete' });
     }
 
+    const filePath = path.resolve(document.file_path);
+
     // Check if file exists
-    if (!fs.existsSync(document.file_path)) {
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found on server' });
     }
 
     // Set appropriate headers based on file type
-    const mimeType = document.mime_type;
-    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Type', document.mime_type);
     res.setHeader('Content-Disposition', `inline; filename="${document.original_name}"`);
     
-    // For PDFs and images, stream the entire file
-    if (mimeType === 'application/pdf' || mimeType.startsWith('image/')) {
-      return res.sendFile(path.resolve(document.file_path));
-    }
+    const stream = fs.createReadStream(filePath);
     
-    // For text files, send content directly
-    if (mimeType.startsWith('text/')) {
-      const content = fs.readFileSync(document.file_path, 'utf-8');
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      return res.send(content);
-    }
-    
-    // For other types, try to send as download
-    return res.sendFile(path.resolve(document.file_path));
+    stream.on('error', (err) => {
+      console.error('Stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Error streaming file' });
+      }
+    });
+
+    return stream.pipe(res);
 
   } catch (error) {
     console.error('Error streaming document:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    return;
   }
 });
 

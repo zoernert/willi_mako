@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import { API_ENDPOINTS } from './apiEndpoints';
-import { User, UserProfile, UserPreferences } from '../types/user';
+import { User, UserProfile, UserPreferences, FlipModePreferences } from '../types/user';
 
 export const userApi = {
   getUserProfile: (): Promise<User> => {
@@ -14,5 +14,11 @@ export const userApi = {
   },
   updateUserPreferences: (preferencesData: Partial<UserPreferences>): Promise<UserPreferences> => {
     return apiClient.put(API_ENDPOINTS.user.preferences, preferencesData);
+  },
+  getFlipModePreferences: (): Promise<FlipModePreferences> => {
+    return apiClient.get(API_ENDPOINTS.user.flipModePreferences);
+  },
+  updateFlipModePreferences: (preferencesData: Partial<FlipModePreferences>): Promise<FlipModePreferences> => {
+    return apiClient.put(API_ENDPOINTS.user.flipModePreferences, preferencesData);
   },
 };
