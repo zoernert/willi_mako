@@ -136,49 +136,21 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
     try {
       setUploadLoading(true);
-      const token = localStorage.getItem('token');
       const files = Array.from(selectedFiles);
 
-      // Upload files one by one or multiple at once
       if (files.length === 1) {
         const file = files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', documentTitle || file.name);
-        formData.append('description', documentDescription);
-        formData.append('tags', JSON.stringify(documentTags));
-        formData.append('is_ai_context_enabled', aiContextEnabled.toString());
-
-        const response = await fetch('/api/documents/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
+        const metadata = {
+          title: documentTitle || file.name,
+          description: documentDescription,
+          tags: documentTags,
+          is_ai_context_enabled: aiContextEnabled,
+        };
+        await documentsApi.uploadDocument(file, metadata);
       } else {
-        // Multiple file upload
-        const formData = new FormData();
-        files.forEach(file => {
-          formData.append('files', file);
+        await documentsApi.uploadMultipleDocuments(files, { 
+          is_ai_context_enabled: aiContextEnabled 
         });
-        formData.append('is_ai_context_enabled', aiContextEnabled.toString());
-
-        const response = await fetch('/api/documents/upload-multiple', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error('Upload failed');
-        }
       }
 
       showSnackbar(

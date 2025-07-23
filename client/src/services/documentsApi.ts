@@ -2,6 +2,13 @@ import apiClient from './apiClient';
 import { API_ENDPOINTS } from './apiEndpoints';
 import { Document, UploadResponse } from '../types/workspace';
 
+interface UploadMetadata {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  is_ai_context_enabled?: boolean;
+}
+
 export const documentsApi = {
   // Get all documents
   getDocuments: (): Promise<Document[]> => {
@@ -9,9 +16,15 @@ export const documentsApi = {
   },
 
   // Upload a document
-  uploadDocument: (file: File): Promise<UploadResponse> => {
+  uploadDocument: (file: File, metadata?: UploadMetadata): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
+    if (metadata?.title) formData.append('title', metadata.title);
+    if (metadata?.description) formData.append('description', metadata.description);
+    if (metadata?.tags) formData.append('tags', JSON.stringify(metadata.tags));
+    if (metadata?.is_ai_context_enabled !== undefined) {
+      formData.append('is_ai_context_enabled', String(metadata.is_ai_context_enabled));
+    }
     
     return apiClient.post(API_ENDPOINTS.documents.upload, formData, {
       headers: {
@@ -65,11 +78,14 @@ export const documentsApi = {
   },
 
   // Upload multiple documents
-  uploadMultipleDocuments: (files: File[]): Promise<UploadResponse[]> => {
+  uploadMultipleDocuments: (files: File[], metadata?: { is_ai_context_enabled?: boolean }): Promise<UploadResponse[]> => {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
     });
+    if (metadata?.is_ai_context_enabled !== undefined) {
+      formData.append('is_ai_context_enabled', String(metadata.is_ai_context_enabled));
+    }
     
     return apiClient.post(API_ENDPOINTS.documents.uploadMultiple, formData, {
       headers: {
