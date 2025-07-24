@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-// In a real implementation, you would use libraries like 'pdf-parse' for PDFs
-// and 'mammoth' for DOCX files.
+import pdfParse from 'pdf-parse';
+const mammoth = require('mammoth');
 
 interface TextExtractor {
   extract(filePath: string): Promise<string>;
@@ -15,17 +15,27 @@ class PlainTextExtractor implements TextExtractor {
 
 class PdfExtractor implements TextExtractor {
   async extract(filePath: string): Promise<string> {
-    // Placeholder: In a real implementation, use a library like pdf-parse.
-    console.warn(`PDF extraction is not fully implemented. Returning placeholder text for ${path.basename(filePath)}.`);
-    return `[Placeholder for PDF content from ${path.basename(filePath)}]`;
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const data = await pdfParse(dataBuffer);
+      return data.text;
+    } catch (error) {
+      console.error(`Error extracting text from PDF ${path.basename(filePath)}:`, error);
+      return `[Error extracting PDF content from ${path.basename(filePath)}]`;
+    }
   }
 }
 
 class DocxExtractor implements TextExtractor {
   async extract(filePath: string): Promise<string> {
-    // Placeholder: In a real implementation, use a library like mammoth.
-    console.warn(`DOCX extraction is not fully implemented. Returning placeholder text for ${path.basename(filePath)}.`);
-    return `[Placeholder for DOCX content from ${path.basename(filePath)}]`;
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const result = await mammoth.extractRawText({ buffer: dataBuffer });
+      return result.value;
+    } catch (error) {
+      console.error(`Error extracting text from DOCX ${path.basename(filePath)}:`, error);
+      return `[Error extracting DOCX content from ${path.basename(filePath)}]`;
+    }
   }
 }
 

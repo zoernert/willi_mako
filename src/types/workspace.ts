@@ -10,6 +10,7 @@ export interface UserDocument {
   original_name: string;
   is_processed: boolean;
   is_ai_context_enabled: boolean;
+  processing_error?: string | null;
   metadata: Record<string, any>;
   tags: string[];
   created_at: Date;
