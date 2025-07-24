@@ -3,7 +3,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 import pool from '../config/database';
 import geminiService from '../services/gemini';
-import QdrantService from '../services/qdrant';
+import { QdrantService } from '../services/qdrant';
 
 const router = Router();
 

@@ -5,7 +5,8 @@ export interface EdiSegment {
   elements: string[];
   original: string;
   description?: string;
-  subElements?: { value: string; description?: string }[];
+  subElements?: { value: string; description?: string; resolvedName?: string }[];
+  resolvedCodes?: { [key: string]: string }; // For resolved BDEW/EIC codes
 }
 
 export interface ParsedEdiMessage {

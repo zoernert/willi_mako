@@ -18,6 +18,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Chip,
+  Tooltip,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { messageAnalyzerApi, AnalysisResult } from '../services/messageAnalyzerApi';
@@ -144,6 +146,7 @@ const MessageAnalyzerPage: React.FC = () => {
                       <TableCell>Segment</TableCell>
                       <TableCell>Beschreibung</TableCell>
                       <TableCell>Elemente</TableCell>
+                      <TableCell>Aufgelöste Codes</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -152,6 +155,34 @@ const MessageAnalyzerPage: React.FC = () => {
                         <TableCell sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{segment.tag}</TableCell>
                         <TableCell>{segment.description}</TableCell>
                         <TableCell sx={{ fontFamily: 'monospace' }}>{segment.elements.join(' : ')}</TableCell>
+                        <TableCell>
+                          {segment.resolvedCodes && Object.keys(segment.resolvedCodes).length > 0 ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {Object.entries(segment.resolvedCodes).map(([code, companyName]) => (
+                                <Tooltip key={code} title={`Code: ${code}`} placement="top">
+                                  <Chip
+                                    label={`${code}: ${companyName}`}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ 
+                                      fontSize: '0.75rem',
+                                      maxWidth: '100%',
+                                      '& .MuiChip-label': {
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }
+                                    }}
+                                  />
+                                </Tooltip>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                              Keine Codes gefunden
+                            </Typography>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

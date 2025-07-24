@@ -351,7 +351,7 @@ export class QuizService {
     if (searchResults.length === 0) {
         throw new AppError(`No content found for topic: ${topic}`, 404);
     }
-    const sourceContent = searchResults.map(r => r.payload.text);
+    const sourceContent = searchResults.map((r: any) => r.payload.text);
 
     // 2. Generate questions using Gemini
     const generatedQuestionsRaw = await this.geminiService.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);

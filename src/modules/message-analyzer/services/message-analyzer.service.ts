@@ -4,14 +4,22 @@ import { edifactSegmentDefinitions } from './edifact-definitions';
 import { GeminiService } from '../../../services/gemini';
 import { QdrantService } from '../../../services/qdrant';
 import { AppError } from '../../../utils/errors';
+import pool from '../../../config/database';
+import { PostgresCodeLookupRepository } from '../../codelookup/repositories/postgres-codelookup.repository';
+import { CodeLookupService } from '../../codelookup/services/codelookup.service';
 
 export class MessageAnalyzerService implements IMessageAnalyzerService {
   private geminiService: GeminiService;
   private qdrantService: QdrantService;
+  private codeLookupService: CodeLookupService;
 
   constructor() {
     this.geminiService = new GeminiService();
     this.qdrantService = new QdrantService();
+    
+    // Initialize code lookup service
+    const codeLookupRepository = new PostgresCodeLookupRepository(pool);
+    this.codeLookupService = new CodeLookupService(codeLookupRepository);
   }
 
   public async analyze(message: string): Promise<AnalysisResult> {
@@ -79,10 +87,14 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       console.log('🔍 Starting EDIFACT analysis...');
       
       // Simple EDIFACT parsing without using the edifact library for now
-      const segments: EdiSegment[] = this.parseEdifactSimple(message);
-      const parsedMessage: ParsedEdiMessage = { segments };
-      
+      let segments: EdiSegment[] = this.parseEdifactSimple(message);
       console.log('✅ Parsed', segments.length, 'EDIFACT segments');
+      
+      // Enrich segments with code lookup
+      segments = await this.enrichSegmentsWithCodeLookup(segments);
+      console.log('✅ Enriched segments with code lookup');
+      
+      const parsedMessage: ParsedEdiMessage = { segments };
       
       // Get enriched context from vector store
       console.log('🔍 Getting enriched context...');
@@ -159,6 +171,87 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     }
     
     return segments;
+  }
+
+  /**
+   * Löst BDEW/EIC-Codes in den analysierten Segmenten auf
+   */
+  private async enrichSegmentsWithCodeLookup(segments: EdiSegment[]): Promise<EdiSegment[]> {
+    console.log('🔍 Enriching segments with code lookup...');
+    
+    const enrichedSegments = await Promise.all(
+      segments.map(async (segment) => {
+        const enrichedSegment = { ...segment };
+        
+        // Suche nach Codes in den Elements
+        const resolvedCodes: { [key: string]: string } = {};
+        
+        for (let i = 0; i < segment.elements.length; i++) {
+          const element = segment.elements[i];
+          
+          // Prüfe ob das Element ein potentieller BDEW/EIC Code ist
+          if (this.isPotentialEnergyCode(element)) {
+            try {
+              const result = await this.codeLookupService.lookupSingleCode(element);
+              if (result) {
+                resolvedCodes[element] = result.companyName;
+                console.log(`✅ Resolved code ${element} to ${result.companyName}`);
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to resolve code ${element}:`, error);
+            }
+          }
+        }
+        
+        // Behandle NAD-Segmente speziell (Name and Address)
+        if (segment.tag === 'NAD' && segment.elements.length >= 3) {
+          const partyQualifier = segment.elements[0]; // z.B. 'MR' für Marktpartner
+          const code = segment.elements[2]; // Der eigentliche Code
+          
+          if (this.isPotentialEnergyCode(code)) {
+            try {
+              const result = await this.codeLookupService.lookupSingleCode(code);
+              if (result) {
+                resolvedCodes[code] = result.companyName;
+                // Erweitere die Beschreibung für NAD-Segmente
+                enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${result.companyName} (${code})`;
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to resolve NAD code ${code}:`, error);
+            }
+          }
+        }
+        
+        if (Object.keys(resolvedCodes).length > 0) {
+          enrichedSegment.resolvedCodes = resolvedCodes;
+        }
+        
+        return enrichedSegment;
+      })
+    );
+    
+    console.log('✅ Code lookup enrichment completed');
+    return enrichedSegments;
+  }
+
+  /**
+   * Prüft ob ein String ein potentieller BDEW/EIC Code ist
+   */
+  private isPotentialEnergyCode(value: string): boolean {
+    if (!value || typeof value !== 'string') return false;
+    
+    const cleanValue = value.trim();
+    
+    // BDEW-Codes sind typischerweise 13-stellige Zahlen
+    if (/^\d{13}$/.test(cleanValue)) return true;
+    
+    // EIC-Codes haben das Format: 10Y oder 13Y oder 16Y gefolgt von alphanumerischen Zeichen
+    if (/^(10|13|16)Y[A-Z0-9-]{11,13}$/.test(cleanValue)) return true;
+    
+    // Weitere Muster für andere Code-Typen
+    if (/^9\d{11,12}$/.test(cleanValue)) return true; // Codes die mit 9 beginnen
+    
+    return false;
   }
 
   private async getEnrichedAnalysisContext(parsedMessage: ParsedEdiMessage): Promise<{
@@ -240,13 +333,13 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
       // Remove duplicates and get best results
       const uniqueResults = allResults
-        .filter((result, index, self) => 
-          index === self.findIndex(r => r.id === result.id)
+        .filter((result: any, index: number, self: any[]) => 
+          index === self.findIndex((r: any) => r.id === result.id)
         )
-        .sort((a, b) => b.score - a.score)
+        .sort((a: any, b: any) => b.score - a.score)
         .slice(0, 3); // Reduced from 5 to 3 for faster processing
 
-      const context = uniqueResults.map(r => r.payload.text).join('\n\n');
+      const context = uniqueResults.map((r: any) => r.payload.text).join('\n\n');
       console.log('✅ Schema context retrieved, length:', context.length);
       
       return context || `Basis-Dokumentation für ${messageType}-Nachrichtentyp nicht verfügbar.`;
@@ -285,12 +378,13 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       // Create documentation for each segment
       const segmentDocs = uniqueSegments.map(tag => {
         const relevantResults = allResults
-          .filter(r => r.payload.text.toLowerCase().includes(tag.toLowerCase()))
-          .sort((a, b) => b.score - a.score)
+          .filter((r: any) => r.payload.text.toLowerCase().includes(tag.toLowerCase()))
+          .sort((a: any, b: any) => b.score - a.score)
           .slice(0, 1); // Just the best result per segment
         
         if (relevantResults.length > 0) {
-          return `**${tag}:** ${relevantResults[0].payload.text.substring(0, 200)}...`;
+          const result = relevantResults[0] as any;
+          return `**${tag}:** ${result.payload?.text?.substring(0, 200) || 'Standard-Segment'}...`;
         }
         return `**${tag}:** ${edifactSegmentDefinitions[tag] || 'Standard-Segment'}`;
       }).slice(0, 8); // Limit to 8 segments for concise output
@@ -574,7 +668,7 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
       const searchQuery = `EDIFACT Energiemarkt ${keywords.join(' ')} Dokumentation Erklärung`;
       
       const results = await this.qdrantService.searchByText(searchQuery, 3, 0.6);
-      return results.map(r => r.payload.text).join('\n\n');
+      return results.map((r: any) => r.payload.text).join('\n\n');
     } catch (error) {
       console.warn('Error getting general EDIFACT context:', error);
       return '';

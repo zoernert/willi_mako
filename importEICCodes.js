@@ -95,18 +95,18 @@ async function importEICCodes() {
 
     for (const record of records) {
       // Die Spaltennamen im `record` müssen den Spaltenüberschriften in der CSV-Datei entsprechen.
-      // Wir gehen von den folgenden Spaltennamen aus: 'EIC', 'EICLongName', 'DisplayName', 'EICResponsibleUser', 'EICType'
+      // Tatsächliche Spaltennamen: EIC_Code, EIC_Long_Name, EIC_Display_Name, Unternehmen, EIC_Typ
       const query = {
         text: `
           INSERT INTO eic (eic_code, eic_long_name, display_name, eic_responsible_user, eic_type)
           VALUES ($1, $2, $3, $4, $5)
         `,
         values: [
-          record.EIC,
-          record.EICLongName,
-          record.DisplayName,
-          record.EICResponsibleUser,
-          record.EICType
+          record.EIC_Code,
+          record.EIC_Long_Name,
+          record.EIC_Display_Name,
+          record.Unternehmen,
+          record.EIC_Typ
         ],
       };
       await client.query(query);

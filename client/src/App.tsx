@@ -16,6 +16,7 @@ import FAQList from './pages/FAQList';
 import FAQDetail from './pages/FAQDetail';
 import Workspace from './pages/Workspace';
 import MessageAnalyzerPage from './pages/MessageAnalyzer';
+import CodeLookupPage from './pages/CodeLookup';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -113,6 +114,8 @@ function App() {
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
                 <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />
+                <Route path="code-lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
+                <Route path="lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
               </Route>
             </Routes>
           </Router>

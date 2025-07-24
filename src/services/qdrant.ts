@@ -1,357 +1,193 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
+import { QdrantClient } from '@qdrant/js-client-rest';
+import { UserDocument } from '../types/workspace';
+import { v4 as uuidv4 } from 'uuid';
+import { getEmbedding } from './embedding'; // We'll create this next
 
-dotenv.config();
-
-const QDRANT_URL = process.env.QDRANT_URL || 'http://10.0.0.2:6333';
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY || 'str0mdao0';
-const COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'willi';
-
-const qdrantClient = axios.create({
-  baseURL: QDRANT_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'api-key': QDRANT_API_KEY,
-  },
-});
-
-export interface QdrantPoint {
-  id: string;
-  vector: number[];
-  payload: {
-    text: string;
-    metadata?: any;
-    source?: string;
-    timestamp?: string;
-  };
-}
-
-export interface SearchResult {
-  id: string;
-  score: number;
-  payload: {
-    text: string;
-    metadata?: any;
-    source?: string;
-    timestamp?: string;
-  };
-}
+const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
+const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
+const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'workspace_documents';
 
 export class QdrantService {
-  async createCollection(vectorSize: number = 1536) {
+  private client: QdrantClient;
+
+  constructor() {
+    this.client = new QdrantClient({ 
+      url: QDRANT_URL,
+      apiKey: QDRANT_API_KEY,
+      checkCompatibility: false  // Bypass version compatibility check
+    });
+    this.ensureCollection();
+  }
+
+  // Static method for initialization
+  static async createCollection() {
+    const client = new QdrantClient({ 
+      url: QDRANT_URL,
+      apiKey: QDRANT_API_KEY,
+      checkCompatibility: false  // Bypass version compatibility check
+    });
     try {
-      const response = await qdrantClient.put(`/collections/${COLLECTION_NAME}`, {
-        vectors: {
-          size: vectorSize,
-          distance: 'Cosine',
-        },
-        optimizers_config: {
-          default_segment_number: 2,
-        },
-        replication_factor: 2,
-      });
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 409) {
-        console.log('Collection already exists');
-        return { status: 'exists' };
+      const result = await client.getCollections();
+      const collectionExists = result.collections.some(
+        (collection: any) => collection.name === QDRANT_COLLECTION_NAME
+      );
+
+      if (!collectionExists) {
+        await client.createCollection(QDRANT_COLLECTION_NAME, {
+          vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
+        });
+        console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
       }
-      throw error;
-    }
-  }
-
-  async insertPoints(points: QdrantPoint[]) {
-    try {
-      const response = await qdrantClient.put(`/collections/${COLLECTION_NAME}/points`, {
-        points: points,
-      });
-      return response.data;
     } catch (error) {
-      console.error('Error inserting points:', error);
-      throw error;
+      console.error('Error creating Qdrant collection:', error);
     }
   }
 
-  async searchSimilar(
-    queryVector: number[],
-    limit: number = 10,
-    scoreThreshold: number = 0.7
-  ): Promise<SearchResult[]> {
+  // Static method for searching by text (used in faq.ts)
+  static async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+    const client = new QdrantClient({ 
+      url: QDRANT_URL,
+      apiKey: QDRANT_API_KEY,
+      checkCompatibility: false  // Bypass version compatibility check
+    });
     try {
-      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
+      const queryVector = await getEmbedding(query);
+      const results = await client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
-        limit: limit,
+        limit,
         score_threshold: scoreThreshold,
-        with_payload: true,
       });
-      
-      return response.data.result.map((item: any) => ({
-        id: item.id,
-        score: item.score,
-        payload: item.payload,
-      }));
-    } catch (error) {
-      console.error('Error searching similar vectors:', error);
-      throw error;
-    }
-  }
-
-  async searchByText(
-    queryText: string,
-    limit: number = 10,
-    scoreThreshold: number = 0.7
-  ): Promise<SearchResult[]> {
-    try {
-      // Convert text to vector using GeminiService
-      const GeminiService = require('./gemini').default;
-      const queryVector = await GeminiService.generateEmbedding(queryText);
-      
-      return await this.searchSimilar(queryVector, limit, scoreThreshold);
+      return results;
     } catch (error) {
       console.error('Error searching by text:', error);
       return [];
     }
   }
 
-  async deletePoints(pointIds: string[]) {
+  private async ensureCollection() {
     try {
-      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/delete`, {
-        points: pointIds,
+      const result = await this.client.getCollections();
+      const collectionExists = result.collections.some(
+        (collection: any) => collection.name === QDRANT_COLLECTION_NAME
+      );
+
+      if (!collectionExists) {
+        await this.client.createCollection(QDRANT_COLLECTION_NAME, {
+          vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
+        });
+        console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
+      }
+    } catch (error) {
+      console.error('Error ensuring Qdrant collection:', error);
+    }
+  }
+
+  async upsertDocument(document: UserDocument, text: string) {
+    const embedding = await getEmbedding(text);
+
+    await this.client.upsert(QDRANT_COLLECTION_NAME, {
+      wait: true,
+      points: [
+        {
+          id: document.id,
+          vector: embedding,
+          payload: {
+            user_id: document.user_id,
+            document_id: document.id,
+            title: document.title,
+            created_at: document.created_at,
+            text_content_sample: text.substring(0, 200),
+          },
+        },
+      ],
+    });
+  }
+
+  async deleteDocument(documentId: string) {
+    await this.client.delete(QDRANT_COLLECTION_NAME, {
+      points: [documentId],
+    });
+  }
+
+  async search(userId: string, queryText: string, limit: number = 10) {
+    const queryVector = await getEmbedding(queryText);
+
+    const results = await this.client.search(QDRANT_COLLECTION_NAME, {
+      vector: queryVector,
+      limit,
+      filter: {
+        must: [
+          {
+            key: 'user_id',
+            match: {
+              value: userId,
+            },
+          },
+        ],
+      },
+    });
+
+    return results;
+  }
+
+  // Instance method for searching by text (used in message-analyzer and quiz services)
+  async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+    try {
+      const queryVector = await getEmbedding(query);
+      const results = await this.client.search(QDRANT_COLLECTION_NAME, {
+        vector: queryVector,
+        limit,
+        score_threshold: scoreThreshold,
       });
-      return response.data;
+      return results;
     } catch (error) {
-      console.error('Error deleting points:', error);
-      throw error;
+      console.error('Error searching by text:', error);
+      return [];
     }
   }
 
-  async getCollection() {
+  // Method for storing user document chunks
+  async storeUserDocumentChunk(
+    vectorId: string,
+    text: string,
+    documentId: string,
+    userId: string,
+    title: string,
+    chunkIndex: number
+  ) {
     try {
-      const response = await qdrantClient.get(`/collections/${COLLECTION_NAME}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error getting collection info:', error);
-      throw error;
-    }
-  }
-
-  async updatePoint(pointId: string, point: Partial<QdrantPoint>) {
-    try {
-      const response = await qdrantClient.put(`/collections/${COLLECTION_NAME}/points`, {
+      const embedding = await getEmbedding(text);
+      await this.client.upsert(QDRANT_COLLECTION_NAME, {
+        wait: true,
         points: [
           {
-            id: pointId,
-            ...point,
+            id: vectorId,
+            vector: embedding,
+            payload: {
+              user_id: userId,
+              document_id: documentId,
+              title,
+              chunk_index: chunkIndex,
+              text,
+            },
           },
         ],
       });
-      return response.data;
     } catch (error) {
-      console.error('Error updating point:', error);
+      console.error('Error storing document chunk:', error);
       throw error;
     }
   }
 
-  async testConnection(): Promise<void> {
+  // Method for deleting a vector by ID
+  async deleteVector(vectorId: string) {
     try {
-      const response = await qdrantClient.get('/collections');
-      console.log('Qdrant connection test successful');
-    } catch (error) {
-      console.error('Qdrant connection test failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Store user document chunk in vector database
-   */
-  async storeUserDocumentChunk(
-    vectorId: string,
-    chunkText: string,
-    documentId: string,
-    userId: string,
-    documentTitle: string,
-    chunkIndex: number
-  ): Promise<void> {
-    try {
-      // Generate embedding for chunk text
-      const GeminiService = require('./gemini').default;
-      const vector = await GeminiService.generateEmbedding(chunkText);
-      
-      const point: QdrantPoint = {
-        id: vectorId,
-        vector: vector,
-        payload: {
-          text: chunkText,
-          source: 'user_document',
-          metadata: {
-            document_id: documentId,
-            user_id: userId,
-            document_title: documentTitle,
-            chunk_index: chunkIndex,
-            type: 'user_document_chunk'
-          },
-          timestamp: new Date().toISOString()
-        }
-      };
-      
-      await this.insertPoints([point]);
-      
-    } catch (error) {
-      console.error('Error storing user document chunk:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a specific vector by ID
-   */
-  async deleteVector(vectorId: string): Promise<void> {
-    try {
-      await this.deletePoints([vectorId]);
+      await this.client.delete(QDRANT_COLLECTION_NAME, {
+        points: [vectorId],
+      });
     } catch (error) {
       console.error('Error deleting vector:', error);
       throw error;
     }
   }
-
-  /**
-   * Search user documents with personalized context
-   */
-  async searchUserDocuments(
-    queryText: string,
-    userId: string,
-    limit: number = 5,
-    scoreThreshold: number = 0.7
-  ): Promise<SearchResult[]> {
-    try {
-      // Generate embedding for query
-      const GeminiService = require('./gemini').default;
-      const queryVector = await GeminiService.generateEmbedding(queryText);
-      
-      // Search with user document filter
-      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
-        vector: queryVector,
-        limit: limit,
-        score_threshold: scoreThreshold,
-        filter: {
-          must: [
-            {
-              key: 'metadata.type',
-              match: { value: 'user_document_chunk' }
-            },
-            {
-              key: 'metadata.user_id',
-              match: { value: userId }
-            }
-          ]
-        }
-      });
-      
-      return response.data.result || [];
-      
-    } catch (error) {
-      console.error('Error searching user documents:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get all vectors for a specific document
-   */
-  async getDocumentVectors(documentId: string): Promise<SearchResult[]> {
-    try {
-      const response = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
-        vector: Array(1536).fill(0), // Dummy vector for filter-only search
-        limit: 1000,
-        filter: {
-          must: [
-            {
-              key: 'metadata.document_id',
-              match: { value: documentId }
-            }
-          ]
-        }
-      });
-      
-      return response.data.result || [];
-      
-    } catch (error) {
-      console.error('Error getting document vectors:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Search combining public and user content
-   */
-  async searchMixed(
-    queryText: string,
-    userId: string,
-    includeUserContent: boolean = true,
-    limit: number = 10,
-    scoreThreshold: number = 0.7
-  ): Promise<{
-    public_results: SearchResult[];
-    user_results: SearchResult[];
-  }> {
-    try {
-      const GeminiService = require('./gemini').default;
-      const queryVector = await GeminiService.generateEmbedding(queryText);
-      
-      // Search public content
-      const publicResponse = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
-        vector: queryVector,
-        limit: Math.ceil(limit / 2),
-        score_threshold: scoreThreshold,
-        filter: {
-          must_not: [
-            {
-              key: 'metadata.type',
-              match: { value: 'user_document_chunk' }
-            }
-          ]
-        }
-      });
-      
-      let userResults: SearchResult[] = [];
-      
-      if (includeUserContent) {
-        // Search user content
-        const userResponse = await qdrantClient.post(`/collections/${COLLECTION_NAME}/points/search`, {
-          vector: queryVector,
-          limit: Math.ceil(limit / 2),
-          score_threshold: scoreThreshold,
-          filter: {
-            must: [
-              {
-                key: 'metadata.type',
-                match: { value: 'user_document_chunk' }
-              },
-              {
-                key: 'metadata.user_id',
-                match: { value: userId }
-              }
-            ]
-          }
-        });
-        
-        userResults = userResponse.data.result || [];
-      }
-      
-      return {
-        public_results: publicResponse.data.result || [],
-        user_results: userResults
-      };
-      
-    } catch (error) {
-      console.error('Error in mixed search:', error);
-      return {
-        public_results: [],
-        user_results: []
-      };
-    }
-  }
 }
-
-export default new QdrantService();

@@ -1,123 +1,27 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { WorkspaceService } from '../services/workspaceService';
-import { DocumentProcessorService } from '../services/documentProcessor';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { DocumentService } from '../services/documentService';
+import { WorkspaceService } from '../services/workspaceService';
+import path from 'path';
 
 const router = express.Router();
+const documentService = new DocumentService();
 const workspaceService = new WorkspaceService();
-const documentProcessor = new DocumentProcessorService();
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = process.env.UPLOAD_PATH || './uploads';
-    const userDir = path.join(uploadDir, 'user-documents');
-    
-    // Create directories if they don't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
-    }
-    
-    cb(null, userDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
-  }
-});
-
-// File filter to allow only specific file types
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = [
-    'application/pdf',
-    'text/plain',
-    'text/markdown',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword'
-  ];
-  
-  const allowedExtensions = ['.pdf', '.txt', '.md', '.docx', '.doc'];
-  const ext = path.extname(file.originalname).toLowerCase();
-  
-  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Unsupported file type. Allowed types: PDF, TXT, MD, DOCX, DOC'));
-  }
-};
-
-// Configure multer
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '50') * 1024 * 1024 // 50MB default
-  }
+  dest: 'uploads/user-documents/',
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
-// Apply authentication middleware to all routes
 router.use(authenticateToken);
 
 /**
- * GET /api/documents
- * Get all documents for the authenticated user with pagination
+ * POST /api/workspace/documents/upload
+ * Upload a single document
  */
-router.get('/', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 12;
-    const search = req.query.search as string;
-    const processed = req.query.processed as string;
-
-    // Calculate offset from page
-    const offset = (page - 1) * limit;
-
-    // Get documents with filters
-    const documents = await workspaceService.getUserDocuments(userId, {
-      limit,
-      offset,
-      is_processed: processed !== undefined ? processed === 'true' : undefined
-    });
-
-    // For now, return a simple structure - we can optimize the count later
-    const totalPages = Math.ceil((documents?.length || 0) / limit) || 1;
-
-    return res.json({
-      documents: documents || [],
-      total: documents?.length || 0,
-      page,
-      totalPages
-    });
-  } catch (error) {
-    console.error('Error fetching documents:', error);
-    return res.status(500).json({ 
-      documents: [],
-      total: 0,
-      page: 1,
-      totalPages: 1
-    });
-  }
-});
-
-/**
- * POST /api/documents/upload
- * Upload and process a document
- */
-router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, res) => {
+router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -130,72 +34,32 @@ router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, 
 
     const { title, description, tags, is_ai_context_enabled } = req.body;
 
-    // Parse tags if provided
-    let parsedTags: string[] = [];
-    if (tags) {
-      try {
-        parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
-      } catch (error) {
-        parsedTags = typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : [];
-      }
-    }
-
-    // Check storage limit
-    const hasSpace = await workspaceService.checkStorageLimit(userId, req.file.size);
-    if (!hasSpace) {
-      // Delete uploaded file
-      fs.unlinkSync(req.file.path);
-      return res.status(413).json({ error: 'Storage limit exceeded' });
-    }
-
-    // Create document record
-    const documentData = {
+    const document = await documentService.createDocument(userId, {
+      file: req.file,
       title: title || req.file.originalname,
-      description: description || '',
-      file_path: req.file.path,
-      file_size: req.file.size,
-      mime_type: req.file.mimetype,
-      original_name: req.file.originalname,
-      tags: parsedTags,
-      is_ai_context_enabled: is_ai_context_enabled === 'true' || is_ai_context_enabled === true
-    };
+      description,
+      tags: tags ? JSON.parse(tags) : [],
+      is_ai_context_enabled: is_ai_context_enabled === 'true',
+    });
 
-    const document = await workspaceService.createDocument(userId, documentData);
-
-    // Start processing in background
-    documentProcessor.processUserDocument(document.id, userId)
-      .catch(error => {
-        console.error('Error processing document:', error);
-      });
+    // Asynchronously process and index the document
+    documentService.processAndIndexDocument(document.id, userId);
 
     res.status(201).json({
-      ...document,
-      processing_started: true,
-      message: 'Document uploaded successfully, processing started'
+      message: 'Document uploaded successfully. Processing has started.',
+      document,
     });
-    return;
   } catch (error) {
-      console.error('Error uploading document:', error);
-      
-      // Clean up uploaded file if error occurs
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage === 'Storage limit exceeded') {
-        return res.status(413).json({ error: 'Storage limit exceeded' });
-      }
-      
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+    console.error('Error uploading document:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 /**
- * POST /api/documents/upload-multiple
+ * POST /api/workspace/documents/upload-multiple
  * Upload multiple documents
  */
-router.post('/upload-multiple', upload.array('files', 10), async (req: AuthenticatedRequest, res) => {
+router.post('/upload-multiple', upload.array('files', 10), async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -208,188 +72,201 @@ router.post('/upload-multiple', upload.array('files', 10), async (req: Authentic
     }
 
     const { is_ai_context_enabled } = req.body;
-    const results = [];
-    const errors = [];
 
-    // Process each file
-    for (const file of files) {
-      try {
-        // Check storage limit for each file
-        const hasSpace = await workspaceService.checkStorageLimit(userId, file.size);
-        if (!hasSpace) {
-          fs.unlinkSync(file.path);
-          errors.push({ file: file.originalname, error: 'Storage limit exceeded' });
-          continue;
-        }
-
-        // Create document record
-        const documentData = {
+    const documents = await Promise.all(
+      files.map(file =>
+        documentService.createDocument(userId, {
+          file,
           title: file.originalname,
-          description: '',
-          file_path: file.path,
-          file_size: file.size,
-          mime_type: file.mimetype,
-          original_name: file.originalname,
-          tags: [],
-          is_ai_context_enabled: is_ai_context_enabled === 'true' || is_ai_context_enabled === true
-        };
+          is_ai_context_enabled: is_ai_context_enabled === 'true',
+        })
+      )
+    );
 
-        const document = await workspaceService.createDocument(userId, documentData);
-        results.push(document);
+    // Asynchronously process and index each document
+    documents.forEach((doc: any) => documentService.processAndIndexDocument(doc.id, userId));
 
-        // Start processing in background
-        documentProcessor.processUserDocument(document.id, userId)
-          .catch(error => {
-            console.error('Error processing document:', error);
-          });
-
-      } catch (error) {
-        console.error('Error processing file:', file.originalname, error);
-        
-        // Clean up file
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-        
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        errors.push({ file: file.originalname, error: errorMessage });
-      }
-    }
-
-    return res.status(201).json({
-      uploaded: results,
-      errors: errors,
-      message: `${results.length} documents uploaded successfully, ${errors.length} errors`
+    res.status(201).json({
+      message: `${documents.length} documents uploaded successfully. Processing has started.`,
+      documents,
     });
-
   } catch (error) {
     console.error('Error uploading multiple documents:', error);
-    
-    // Clean up any uploaded files
-    const files = req.files as Express.Multer.File[];
-    if (files) {
-      files.forEach(file => {
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workspace/documents
+ * Get all documents for the user
+ */
+router.get('/', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
         }
-      });
+
+        const { page = 1, limit = 12, search, processed } = req.query;
+
+        const documents = await documentService.getUserDocuments(userId, {
+            page: Number(page),
+            limit: Number(limit),
+            search: search as string,
+            processed: processed ? processed === 'true' : undefined,
+        });
+
+        res.json(documents);
+    } catch (error) {
+        console.error('Error fetching documents:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    
-    return res.status(500).json({ error: 'Internal server error' });
-  }
 });
 
 /**
- * GET /api/documents/:id/download
- * Download document file
+ * GET /api/workspace/documents/:id
+ * Get a single document by ID
  */
-router.get('/:id/download', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const documentId = req.params.id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+router.get('/:id', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const document = await documentService.getDocumentById(req.params.id, userId);
+        if (!document) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        res.json(document);
+    } catch (error) {
+        console.error('Error fetching document:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    // Get document
-    const document = await workspaceService.getDocumentById(documentId, userId);
-    if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    // Check if file exists
-    if (!document.file_path || !fs.existsSync(document.file_path)) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-
-    // Send file
-    res.setHeader('Content-Disposition', `attachment; filename="${document.original_name}"`);
-    res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
-    return res.sendFile(path.resolve(document.file_path));
-
-  } catch (error) {
-    console.error('Error downloading document:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
 });
 
 /**
- * GET /api/documents/:id/preview
- * Stream document content for preview (for DocumentPreview component)
+ * PUT /api/workspace/documents/:id
+ * Update document metadata
  */
-router.get('/:id/preview', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user?.id;
-    const documentId = req.params.id;
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+router.put('/:id', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const document = await documentService.updateDocument(req.params.id, userId, req.body);
+        res.json(document);
+    } catch (error) {
+        console.error('Error updating document:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    // Get document info
-    const document = await workspaceService.getUserDocument(userId, documentId);
-    if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    // Validate required fields
-    if (!document.file_path || !document.mime_type) {
-      return res.status(500).json({ error: 'Document metadata incomplete' });
-    }
-
-    const filePath = path.resolve(document.file_path);
-
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found on server' });
-    }
-
-    // Set appropriate headers based on file type
-    res.setHeader('Content-Type', document.mime_type);
-    res.setHeader('Content-Disposition', `inline; filename="${document.original_name}"`);
-    
-    const stream = fs.createReadStream(filePath);
-    
-    stream.on('error', (err) => {
-      console.error('Stream error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Error streaming file' });
-      }
-    });
-
-    return stream.pipe(res);
-
-  } catch (error) {
-    console.error('Error streaming document:', error);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    return;
-  }
 });
 
 /**
- * Error handler for multer
+ * DELETE /api/workspace/documents/:id
+ * Delete a document
  */
-router.use((error: any, req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ error: 'File too large' });
+router.delete('/:id', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        await documentService.deleteDocument(req.params.id, userId);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting document:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(413).json({ error: 'Too many files' });
+});
+
+/**
+ * GET /api/workspace/documents/:id/download
+ * Download a document
+ */
+router.get('/:id/download', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const document = await documentService.getDocumentById(req.params.id, userId);
+        if (!document || !document.file_path) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        res.download(path.resolve(document.file_path), document.original_name);
+    } catch (error) {
+        console.error('Error downloading document:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ error: 'Unexpected file field' });
+});
+
+/**
+ * GET /api/workspace/documents/:id/preview
+ * Get a preview of a document
+ */
+router.get('/:id/preview', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const document = await documentService.getDocumentById(req.params.id, userId);
+        if (!document || !document.file_path) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        res.sendFile(path.resolve(document.file_path));
+    } catch (error) {
+        console.error('Error previewing document:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-  }
-  
-  if (error.message.includes('Unsupported file type')) {
-    return res.status(400).json({ error: error.message });
-  }
-  
-  return next(error);
+});
+
+/**
+ * POST /api/workspace/documents/:id/reprocess
+ * Reprocess a document
+ */
+router.post('/:id/reprocess', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        await documentService.processAndIndexDocument(req.params.id, userId);
+        res.json({ message: 'Document reprocessing started.' });
+    } catch (error) {
+        console.error('Error reprocessing document:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * POST /api/workspace/documents/:id/ai-context
+ * Toggle AI context for a document
+ */
+router.post('/:id/ai-context', async (req: AuthenticatedRequest, res): Promise<any> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { enabled } = req.body;
+        const document = await documentService.updateDocument(req.params.id, userId, { is_ai_context_enabled: enabled });
+        res.json(document);
+    } catch (error) {
+        console.error('Error toggling AI context:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 export default router;

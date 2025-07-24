@@ -4,11 +4,14 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import pool from '../config/database';
 import geminiService from '../services/gemini';
-import QdrantService from '../services/qdrant';
+import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
 
 const router = Router();
+
+// Initialize QdrantService
+const qdrantService = new QdrantService();
 
 // Advanced retrieval service for contextual compression
 class AdvancedRetrieval {
@@ -27,8 +30,7 @@ class AdvancedRetrieval {
       // Search for each variation
       const allResults = [];
       for (const variation of queryVariations) {
-        const variationEmbedding = await geminiService.generateEmbedding(variation);
-        const results = await QdrantService.searchSimilar(variationEmbedding, limit / queryVariations.length);
+        const results = await qdrantService.search('system', variation, limit / queryVariations.length);
         allResults.push(...results);
       }
       
