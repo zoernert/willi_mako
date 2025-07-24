@@ -185,7 +185,7 @@ router.post('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Respon
 // Send message in chat
 router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { chatId } = req.params;
-  const { content } = req.body;
+  const { content, contextSettings } = req.body;
   const userId = req.user!.id;
   
   if (!content) {
@@ -242,16 +242,22 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
     [userId]
   );
-  const contextResults = await retrieval.getContextualCompressedResults(
-    content,
-    userPreferences.rows[0] || {},
-    10
-  );
+  // Handle system knowledge context based on settings
+  let contextResults = [];
+  if (!contextSettings || contextSettings.includeSystemKnowledge) {
+    contextResults = await retrieval.getContextualCompressedResults(
+      content,
+      userPreferences.rows[0] || {},
+      10
+    );
+  }
+  
   const publicContext = contextResults.map(result => result.payload.text).join('\n\n');
   const { userContext, contextDecision } = await contextManager.determineOptimalContext(
     content,
     userId,
-    previousMessages.rows.slice(-5)
+    previousMessages.rows.slice(-5),
+    contextSettings
   );
 
   let aiResponse;
@@ -268,13 +274,24 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     contextReason: contextDecision.reason
   };
 
+  // Determine context mode based on settings
+  let contextMode: 'workspace-only' | 'standard' | 'system-only' = 'standard';
+  if (contextSettings?.useWorkspaceOnly) {
+    contextMode = 'workspace-only';
+  } else if (contextSettings && !contextSettings.includeSystemKnowledge) {
+    contextMode = 'workspace-only';
+  } else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
+    contextMode = 'system-only';
+  }
+
   if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
     aiResponse = await geminiService.generateResponseWithUserContext(
       previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
       publicContext,
       userContext.userDocuments,
       userContext.userNotes,
-      userPreferences.rows[0] || {}
+      userPreferences.rows[0] || {},
+      contextMode
     );
     responseMetadata = {
       ...responseMetadata,

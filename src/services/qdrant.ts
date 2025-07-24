@@ -1,11 +1,11 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { UserDocument } from '../types/workspace';
 import { v4 as uuidv4 } from 'uuid';
-import { getEmbedding } from './embedding'; // We'll create this next
+import geminiService from './gemini';
 
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'workspace_documents';
+const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'ewilli';
 
 export class QdrantService {
   private client: QdrantClient;
@@ -51,7 +51,7 @@ export class QdrantService {
       checkCompatibility: false  // Bypass version compatibility check
     });
     try {
-      const queryVector = await getEmbedding(query);
+      const queryVector = await geminiService.generateEmbedding(query);
       const results = await client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -83,7 +83,7 @@ export class QdrantService {
   }
 
   async upsertDocument(document: UserDocument, text: string) {
-    const embedding = await getEmbedding(text);
+    const embedding = await geminiService.generateEmbedding(text);
 
     await this.client.upsert(QDRANT_COLLECTION_NAME, {
       wait: true,
@@ -110,7 +110,7 @@ export class QdrantService {
   }
 
   async search(userId: string, queryText: string, limit: number = 10) {
-    const queryVector = await getEmbedding(queryText);
+    const queryVector = await geminiService.generateEmbedding(queryText);
 
     const results = await this.client.search(QDRANT_COLLECTION_NAME, {
       vector: queryVector,
@@ -133,7 +133,7 @@ export class QdrantService {
   // Instance method for searching by text (used in message-analyzer and quiz services)
   async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
     try {
-      const queryVector = await getEmbedding(query);
+      const queryVector = await geminiService.generateEmbedding(query);
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -156,7 +156,7 @@ export class QdrantService {
     chunkIndex: number
   ) {
     try {
-      const embedding = await getEmbedding(text);
+      const embedding = await geminiService.generateEmbedding(text);
       await this.client.upsert(QDRANT_COLLECTION_NAME, {
         wait: true,
         points: [
