@@ -33,6 +33,19 @@ export interface GenerateResponse {
   type: 'enhanced_response';
 }
 
+export interface ContextSettings {
+  useWorkspaceOnly: boolean;
+  workspacePriority: 'high' | 'medium' | 'low' | 'disabled';
+  includeUserDocuments: boolean;
+  includeUserNotes: boolean;
+  includeSystemKnowledge: boolean;
+}
+
+export interface SendMessageRequest {
+  content: string;
+  contextSettings?: ContextSettings;
+}
+
 export const chatApi = {
   // Get all user's chats
   getChats: (): Promise<ChatSession[]> => {
@@ -50,8 +63,11 @@ export const chatApi = {
   },
 
   // Send message in chat
-  sendMessage: (chatId: string, content: string): Promise<SendMessageResponse> => {
-    return apiClient.post(API_ENDPOINTS.chat.sendMessage(chatId), { content });
+  sendMessage: (chatId: string, content: string, contextSettings?: ContextSettings): Promise<SendMessageResponse> => {
+    return apiClient.post(API_ENDPOINTS.chat.sendMessage(chatId), { 
+      content, 
+      contextSettings 
+    });
   },
 
   // Send clarification response

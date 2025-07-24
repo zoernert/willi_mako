@@ -19,6 +19,14 @@ export interface ContextDecision {
   reason: string;
 }
 
+export interface ContextSettings {
+  useWorkspaceOnly: boolean;
+  workspacePriority: 'high' | 'medium' | 'low' | 'disabled';
+  includeUserDocuments: boolean;
+  includeUserNotes: boolean;
+  includeSystemKnowledge: boolean;
+}
+
 export class ContextManager {
   private workspaceService: WorkspaceService;
   private notesService: NotesService;
@@ -29,12 +37,13 @@ export class ContextManager {
   }
 
   /**
-   * Determine optimal context for a chat query
+   * Determine optimal context for a chat query with custom context settings
    */
   async determineOptimalContext(
     query: string,
     userId: string,
-    chatHistory: any[] = []
+    chatHistory: any[] = [],
+    contextSettings?: ContextSettings
   ): Promise<{
     publicContext: string[];
     userContext: UserContext;
@@ -44,8 +53,17 @@ export class ContextManager {
       // Get user workspace settings
       const settings = await this.workspaceService.getUserWorkspaceSettings(userId);
       
+      // Apply context settings if provided, otherwise use defaults
+      const effectiveSettings = contextSettings || {
+        useWorkspaceOnly: false,
+        workspacePriority: 'medium',
+        includeUserDocuments: settings.ai_context_enabled,
+        includeUserNotes: settings.ai_context_enabled,
+        includeSystemKnowledge: true,
+      };
+      
       // If AI context is disabled, return empty user context
-      if (!settings.ai_context_enabled) {
+      if (!settings.ai_context_enabled && !contextSettings) {
         return {
           publicContext: [],
           userContext: {
@@ -64,8 +82,29 @@ export class ContextManager {
         };
       }
 
-      // Analyze query relevance for user context
-      const contextDecision = await this.analyzeQueryForUserContext(query, chatHistory);
+      // Handle workspace-only mode
+      if (effectiveSettings.useWorkspaceOnly) {
+        const userContext = await this.gatherUserContext(userId, query, {
+          useUserContext: true,
+          includeDocuments: effectiveSettings.includeUserDocuments,
+          includeNotes: effectiveSettings.includeUserNotes,
+          reason: 'Workspace-only mode selected'
+        });
+
+        return {
+          publicContext: [], // No system knowledge in workspace-only mode
+          userContext,
+          contextDecision: {
+            useUserContext: true,
+            includeDocuments: effectiveSettings.includeUserDocuments,
+            includeNotes: effectiveSettings.includeUserNotes,
+            reason: 'Workspace-only mode selected by user'
+          }
+        };
+      }
+
+      // Standard mode with priority handling
+      const contextDecision = await this.analyzeQueryForUserContext(query, chatHistory, effectiveSettings);
       
       let userContext: UserContext = {
         userDocuments: [],
@@ -80,7 +119,7 @@ export class ContextManager {
       }
 
       return {
-        publicContext: [], // Will be filled by existing retrieval system
+        publicContext: effectiveSettings.includeSystemKnowledge ? [] : [], // Will be handled in route
         userContext,
         contextDecision
       };
@@ -111,9 +150,20 @@ export class ContextManager {
    */
   private async analyzeQueryForUserContext(
     query: string,
-    chatHistory: any[] = []
+    chatHistory: any[] = [],
+    contextSettings?: ContextSettings
   ): Promise<ContextDecision> {
     try {
+      // If context settings are provided with disabled workspace priority, skip analysis
+      if (contextSettings?.workspacePriority === 'disabled') {
+        return {
+          useUserContext: false,
+          includeDocuments: false,
+          includeNotes: false,
+          reason: 'Workspace context disabled by user'
+        };
+      }
+
       // Keywords that suggest personal context might be relevant
       const personalKeywords = [
         'mein', 'meine', 'ich habe', 'wir haben', 'unser', 'unsere',
@@ -135,16 +185,31 @@ export class ContextManager {
       // Use AI to determine if query benefits from personal context
       const aiAnalysis = await this.aiAnalyzeContextRelevance(query, chatHistory);
 
-      const useUserContext = hasPersonalKeywords || recentPersonalMentions || aiAnalysis.relevant;
+      // Apply priority settings
+      let useUserContext = hasPersonalKeywords || recentPersonalMentions || aiAnalysis.relevant;
+      
+      if (contextSettings) {
+        // High priority: always use workspace context
+        if (contextSettings.workspacePriority === 'high') {
+          useUserContext = true;
+        }
+        // Low priority: only use if very clear indicators
+        else if (contextSettings.workspacePriority === 'low') {
+          useUserContext = hasPersonalKeywords && aiAnalysis.relevant;
+        }
+        // Medium priority: default behavior (already set above)
+      }
       
       return {
         useUserContext,
-        includeDocuments: useUserContext && (aiAnalysis.documentsRelevant || hasPersonalKeywords),
-        includeNotes: useUserContext && (aiAnalysis.notesRelevant || hasPersonalKeywords),
-        reason: aiAnalysis.reason || 
-          (hasPersonalKeywords ? 'Query contains personal keywords' : 
-           recentPersonalMentions ? 'Recent conversation mentions personal content' : 
-           'Query appears general, using public context only')
+        includeDocuments: useUserContext && (contextSettings?.includeUserDocuments ?? (aiAnalysis.documentsRelevant || hasPersonalKeywords)),
+        includeNotes: useUserContext && (contextSettings?.includeUserNotes ?? (aiAnalysis.notesRelevant || hasPersonalKeywords)),
+        reason: contextSettings ? 
+          `Context priority: ${contextSettings.workspacePriority}, ${aiAnalysis.reason || 'applied user settings'}` :
+          (aiAnalysis.reason || 
+           (hasPersonalKeywords ? 'Query contains personal keywords' : 
+            recentPersonalMentions ? 'Recent conversation mentions personal content' : 
+            'Query appears general, using public context only'))
       };
 
     } catch (error) {

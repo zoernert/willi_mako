@@ -28,8 +28,9 @@ import QuickNoteButton from '../components/Workspace/QuickNoteButton';
 import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import { useTextSelection } from '../hooks/useTextSelection';
-import { chatApi } from '../services/chatApi';
+import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
+import ContextControlPanel from '../components/Chat/ContextControlPanel';
 
 interface Message {
   id: string;
@@ -75,6 +76,16 @@ const Chat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [pendingClarification, setPendingClarification] = useState<ClarificationResult | null>(null);
   const [clarificationLoading, setClarificationLoading] = useState(false);
+  
+  // Context Settings State
+  const [contextSettings, setContextSettings] = useState<ContextSettings>({
+    useWorkspaceOnly: false,
+    workspacePriority: 'medium',
+    includeUserDocuments: true,
+    includeUserNotes: true,
+    includeSystemKnowledge: true,
+  });
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +187,7 @@ const Chat: React.FC = () => {
 
     try {
       const response = await Promise.race([
-        chatApi.sendMessage(currentChat.id, messageContent),
+        chatApi.sendMessage(currentChat.id, messageContent, contextSettings),
         timeoutPromise
       ]) as any;
 
@@ -392,10 +403,20 @@ const Chat: React.FC = () => {
               <Typography variant="h6">{currentChat.title}</Typography>
             </Box>
 
+            {/* Context Control Panel */}
+            <Box sx={{ px: 2, pt: 2 }}>
+              <ContextControlPanel
+                contextSettings={contextSettings}
+                onSettingsChange={setContextSettings}
+                isOpen={contextPanelOpen}
+                onToggle={() => setContextPanelOpen(!contextPanelOpen)}
+              />
+            </Box>
+
             {/* Messages */}
             <Box 
               id="chat-messages-container"
-              sx={{ flex: 1, overflowY: 'auto', p: 2 }}
+              sx={{ flex: 1, overflowY: 'auto', p: 2, pt: 0 }}
             >
               {chatLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>

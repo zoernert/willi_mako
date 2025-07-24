@@ -2,14 +2,17 @@ import pool from '../config/database';
 import { UserWorkspaceSettings, StorageInfo, WorkspaceDashboard, UserDocument } from '../types/workspace';
 import { NotesService } from './notesService';
 import { DocumentProcessorService } from './documentProcessor';
+import { QdrantService } from './qdrant';
 
 export class WorkspaceService {
   private notesService: NotesService;
   private documentProcessor: DocumentProcessorService;
+  private qdrantService: QdrantService;
 
   constructor() {
     this.notesService = new NotesService();
     this.documentProcessor = new DocumentProcessorService();
+    this.qdrantService = new QdrantService();
   }
 
   /**
@@ -673,6 +676,7 @@ export class WorkspaceService {
       
       // Search documents if type is 'all' or 'documents'
       if (type === 'all' || type === 'documents') {
+        // First search by metadata (title, description, etc.)
         const documentQuery = `
           SELECT 
             'document' as type,
@@ -692,12 +696,18 @@ export class WorkspaceService {
             END as score
           FROM user_documents 
           WHERE user_id = $1 
+            AND is_processed = true
             AND (
               LOWER(title) LIKE $2 
               OR LOWER(description) LIKE $2 
               OR LOWER(original_name) LIKE $2
               OR EXISTS (
-                SELECT 1 FROM unnest(tags) tag 
+                SELECT 1 FROM jsonb_array_elements_text(
+                  CASE 
+                    WHEN jsonb_typeof(tags) = 'array' THEN tags 
+                    ELSE '[]'::jsonb 
+                  END
+                ) tag 
                 WHERE LOWER(tag) LIKE $2
               )
             )
@@ -712,6 +722,7 @@ export class WorkspaceService {
             id: row.id,
             type: 'document',
             title: row.title,
+            content: row.snippet || 'Keine Beschreibung verfügbar',
             snippet: row.snippet || 'Keine Beschreibung verfügbar',
             highlights: [query],
             score: row.score,
@@ -723,6 +734,65 @@ export class WorkspaceService {
             }
           });
         });
+
+        // Then search document content using Qdrant vector search
+        try {
+          const qdrantResults = await this.qdrantService.search(userId, query, Math.min(limit, 10));
+          
+          // Get document metadata for each Qdrant result
+          if (qdrantResults.length > 0) {
+            const documentIds = qdrantResults.map(r => r.payload?.document_id).filter(Boolean);
+            if (documentIds.length > 0) {
+              const docMetadataQuery = `
+                SELECT id, title, original_name, file_size, mime_type, created_at, tags
+                FROM user_documents 
+                WHERE user_id = $1 AND id = ANY($2::uuid[])
+              `;
+              
+              const metadataResult = await client.query(docMetadataQuery, [userId, documentIds]);
+              const metadataMap = new Map(metadataResult.rows.map(row => [row.id, row]));
+              
+              // Add Qdrant results with metadata
+              qdrantResults.forEach(qdrantResult => {
+                if (qdrantResult.payload?.document_id) {
+                  const text = qdrantResult.payload?.text || qdrantResult.payload?.text_content_sample || '';
+                  if (text) {
+                    const metadata = metadataMap.get(qdrantResult.payload.document_id);
+                    if (metadata) {
+                      // Check if we already have this document from metadata search
+                      const existingIndex = results.findIndex(r => r.id === qdrantResult.payload?.document_id);
+                      if (existingIndex >= 0) {
+                        // Update existing result with better content from Qdrant
+                        results[existingIndex].content = text;
+                        results[existingIndex].score = Math.max(results[existingIndex].score, qdrantResult.score || 0.5);
+                      } else {
+                        // Add new result from Qdrant
+                        results.push({
+                          id: qdrantResult.payload.document_id,
+                          type: 'document',
+                          title: metadata.title || qdrantResult.payload.title || 'Untitled Document',
+                          content: text,
+                          snippet: this.truncateText(String(text), 200),
+                          highlights: [query],
+                          score: qdrantResult.score || 0.5,
+                          metadata: {
+                            created_at: metadata.created_at,
+                            file_size: metadata.file_size,
+                            mime_type: metadata.mime_type,
+                            tags: metadata.tags || []
+                          }
+                        });
+                      }
+                    }
+                  }
+                }
+              });
+            }
+          }
+        } catch (qdrantError) {
+          console.error('Error searching Qdrant for document content:', qdrantError);
+          // Continue with metadata-only results
+        }
       }
       
       // Search notes if type is 'all' or 'notes'
@@ -746,7 +816,12 @@ export class WorkspaceService {
               LOWER(title) LIKE $2 
               OR LOWER(content) LIKE $2
               OR EXISTS (
-                SELECT 1 FROM unnest(tags) tag 
+                SELECT 1 FROM jsonb_array_elements_text(
+                  CASE 
+                    WHEN jsonb_typeof(tags) = 'array' THEN tags 
+                    ELSE '[]'::jsonb 
+                  END
+                ) tag 
                 WHERE LOWER(tag) LIKE $2
               )
             )
@@ -761,6 +836,7 @@ export class WorkspaceService {
             id: row.id,
             type: 'note',
             title: row.title,
+            content: row.snippet || '',
             snippet: this.truncateText(row.snippet || '', 200),
             highlights: [query],
             score: row.score,

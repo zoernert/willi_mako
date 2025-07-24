@@ -53,11 +53,12 @@ export class GeminiService {
     messages: ChatMessage[],
     context: string = '',
     userPreferences: any = {},
-    isEnhancedQuery: boolean = false
+    isEnhancedQuery: boolean = false,
+    contextMode?: 'workspace-only' | 'standard' | 'system-only'
   ): Promise<string> {
     try {
       // Prepare system prompt with context
-      const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery);
+      const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
       
       // Format conversation history for function calling
       const conversationHistory = messages.map(msg => ({
@@ -141,8 +142,40 @@ export class GeminiService {
     }
   }
 
-  private buildSystemPrompt(context: string, userPreferences: any, isEnhancedQuery: boolean = false): string {
-    const basePrompt = `Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du hilfst Nutzern bei Fragen rund um:
+  private buildSystemPrompt(
+    context: string, 
+    userPreferences: any, 
+    isEnhancedQuery: boolean = false,
+    contextMode?: 'workspace-only' | 'standard' | 'system-only'
+  ): string {
+    let basePrompt = '';
+
+    // Different prompts based on context mode
+    if (contextMode === 'workspace-only') {
+      basePrompt = `Du bist Mako Willi, ein AI-Assistent für die Analyse persönlicher Dokumente. Du hilfst dabei, spezifische Informationen aus den bereitgestellten Dokumenten zu extrahieren und zu analysieren.
+
+WICHTIG: Du arbeitest ausschließlich mit den bereitgestellten Dokumenteninhalten. Wenn die Information nicht in den Dokumenten zu finden ist, sage dies explizit.
+
+Deine Aufgaben:
+- Extrahiere präzise Informationen aus den bereitgestellten Dokumenten
+- Beantworte Fragen basierend ausschließlich auf dem verfügbaren Dokumenteninhalt
+- Zitiere relevante Stellen aus den Dokumenten
+- Wenn Informationen fehlen, erkläre was in den Dokumenten nicht verfügbar ist
+
+Antworte direkt und konkret basierend auf den verfügbaren Dokumenteninhalten.`;
+    } else if (contextMode === 'system-only') {
+      basePrompt = `Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du nutzt ausschließlich dein allgemeines Wissen über:
+
+- Energiemarkt und Marktkommunikation
+- Regulatorische Anforderungen
+- Geschäftsprozesse in der Energiewirtschaft
+- Technische Standards und Normen
+- Branchenspezifische Herausforderungen
+
+Deine Antworten basieren auf allgemeinem Fachwissen und aktuellen Standards der Energiewirtschaft.`;
+    } else {
+      // Standard mode
+      basePrompt = `Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du hilfst Nutzern bei Fragen rund um:
 
 - Energiemarkt und Marktkommunikation
 - Regulatorische Anforderungen
@@ -154,9 +187,8 @@ Deine Antworten sollen:
 - Präzise und fachlich korrekt sein
 - Praxisnah und umsetzbar sein
 - Aktuelle Marktentwicklungen berücksichtigen
-- Freundlich und professionell formuliert sein
-
-Du kannst auf Deutsch und Englisch antworten, bevorzuge aber Deutsch.`;
+- Freundlich und professionell formuliert sein`;
+    }
 
     let enhancedPrompt = basePrompt;
 
@@ -167,7 +199,14 @@ Du kannst auf Deutsch und Englisch antworten, bevorzuge aber Deutsch.`;
 
     // Add context if available
     if (context && context.trim()) {
-      enhancedPrompt += `\n\nRelevanter Kontext aus der Wissensdatenbank:\n${context}`;
+      if (contextMode === 'workspace-only') {
+        enhancedPrompt += `\n\nVERFÜGBARE DOKUMENTE UND INHALTE:\n${context}`;
+        enhancedPrompt += `\n\nBeantworte die Frage ausschließlich basierend auf den oben bereitgestellten Dokumenteninhalten. Wenn die gesuchte Information nicht verfügbar ist, sage dies explizit.`;
+      } else {
+        enhancedPrompt += `\n\nRelevanter Kontext aus der Wissensdatenbank:\n${context}`;
+      }
+    } else if (contextMode === 'workspace-only') {
+      enhancedPrompt += `\n\nKEINE DOKUMENTE VERFÜGBAR: Es sind keine relevanten Dokumente in Ihrem Workspace verfügbar, die diese Frage beantworten könnten.`;
     }
 
     // Add user preferences if available
@@ -179,21 +218,31 @@ Du kannst auf Deutsch und Englisch antworten, bevorzuge aber Deutsch.`;
       enhancedPrompt += `\n\nBevorzugte Themen: ${userPreferences.preferredTopics.join(', ')}`;
     }
 
-    enhancedPrompt += `\n\nAntworte immer hilfreich und fokussiert auf die Energiewirtschaft.`;
+    if (contextMode === 'workspace-only') {
+      enhancedPrompt += `\n\nAntworte präzise und direkt basierend auf den verfügbaren Dokumenteninhalten.`;
+    } else {
+      enhancedPrompt += `\n\nAntworte immer hilfreich und fokussiert auf die Energiewirtschaft.`;
+    }
 
     return enhancedPrompt;
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // Note: Google Generative AI doesn't have a direct embedding endpoint
-      // We'll use a simple text-to-vector conversion for demonstration
-      // In production, you'd use a proper embedding service
-      const embedding = await this.textToVector(text);
-      return embedding;
+      // Use Google's embedding model
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      
+      const result = await embeddingModel.embedContent(text);
+      
+      if (result.embedding && result.embedding.values) {
+        return result.embedding.values;
+      } else {
+        throw new Error('No embedding returned from API');
+      }
     } catch (error) {
       console.error('Error generating embedding:', error);
-      throw new Error('Failed to generate embedding');
+      // Fallback to hash-based embedding if API fails
+      return this.textToVector(text);
     }
   }
 
@@ -689,31 +738,40 @@ Antworte nur als JSON ohne Markdown-Formatierung:
     publicContext: string,
     userDocuments: string[],
     userNotes: string[],
-    userPreferences: any = {}
+    userPreferences: any = {},
+    contextMode?: 'workspace-only' | 'standard' | 'system-only'
   ): Promise<string> {
     try {
-      // Build enhanced context
-      let enhancedContext = publicContext;
+      // Build enhanced context differently based on context mode
+      let enhancedContext = '';
       
-      if (userDocuments.length > 0) {
-        enhancedContext += '\n\n=== PERSÖNLICHE DOKUMENTE ===\n';
-        enhancedContext += userDocuments.join('\n\n');
+      if (contextMode === 'workspace-only') {
+        // In workspace-only mode, ignore public context and focus on user documents
+        if (userDocuments.length > 0) {
+          enhancedContext += '=== PERSÖNLICHE DOKUMENTE ===\n';
+          enhancedContext += userDocuments.join('\n\n');
+        }
+        
+        if (userNotes.length > 0) {
+          enhancedContext += '\n\n=== PERSÖNLICHE NOTIZEN ===\n';
+          enhancedContext += userNotes.join('\n\n');
+        }
+      } else {
+        // Standard mode: include public context and user content
+        enhancedContext = publicContext;
+        
+        if (userDocuments.length > 0) {
+          enhancedContext += '\n\n=== PERSÖNLICHE DOKUMENTE ===\n';
+          enhancedContext += userDocuments.join('\n\n');
+        }
+        
+        if (userNotes.length > 0) {
+          enhancedContext += '\n\n=== PERSÖNLICHE NOTIZEN ===\n';
+          enhancedContext += userNotes.join('\n\n');
+        }
       }
       
-      if (userNotes.length > 0) {
-        enhancedContext += '\n\n=== PERSÖNLICHE NOTIZEN ===\n';
-        enhancedContext += userNotes.join('\n\n');
-      }
-      
-      // Add instruction for using personal context
-      if (userDocuments.length > 0 || userNotes.length > 0) {
-        enhancedContext += '\n\n=== ANWEISUNGEN ===\n';
-        enhancedContext += 'Du hast Zugang zu persönlichen Dokumenten und Notizen des Nutzers. ';
-        enhancedContext += 'Beziehe diese in deine Antwort ein, wenn sie relevant sind. ';
-        enhancedContext += 'Weise darauf hin, wenn du Informationen aus persönlichen Quellen verwendest.';
-      }
-      
-      return await this.generateResponse(messages, enhancedContext, userPreferences, true);
+      return await this.generateResponse(messages, enhancedContext, userPreferences, true, contextMode);
       
     } catch (error) {
       console.error('Error generating response with user context:', error);
