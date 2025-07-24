@@ -3,16 +3,19 @@ import { UserWorkspaceSettings, StorageInfo, WorkspaceDashboard, UserDocument } 
 import { NotesService } from './notesService';
 import { DocumentProcessorService } from './documentProcessor';
 import { QdrantService } from './qdrant';
+import { TeamService } from './teamService';
 
 export class WorkspaceService {
   private notesService: NotesService;
   private documentProcessor: DocumentProcessorService;
   private qdrantService: QdrantService;
+  private teamService: TeamService;
 
   constructor() {
     this.notesService = new NotesService();
     this.documentProcessor = new DocumentProcessorService();
     this.qdrantService = new QdrantService();
+    this.teamService = new TeamService();
   }
 
   /**
@@ -864,6 +867,281 @@ export class WorkspaceService {
   private truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength).trim() + '...';
+  }
+
+  /**
+   * Team Workspace Methods
+   */
+
+  /**
+   * Get workspace documents including team members' documents
+   */
+  async getTeamWorkspaceDocuments(userId: string): Promise<UserDocument[]> {
+    const client = await pool.connect();
+    
+    try {
+      // Get user's team members including themselves
+      const teamMemberIds = await this.getTeamMemberIds(userId);
+      
+      if (teamMemberIds.length === 0) {
+        // User has no team, return only their documents
+        return this.getUserDocuments(userId);
+      }
+      
+      const result = await client.query(
+        `SELECT ud.*, u.full_name as uploader_name, u.email as uploader_email,
+                CASE WHEN ud.user_id = $1 THEN true ELSE false END as is_own_document
+         FROM user_documents ud
+         JOIN users u ON ud.uploaded_by_user_id = u.id
+         WHERE ud.user_id = ANY($2::uuid[])
+         ORDER BY ud.created_at DESC`,
+        [userId, teamMemberIds]
+      );
+      
+      return result.rows;
+      
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Search workspace content across team documents
+   */
+  async searchTeamWorkspaceContent(
+    userId: string, 
+    query: string, 
+    type: 'all' | 'documents' | 'notes' = 'all',
+    filters?: { scope?: 'own' | 'team' | 'all' },
+    limit: number = 20
+  ): Promise<any[]> {
+    const client = await pool.connect();
+    
+    try {
+      let searchUserIds = [userId];
+      
+      // Get team member IDs if searching team scope
+      if (!filters?.scope || filters.scope !== 'own') {
+        const teamMemberIds = await this.getTeamMemberIds(userId);
+        if (teamMemberIds.length > 0) {
+          searchUserIds = filters?.scope === 'team' 
+            ? teamMemberIds.filter(id => id !== userId)  // Only team members, not self
+            : teamMemberIds; // All including self
+        }
+      }
+      
+      const results: any[] = [];
+      const searchTerm = `%${query.toLowerCase()}%`;
+      
+      // Search documents if type is 'all' or 'documents'
+      if (type === 'all' || type === 'documents') {
+        const documentQuery = `
+          SELECT 
+            'document' as type,
+            ud.id,
+            ud.title,
+            ud.description as snippet,
+            ud.original_name,
+            ud.file_size,
+            ud.mime_type,
+            ud.created_at,
+            ud.tags,
+            ud.user_id,
+            u.full_name as uploader_name,
+            CASE WHEN ud.user_id = $1 THEN true ELSE false END as is_own_document,
+            CASE 
+              WHEN LOWER(ud.title) LIKE $3 THEN 1.0
+              WHEN LOWER(ud.description) LIKE $3 THEN 0.8
+              WHEN LOWER(ud.original_name) LIKE $3 THEN 0.6
+              ELSE 0.4
+            END as score
+          FROM user_documents ud 
+          JOIN users u ON ud.uploaded_by_user_id = u.id
+          WHERE ud.user_id = ANY($2::uuid[])
+            AND ud.is_processed = true
+            AND (
+              LOWER(ud.title) LIKE $3 
+              OR LOWER(ud.description) LIKE $3 
+              OR LOWER(ud.original_name) LIKE $3
+              OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(
+                  CASE 
+                    WHEN jsonb_typeof(ud.tags) = 'array' THEN ud.tags 
+                    ELSE '[]'::jsonb 
+                  END
+                ) tag 
+                WHERE LOWER(tag) LIKE $3
+              )
+            )
+          ORDER BY score DESC, ud.created_at DESC
+          LIMIT $4
+        `;
+        
+        const docResult = await client.query(documentQuery, [userId, searchUserIds, searchTerm, limit]);
+        
+        docResult.rows.forEach(row => {
+          results.push({
+            id: row.id,
+            type: 'document',
+            title: row.title,
+            content: row.snippet || 'Keine Beschreibung verfügbar',
+            snippet: row.snippet || 'Keine Beschreibung verfügbar',
+            highlights: [query],
+            score: row.score,
+            is_own_document: row.is_own_document,
+            uploader_name: row.uploader_name,
+            metadata: {
+              created_at: row.created_at,
+              file_size: row.file_size,
+              mime_type: row.mime_type,
+              tags: row.tags || []
+            }
+          });
+        });
+      }
+      
+      // Search notes - only own notes for now (can be extended later)
+      if ((type === 'all' || type === 'notes') && (!filters?.scope || filters.scope !== 'team')) {
+        const notesQuery = `
+          SELECT 
+            'note' as type,
+            id,
+            title,
+            content as snippet,
+            created_at,
+            tags,
+            true as is_own_document,
+            CASE 
+              WHEN LOWER(title) LIKE $2 THEN 1.0
+              WHEN LOWER(content) LIKE $2 THEN 0.8
+              ELSE 0.4
+            END as score
+          FROM user_notes 
+          WHERE user_id = $1 
+            AND (
+              LOWER(title) LIKE $2 
+              OR LOWER(content) LIKE $2
+              OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(
+                  CASE 
+                    WHEN jsonb_typeof(tags) = 'array' THEN tags 
+                    ELSE '[]'::jsonb 
+                  END
+                ) tag 
+                WHERE LOWER(tag) LIKE $2
+              )
+            )
+          ORDER BY score DESC, created_at DESC
+          LIMIT $3
+        `;
+        
+        const notesResult = await client.query(notesQuery, [userId, searchTerm, limit]);
+        
+        notesResult.rows.forEach(row => {
+          results.push({
+            id: row.id,
+            type: 'note',
+            title: row.title,
+            content: row.snippet || '',
+            snippet: this.truncateText(row.snippet || '', 200),
+            highlights: [query],
+            score: row.score,
+            is_own_document: true,
+            uploader_name: null, // Notes don't have uploaders
+            metadata: {
+              created_at: row.created_at,
+              tags: row.tags || []
+            }
+          });
+        });
+      }
+      
+      // Sort all results by score
+      results.sort((a, b) => b.score - a.score);
+      
+      return results.slice(0, limit);
+      
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Get team member IDs including the user themselves
+   */
+  private async getTeamMemberIds(userId: string): Promise<string[]> {
+    try {
+      const teamId = await this.teamService.getUserTeamId(userId);
+      if (!teamId) {
+        return [userId]; // Return only user if not in team
+      }
+      
+      return await this.teamService.getTeamMemberIds(teamId);
+    } catch (error) {
+      console.error('Error getting team member IDs:', error);
+      return [userId]; // Fallback to user only
+    }
+  }
+
+  /**
+   * Get team workspace dashboard data
+   */
+  async getTeamWorkspaceDashboard(userId: string): Promise<WorkspaceDashboard & {
+    team_info?: {
+      name: string;
+      member_count: number;
+      is_admin: boolean;
+    };
+    team_documents_count?: number;
+    team_recent_documents?: any[];
+  }> {
+    const client = await pool.connect();
+    
+    try {
+      // Get basic workspace dashboard
+      const dashboard = await this.getWorkspaceDashboard(userId);
+      
+      // Get team information
+      const team = await this.teamService.getTeamByUserId(userId);
+      if (!team) {
+        return dashboard; // Return basic dashboard if no team
+      }
+      
+      const isAdmin = await this.teamService.isTeamAdmin(userId, team.id);
+      const teamMemberIds = await this.teamService.getTeamMemberIds(team.id);
+      
+      // Get team documents count (excluding own documents)
+      const teamDocumentsResult = await client.query(
+        'SELECT COUNT(*) as count FROM user_documents WHERE user_id = ANY($1::uuid[]) AND user_id != $2',
+        [teamMemberIds, userId]
+      );
+      const teamDocumentsCount = parseInt(teamDocumentsResult.rows[0].count);
+      
+      // Get recent team documents (excluding own)
+      const recentTeamDocsResult = await client.query(
+        `SELECT ud.*, u.full_name as uploader_name
+         FROM user_documents ud 
+         JOIN users u ON ud.uploaded_by_user_id = u.id
+         WHERE ud.user_id = ANY($1::uuid[]) AND ud.user_id != $2
+         ORDER BY ud.created_at DESC 
+         LIMIT 5`,
+        [teamMemberIds, userId]
+      );
+      
+      return {
+        ...dashboard,
+        team_info: {
+          name: team.name,
+          member_count: team.member_count,
+          is_admin: isAdmin
+        },
+        team_documents_count: teamDocumentsCount,
+        team_recent_documents: recentTeamDocsResult.rows
+      };
+      
+    } finally {
+      client.release();
+    }
   }
 
   /**
