@@ -9,7 +9,7 @@ const CodeLookupPage: React.FC = () => {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
           <ElectricBoltIcon sx={{ mr: 2, fontSize: 40 }} />
-          BDEW/EIC Code-Nachschlag
+          BDEW/EIC Code-Lookup
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
           Durchsuchen Sie deutsche Energiewirtschafts-Codes und finden Sie schnell die zugehörigen Unternehmen

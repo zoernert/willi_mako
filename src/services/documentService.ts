@@ -28,16 +28,15 @@ export class DocumentService {
 
     const query = `
       INSERT INTO user_documents 
-        (id, user_id, name, title, description, original_name, file_path, mime_type, file_size, tags, is_ai_context_enabled, is_processed)
+        (id, user_id, title, description, original_name, file_path, mime_type, file_size, tags, is_ai_context_enabled, is_processed)
       VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false)
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false)
       RETURNING *;
     `;
     
     const values = [
       documentId,
       userId,
-      file.filename,
       title,
       description,
       file.originalname,
@@ -57,22 +56,40 @@ export class DocumentService {
       const doc = await this.getDocumentById(documentId, userId);
       if (!doc || !doc.mime_type || !doc.file_path) {
         console.error(`Document with ID ${documentId} not found or missing required fields.`);
+        await this.updateDocument(documentId, userId, { 
+          is_processed: false,
+          processing_error: 'Document not found or missing required fields'
+        });
         return;
       }
 
       const extractor = getTextExtractor(doc.mime_type);
       const text = await extractor.extract(doc.file_path);
       
+      // Check if text extraction was successful (not just an error message)
+      if (text.startsWith('[Error extracting')) {
+        console.error(`Text extraction failed for document ${documentId}: ${text}`);
+        await this.updateDocument(documentId, userId, { 
+          is_processed: false,
+          processing_error: 'Text extraction failed'
+        });
+        return;
+      }
+      
       // For simplicity, we'll index the entire document text as one vector.
       // In a real-world scenario, you would chunk the text into smaller pieces.
       await this.qdrantService.upsertDocument(doc, text);
 
-      await this.updateDocument(documentId, userId, { is_processed: true });
+      await this.updateDocument(documentId, userId, { 
+        is_processed: true,
+        processing_error: null
+      });
 
     } catch (error) {
       console.error(`Failed to process and index document ${documentId}:`, error);
       await this.updateDocument(documentId, userId, { 
-        is_processed: false
+        is_processed: false,
+        processing_error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
