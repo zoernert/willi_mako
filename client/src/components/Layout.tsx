@@ -68,12 +68,12 @@ const Layout: React.FC = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
-    { text: 'Code-Lookup', icon: <SearchIcon />, path: '/code-lookup' },
     { text: 'Mein Workspace', icon: <DocumentsIcon />, path: '/workspace' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
+    { text: 'Code-Lookup', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
       : []
