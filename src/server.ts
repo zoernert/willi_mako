@@ -16,6 +16,7 @@ import documentsRoutes from './routes/documents';
 import adminRoutes from './routes/admin';
 import { messageAnalyzerRoutes } from './routes/message-analyzer';
 import codesRoutes from './routes/codes';
+import { teamRoutes } from './routes/teams';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -77,6 +78,9 @@ app.use('/admin', authenticateToken, adminQuizRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
+
+// Team routes  
+app.use('/api/teams', teamRoutes);
 
 // Legacy routes (still active)
 app.use('/api/chat', authenticateToken, chatRoutes);
