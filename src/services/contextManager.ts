@@ -2,6 +2,7 @@ import pool from '../config/database';
 import { WorkspaceService } from './workspaceService';
 import { NotesService } from './notesService';
 import geminiService from './gemini';
+import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 export interface UserContext {
   userDocuments: string[];
@@ -178,7 +179,8 @@ Query: "${query}"
 Recent chat history:
 ${chatHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-Respond with JSON only:
+IMPORTANT: Respond with valid JSON only, no markdown formatting or code blocks.
+
 {
   "relevant": boolean,
   "documentsRelevant": boolean,
@@ -199,16 +201,16 @@ Consider:
         false
       );
 
-      try {
-        const analysis = JSON.parse(response);
+      const analysis = safeParseJsonResponse(response);
+      
+      if (analysis) {
         return {
           relevant: analysis.relevant || false,
           documentsRelevant: analysis.documentsRelevant || false,
           notesRelevant: analysis.notesRelevant || false,
           reason: analysis.reason || 'AI analysis completed'
         };
-      } catch (parseError) {
-        console.error('Error parsing AI context analysis:', parseError);
+      } else {
         return {
           relevant: false,
           documentsRelevant: false,

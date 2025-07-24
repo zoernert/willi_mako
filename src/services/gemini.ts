@@ -1,5 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, FunctionDeclarationSchemaType } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import pool from '../config/database';
+import { PostgresCodeLookupRepository } from '../modules/codelookup/repositories/postgres-codelookup.repository';
+import { CodeLookupService } from '../modules/codelookup/services/codelookup.service';
+import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 dotenv.config();
 
@@ -13,9 +17,36 @@ export interface ChatMessage {
 
 export class GeminiService {
   private model;
+  private codeLookupService: CodeLookupService;
 
   constructor() {
-    this.model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    this.model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      tools: [
+        {
+          functionDeclarations: [
+            {
+              name: 'lookup_energy_code',
+              description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
+              parameters: {
+                type: FunctionDeclarationSchemaType.OBJECT,
+                properties: {
+                  code: {
+                    type: FunctionDeclarationSchemaType.STRING,
+                    description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.'
+                  }
+                },
+                required: ['code']
+              }
+            }
+          ]
+        }
+      ]
+    });
+    
+    // Initialize code lookup service
+    const codeLookupRepository = new PostgresCodeLookupRepository(pool);
+    this.codeLookupService = new CodeLookupService(codeLookupRepository);
   }
 
   async generateResponse(
@@ -28,20 +59,85 @@ export class GeminiService {
       // Prepare system prompt with context
       const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery);
       
-      // Format conversation history
-      const conversationHistory = messages
-        .map(msg => `${msg.role}: ${msg.content}`)
-        .join('\n');
+      // Format conversation history for function calling
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' as const : 'model' as const,
+        parts: [{ text: msg.content }]
+      }));
 
-      const fullPrompt = `${systemPrompt}\n\nKonversationsverlauf:\n${conversationHistory}\n\nAssistant:`;
+      // Add system prompt as first message
+      const messagesWithSystem = [
+        { role: 'user' as const, parts: [{ text: systemPrompt }] },
+        ...conversationHistory
+      ];
 
-      const result = await this.generateWithRetry(fullPrompt);
-      const response = await result.response;
+      const chat = this.model.startChat({
+        history: messagesWithSystem
+      });
+
+      const result = await chat.sendMessage(messages[messages.length - 1].content);
+      const response = result.response;
+
+      // Handle function calls
+      const functionCalls = response.functionCalls();
+      if (functionCalls && functionCalls.length > 0) {
+        const functionCall = functionCalls[0]; // Get the first function call
+        const functionResponse = await this.handleFunctionCall(functionCall);
+        
+        // Send function response back to the model
+        const followUpResult = await chat.sendMessage([
+          {
+            functionResponse: {
+              name: functionCall.name,
+              response: functionResponse
+            }
+          }
+        ]);
+        
+        return followUpResult.response.text();
+      }
       
       return response.text();
     } catch (error) {
       console.error('Error generating response:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+      }
       throw new Error('Failed to generate response from Gemini');
+    }
+  }
+
+  private async handleFunctionCall(functionCall: any): Promise<any> {
+    const { name, args } = functionCall;
+    
+    switch (name) {
+      case 'lookup_energy_code':
+        const code = args.code;
+        const result = await this.codeLookupService.lookupSingleCode(code);
+        
+        if (result) {
+          return {
+            found: true,
+            code: result.code,
+            companyName: result.companyName,
+            codeType: result.codeType,
+            source: result.source,
+            validFrom: result.validFrom,
+            validTo: result.validTo
+          };
+        } else {
+          return {
+            found: false,
+            code: code,
+            message: 'Kein Unternehmen für diesen Code gefunden.'
+          };
+        }
+      
+      default:
+        return { error: `Unbekannte Funktion: ${name}` };
     }
   }
 
@@ -634,7 +730,10 @@ Antworte nur als JSON ohne Markdown-Formatierung:
       
       Anfrage: ${query}
       
-      Antworte mit einem JSON-Array von verwandten Begriffen und Themen. 
+      WICHTIG: Antworte nur mit einem gültigen JSON-Array, keine Markdown-Formatierung oder Code-Blöcke.
+      
+      ["Begriff1", "Begriff2", "Begriff3"]
+      
       Beispiel: ["Energiehandel", "Marktkommunikation", "Strompreise"]`;
       
       const result = await this.generateWithRetry(prompt);
@@ -642,10 +741,10 @@ Antworte nur als JSON ohne Markdown-Formatierung:
       const suggestionsText = response.text().trim();
       
       // Try to parse JSON
-      try {
-        const suggestions = JSON.parse(suggestionsText);
-        return Array.isArray(suggestions) ? suggestions : [];
-      } catch (parseError) {
+      const suggestions = safeParseJsonResponse(suggestionsText);
+      if (suggestions && Array.isArray(suggestions)) {
+        return suggestions;
+      } else {
         // If JSON parsing fails, try to extract suggestions from text
         const lines = suggestionsText.split('\n');
         return lines

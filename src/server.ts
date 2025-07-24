@@ -15,6 +15,7 @@ import notesRoutes from './routes/notes';
 import documentsRoutes from './routes/documents';
 import adminRoutes from './routes/admin';
 import { messageAnalyzerRoutes } from './routes/message-analyzer';
+import codesRoutes from './routes/codes';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -84,6 +85,7 @@ app.use('/api/workspace', workspaceRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/message-analyzer', authenticateToken, messageAnalyzerRoutes);
+app.use('/api/v1/codes', authenticateToken, codesRoutes);
 
 // Serve React app
 const clientBuildPath = path.join(__dirname, '../client/build');

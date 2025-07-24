@@ -10,6 +10,7 @@ export interface AnalysisResult {
       elements: string[];
       original: string;
       description?: string;
+      resolvedCodes?: { [key: string]: string };
     }[];
   };
   format: 'EDIFACT' | 'XML' | 'TEXT' | 'UNKNOWN';

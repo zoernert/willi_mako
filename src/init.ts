@@ -1,5 +1,5 @@
 import { initDatabase } from './config/database';
-import QdrantService from './services/qdrant';
+import { QdrantService } from './services/qdrant';
 
 async function initialize() {
   try {

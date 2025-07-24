@@ -106,19 +106,20 @@ async function importBDEWCodes() {
     await client.query('BEGIN');
 
     for (const record of records) {
+      console.log('Processing record:', JSON.stringify(record, null, 2));
       const query = {
         text: `
           INSERT INTO bdewcodes (code_id, code_type, code, company_name, company_type, valid_from, valid_to)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
         `,
         values: [
-          record.CodeId,
-          record.CodeType,
-          record.Code,
-          record.CompanyName,
-          record.CompanyType,
-          record.GueltigVon,
-          record.GueltigBis
+          record.Id || record.CodeId,           // Verwende Id als code_id
+          record.CodeType || 'BDEW',            // Default zu 'BDEW' wenn nicht vorhanden
+          record.CompanyUId,                    // Der echte BDEW Code ist in CompanyUId
+          record.Company || record.CompanyName, // Verwende Company als company_name
+          record.CompanyType || null,           // Optional
+          record.GueltigVon || null,            // Optional
+          record.GueltigBis || null             // Optional
         ],
       };
       await client.query(query);
