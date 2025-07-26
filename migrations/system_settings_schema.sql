@@ -51,7 +51,7 @@ INSERT INTO system_settings (key, value, value_type, description, category) VALU
 -- System configuration
 ('system.name', 'Willi Mako', 'string', 'System name displayed in UI', 'general'),
 ('system.description', 'Intelligentes FAQ-System mit KI-Unterstützung', 'string', 'System description', 'general'),
-('system.frontend_url', 'http://localhost:3000', 'string', 'Frontend base URL for links in emails', 'general'),
+('system.frontend_url', 'https://stromhaltig.de', 'string', 'Frontend base URL for links in emails', 'general'),
 
 -- File upload settings  
 ('upload.max_file_size_mb', '50', 'number', 'Maximum file size for uploads in MB', 'upload'),
