@@ -216,7 +216,7 @@ export class EmailService {
    * Generiert HTML für Team-Einladungs-E-Mail
    */
   private generateTeamInvitationHTML(data: TeamInvitationEmailData): string {
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = 'https://stromhaltig.de';
     
     return `
     <!DOCTYPE html>
