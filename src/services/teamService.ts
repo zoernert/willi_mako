@@ -373,7 +373,7 @@ export class TeamService {
       const invitation = invitationResult.rows[0];
 
       // Send invitation email
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const baseUrl = 'https://stromhaltig.de';
       const invitationUrl = `${baseUrl}/invitation/${invitationToken}`;
 
       await emailService.sendTeamInvitation(invitedEmail, {
