@@ -7,6 +7,8 @@ import { SnackbarProvider } from './contexts/SnackbarContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Documents from './pages/Documents';
@@ -103,6 +105,8 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/invitation/:token" element={<InvitationAcceptance />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

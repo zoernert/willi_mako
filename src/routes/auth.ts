@@ -2,11 +2,13 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import pool from '../config/database';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AppError } from '../utils/errors';
 import { ResponseUtils } from '../utils/response';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { emailService } from '../services/emailService';
 
 const router = Router();
 
@@ -168,6 +170,145 @@ router.get('/profile', authenticateToken, asyncHandler(async (req: Authenticated
       company: user.company,
       role: user.role
     }, 'Profil erfolgreich abgerufen');
+
+  } finally {
+    client.release();
+  }
+}));
+
+// Password reset request endpoint
+router.post('/forgot-password', asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new AppError('E-Mail ist erforderlich', 400);
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    // Check if user exists
+    const userResult = await client.query(
+      'SELECT id, email, name FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    // Always return success to prevent email enumeration attacks
+    if (userResult.rows.length === 0) {
+      ResponseUtils.success(res, {}, 'Falls diese E-Mail-Adresse registriert ist, wurde ein Passwort-Reset-Link gesendet');
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate password reset token (valid for 1 hour)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store reset token in database
+    await client.query(
+      `INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id) DO UPDATE SET
+       token = $1, expires_at = $3, created_at = CURRENT_TIMESTAMP`,
+      [resetToken, user.id, expiresAt]
+    );
+
+    // Send password reset email
+    await emailService.sendPasswordResetEmail(user.email, user.name, resetToken);
+
+    ResponseUtils.success(res, {}, 'Falls diese E-Mail-Adresse registriert ist, wurde ein Passwort-Reset-Link gesendet');
+
+  } finally {
+    client.release();
+  }
+}));
+
+// Password reset confirmation endpoint
+router.post('/reset-password', asyncHandler(async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    throw new AppError('Token und neues Passwort sind erforderlich', 400);
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError('Passwort muss mindestens 6 Zeichen lang sein', 400);
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Find and validate reset token
+    const tokenResult = await client.query(
+      `SELECT prt.user_id, u.email, u.name 
+       FROM password_reset_tokens prt
+       JOIN users u ON prt.user_id = u.id
+       WHERE prt.token = $1 AND prt.expires_at > CURRENT_TIMESTAMP`,
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      throw new AppError('Ungültiger oder abgelaufener Reset-Token', 400);
+    }
+
+    const { user_id, email, name } = tokenResult.rows[0];
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user password
+    await client.query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedPassword, user_id]
+    );
+
+    // Delete used reset token
+    await client.query(
+      'DELETE FROM password_reset_tokens WHERE user_id = $1',
+      [user_id]
+    );
+
+    await client.query('COMMIT');
+
+    ResponseUtils.success(res, {}, 'Passwort erfolgreich zurückgesetzt');
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
+// Validate reset token endpoint (for frontend to check if token is valid)
+router.get('/validate-reset-token/:token', asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  const client = await pool.connect();
+  
+  try {
+    const tokenResult = await client.query(
+      `SELECT u.email, u.name
+       FROM password_reset_tokens prt
+       JOIN users u ON prt.user_id = u.id
+       WHERE prt.token = $1 AND prt.expires_at > CURRENT_TIMESTAMP`,
+      [token]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      throw new AppError('Ungültiger oder abgelaufener Reset-Token', 400);
+    }
+
+    const { email, name } = tokenResult.rows[0];
+
+    ResponseUtils.success(res, {
+      email,
+      name,
+      valid: true
+    }, 'Token ist gültig');
 
   } finally {
     client.release();

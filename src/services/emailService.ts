@@ -213,6 +213,21 @@ export class EmailService {
   }
 
   /**
+   * Sendet eine Passwort-Reset-E-Mail mit Magic Link
+   */
+  async sendPasswordResetEmail(email: string, userName: string, resetToken: string): Promise<void> {
+    const subject = 'Passwort zurücksetzen - Willi Mako';
+    
+    const html = this.generatePasswordResetHTML(userName, resetToken);
+    
+    await this.sendEmail({
+      to: email,
+      subject,
+      html
+    });
+  }
+
+  /**
    * Generiert HTML für Team-Einladungs-E-Mail
    */
   private generateTeamInvitationHTML(data: TeamInvitationEmailData): string {
@@ -253,7 +268,15 @@ export class EmailService {
             <div class="content">
                 ${data.isNewUser ? `
                 <p><strong>Willkommen bei Willi Mako!</strong></p>
-                <p>Ihr Account wurde automatisch erstellt. Sie können sich mit dieser E-Mail-Adresse anmelden.</p>
+                <p>Ihr Account wurde automatisch erstellt. Um sich anzumelden:</p>
+                <ol>
+                    <li>Klicken Sie auf "Einladung annehmen" unten</li>
+                    <li>Sie werden automatisch angemeldet</li>
+                    <li>Setzen Sie anschließend ein sicheres Passwort in Ihrem Profil</li>
+                </ol>
+                <p><strong>Wichtig:</strong> Falls Sie sich später manuell anmelden möchten, 
+                   verwenden Sie diese E-Mail-Adresse und benutzen Sie die "Passwort vergessen" Funktion 
+                   auf der Anmeldeseite, um ein eigenes Passwort zu setzen.</p>
                 ` : `
                 <p>Hallo!</p>
                 `}
@@ -290,6 +313,95 @@ export class EmailService {
             <div class="footer">
                 <p>© 2025 Willi Mako - Intelligente Wissensmanagement-Plattform</p>
                 <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+  }
+
+  /**
+   * Generiert HTML für Passwort-Reset-E-Mail
+   */
+  private generatePasswordResetHTML(userName: string, resetToken: string): string {
+    const baseUrl = 'https://stromhaltig.de';
+    const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
+    
+    return `
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Passwort zurücksetzen</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #147a50; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .alert-box { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .button { 
+                display: inline-block; 
+                background-color: #147a50; 
+                color: white; 
+                padding: 12px 25px; 
+                text-decoration: none; 
+                border-radius: 5px; 
+                margin: 15px 0;
+                font-weight: bold;
+            }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+            .security-note { background-color: #e8f4f8; border: 1px solid #bee5eb; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔐 Passwort zurücksetzen</h1>
+                <p>Willi Mako - Intelligente Wissensmanagement-Plattform</p>
+            </div>
+            
+            <div class="content">
+                <p>Hallo ${userName},</p>
+                
+                <p>Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts bei Willi Mako gestellt.</p>
+                
+                <div class="alert-box">
+                    <strong>⏰ Wichtiger Hinweis:</strong> Dieser Link ist nur 1 Stunde gültig und kann nur einmal verwendet werden.
+                </div>
+                
+                <p>Klicken Sie auf den folgenden Button, um ein neues Passwort zu setzen:</p>
+                
+                <div style="text-align: center;">
+                    <a href="${resetUrl}" class="button">
+                        Neues Passwort setzen
+                    </a>
+                </div>
+                
+                <p><strong>Alternativ können Sie diesen Link in Ihren Browser kopieren:</strong></p>
+                <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace;">
+                    ${resetUrl}
+                </p>
+                
+                <div class="security-note">
+                    <h3>🛡️ Sicherheitshinweise:</h3>
+                    <ul>
+                        <li>Falls Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren</li>
+                        <li>Ihr aktuelles Passwort bleibt unverändert, bis Sie den Reset-Link verwenden</li>
+                        <li>Wir empfehlen ein starkes Passwort mit mindestens 8 Zeichen</li>
+                        <li>Teilen Sie diesen Link niemals mit anderen Personen</li>
+                    </ul>
+                </div>
+                
+                <p><strong>Probleme beim Zurücksetzen?</strong></p>
+                <p>Falls der Link nicht funktioniert, kopieren Sie ihn vollständig in die Adresszeile Ihres Browsers. 
+                   Der Link funktioniert nur einmal und läuft nach 1 Stunde ab.</p>
+            </div>
+            
+            <div class="footer">
+                <p>© 2025 Willi Mako - Intelligente Wissensmanagement-Plattform</p>
+                <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.</p>
+                <p>Falls Sie Probleme haben, besuchen Sie unsere FAQ-Seite oder kontaktieren Sie den Support.</p>
             </div>
         </div>
     </body>

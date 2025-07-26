@@ -238,6 +238,20 @@ const Login: React.FC = () => {
                     >
                       {state.loading ? <CircularProgress size={24} /> : 'Anmelden'}
                     </Button>
+                    
+                    <Box sx={{ textAlign: 'center', mb: 2 }}>
+                      <Link 
+                        to="/forgot-password" 
+                        style={{ 
+                          color: '#666', 
+                          textDecoration: 'none', 
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        Passwort vergessen?
+                      </Link>
+                    </Box>
+                    
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="body2" color="text.secondary">
                         Noch kein Konto?{' '}
