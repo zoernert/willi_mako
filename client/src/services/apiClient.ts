@@ -67,11 +67,15 @@ class ApiClient {
 
   private formatError(error: AxiosError<ApiResponse>): Error {
     if (error.response?.data?.error) {
-      return new Error(error.response.data.error);
+      return new Error(typeof error.response.data.error === 'string' ? error.response.data.error : JSON.stringify(error.response.data.error));
     }
     
     if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
+      return new Error(typeof error.response.data.message === 'string' ? error.response.data.message : JSON.stringify(error.response.data.message));
+    }
+    
+    if (error.response?.data) {
+      return new Error(`API Error (${error.response.status}): ${JSON.stringify(error.response.data)}`);
     }
     
     if (error.message) {

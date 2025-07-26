@@ -33,6 +33,7 @@ import {
   Quiz as QuizIcon,
   Rule as RuleIcon,
   Search as SearchIcon,
+  Group as GroupIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -69,6 +70,7 @@ const Layout: React.FC = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
     { text: 'Mein Workspace', icon: <DocumentsIcon />, path: '/workspace' },
+    { text: 'Teams', icon: <GroupIcon />, path: '/teams' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },

@@ -2,12 +2,16 @@ import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { AppError } from '../utils/errors';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
+import { emailService } from './emailService';
+import jwt from 'jsonwebtoken';
 
 export interface Team {
   id: string;
   name: string;
   description?: string;
   created_by: string;
+  owner_id: string;
   member_count: number;
   created_at: Date;
   updated_at: Date;
@@ -19,7 +23,7 @@ export interface TeamMember {
   user_id: string;
   user_name: string;
   user_email: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'admin' | 'owner';
   joined_at: Date;
 }
 
@@ -66,18 +70,18 @@ export class TeamService {
       
       // Create team
       const teamResult = await client.query(
-        `INSERT INTO teams (name, description, created_by) 
-         VALUES ($1, $2, $3) 
+        `INSERT INTO teams (name, description, created_by, owner_id) 
+         VALUES ($1, $2, $3, $3) 
          RETURNING *`,
         [name, description, createdBy]
       );
       
       const team = teamResult.rows[0];
       
-      // Add creator as admin
+      // Add creator as owner
       await client.query(
         `INSERT INTO team_members (team_id, user_id, role) 
-         VALUES ($1, $2, 'admin')`,
+         VALUES ($1, $2, 'owner')`,
         [team.id, createdBy]
       );
       
@@ -97,6 +101,14 @@ export class TeamService {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Get teams for a specific user
+   */
+  async getUserTeams(userId: string): Promise<Team[]> {
+    const team = await this.getTeamByUserId(userId);
+    return team ? [team] : [];
   }
 
   /**
@@ -258,6 +270,138 @@ export class TeamService {
       
       return invitationWithDetails.rows[0];
       
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Invite user to team with automatic account creation and email sending
+   */
+  async inviteUserWithEmail(
+    teamId: string, 
+    invitedEmail: string, 
+    invitedBy: string, 
+    role: 'member' | 'admin' = 'member',
+    message?: string
+  ): Promise<{ invitation: TeamInvitation; isNewUser: boolean }> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Check if user is team admin
+      const isAdmin = await this.isTeamAdmin(invitedBy, teamId);
+      if (!isAdmin) {
+        throw new AppError('Nur Team-Administratoren können Benutzer einladen', 403);
+      }
+
+      // Get team details for email
+      const teamResult = await client.query(
+        'SELECT * FROM teams WHERE id = $1',
+        [teamId]
+      );
+
+      if (teamResult.rows.length === 0) {
+        throw new AppError('Team nicht gefunden', 404);
+      }
+
+      const team = teamResult.rows[0];
+
+      // Get inviter details
+      const inviterResult = await client.query(
+        'SELECT full_name, name FROM users WHERE id = $1',
+        [invitedBy]
+      );
+
+      const inviter = inviterResult.rows[0];
+      const inviterName = inviter?.full_name || inviter?.name || 'Unbekannt';
+      
+      // Check if user already exists
+      let existingUser = await client.query(
+        'SELECT id FROM users WHERE email = $1',
+        [invitedEmail]
+      );
+
+      let userId = null;
+      let isNewUser = false;
+
+      if (existingUser.rows.length === 0) {
+        // Create new user account
+        isNewUser = true;
+        const tempPassword = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        
+        // Extract name from email
+        const emailName = invitedEmail.split('@')[0];
+        const displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+
+        const newUserResult = await client.query(
+          `INSERT INTO users (id, email, password_hash, name, full_name, role, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'user', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING id`,
+          [uuidv4(), invitedEmail, hashedPassword, displayName, displayName]
+        );
+
+        userId = newUserResult.rows[0].id;
+      } else {
+        userId = existingUser.rows[0].id;
+        
+        // Check if existing user is already in a team
+        const userInTeam = await client.query(
+          'SELECT 1 FROM team_members WHERE user_id = $1',
+          [userId]
+        );
+        
+        if (userInTeam.rows.length > 0) {
+          throw new AppError('Benutzer ist bereits in einem Team', 400);
+        }
+      }
+      
+      // Generate invitation token
+      const invitationToken = crypto.randomBytes(32).toString('hex');
+      
+      // Create invitation
+      const invitationResult = await client.query(
+        `INSERT INTO team_invitations 
+         (team_id, invited_by, invited_email, invited_user_id, invitation_token, message, role, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP + INTERVAL '7 days')
+         RETURNING *`,
+        [teamId, invitedBy, invitedEmail, userId, invitationToken, message, role]
+      );
+
+      const invitation = invitationResult.rows[0];
+
+      // Send invitation email
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const invitationUrl = `${baseUrl}/invitation/${invitationToken}`;
+
+      await emailService.sendTeamInvitation(invitedEmail, {
+        invitedBy: inviterName,
+        teamName: team.name,
+        teamDescription: team.description,
+        invitationToken,
+        invitationUrl,
+        isNewUser
+      });
+
+      await client.query('COMMIT');
+
+      // Return invitation with team details
+      const fullInvitation = {
+        ...invitation,
+        team_name: team.name,
+        invited_by_name: inviterName
+      };
+
+      return {
+        invitation: fullInvitation,
+        isNewUser
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
@@ -760,6 +904,119 @@ export class TeamService {
     }
   }
 
+  /**
+   * Accept invitation with automatic login for new users
+   */
+  async acceptInvitationWithLogin(invitationToken: string, userIdForExisting?: string): Promise<{
+    success: boolean;
+    user: any;
+    token?: string;
+    isNewUser: boolean;
+  }> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Get invitation details
+      const invitationResult = await client.query(
+        `SELECT ti.*, t.name as team_name, u.full_name as invited_by_name
+         FROM team_invitations ti
+         JOIN teams t ON ti.team_id = t.id
+         JOIN users u ON ti.invited_by = u.id
+         WHERE ti.invitation_token = $1 AND ti.status = 'pending' AND ti.expires_at > CURRENT_TIMESTAMP`,
+        [invitationToken]
+      );
+      
+      if (invitationResult.rows.length === 0) {
+        throw new AppError('Einladung ist ungültig oder abgelaufen', 404);
+      }
+      
+      const invitation = invitationResult.rows[0];
+      let userId = invitation.invited_user_id;
+      let isNewUser = false;
+      let authToken = null;
+
+      // If this is for an existing user, verify they are logged in
+      if (userIdForExisting) {
+        if (userId !== userIdForExisting) {
+          throw new AppError('Diese Einladung ist nicht für Ihren Account bestimmt', 403);
+        }
+      } else if (!userId) {
+        throw new AppError('Fehler: Benutzer-ID nicht gefunden', 400);
+      }
+
+      // Get user details
+      const userResult = await client.query(
+        'SELECT * FROM users WHERE id = $1',
+        [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        throw new AppError('Benutzer nicht gefunden', 404);
+      }
+
+      const user = userResult.rows[0];
+
+      // Check if user is already in a team
+      const userInTeam = await this.isUserInTeam(userId);
+      if (userInTeam) {
+        throw new AppError('Benutzer ist bereits in einem Team', 400);
+      }
+      
+      // Add user to team with the invited role
+      await client.query(
+        `INSERT INTO team_members (team_id, user_id, role)
+         VALUES ($1, $2, $3)`,
+        [invitation.team_id, userId, invitation.role || 'member']
+      );
+      
+      // Update invitation status
+      await client.query(
+        `UPDATE team_invitations 
+         SET status = 'accepted', responded_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [invitation.id]
+      );
+
+      // Generate auth token if this is a new user accepting without being logged in
+      if (!userIdForExisting) {
+        const secret = process.env.JWT_SECRET || 'fallback-secret';
+        authToken = jwt.sign(
+          { 
+            id: user.id, 
+            email: user.email, 
+            role: user.role 
+          }, 
+          secret, 
+          { expiresIn: '24h' }
+        );
+        isNewUser = true;
+      }
+      
+      await client.query('COMMIT');
+
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          full_name: user.full_name,
+          role: user.role
+        },
+        token: authToken || undefined,
+        isNewUser
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   // Helper methods
   
   /**
@@ -827,8 +1084,8 @@ export class TeamService {
     
     try {
       const result = await client.query(
-        'SELECT 1 FROM team_members WHERE user_id = $1 AND team_id = $2 AND role = $3',
-        [userId, teamId, 'admin']
+        'SELECT 1 FROM team_members WHERE user_id = $1 AND team_id = $2 AND role IN ($3, $4)',
+        [userId, teamId, 'admin', 'owner']
       );
       
       return result.rows.length > 0;
