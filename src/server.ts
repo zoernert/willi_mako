@@ -69,7 +69,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 // Use new authentication routes instead of legacy auth routes
-app.use('/api/auth', userRoutesV2); // New authentication endpoints
+app.use('/api/auth', authRoutes); // Updated auth routes
 app.use('/api/v2/user', userRoutesV2); // v2 user endpoints
 
 // New v2 routes  
