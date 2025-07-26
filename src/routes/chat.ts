@@ -17,60 +17,47 @@ const qdrantService = new QdrantService();
 class AdvancedRetrieval {
   async getContextualCompressedResults(
     query: string,
-    userPreferences: any,
-    limit: number = 20
-  ) {
+    userPreferences: any, // userPreferences is kept for interface consistency, but not used in the new flow
+    limit: number = 10
+  ): Promise<any[]> {
     try {
-      // Generate embedding for the query
-      const queryEmbedding = await geminiService.generateEmbedding(query);
-      
-      // Multi-query retrieval - generate variations of the query
-      const queryVariations = await this.generateQueryVariations(query);
-      
-      // Search for each variation
+      // 1. Hypothesis Generation: Generate diverse search queries
+      const searchQueries = await geminiService.generateSearchQueries(query);
+
+      // 2. Evidence Collection: Search for each query
       const allResults = [];
-      for (const variation of queryVariations) {
-        const results = await qdrantService.search('system', variation, limit / queryVariations.length);
+      for (const q of searchQueries) {
+        // The number of results per query can be adjusted.
+        // We fetch a bit more to have a richer pool for synthesis.
+        const results = await qdrantService.search('system', q, limit);
         allResults.push(...results);
       }
-      
-      // Remove duplicates and sort by relevance
+
+      // Remove duplicates to avoid redundant information
       const uniqueResults = this.removeDuplicates(allResults);
-      
-      // Apply contextual compression
-      const compressedResults = await this.applyContextualCompression(
-        uniqueResults,
-        query,
-        userPreferences
-      );
-      
-      return compressedResults.slice(0, limit);
+
+      if (uniqueResults.length === 0) {
+        return [];
+      }
+
+      // 3. Context Synthesis: Distill the results into a dense context
+      const synthesizedContext = await geminiService.synthesizeContext(query, uniqueResults);
+
+      // Return the synthesized context in the expected format
+      return [
+        {
+          payload: {
+            text: synthesizedContext,
+          },
+          // Add a dummy score and id
+          score: 1.0,
+          id: uuidv4(),
+        },
+      ];
     } catch (error) {
       console.error('Error in advanced retrieval:', error);
       return [];
     }
-  }
-
-  private async generateQueryVariations(query: string): Promise<string[]> {
-    const variations = [query];
-    
-    // Add company-specific variations
-    const companyTerms = ['Stadtwerke', 'Energieversorger', 'Netzbetreiber', 'Stromanbieter'];
-    for (const term of companyTerms) {
-      if (query.toLowerCase().includes(term.toLowerCase())) {
-        variations.push(`${query} ${term}`);
-      }
-    }
-    
-    // Add topic-specific variations
-    const topicTerms = ['Marktkommunikation', 'Bilanzierung', 'Regulierung', 'Smart Meter'];
-    for (const term of topicTerms) {
-      if (query.toLowerCase().includes(term.toLowerCase())) {
-        variations.push(`${query} ${term}`);
-      }
-    }
-    
-    return variations;
   }
 
   private removeDuplicates(results: any[]): any[] {
@@ -82,40 +69,6 @@ class AdvancedRetrieval {
       seen.add(result.id);
       return true;
     });
-  }
-
-  private async applyContextualCompression(
-    results: any[],
-    query: string,
-    userPreferences: any
-  ): Promise<any[]> {
-    // Filter results based on user preferences
-    const filteredResults = results.filter(result => {
-      // Check if result is relevant to user's companies of interest
-      if (userPreferences.companiesOfInterest && userPreferences.companiesOfInterest.length > 0) {
-        const hasCompanyMatch = userPreferences.companiesOfInterest.some((company: string) =>
-          result.payload.text.toLowerCase().includes(company.toLowerCase())
-        );
-        if (hasCompanyMatch) {
-          result.score += 0.1; // Boost relevance
-        }
-      }
-      
-      // Check if result matches preferred topics
-      if (userPreferences.preferredTopics && userPreferences.preferredTopics.length > 0) {
-        const hasTopicMatch = userPreferences.preferredTopics.some((topic: string) =>
-          result.payload.text.toLowerCase().includes(topic.toLowerCase())
-        );
-        if (hasTopicMatch) {
-          result.score += 0.1; // Boost relevance
-        }
-      }
-      
-      return result.score > 0.6; // Minimum relevance threshold
-    });
-    
-    // Sort by score and return top results
-    return filteredResults.sort((a, b) => b.score - a.score);
   }
 }
 

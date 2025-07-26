@@ -820,6 +820,58 @@ Antworte nur als JSON ohne Markdown-Formatierung:
   /**
    * Generate embedding for text (for vector search)
    */
+
+  async generateSearchQueries(query: string): Promise<string[]> {
+    try {
+      const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen, die helfen würden, umfassenden Kontext aus einer Wissensdatenbank zu sammeln. Decke dabei verschiedene Aspekte und mögliche Intentionen der ursprünglichen Anfrage ab.
+
+Benutzeranfrage: "${query}"
+
+Gib die Suchanfragen als JSON-Array von Strings zurück. Antworte nur mit dem JSON-Array.
+Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenbetreiber", "Prozesse der Netznutzungsabrechnung"]`;
+
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      let text = response.text().trim();
+
+      // Clean the response to ensure it's valid JSON
+      if (text.startsWith('```json')) {
+        text = text.substring(7, text.length - 3).trim();
+      }
+
+      const queries = JSON.parse(text);
+      // Add the original query to the list to ensure it's also searched
+      queries.unshift(query);
+      return [...new Set(queries)]; // Return unique queries
+    } catch (error) {
+      console.error('Error generating search queries:', error);
+      // Fallback to the original query
+      return [query];
+    }
+  }
+
+  async synthesizeContext(query: string, searchResults: any[]): Promise<string> {
+    try {
+      const documents = searchResults.map((r, i) => `Dokument ${i + 1}:\n${r.payload.text}`).join('\n\n---\n\n');
+
+      const prompt = `Du bist ein KI-Assistent, der Informationen zusammenfasst. Extrahiere aus den folgenden Dokumenten nur die Absätze und Sätze, die zur Beantwortung der Nutzeranfrage direkt relevant sind. Fasse die extrahierten Informationen zu einem dichten, prägnanten und kohärenten Text zusammen, der als finaler Kontext dient.
+
+Ursprüngliche Nutzeranfrage: "${query}"
+
+Dokumente:
+${documents}
+
+Zusammengefasster, relevanter Kontext:`;
+
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error synthesizing context:', error);
+      // Fallback to a simple concatenation if synthesis fails
+      return searchResults.map(r => r.payload.text).join('\n\n');
+    }
+  }
 }
 
 export default new GeminiService();
