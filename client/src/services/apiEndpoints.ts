@@ -85,6 +85,47 @@ export const API_ENDPOINTS = {
     login: '/auth/login',
     register: '/auth/register',
   },
+
+  // Teams
+  teams: {
+    list: '/teams',
+    create: '/teams',
+    detail: (teamId: string) => `/teams/${teamId}`,
+    update: (teamId: string) => `/teams/${teamId}`,
+    delete: (teamId: string) => `/teams/${teamId}`,
+    members: (teamId: string) => `/teams/${teamId}/members`,
+    addMember: (teamId: string) => `/teams/${teamId}/members`,
+    removeMember: (teamId: string, userId: string) => `/teams/${teamId}/members/${userId}`,
+    updateRole: (teamId: string, userId: string) => `/teams/${teamId}/members/${userId}/role`,
+    
+    // Invitations
+    invitations: {
+      create: (teamId: string) => `/teams/${teamId}/invite`, // Updated to use new /invite endpoint
+      list: (teamId: string) => `/teams/${teamId}/invitations`,
+      accept: (token: string) => `/teams/invitations/${token}/accept`, // Updated path
+      acceptAuthenticated: (token: string) => `/teams/invitations/${token}/accept-authenticated`, // New endpoint
+      decline: (token: string) => `/teams/invitations/${token}/decline`, // Updated path
+      revoke: (teamId: string, invitationId: string) => `/teams/${teamId}/invitations/${invitationId}`,
+      info: (token: string) => `/teams/invitations/${token}`, // Updated path
+    },
+
+    // Join Requests
+    joinRequests: {
+      create: (teamId: string) => `/teams/${teamId}/join-requests`,
+      list: (teamId: string) => `/teams/${teamId}/join-requests`,
+      approve: (teamId: string, requestId: string) => `/teams/${teamId}/join-requests/${requestId}/approve`,
+      reject: (teamId: string, requestId: string) => `/teams/${teamId}/join-requests/${requestId}/reject`,
+    },
+
+    // Leaderboard
+    leaderboard: (teamId: string) => `/teams/${teamId}/leaderboard`,
+    
+    // Admin functions
+    admin: {
+      transferOwnership: (teamId: string) => `/teams/${teamId}/transfer-ownership`,
+      analytics: (teamId: string) => `/teams/${teamId}/analytics`,
+    }
+  },
 } as const;
 
 // Helper function to build URLs with query parameters

@@ -4,6 +4,8 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { ResponseUtils } from '../utils/response';
 import { AppError } from '../utils/errors';
 import { DatabaseHelper } from '../utils/database';
+import { SystemSettingsService } from '../services/systemSettingsService';
+import { emailService } from '../services/emailService';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -346,21 +348,32 @@ router.delete('/documents/:documentId', asyncHandler(async (req: AuthenticatedRe
  */
 router.get('/settings', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // For now, return default settings. In production, these would come from a settings table or config
+    // Get SMTP settings from database/config
+    const smtpSettings = await SystemSettingsService.getSMTPSettings();
+    
+    // Get other settings
+    const systemSettings = await SystemSettingsService.getSettings([
+      'system.name',
+      'system.description',
+      'upload.max_file_size_mb',
+      'security.enable_registration',
+      'security.enable_guest_access'
+    ]);
+
     const settings = {
-      systemName: process.env.SYSTEM_NAME || 'Willi Mako',
-      systemDescription: process.env.SYSTEM_DESCRIPTION || 'Intelligentes FAQ-System mit KI-Unterstützung',
-      maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '50'),
-      enableRegistration: process.env.ENABLE_REGISTRATION !== 'false',
-      enableGuestAccess: process.env.ENABLE_GUEST_ACCESS === 'true',
-      geminiApiKey: process.env.GOOGLE_API_KEY ? '***hidden***' : '',
+      systemName: systemSettings['system.name'] || 'Willi Mako',
+      systemDescription: systemSettings['system.description'] || 'Intelligentes FAQ-System mit KI-Unterstützung',
+      maxFileSize: systemSettings['upload.max_file_size_mb'] || 50,
+      enableRegistration: systemSettings['security.enable_registration'] !== false,
+      enableGuestAccess: systemSettings['security.enable_guest_access'] === true,
+      geminiApiKey: process.env.GEMINI_API_KEY ? '***hidden***' : '',
       qdrantUrl: process.env.QDRANT_URL || '',
       qdrantApiKey: process.env.QDRANT_API_KEY ? '***hidden***' : '',
-      smtpHost: process.env.SMTP_HOST || '',
-      smtpPort: parseInt(process.env.SMTP_PORT || '587'),
-      smtpUser: process.env.SMTP_USER || '',
-      smtpPassword: process.env.SMTP_PASSWORD ? '***hidden***' : '',
-      enableEmailNotifications: process.env.ENABLE_EMAIL_NOTIFICATIONS === 'true'
+      smtpHost: smtpSettings.host,
+      smtpPort: smtpSettings.port,
+      smtpUser: smtpSettings.user,
+      smtpPassword: smtpSettings.password ? '***hidden***' : '',
+      enableEmailNotifications: smtpSettings.enabled
     };
 
     ResponseUtils.success(res, settings, 'Settings retrieved successfully');
@@ -375,8 +388,53 @@ router.get('/settings', asyncHandler(async (req: AuthenticatedRequest, res: Resp
  * Update system settings
  */
 router.put('/settings', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  // For now, just return success. In production, you would update environment variables or a settings table
-  ResponseUtils.success(res, req.body, 'Settings updated successfully');
+  try {
+    const {
+      systemName,
+      systemDescription,
+      maxFileSize,
+      enableRegistration,
+      enableGuestAccess,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword,
+      enableEmailNotifications
+    } = req.body;
+
+    const userId = req.user?.id || 'admin';
+
+    // Prepare settings to update
+    const settingsToUpdate: Record<string, any> = {};
+
+    if (systemName !== undefined) settingsToUpdate['system.name'] = systemName;
+    if (systemDescription !== undefined) settingsToUpdate['system.description'] = systemDescription;
+    if (maxFileSize !== undefined) settingsToUpdate['upload.max_file_size_mb'] = parseInt(maxFileSize);
+    if (enableRegistration !== undefined) settingsToUpdate['security.enable_registration'] = enableRegistration;
+    if (enableGuestAccess !== undefined) settingsToUpdate['security.enable_guest_access'] = enableGuestAccess;
+
+    // SMTP settings
+    if (smtpHost !== undefined) settingsToUpdate['smtp.host'] = smtpHost;
+    if (smtpPort !== undefined) settingsToUpdate['smtp.port'] = parseInt(smtpPort);
+    if (smtpUser !== undefined) settingsToUpdate['smtp.user'] = smtpUser;
+    if (smtpPassword !== undefined && smtpPassword !== '***hidden***') {
+      settingsToUpdate['smtp.password'] = smtpPassword;
+    }
+    if (enableEmailNotifications !== undefined) {
+      settingsToUpdate['email.notifications_enabled'] = enableEmailNotifications;
+    }
+
+    // Update settings in database
+    await SystemSettingsService.setSettings(settingsToUpdate, userId);
+
+    // Force refresh email service configuration
+    emailService.refreshConfiguration();
+
+    ResponseUtils.success(res, { updated: Object.keys(settingsToUpdate) }, 'Settings updated successfully');
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    throw new AppError('Failed to update settings', 500);
+  }
 }));
 
 /**
@@ -465,6 +523,45 @@ router.get('/stats/detailed', asyncHandler(async (req: AuthenticatedRequest, res
   } catch (error) {
     console.error('Error fetching detailed stats:', error);
     throw new AppError('Failed to fetch detailed statistics', 500);
+  }
+}));
+
+/**
+ * POST /admin/settings/test-smtp
+ * Test SMTP email configuration
+ */
+router.post('/settings/test-smtp', requireAdmin, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Test connection first
+    const connectionTest = await emailService.testConnection();
+    if (!connectionTest) {
+      throw new AppError('SMTP connection test failed. Please check your configuration.', 400);
+    }
+
+    // Get current user's email for test
+    const testEmail = req.user?.email || 'admin@test.com';
+
+    // Send test email
+    await emailService.sendEmail({
+      to: testEmail,
+      subject: 'SMTP Test - Willi Mako',
+      html: `
+        <h2>✅ SMTP-Konfiguration erfolgreich!</h2>
+        <p>Diese Test-E-Mail bestätigt, dass die SMTP-Konfiguration korrekt funktioniert.</p>
+        <p><strong>Gesendet am:</strong> ${new Date().toLocaleString('de-DE')}</p>
+        <p><strong>Von:</strong> Willi Mako Administrations-Panel</p>
+        <p><strong>An:</strong> ${testEmail}</p>
+      `,
+      text: 'SMTP-Konfiguration erfolgreich! Diese Test-E-Mail bestätigt, dass die SMTP-Konfiguration korrekt funktioniert.'
+    });
+
+    ResponseUtils.success(res, { sent: true, testEmail }, 'Test email sent successfully');
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    throw new AppError(
+      error instanceof Error ? error.message : 'Failed to send test email',
+      500
+    );
   }
 }));
 

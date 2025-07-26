@@ -8,11 +8,84 @@ const router = Router();
 const teamService = new TeamService();
 const gamificationService = new GamificationService();
 
-// Apply authentication to all routes
+// ===== PUBLIC INVITATION ROUTES (No Auth Required) =====
+
+// GET /api/teams/invitations/:token - Get invitation details
+router.get('/invitations/:token', asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params;
+  
+  const invitation = await teamService.getInvitationByToken(token);
+  
+  if (!invitation) {
+    throw new AppError('Invalid or expired invitation', 404);
+  }
+  
+  res.json({
+    success: true,
+    data: invitation
+  });
+}));
+
+// POST /api/teams/invitations/:token/accept - Accept invitation (for new users without login)
+router.post('/invitations/:token/accept', asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params;
+  
+  const result = await teamService.acceptInvitationWithLogin(token);
+  
+  res.json({
+    success: true,
+    data: result,
+    message: result.isNewUser 
+      ? 'Willkommen! Ihr Account wurde aktiviert und Sie wurden dem Team hinzugefügt.'
+      : 'Einladung erfolgreich angenommen'
+  });
+}));
+
+// POST /api/teams/invitations/:token/accept-authenticated - Accept invitation (for existing logged-in users)
+router.post('/invitations/:token/accept-authenticated', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { token } = req.params;
+  const userId = req.user!.id;
+  
+  const result = await teamService.acceptInvitationWithLogin(token, userId);
+  
+  res.json({
+    success: true,
+    data: result,
+    message: 'Einladung erfolgreich angenommen'
+  });
+}));
+
+// POST /api/teams/invitations/:token/decline - Decline invitation
+router.post('/invitations/:token/decline', asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params;
+  
+  await teamService.declineInvitation(token);
+  
+  res.json({
+    success: true,
+    message: 'Invitation declined successfully'
+  });
+}));
+
+// ===== AUTHENTICATED ROUTES =====
+
+// Apply authentication to all remaining routes
 router.use(authenticateToken);
 
-// GET /api/teams - List all teams
+// GET /api/teams - Get current user's teams  
 router.get('/', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  
+  const teams = await teamService.getUserTeams(userId);
+  
+  res.json({
+    success: true,
+    data: teams
+  });
+}));
+
+// GET /api/teams/browse - Browse all teams
+router.get('/browse', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { limit = 50, offset = 0 } = req.query;
   
   const teams = await teamService.getAllTeams(
@@ -177,29 +250,35 @@ const checkTeamAdmin = asyncHandler(async (req: AuthenticatedRequest, res: Respo
   next();
 });
 
-// POST /api/teams/:teamId/invite - Invite user to team (Admin only)
+// POST /api/teams/:teamId/invite - Invite user to team with email (Admin only)
 router.post('/:teamId/invite', checkTeamAdmin, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { teamId } = req.params;
-  const { email, message } = req.body;
+  const { email, role = 'member', message } = req.body;
   const userId = req.user!.id;
   
   if (!email || !email.includes('@')) {
-    throw new AppError('Valid email address is required', 400);
+    throw new AppError('Gültige E-Mail-Adresse ist erforderlich', 400);
+  }
+
+  if (role && !['member', 'admin'].includes(role)) {
+    throw new AppError('Rolle muss "member" oder "admin" sein', 400);
   }
   
-  const invitation = await teamService.inviteUserToTeam(
+  const result = await teamService.inviteUserWithEmail(
     teamId, 
     email.trim().toLowerCase(), 
-    userId, 
+    userId,
+    role,
     message
   );
   
-  // TODO: Send email notification
-  
   res.status(201).json({
     success: true,
-    data: invitation,
-    message: 'Invitation sent successfully'
+    data: result.invitation,
+    isNewUser: result.isNewUser,
+    message: result.isNewUser 
+      ? 'Neuer Account erstellt und Einladung per E-Mail gesendet'
+      : 'Einladung per E-Mail gesendet'
   });
 }));
 
@@ -307,46 +386,23 @@ router.post('/:teamId/members/:memberId/demote', checkTeamAdmin, asyncHandler(as
   });
 }));
 
-// ===== INVITATION ACCEPTANCE ROUTES (Public) =====
-
-// GET /api/teams/invitations/:token - Get invitation details
-router.get('/invitations/:token', asyncHandler(async (req: Request, res: Response) => {
-  const { token } = req.params;
+// GET /api/teams/all - List all teams (for browsing)
+router.get('/all', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { limit = 50, offset = 0 } = req.query;
   
-  const invitation = await teamService.getInvitationByToken(token);
-  
-  if (!invitation) {
-    throw new AppError('Invalid or expired invitation', 404);
-  }
+  const teams = await teamService.getAllTeams(
+    parseInt(limit as string), 
+    parseInt(offset as string)
+  );
   
   res.json({
     success: true,
-    data: invitation
-  });
-}));
-
-// POST /api/teams/invitations/:token/accept - Accept invitation
-router.post('/invitations/:token/accept', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { token } = req.params;
-  const userId = req.user!.id;
-  
-  await teamService.acceptInvitation(token, userId);
-  
-  res.json({
-    success: true,
-    message: 'Invitation accepted successfully'
-  });
-}));
-
-// POST /api/teams/invitations/:token/decline - Decline invitation
-router.post('/invitations/:token/decline', asyncHandler(async (req: Request, res: Response) => {
-  const { token } = req.params;
-  
-  await teamService.declineInvitation(token);
-  
-  res.json({
-    success: true,
-    message: 'Invitation declined successfully'
+    data: teams,
+    pagination: {
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      total: teams.length
+    }
   });
 }));
 

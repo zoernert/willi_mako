@@ -1,8 +1,9 @@
 import request from 'supertest';
 import express from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { teamRoutes } from '../../src/routes/teams';
-import { authenticateToken } from '../../src/middleware/auth';
 import pool from '../../src/config/database';
+import { generateTestToken, TestUser } from '../helpers/auth';
 
 const app = express();
 app.use(express.json());
@@ -12,44 +13,57 @@ describe('Teams API Integration Tests', () => {
   let authToken: string;
   let userId: string;
   let teamId: string;
+  let testUser: TestUser;
 
   beforeAll(async () => {
+    // Generate a proper UUID for the test user
+    userId = uuidv4();
+    
     // Create a test user and get auth token
-    const userResponse = await request(app)
-      .post('/api/auth/register')
-      .send({
-        full_name: 'Test User',
-        email: 'testuser@example.com',
-        password: 'password123',
-      });
-
-    if (userResponse.status === 201) {
-      authToken = userResponse.body.token;
-      userId = userResponse.body.user.id;
-    } else {
-      // User might already exist, try login
-      const loginResponse = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'testuser@example.com',
-          password: 'password123',
-        });
-      
-      authToken = loginResponse.body.token;
-      userId = loginResponse.body.user.id;
+    testUser = {
+      id: userId,
+      email: 'teamtest@example.com',
+      firstName: 'Team',
+      lastName: 'Tester'
+    };
+    
+    authToken = generateTestToken(testUser);
+    
+    // Ensure test user exists in database for foreign key constraints
+    const client = await pool.connect();
+    try {
+      await client.query(
+        `INSERT INTO users (id, email, name, full_name, password_hash) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT (id) DO UPDATE SET 
+         email = EXCLUDED.email, 
+         name = EXCLUDED.name,
+         full_name = EXCLUDED.full_name`,
+        [
+          userId, 
+          testUser.email, 
+          `${testUser.firstName} ${testUser.lastName}`, // name column
+          `${testUser.firstName} ${testUser.lastName}`, // full_name column
+          'test_hash'
+        ]
+      );
+    } finally {
+      client.release();
     }
   });
 
   afterAll(async () => {
     // Clean up test data
-    if (teamId) {
-      const client = await pool.connect();
-      try {
+    const client = await pool.connect();
+    try {
+      // Clean up in reverse order due to foreign key constraints
+      if (teamId) {
         await client.query('DELETE FROM team_members WHERE team_id = $1', [teamId]);
         await client.query('DELETE FROM teams WHERE id = $1', [teamId]);
-      } finally {
-        client.release();
       }
+      await client.query('DELETE FROM users WHERE id = $1', [userId]);
+    } finally {
+      client.release();
     }
   });
 

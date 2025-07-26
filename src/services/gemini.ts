@@ -839,7 +839,20 @@ Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenb
         text = text.substring(7, text.length - 3).trim();
       }
 
-      const queries = JSON.parse(text);
+      let queries: string[];
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+          queries = parsed;
+        } else {
+          console.error('AI response for search queries was not a string array:', parsed);
+          queries = [];
+        }
+      } catch (e) {
+        console.error('Failed to parse search queries from AI response:', text, e);
+        queries = [];
+      }
+
       // Add the original query to the list to ensure it's also searched
       queries.unshift(query);
       return [...new Set(queries)]; // Return unique queries

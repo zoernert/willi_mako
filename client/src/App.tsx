@@ -20,6 +20,8 @@ import CodeLookupPage from './pages/CodeLookup';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
+import Teams from './pages/Teams';
+import InvitationAcceptance from './pages/InvitationAcceptance';
 
 const theme = createTheme({
   palette: {
@@ -101,6 +103,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/invitation/:token" element={<InvitationAcceptance />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
@@ -111,11 +114,13 @@ function App() {
                 <Route path="faqs/:id" element={<FAQDetail />} />
                 <Route path="quiz" element={<ProtectedRoute><QuizDashboard /></ProtectedRoute>} />
                 <Route path="quiz/:quizId" element={<ProtectedRoute><QuizPlayer /></ProtectedRoute>} />
+                <Route path="teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
                 <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />
                 <Route path="code-lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
                 <Route path="lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
+                <Route path="invitation-acceptance" element={<InvitationAcceptance />} />
               </Route>
             </Routes>
           </Router>
