@@ -865,24 +865,47 @@ Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenb
 
   async synthesizeContext(query: string, searchResults: any[]): Promise<string> {
     try {
-      const documents = searchResults.map((r, i) => `Dokument ${i + 1}:\n${r.payload.text}`).join('\n\n---\n\n');
+      // Use content field instead of payload.text for better data extraction
+      const documents = searchResults.map((r, i) => {
+        const content = r.payload?.content || r.content || r.payload?.text || '';
+        return `Dokument ${i + 1}:\n${content}`;
+      }).join('\n\n---\n\n');
 
-      const prompt = `Du bist ein KI-Assistent, der Informationen zusammenfasst. Extrahiere aus den folgenden Dokumenten nur die Absätze und Sätze, die zur Beantwortung der Nutzeranfrage direkt relevant sind. Fasse die extrahierten Informationen zu einem dichten, prägnanten und kohärenten Text zusammen, der als finaler Kontext dient.
+      const prompt = `Du bist ein KI-Assistent für die Energiewirtschaft. Extrahiere aus den folgenden Dokumenten ALLE relevanten Informationen zur Beantwortung der Nutzeranfrage und strukturiere sie übersichtlich.
 
-Ursprüngliche Nutzeranfrage: "${query}"
+WICHTIGE ANFORDERUNGEN:
+- Behalte ALLE technischen Details, Fehlercodes, OBIS-Kennzahlen und Prozessschritte
+- Erkläre spezifische Begriffe und Zusammenhänge (z.B. APERAK, UTILMD, MSCONS)
+- Strukturiere Informationen nach: Definition → Ursachen → Lösungsschritte
+- Erwähne relevante Normen, Standards und rechtliche Grundlagen
+- Bei Fehlercodes: Erkläre die genaue Bedeutung und den Kontext
+
+Nutzeranfrage: "${query}"
 
 Dokumente:
 ${documents}
 
-Zusammengefasster, relevanter Kontext:`;
+Strukturierter Kontext mit allen relevanten technischen Details:`;
 
       const result = await this.generateWithRetry(prompt);
       const response = await result.response;
-      return response.text();
+      const synthesizedText = response.text();
+      
+      // Ensure we have meaningful content
+      if (synthesizedText.length < 100) {
+        // If synthesis produced too little content, fallback to raw documents
+        return searchResults.map(r => r.payload?.content || r.content || r.payload?.text || '').join('\n\n');
+      }
+      
+      return synthesizedText;
     } catch (error) {
       console.error('Error synthesizing context:', error);
-      // Fallback to a simple concatenation if synthesis fails
-      return searchResults.map(r => r.payload.text).join('\n\n');
+      // Enhanced fallback: try to extract content properly
+      const fallbackContent = searchResults.map(r => {
+        return r.payload?.content || r.content || r.payload?.text || '';
+      }).filter(text => text.trim().length > 0).join('\n\n');
+      
+      return fallbackContent || 'Keine relevanten Dokumente gefunden.';
     }
   }
 }

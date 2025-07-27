@@ -7,6 +7,7 @@ import geminiService from '../services/gemini';
 import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
+import chatConfigurationService from '../services/chatConfigurationService';
 
 const router = Router();
 
@@ -186,7 +187,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     }
   }
 
-  // Proceed with normal response generation if flip mode is not needed or already used
+  // Proceed with normal response generation using configured pipeline
   const previousMessages = await pool.query(
     'SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
     [chatId]
@@ -195,25 +196,17 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
     [userId]
   );
-  // Handle system knowledge context based on settings
-  let contextResults = [];
-  if (!contextSettings || contextSettings.includeSystemKnowledge) {
-    contextResults = await retrieval.getContextualCompressedResults(
-      content,
-      userPreferences.rows[0] || {},
-      10
-    );
-  }
-  
-  const publicContext = contextResults.map(result => result.payload.text).join('\n\n');
-  const { userContext, contextDecision } = await contextManager.determineOptimalContext(
+
+  // Use the configured chat pipeline for response generation
+  const configuredResult = await chatConfigurationService.generateConfiguredResponse(
     content,
     userId,
-    previousMessages.rows.slice(-5),
+    previousMessages.rows,
+    userPreferences.rows[0] || {},
     contextSettings
   );
 
-  let aiResponse;
+  let aiResponse = configuredResult.response;
   let responseMetadata: {
     contextSources: number;
     userContextUsed: boolean;
@@ -221,43 +214,56 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     userDocumentsUsed?: number;
     userNotesUsed?: number;
     contextSummary?: string;
+    configurationUsed?: string;
+    processingSteps?: any[];
+    searchQueries?: string[];
   } = { 
-    contextSources: contextResults.length,
-    userContextUsed: contextDecision.useUserContext,
-    contextReason: contextDecision.reason
+    contextSources: configuredResult.searchQueries.length,
+    userContextUsed: false, // Will be updated if user context is used
+    contextReason: 'Configured pipeline used',
+    configurationUsed: configuredResult.configurationUsed,
+    processingSteps: configuredResult.processingSteps,
+    searchQueries: configuredResult.searchQueries
   };
 
-  // Determine context mode based on settings
-  let contextMode: 'workspace-only' | 'standard' | 'system-only' = 'standard';
-  if (contextSettings?.useWorkspaceOnly) {
-    contextMode = 'workspace-only';
-  } else if (contextSettings && !contextSettings.includeSystemKnowledge) {
-    contextMode = 'workspace-only';
-  } else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
-    contextMode = 'system-only';
-  }
+  // Check if we need to enhance with user context (fallback to existing logic if needed)
+  if (contextSettings?.includeUserDocuments || contextSettings?.includeUserNotes) {
+    const { userContext, contextDecision } = await contextManager.determineOptimalContext(
+      content,
+      userId,
+      previousMessages.rows.slice(-5),
+      contextSettings
+    );
 
-  if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
-    aiResponse = await geminiService.generateResponseWithUserContext(
-      previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
-      publicContext,
-      userContext.userDocuments,
-      userContext.userNotes,
-      userPreferences.rows[0] || {},
-      contextMode
-    );
-    responseMetadata = {
-      ...responseMetadata,
-      userDocumentsUsed: userContext.userDocuments.length,
-      userNotesUsed: userContext.userNotes.length,
-      contextSummary: userContext.contextSummary
-    };
-  } else {
-    aiResponse = await geminiService.generateResponse(
-      previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
-      publicContext,
-      userPreferences.rows[0] || {}
-    );
+    if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
+      // Enhance the configured response with user context
+      let contextMode: 'workspace-only' | 'standard' | 'system-only' = 'standard';
+      if (contextSettings?.useWorkspaceOnly) {
+        contextMode = 'workspace-only';
+      } else if (contextSettings && !contextSettings.includeSystemKnowledge) {
+        contextMode = 'workspace-only';
+      } else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
+        contextMode = 'system-only';
+      }
+
+      aiResponse = await geminiService.generateResponseWithUserContext(
+        previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
+        configuredResult.contextUsed,
+        userContext.userDocuments,
+        userContext.userNotes,
+        userPreferences.rows[0] || {},
+        contextMode
+      );
+
+      responseMetadata = {
+        ...responseMetadata,
+        userContextUsed: true,
+        contextReason: contextDecision.reason,
+        userDocumentsUsed: userContext.userDocuments.length,
+        userNotesUsed: userContext.userNotes.length,
+        contextSummary: userContext.contextSummary
+      };
+    }
   }
   
   const assistantMessage = await pool.query(

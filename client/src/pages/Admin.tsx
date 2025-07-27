@@ -50,6 +50,7 @@ import { useSnackbar } from '../contexts/SnackbarContext';
 import apiClient from '../services/apiClient';
 import ReactMarkdown from 'react-markdown';
 import AdminQuizManager from '../components/AdminQuizManager';
+import AdminChatConfiguration from '../components/AdminChatConfiguration';
 import remarkGfm from 'remark-gfm';
 
 // Admin components - Full implementation
@@ -1688,6 +1689,7 @@ const Admin: React.FC = () => {
     { label: 'Dokumente', icon: <DocumentsIcon />, component: <AdminDocuments /> },
     { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
+    { label: 'Chat-Config', icon: <SettingsIcon />, component: <AdminChatConfiguration /> },
     { label: 'Statistiken', icon: <StatsIcon />, component: <AdminStats /> },
     { label: 'Einstellungen', icon: <SettingsIcon />, component: <AdminSettings /> },
   ];

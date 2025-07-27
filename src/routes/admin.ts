@@ -9,6 +9,7 @@ import { emailService } from '../services/emailService';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import chatConfigRouter from './admin/chatConfig';
 
 const router = Router();
 
@@ -23,6 +24,9 @@ const requireAdmin = (req: AuthenticatedRequest, res: Response, next: Function) 
 // Apply authentication and admin middleware to all routes
 router.use(authenticateToken);
 router.use(requireAdmin);
+
+// Mount chat configuration routes
+router.use('/chat-config', chatConfigRouter);
 
 // Configure multer for admin document uploads
 const storage = multer.diskStorage({
