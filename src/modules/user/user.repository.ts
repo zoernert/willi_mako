@@ -1,5 +1,5 @@
 import { DatabaseHelper } from '../../utils/database';
-import { FlipModePreferences } from './user.types';
+import { FlipModePreferences, UserPreferences } from './user.types';
 
 export class UserPreferencesRepository {
     
@@ -47,6 +47,62 @@ export class UserPreferencesRepository {
         }
         
         return result;
+    }
+
+    public async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+        const sql = 'SELECT * FROM user_preferences WHERE user_id = $1';
+        const result = await DatabaseHelper.executeQuerySingle<any>(sql, [userId]);
+        
+        if (!result) {
+            return null;
+        }
+        
+        return {
+            user_id: result.user_id,
+            companies_of_interest: Array.isArray(result.companies_of_interest) ? result.companies_of_interest : [],
+            preferred_topics: Array.isArray(result.preferred_topics) ? result.preferred_topics : [],
+            notification_settings: result.notification_settings || { email_notifications: false, push_notifications: false }
+        };
+    }
+
+    public async upsertUserPreferences(preferences: UserPreferences): Promise<UserPreferences> {
+        const {
+            user_id,
+            companies_of_interest,
+            preferred_topics,
+            notification_settings,
+        } = preferences;
+
+        const sql = `
+            INSERT INTO user_preferences (
+                user_id, companies_of_interest, preferred_topics, notification_settings
+            )
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id) DO UPDATE SET
+                companies_of_interest = EXCLUDED.companies_of_interest,
+                preferred_topics = EXCLUDED.preferred_topics,
+                notification_settings = EXCLUDED.notification_settings,
+                updated_at = NOW()
+            RETURNING *;
+        `;
+
+        const result = await DatabaseHelper.executeQuerySingle<any>(sql, [
+            user_id,
+            JSON.stringify(companies_of_interest || []),
+            JSON.stringify(preferred_topics || []),
+            JSON.stringify(notification_settings || { email_notifications: false, push_notifications: false }),
+        ]);
+
+        if (!result) {
+            throw new Error('Failed to upsert user preferences.');
+        }
+        
+        return {
+            user_id: result.user_id,
+            companies_of_interest: Array.isArray(result.companies_of_interest) ? result.companies_of_interest : [],
+            preferred_topics: Array.isArray(result.preferred_topics) ? result.preferred_topics : [],
+            notification_settings: result.notification_settings || { email_notifications: false, push_notifications: false }
+        };
     }
 }
 

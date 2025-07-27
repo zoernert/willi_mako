@@ -175,8 +175,9 @@ export class UserController {
 
     public getUserPreferences = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
         try {
-            // Placeholder implementation
-            ResponseUtils.success(res, { message: 'Preferences not yet implemented' });
+            const userId = req.user!.id;
+            const preferences = await UserPreferencesService.getUserPreferences(userId);
+            ResponseUtils.success(res, preferences, 'User preferences retrieved successfully.');
         } catch (error) {
             next(error);
         }
@@ -184,8 +185,10 @@ export class UserController {
 
     public updateUserPreferences = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
         try {
-            // Placeholder implementation
-            ResponseUtils.success(res, { message: 'Preferences not yet implemented' });
+            const userId = req.user!.id;
+            const preferences = req.body;
+            const updatedPreferences = await UserPreferencesService.saveUserPreferences(userId, preferences);
+            ResponseUtils.success(res, updatedPreferences, 'User preferences updated successfully.');
         } catch (error) {
             next(error);
         }

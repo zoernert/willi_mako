@@ -78,8 +78,25 @@ const Profile: React.FC = () => {
                 userApi.getFlipModePreferences(),
             ]);
             
-            setProfileData({ name: userProfile.name, company: userProfile.company });
-            setPreferences(userPreferences);
+            setProfileData({ 
+                name: userProfile.name || '', 
+                company: userProfile.company || '' 
+            });
+            
+            // Ensure arrays are never undefined/null
+            setPreferences({
+                companies_of_interest: Array.isArray(userPreferences?.companies_of_interest) 
+                    ? userPreferences.companies_of_interest 
+                    : [],
+                preferred_topics: Array.isArray(userPreferences?.preferred_topics) 
+                    ? userPreferences.preferred_topics 
+                    : [],
+                notification_settings: {
+                    email_notifications: userPreferences?.notification_settings?.email_notifications || false,
+                    push_notifications: userPreferences?.notification_settings?.push_notifications || false,
+                }
+            });
+            
             setFlipModePreferences(flipPrefs || {});
 
             setError(null);
@@ -100,7 +117,12 @@ const Profile: React.FC = () => {
   };
 
   const handlePreferenceChange = (field: keyof UserPreferences, value: any) => {
-    setPreferences(prev => ({ ...prev, [field]: value }));
+    setPreferences(prev => ({ 
+      ...prev, 
+      [field]: field === 'preferred_topics' || field === 'companies_of_interest' 
+        ? (Array.isArray(value) ? value : [])
+        : value
+    }));
   };
 
   const handleFlipModeChange = (field: keyof FlipModePreferences, value: string) => {
@@ -216,16 +238,16 @@ const Profile: React.FC = () => {
             <Typography variant="h6" sx={{ mb: 3 }}>Interessen</Typography>
             <Autocomplete
               multiple id="preferred-topics" options={topicOptions}
-              value={preferences.preferred_topics}
-              onChange={(_, newValue) => handlePreferenceChange('preferred_topics', newValue)}
+              value={Array.isArray(preferences.preferred_topics) ? preferences.preferred_topics : []}
+              onChange={(_, newValue) => handlePreferenceChange('preferred_topics', newValue || [])}
               disabled={!editing || loading}
               renderInput={(params) => <TextField {...params} variant="outlined" label="Bevorzugte Themen" />}
               sx={{ mb: 2 }}
             />
             <Autocomplete
               multiple id="companies-of-interest" options={companyOptions}
-              value={preferences.companies_of_interest}
-              onChange={(_, newValue) => handlePreferenceChange('companies_of_interest', newValue)}
+              value={Array.isArray(preferences.companies_of_interest) ? preferences.companies_of_interest : []}
+              onChange={(_, newValue) => handlePreferenceChange('companies_of_interest', newValue || [])}
               disabled={!editing || loading}
               renderInput={(params) => <TextField {...params} variant="outlined" label="Interessante Unternehmensarten" />}
             />

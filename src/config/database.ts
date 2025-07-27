@@ -97,10 +97,25 @@ export const initDatabase = async () => {
     await dbClient.query(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         companies_of_interest JSONB DEFAULT '[]',
         preferred_topics JSONB DEFAULT '[]',
         notification_settings JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create user_flip_mode_preferences table
+    await dbClient.query(`
+      CREATE TABLE IF NOT EXISTS user_flip_mode_preferences (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        energy_type VARCHAR(100),
+        stakeholder_perspective VARCHAR(100),
+        context_specificity VARCHAR(100),
+        detail_level VARCHAR(100),
+        topic_focus VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )

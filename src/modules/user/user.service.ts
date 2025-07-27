@@ -1,4 +1,4 @@
-import { FlipModePreferences } from './user.types';
+import { FlipModePreferences, UserPreferences } from './user.types';
 import UserPreferencesRepository from './user.repository';
 
 export class UserPreferencesService {
@@ -20,6 +20,41 @@ export class UserPreferencesService {
         };
         
         return UserPreferencesRepository.upsertFlipModePreferences(newPrefs);
+    }
+
+    public async getUserPreferences(userId: string): Promise<UserPreferences> {
+        const preferences = await UserPreferencesRepository.getUserPreferences(userId);
+        
+        // Return default preferences if none exist
+        if (!preferences) {
+            return {
+                user_id: userId,
+                companies_of_interest: [],
+                preferred_topics: [],
+                notification_settings: {
+                    email_notifications: false,
+                    push_notifications: false,
+                }
+            };
+        }
+        
+        return preferences;
+    }
+
+    public async saveUserPreferences(userId: string, preferences: Partial<UserPreferences>): Promise<UserPreferences> {
+        const existingPrefs = await this.getUserPreferences(userId);
+
+        const newPrefs: UserPreferences = {
+            user_id: userId,
+            companies_of_interest: preferences.companies_of_interest ?? existingPrefs.companies_of_interest,
+            preferred_topics: preferences.preferred_topics ?? existingPrefs.preferred_topics,
+            notification_settings: {
+                email_notifications: preferences.notification_settings?.email_notifications ?? existingPrefs.notification_settings.email_notifications,
+                push_notifications: preferences.notification_settings?.push_notifications ?? existingPrefs.notification_settings.push_notifications,
+            }
+        };
+        
+        return UserPreferencesRepository.upsertUserPreferences(newPrefs);
     }
 }
 
