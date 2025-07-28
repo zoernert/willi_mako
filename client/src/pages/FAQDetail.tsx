@@ -23,7 +23,8 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import QuickNoteButton from '../components/Workspace/QuickNoteButton';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import { useTextSelection } from '../hooks/useTextSelection';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
+import '../components/FAQ/FAQItem.css';
 
 interface FAQ {
   id: string;
@@ -35,6 +36,16 @@ interface FAQ {
   view_count: number;
   created_at: string;
   tags: string[];
+  linked_terms?: LinkedTerm[];
+}
+
+interface LinkedTerm {
+  id: string;
+  term: string;
+  display_text: string;
+  target_faq_id: string;
+  target_faq_title: string;
+  is_automatic: boolean;
 }
 
 const FAQDetail: React.FC = () => {
@@ -65,8 +76,8 @@ const FAQDetail: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`/faqs/${faqId}`);
-      setFaq(response.data.data);
+      const response = await apiClient.get(`/faqs/${faqId}`) as any;
+      setFaq(response);
     } catch (error) {
       console.error('Error fetching FAQ:', error);
       setError('Fehler beim Laden der FAQ');
@@ -84,11 +95,38 @@ const FAQDetail: React.FC = () => {
     if (!faq) return;
 
     try {
-      const response = await axios.post(`/faqs/${faq.id}/start-chat`);
-      navigate(`/chat/${response.data.data.chat.id}`);
+      const response = await apiClient.post(`/faqs/${faq.id}/start-chat`, {}) as any;
+      navigate(`/chat/${response.chat?.id || response.data?.chat?.id}`);
     } catch (error) {
       console.error('Error starting chat from FAQ:', error);
       showSnackbar('Fehler beim Starten des Chats', 'error');
+    }
+  };
+
+  const renderLinkedText = (text: string, linkedTerms: LinkedTerm[]): string => {
+    if (!linkedTerms || linkedTerms.length === 0) {
+      return text;
+    }
+
+    let linkedText = text;
+    linkedTerms.forEach((term) => {
+      const regex = new RegExp(`\\b${term.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      const displayText = term.display_text || term.term;
+      const replacement = `<a href="/faqs/${term.target_faq_id}" class="faq-link" title="${term.target_faq_title}">${displayText}</a>`;
+      linkedText = linkedText.replace(regex, replacement);
+    });
+
+    return linkedText;
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('faq-link')) {
+      e.preventDefault();
+      const href = target.getAttribute('href');
+      if (href) {
+        navigate(href);
+      }
     }
   };
 
@@ -97,8 +135,6 @@ const FAQDetail: React.FC = () => {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
@@ -215,9 +251,12 @@ const FAQDetail: React.FC = () => {
             Antwort
           </Typography>
           <div className="faq-content answer-content">
-            <MarkdownRenderer>
-              {faq.answer}
-            </MarkdownRenderer>
+            <div 
+              dangerouslySetInnerHTML={{ 
+                __html: renderLinkedText(faq.answer, faq.linked_terms || [])
+              }}
+              onClick={handleLinkClick}
+            />
           </div>
           
           {faq.additional_info && (
@@ -227,9 +266,12 @@ const FAQDetail: React.FC = () => {
                 Zusätzliche Informationen
               </Typography>
               <div className="faq-content additional-info-content">
-                <MarkdownRenderer>
-                  {faq.additional_info}
-                </MarkdownRenderer>
+                <div 
+                  dangerouslySetInnerHTML={{ 
+                    __html: renderLinkedText(faq.additional_info, faq.linked_terms || [])
+                  }}
+                  onClick={handleLinkClick}
+                />
               </div>
             </>
           )}

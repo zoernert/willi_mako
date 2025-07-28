@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Token Setter</title>
+</head>
+<body>
+    <h1>Admin Token Setter</h1>
+    <p>Dieser Helfer setzt das Admin-Token im localStorage für die Willi Mako Anwendung.</p>
+    
+    <button onclick="setToken()">Admin Token setzen</button>
+    <button onclick="checkToken()">Aktuelles Token prüfen</button>
+    <button onclick="clearToken()">Token löschen</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNhODUxNjIyLTA4NTgtNGViMC1iMWVhLTEzYzM1NGM4N2JiZSIsImVtYWlsIjoidGhvcnN0ZW4uem9lcm5lckBzdHJvbWRhby5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NTM2MzgyOTQsImV4cCI6MTc1MzcyNDY5NH0.HlRak1NzmSePFLeS4yxK0y5wPJ29GKLul1yv6vQeWBY";
+        
+        function setToken() {
+            localStorage.setItem('token', ADMIN_TOKEN);
+            document.getElementById('output').innerHTML = '<p style="color: green;">Admin Token wurde gesetzt!</p>';
+        }
+        
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                document.getElementById('output').innerHTML = '<p style="color: blue;">Token gefunden: ' + token.substring(0, 50) + '...</p>';
+            } else {
+                document.getElementById('output').innerHTML = '<p style="color: red;">Kein Token gefunden!</p>';
+            }
+        }
+        
+        function clearToken() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            document.getElementById('output').innerHTML = '<p style="color: orange;">Token gelöscht!</p>';
+        }
+    </script>
+</body>
+</html>

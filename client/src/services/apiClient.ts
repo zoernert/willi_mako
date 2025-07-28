@@ -33,7 +33,7 @@ class ApiClient {
     // Request Interceptor - Add Auth Token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -94,10 +94,11 @@ class ApiClient {
   clearAuth() {
     this.authToken = null;
     localStorage.removeItem('authToken');
+    localStorage.removeItem('token');
   }
 
   initializeAuth() {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     if (token) {
       this.authToken = token;
     }

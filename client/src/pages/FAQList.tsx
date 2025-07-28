@@ -3,25 +3,29 @@ import {
   Container,
   Typography,
   Box,
-  Card,
-  CardContent,
-  Grid,
   Chip,
   Button,
   CircularProgress,
   Alert,
   Paper,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Chat as ChatIcon,
   Visibility as ViewIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import MarkdownRenderer from '../components/MarkdownRenderer';
-import axios from 'axios';
+import FAQItem from '../components/FAQ/FAQItem';
+import { FAQWithLinks } from '../types/faq';
+import apiClient from '../services/apiClient';
 
 interface FAQ {
   id: string;
@@ -36,10 +40,11 @@ interface FAQ {
 }
 
 const FAQList: React.FC = () => {
-  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [faqs, setFaqs] = useState<FAQWithLinks[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFAQ, setSelectedFAQ] = useState<FAQ | null>(null);
+  const [selectedFAQ, setSelectedFAQ] = useState<FAQWithLinks | null>(null);
+  const [showFAQDialog, setShowFAQDialog] = useState(false);
   const navigate = useNavigate();
   const { state } = useAuth();
   const { showSnackbar } = useSnackbar();
@@ -51,11 +56,13 @@ const FAQList: React.FC = () => {
   const fetchFAQs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/faqs');
-      setFaqs(response.data.data);
+      // Use public endpoint for FAQ list with links
+      const response = await apiClient.get('/public/faqs') as any;
+      setFaqs(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
       setError('Fehler beim Laden der FAQs');
+      setFaqs([]);
     } finally {
       setLoading(false);
     }
@@ -68,11 +75,21 @@ const FAQList: React.FC = () => {
     }
 
     try {
-      const response = await axios.post(`/faqs/${faqId}/start-chat`);
-      navigate(`/chat/${response.data.data.chat.id}`);
+      const response = await apiClient.post(`/faqs/${faqId}/start-chat`) as any;
+      navigate(`/chat/${response.chat.id}`);
     } catch (error) {
       console.error('Error starting chat from FAQ:', error);
       showSnackbar('Fehler beim Starten des Chats', 'error');
+    }
+  };
+
+  const handleFAQClick = (faqId: string) => {
+    const faq = faqs.find(f => f.id === faqId);
+    if (faq) {
+      setSelectedFAQ(faq);
+      setShowFAQDialog(true);
+      // Update URL without navigation
+      window.history.pushState(null, '', `#faq-${faqId}`);
     }
   };
 
@@ -107,188 +124,67 @@ const FAQList: React.FC = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-          FAQ - Häufig gestellte Fragen
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: '#2c5530' }}>
+          Häufig gestellte Fragen
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Finden Sie Antworten auf häufig gestellte Fragen zur Energiewirtschaft
+        <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ mb: 4 }}>
+          Hier finden Sie Antworten auf die häufigsten Fragen. Klicken Sie auf einen Begriff in den Antworten, um zu verwandten Themen zu navigieren.
         </Typography>
+        
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {faqs && faqs.length > 0 ? faqs.map((faq) => (
+            <FAQItem 
+              key={faq.id}
+              faq={faq}
+              onFAQClick={handleFAQClick}
+              showFullContent={true}
+            />
+          )) : (
+            <Typography variant="body1" color="text.secondary">
+              Keine FAQs verfügbar.
+            </Typography>
+          )}
+        </Box>
       </Box>
 
-      {faqs.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            Keine FAQs verfügbar
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Derzeit sind keine FAQ-Einträge vorhanden.
-          </Typography>
-        </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {faqs.map((faq) => (
-            <Grid size={{ xs: 12, md: 6 }} key={faq.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" gutterBottom>
-                    {faq.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    {faq.description}
-                  </Typography>
-                  <Box display="flex" gap={0.5} mb={2} sx={{ flexWrap: 'wrap' }}>
-                    {faq.tags && faq.tags.map((tag) => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        size="small"
-                        sx={{ 
-                          backgroundColor: '#147a50',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          mb: 0.5
-                        }}
-                      />
-                    ))}
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    {faq.view_count} mal angesehen • {formatDate(faq.created_at)}
-                  </Typography>
-                </CardContent>
-                <Box sx={{ p: 2, pt: 0 }}>
-                  <Box display="flex" gap={1}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => setSelectedFAQ(faq)}
-                      startIcon={<ViewIcon />}
-                      sx={{ flex: 1 }}
-                    >
-                      Details
-                    </Button>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={() => handleStartChatFromFAQ(faq.id)}
-                      startIcon={<ChatIcon />}
-                      sx={{ flex: 1 }}
-                    >
-                      Chat starten
-                    </Button>
-                  </Box>
-                </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* FAQ Details Modal */}
-      {selectedFAQ && (
-        <Paper
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1300,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 2,
-          }}
-          onClick={() => setSelectedFAQ(null)}
-        >
-          <Box
-            sx={{
-              maxWidth: 800,
-              maxHeight: '90vh',
-              width: '100%',
-              backgroundColor: 'white',
-              borderRadius: 2,
-              overflow: 'auto',
-              p: 3,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Typography variant="h5" gutterBottom>
-              {selectedFAQ.title}
-            </Typography>
-            <Box display="flex" gap={0.5} mb={2} sx={{ flexWrap: 'wrap' }}>
-              {selectedFAQ.tags && selectedFAQ.tags.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  size="small"
-                  sx={{ 
-                    backgroundColor: '#147a50',
-                    color: 'white',
-                    mb: 0.5
-                  }}
-                />
-              ))}
-            </Box>
-            
-            <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-              Beschreibung
-            </Typography>
-            <Typography variant="body1" paragraph>
-              {selectedFAQ.description}
-            </Typography>
-            
-            {selectedFAQ.context && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Kontext
-                </Typography>
-                <Typography variant="body1" paragraph>
-                  {selectedFAQ.context}
-                </Typography>
-              </>
-            )}
-            
-            <Divider sx={{ my: 2 }} />
-            
-            <Typography variant="h6" gutterBottom>
-              Antwort
-            </Typography>
-            <MarkdownRenderer>
-              {selectedFAQ.answer}
-            </MarkdownRenderer>
-            
-            {selectedFAQ.additional_info && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Zusätzliche Informationen
-                </Typography>
-                <MarkdownRenderer>
-                  {selectedFAQ.additional_info}
-                </MarkdownRenderer>
-              </>
-            )}
-            
-            <Box display="flex" gap={2} mt={3}>
-              <Button
-                variant="contained"
-                onClick={() => handleStartChatFromFAQ(selectedFAQ.id)}
-                startIcon={<ChatIcon />}
-              >
-                Chat zu diesem Thema starten
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => setSelectedFAQ(null)}
-              >
-                Schließen
-              </Button>
-            </Box>
+      {/* FAQ Detail Dialog */}
+      <Dialog 
+        open={showFAQDialog} 
+        onClose={() => setShowFAQDialog(false)} 
+        maxWidth="md" 
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <LinkIcon />
+            FAQ Details
           </Box>
-        </Paper>
-      )}
+        </DialogTitle>
+        <DialogContent>
+          {selectedFAQ && (
+            <FAQItem 
+              faq={selectedFAQ}
+              onFAQClick={handleFAQClick}
+              showFullContent={true}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          {selectedFAQ && state.user && (
+            <Button
+              onClick={() => handleStartChatFromFAQ(selectedFAQ.id)}
+              variant="contained"
+              startIcon={<ChatIcon />}
+            >
+              Chat starten
+            </Button>
+          )}
+          <Button onClick={() => setShowFAQDialog(false)}>
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

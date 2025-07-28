@@ -4,53 +4,57 @@ import {
   Typography,
   Box,
   Paper,
-  Tab,
   Tabs,
+  Tab,
+  Card,
+  CardContent,
   Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Chip,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  Card,
-  CardContent,
+  Alert,
+  CircularProgress,
   List,
   ListItem,
-  Divider,
-  IconButton,
   Tooltip,
-  CircularProgress,
-  Alert,
+  Divider,
+  Grid,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   People as UsersIcon,
   Description as DocumentsIcon,
-  Settings as SettingsIcon,
-  BarChart as StatsIcon,
   QuestionAnswer as FAQIcon,
   Quiz as QuizIcon,
-  Add as AddIcon,
+  Settings as SettingsIcon,
+  Assessment as StatsIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Add as AddIcon,
   Visibility as ViewIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import apiClient from '../services/apiClient';
-import ReactMarkdown from 'react-markdown';
 import AdminQuizManager from '../components/AdminQuizManager';
-import AdminChatConfiguration from '../components/AdminChatConfiguration';
+import AdminChatConfiguration from '../components/admin/ChatConfigurationManager';
+import FAQLinkManager from '../components/admin/FAQLinkManager';
+import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 // Admin components - Full implementation
@@ -63,7 +67,7 @@ const AdminDashboard = () => {
     recentUsers: 0,
     recentChats: 0
   });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
 
@@ -75,8 +79,8 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/stats')) as any;
-      setStats(response as any);
+      const response = await apiClient.get('/admin/stats') as any;
+      setStats(response);
     } catch (error) {
       console.error('Error fetching stats:', error);
       showSnackbar('Fehler beim Laden der Statistiken', 'error');
@@ -87,10 +91,11 @@ const AdminDashboard = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      const response = (await apiClient.get('/admin/activity')) as any;
-      setRecentActivity(response as any);
+      const response = await apiClient.get('/admin/activity') as any;
+      setRecentActivity(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
+      setRecentActivity([]);
     }
   };
 
@@ -117,10 +122,10 @@ const AdminDashboard = () => {
                   Benutzer
                 </Typography>
                 <Typography variant="h4" color="primary">
-                  {stats.totalUsers}
+                  {stats?.totalUsers || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {stats.recentUsers} neue in den letzten 30 Tagen
+                  {stats?.recentUsers || 0} neue in den letzten 30 Tagen
                 </Typography>
               </CardContent>
             </Card>
@@ -131,7 +136,7 @@ const AdminDashboard = () => {
                   Dokumente
                 </Typography>
                 <Typography variant="h4" color="primary">
-                  {stats.totalDocuments}
+                  {stats?.totalDocuments || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Hochgeladene Dokumente
@@ -145,10 +150,10 @@ const AdminDashboard = () => {
                   Chats
                 </Typography>
                 <Typography variant="h4" color="primary">
-                  {stats.totalChats}
+                  {stats?.totalChats || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {stats.recentChats} neue in den letzten 30 Tagen
+                  {stats?.recentChats || 0} neue in den letzten 30 Tagen
                 </Typography>
               </CardContent>
             </Card>
@@ -159,7 +164,7 @@ const AdminDashboard = () => {
                   Nachrichten
                 </Typography>
                 <Typography variant="h4" color="primary">
-                  {stats.totalMessages}
+                  {stats?.totalMessages || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Gesamt ausgetauschte Nachrichten
@@ -174,7 +179,7 @@ const AdminDashboard = () => {
               Letzte Aktivitäten
             </Typography>
             <List>
-              {recentActivity.length > 0 ? (
+              {recentActivity && recentActivity.length > 0 ? (
                 recentActivity.map((activity: any, index) => (
                   <ListItem key={index}>
                     <Typography variant="body2">
@@ -196,7 +201,7 @@ const AdminDashboard = () => {
 };
 
 const AdminUsers = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -216,11 +221,12 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/users')) as any;
-      setUsers(response as any);
+      const response = await apiClient.get('/admin/users') as any;
+      setUsers(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching users:', error);
       showSnackbar('Fehler beim Laden der Benutzer', 'error');
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -377,7 +383,7 @@ const AdminUsers = () => {
 };
 
 const AdminDocuments = () => {
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -403,11 +409,12 @@ const AdminDocuments = () => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/documents')) as any;
-      setDocuments(response as any);
+      const response = await apiClient.get('/admin/documents') as any;
+      setDocuments(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching documents:', error);
       showSnackbar('Fehler beim Laden der Dokumente', 'error');
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
@@ -538,6 +545,7 @@ const AdminDocuments = () => {
                 <TableCell>Dateigröße</TableCell>
                 <TableCell>Hochgeladen von</TableCell>
                 <TableCell>Hochgeladen am</TableCell>
+                <TableCell>Öffentlich</TableCell>
                 <TableCell>Aktionen</TableCell>
               </TableRow>
             </TableHead>
@@ -549,6 +557,13 @@ const AdminDocuments = () => {
                   <TableCell>{formatFileSize(document.file_size)}</TableCell>
                   <TableCell>{document.uploaded_by_name || '-'}</TableCell>
                   <TableCell>{formatDate(document.created_at)}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={document.is_active ? 'Ja' : 'Nein'} 
+                      color={document.is_active ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
                   <TableCell>
                     <Tooltip title="Bearbeiten">
                       <IconButton onClick={() => handleEditDocument(document)}>
@@ -665,6 +680,8 @@ const AdminFAQ = () => {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [createFAQOpen, setCreateFAQOpen] = useState(false);
   const [editFAQOpen, setEditFAQOpen] = useState(false);
+  const [linkManagerOpen, setLinkManagerOpen] = useState(false);
+  const [selectedFAQForLinking, setSelectedFAQForLinking] = useState<{id: string, title: string} | null>(null);
   const [generatingFAQ, setGeneratingFAQ] = useState(false);
   const [enhancingFAQ, setEnhancingFAQ] = useState(false);
   const [faqForm, setFaqForm] = useState({
@@ -675,7 +692,8 @@ const AdminFAQ = () => {
     answer: '',
     additionalInfo: '',
     tags: [] as string[],
-    isActive: true
+    isActive: true,
+    isPublic: false // Neues Feld für öffentliche Anzeige
   });
   const { showSnackbar } = useSnackbar();
 
@@ -691,11 +709,12 @@ const AdminFAQ = () => {
   const fetchChats = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/chats')) as any;
-      setChats(response as any);
+      const response = await apiClient.get('/admin/chats') as any;
+      setChats(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching chats:', error);
       showSnackbar('Fehler beim Laden der Chats', 'error');
+      setChats([]);
     } finally {
       setLoading(false);
     }
@@ -704,11 +723,12 @@ const AdminFAQ = () => {
   const fetchFAQs = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/faqs')) as any;
-      setFaqs(response as any);
+      const response = await apiClient.get('/admin/faqs') as any;
+      setFaqs(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching FAQs:', error);
       showSnackbar('Fehler beim Laden der FAQs', 'error');
+      setFaqs([]);
     } finally {
       setLoading(false);
     }
@@ -716,10 +736,11 @@ const AdminFAQ = () => {
 
   const fetchAvailableTags = async () => {
     try {
-      const response = (await apiClient.get('/faq-tags')) as any;
-      setAvailableTags(response as any);
+      const response = await apiClient.get('/faq-tags') as any;
+      setAvailableTags(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching tags:', error);
+      setAvailableTags([]);
     }
   };
 
@@ -756,7 +777,8 @@ const AdminFAQ = () => {
         answer: generatedFAQ.answer || 'Antwort zur Energiewirtschaft',
         additionalInfo: generatedFAQ.additional_info || 'Weitere Informationen können bei Bedarf ergänzt werden.',
         tags: generatedFAQ.tags || ['Energiewirtschaft'],
-        isActive: true
+        isActive: true,
+        isPublic: generatedFAQ.is_public || false
       });
       
       setCreateFAQOpen(true);
@@ -807,6 +829,7 @@ const AdminFAQ = () => {
           additional_info: faqForm.additionalInfo.trim(),
           tags: faqForm.tags,
           is_active: faqForm.isActive,
+          is_public: faqForm.isPublic,
           enhance_with_context: enhanceWithContext
         })) as any;
 
@@ -853,7 +876,8 @@ const AdminFAQ = () => {
       answer: faq.answer || '',
       additionalInfo: faq.additional_info || '',
       tags: faq.tags || [],
-      isActive: faq.is_active !== false
+      isActive: faq.is_active !== false,
+      isPublic: faq.is_public || false
     });
     setEditFAQOpen(true);
   };
@@ -882,7 +906,8 @@ const AdminFAQ = () => {
       answer: '',
       additionalInfo: '',
       tags: [],
-      isActive: true
+      isActive: true,
+      isPublic: false
     });
     setSelectedChat(null);
     setChatMessages([]);
@@ -979,6 +1004,7 @@ const AdminFAQ = () => {
                     <TableCell>Tags</TableCell>
                     <TableCell>Aufrufe</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Öffentlich</TableCell>
                     <TableCell>Erstellt von</TableCell>
                     <TableCell>Erstellt am</TableCell>
                     <TableCell>Aktionen</TableCell>
@@ -1001,9 +1027,27 @@ const AdminFAQ = () => {
                           size="small"
                         />
                       </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={faq.is_public ? 'Ja' : 'Nein'} 
+                          color={faq.is_public ? 'info' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
                       <TableCell>{faq.created_by_name}</TableCell>
                       <TableCell>{formatDate(faq.created_at)}</TableCell>
                       <TableCell>
+                        <Tooltip title="Verlinkungen verwalten">
+                          <IconButton 
+                            onClick={() => {
+                              setSelectedFAQForLinking({id: faq.id, title: faq.title});
+                              setLinkManagerOpen(true);
+                            }}
+                            color="info"
+                          >
+                            <LinkIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Bearbeiten">
                           <IconButton onClick={() => handleEditFAQ(faq)}>
                             <EditIcon />
@@ -1191,16 +1235,29 @@ const AdminFAQ = () => {
           </FormControl>
           
           {editFAQOpen && (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={faqForm.isActive ? 'active' : 'inactive'}
-                onChange={(e) => setFaqForm({ ...faqForm, isActive: e.target.value === 'active' })}
-              >
-                <MenuItem value="active">Aktiv</MenuItem>
-                <MenuItem value="inactive">Inaktiv</MenuItem>
-              </Select>
-            </FormControl>
+            <>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={faqForm.isActive ? 'active' : 'inactive'}
+                  onChange={(e) => setFaqForm({ ...faqForm, isActive: e.target.value === 'active' })}
+                >
+                  <MenuItem value="active">Aktiv</MenuItem>
+                  <MenuItem value="inactive">Inaktiv</MenuItem>
+                </Select>
+              </FormControl>
+              
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Öffentliche Anzeige</InputLabel>
+                <Select
+                  value={faqForm.isPublic ? 'public' : 'private'}
+                  onChange={(e) => setFaqForm({ ...faqForm, isPublic: e.target.value === 'public' })}
+                >
+                  <MenuItem value="public">Öffentlich (auf Startseite)</MenuItem>
+                  <MenuItem value="private">Privat (nur für angemeldete Benutzer)</MenuItem>
+                </Select>
+              </FormControl>
+            </>
           )}
         </DialogContent>
         <DialogActions>
@@ -1228,6 +1285,17 @@ const AdminFAQ = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Link Manager Dialog */}
+      {linkManagerOpen && selectedFAQForLinking && (
+        <Dialog open={linkManagerOpen} onClose={() => setLinkManagerOpen(false)} maxWidth="lg" fullWidth>
+          <FAQLinkManager 
+            faqId={selectedFAQForLinking.id}
+            faqTitle={selectedFAQForLinking.title}
+            onClose={() => setLinkManagerOpen(false)}
+          />
+        </Dialog>
+      )}
     </Paper>
   );
 };
@@ -1260,8 +1328,8 @@ const AdminSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = (await apiClient.get('/admin/settings')) as any;
-      setSettings(response as any);
+      const response = await apiClient.get('/admin/settings') as any;
+      setSettings(response);
     } catch (error) {
       console.error('Error fetching settings:', error);
       showSnackbar('Fehler beim Laden der Einstellungen', 'error');
@@ -1543,8 +1611,8 @@ const AdminStats = () => {
 
   const fetchDetailedStats = async () => {
     try {
-      const response = (await apiClient.get('/admin/stats/detailed')) as any;
-      setDetailedStats(response as any);
+      const response = await apiClient.get('/admin/stats/detailed') as any;
+      setDetailedStats(response);
     } catch (error) {
       console.error('Error fetching detailed stats:', error);
     }

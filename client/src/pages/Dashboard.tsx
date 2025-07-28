@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
       setDocuments(Array.isArray(documentsData) ? documentsData.slice(0, 5) : []);
       
       // Fetch latest FAQs
-      const faqsResponse = await apiClient.get<FAQ[]>('/faqs?limit=3');
+      const faqsResponse = await apiClient.get<FAQ[]>('/public/faqs?limit=5');
       const faqsData = faqsResponse || [];
       setFaqs(Array.isArray(faqsData) ? faqsData : []);
       

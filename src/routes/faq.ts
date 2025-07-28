@@ -4,16 +4,18 @@ import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 import pool from '../config/database';
 import geminiService from '../services/gemini';
 import { QdrantService } from '../services/qdrant';
+import { faqLinkingService } from '../services/faqLinkingService';
+import { FAQ, FAQWithLinks, CreateFAQLinkRequest } from '../types/faq';
 
 const router = Router();
 
-// Get all FAQs for public display
+// Get all FAQs for public display with links
 router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   const { limit = 10, offset = 0, tag } = req.query;
   
   let query = `
     SELECT id, title, description, context, answer, additional_info, tags,
-           view_count, created_at, updated_at
+           view_count, is_public, created_at, updated_at
     FROM faqs
     WHERE is_active = true
   `;
@@ -34,19 +36,30 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   
   const result = await pool.query(query, queryParams);
   
+  // Add linked terms to each FAQ
+  const faqsWithLinks = await Promise.all(
+    result.rows.map(async (faq) => {
+      const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
+      return {
+        ...faq,
+        linked_terms: linkedTerms
+      };
+    })
+  );
+  
   res.json({
     success: true,
-    data: result.rows
+    data: faqsWithLinks
   });
 }));
 
-// Get specific FAQ by ID
+// Get specific FAQ by ID with links
 router.get('/faqs/:id', asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   
   const result = await pool.query(`
     SELECT id, title, description, context, answer, additional_info, tags,
-           view_count, created_at, updated_at
+           view_count, is_public, created_at, updated_at
     FROM faqs
     WHERE id = $1 AND is_active = true
   `, [id]);
@@ -55,15 +68,23 @@ router.get('/faqs/:id', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('FAQ not found', 404);
   }
   
+  // Get linked terms for this FAQ
+  const linkedTerms = await faqLinkingService.getLinksForFAQ(id);
+  
   // Increment view count
   await pool.query(
     'UPDATE faqs SET view_count = view_count + 1 WHERE id = $1',
     [id]
   );
   
+  const faqWithLinks: FAQWithLinks = {
+    ...result.rows[0],
+    linked_terms: linkedTerms
+  };
+  
   res.json({
     success: true,
-    data: result.rows[0]
+    data: faqWithLinks
   });
 }));
 
@@ -236,7 +257,8 @@ router.get('/admin/faqs', authenticateToken, requireAdminForFaq, asyncHandler(as
   const { limit = 20, offset = 0 } = req.query;
   
   const result = await pool.query(`
-    SELECT f.id, f.title, f.description, f.tags, f.is_active, f.view_count,
+    SELECT f.id, f.title, f.description, f.context, f.answer, f.additional_info, 
+           f.tags, f.is_active, f.is_public, f.view_count,
            f.created_at, f.updated_at,
            u.full_name as created_by_name
     FROM faqs f
@@ -326,6 +348,113 @@ router.delete('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHan
   res.json({
     success: true,
     message: 'FAQ deleted successfully'
+  });
+}));
+
+// FAQ Linking Routes
+
+// Get all links for a FAQ (Admin)
+router.get('/admin/faqs/:id/links', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  
+  const links = await faqLinkingService.getLinksForFAQ(id);
+  
+  res.json({
+    success: true,
+    data: links
+  });
+}));
+
+// Create FAQ link (Admin)
+router.post('/admin/faqs/links', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { source_faq_id, target_faq_id, term, display_text, is_automatic } = req.body as CreateFAQLinkRequest;
+  const userId = req.user!.id;
+  
+  if (!source_faq_id || !target_faq_id || !term) {
+    throw new AppError('Source FAQ ID, target FAQ ID, and term are required', 400);
+  }
+  
+  const link = await faqLinkingService.createLink({
+    source_faq_id,
+    target_faq_id,
+    term,
+    display_text,
+    is_automatic: is_automatic || false
+  }, userId);
+  
+  res.json({
+    success: true,
+    data: link
+  });
+}));
+
+// Delete FAQ link (Admin)
+router.delete('/admin/faqs/links/:linkId', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { linkId } = req.params;
+  
+  const deleted = await faqLinkingService.deleteLink(linkId);
+  
+  if (!deleted) {
+    throw new AppError('Link not found', 404);
+  }
+  
+  res.json({
+    success: true,
+    message: 'Link deleted successfully'
+  });
+}));
+
+// Generate automatic links for FAQ (Admin)
+router.post('/admin/faqs/:id/generate-links', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  
+  const createdLinksCount = await faqLinkingService.createAutomaticLinks(id, userId);
+  
+  res.json({
+    success: true,
+    message: `${createdLinksCount} automatic links created`,
+    data: { created_links: createdLinksCount }
+  });
+}));
+
+// Get FAQ linking statistics (Admin)
+router.get('/admin/faqs/linking-stats', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const stats = await faqLinkingService.getLinkingStats();
+  
+  res.json({
+    success: true,
+    data: stats
+  });
+}));
+
+// Get public FAQs with links (for homepage)
+router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
+  const { limit = 10, offset = 0 } = req.query;
+  
+  const result = await pool.query(`
+    SELECT id, title, description, context, answer, additional_info, tags,
+           view_count, created_at, updated_at
+    FROM faqs
+    WHERE is_active = true AND is_public = true
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+  `, [limit, offset]);
+  
+  // Add linked terms to each FAQ
+  const faqsWithLinks = await Promise.all(
+    result.rows.map(async (faq) => {
+      const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
+      return {
+        ...faq,
+        linked_terms: linkedTerms
+      };
+    })
+  );
+  
+  res.json({
+    success: true,
+    data: faqsWithLinks
   });
 }));
 
