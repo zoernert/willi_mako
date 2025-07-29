@@ -1,7 +1,3 @@
-Gerne, hier ist ein Change Request für das Entwicklungsteam von Willi Mako, der die zuvor besprochenen Funktionen berücksichtigt:
-
----
-
 **Change Request: Erweiterung der KI-gestützten Marktkommunikation**
 
 **Titel:** Implementierung der erweiterten JSON-Nachrichtenverarbeitung und KI-gestütztem Klärfallmanagement im Rahmen der Marktkommunikation

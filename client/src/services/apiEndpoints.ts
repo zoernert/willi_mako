@@ -62,6 +62,9 @@ export const API_ENDPOINTS = {
   workspace: {
     settings: '/workspace/settings',
     dashboard: '/workspace/dashboard', 
+    teamDashboard: '/workspace/team-dashboard',
+    teamDocuments: '/workspace/team-documents',
+    teamSearch: '/workspace/team-search',
     storage: '/workspace/storage',
     cleanup: '/workspace/cleanup',
     export: '/workspace/export',
@@ -90,9 +93,12 @@ export const API_ENDPOINTS = {
   teams: {
     list: '/teams',
     create: '/teams',
+    myTeam: '/teams/my-team',
     detail: (teamId: string) => `/teams/${teamId}`,
     update: (teamId: string) => `/teams/${teamId}`,
     delete: (teamId: string) => `/teams/${teamId}`,
+    leave: '/teams/leave',
+    invite: (teamId: string) => `/teams/${teamId}/invite`,
     members: (teamId: string) => `/teams/${teamId}/members`,
     addMember: (teamId: string) => `/teams/${teamId}/members`,
     removeMember: (teamId: string, userId: string) => `/teams/${teamId}/members/${userId}`,

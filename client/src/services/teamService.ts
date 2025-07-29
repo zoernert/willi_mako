@@ -20,21 +20,29 @@ export interface Team {
 }
 
 export interface TeamMember {
+  id: string;
   user_id: string;
   team_id: string;
   role: 'owner' | 'admin' | 'member';
   joined_at: string;
-  user?: User;
+  user_name: string;
+  user_email: string;
 }
 
 export interface TeamInvitation {
   id: string;
   team_id: string;
-  email: string;
-  role: 'admin' | 'member';
-  created_by: string;
-  created_at: string;
+  team_name: string;
+  invited_by: string;
+  invited_by_name: string;
+  invited_email: string;
+  invited_user_id?: string;
+  invitation_token: string;
+  message?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
   expires_at: string;
+  created_at: string;
+  responded_at?: string;
   team?: Team;
   creator?: User;
 }
@@ -51,10 +59,10 @@ export interface JoinRequest {
 
 export interface LeaderboardEntry {
   user_id: string;
-  user?: User;
+  user_name: string;
   total_points: number;
-  document_points: number;
-  quiz_points: number;
+  document_points?: number;
+  quiz_points?: number;
   rank: number;
 }
 
@@ -90,7 +98,7 @@ export class TeamService {
   }
 
   static async leaveTeam(): Promise<void> {
-    return apiClient.delete<void>('/teams/leave');
+    return apiClient.delete<void>(API_ENDPOINTS.teams.leave);
   }
 
   // Team Members
@@ -106,13 +114,17 @@ export class TeamService {
     return apiClient.delete<void>(API_ENDPOINTS.teams.removeMember(teamId, userId));
   }
 
-  static async updateMemberRole(teamId: string, userId: string, role: 'admin' | 'member'): Promise<TeamMember> {
-    return apiClient.put<TeamMember>(API_ENDPOINTS.teams.updateRole(teamId, userId), { role });
+  static async updateMemberRole(teamId: string, userId: string, role: 'admin' | 'member'): Promise<void> {
+    return apiClient.put<void>(API_ENDPOINTS.teams.updateRole(teamId, userId), { role });
   }
 
   // Invitations
   static async createInvitation(teamId: string, data: { email: string; role?: 'admin' | 'member'; message?: string }): Promise<{ invitation: TeamInvitation; isNewUser: boolean }> {
     return apiClient.post<{ invitation: TeamInvitation; isNewUser: boolean }>(API_ENDPOINTS.teams.invitations.create(teamId), data);
+  }
+
+  static async inviteUser(teamId: string, data: { email: string; message?: string }): Promise<TeamInvitation> {
+    return apiClient.post<TeamInvitation>(API_ENDPOINTS.teams.invite(teamId), data);
   }
 
   static async getInvitations(teamId: string): Promise<TeamInvitation[]> {
@@ -127,12 +139,12 @@ export class TeamService {
     return apiClient.get<TeamInvitation>(API_ENDPOINTS.teams.invitations.info(token));
   }
 
-  static async acceptInvitation(token: string): Promise<{ token?: string; user?: User; isNewUser: boolean }> {
-    return apiClient.post<{ token?: string; user?: User; isNewUser: boolean }>(API_ENDPOINTS.teams.invitations.accept(token));
+  static async acceptInvitation(token: string): Promise<any> {
+    return apiClient.post<any>(API_ENDPOINTS.teams.invitations.accept(token));
   }
 
-  static async acceptInvitationAuthenticated(token: string): Promise<{ team: Team; user: User }> {
-    return apiClient.post<{ team: Team; user: User }>(API_ENDPOINTS.teams.invitations.acceptAuthenticated(token));
+  static async acceptInvitationAuthenticated(token: string): Promise<void> {
+    return apiClient.post<void>(API_ENDPOINTS.teams.invitations.acceptAuthenticated(token));
   }
 
   static async declineInvitation(token: string): Promise<void> {
@@ -168,6 +180,18 @@ export class TeamService {
 
   static async getAnalytics(teamId: string): Promise<TeamAnalytics> {
     return apiClient.get<TeamAnalytics>(API_ENDPOINTS.teams.admin.analytics(teamId));
+  }
+
+  // Current user team
+  static async getCurrentUserTeam(): Promise<Team | null> {
+    try {
+      return await apiClient.get<Team>(API_ENDPOINTS.teams.myTeam);
+    } catch (error: any) {
+      if (error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 }
 

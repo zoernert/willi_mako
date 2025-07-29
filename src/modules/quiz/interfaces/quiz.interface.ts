@@ -23,13 +23,15 @@ export interface QuizQuestion {
   quiz_id: string;
   question_text: string;
   question_type: 'multiple_choice' | 'true_false' | 'text';
-  correct_answer_index?: number;
+  correct_answer_index?: number; // Legacy field for backward compatibility
+  correct_answers?: number[]; // New field for multiple correct answers support
   answer_options: string[];
   explanation?: string;
   difficulty_level?: string;
   points: number;
   source_faq_id?: string;
   source_chat_id?: string;
+  topic?: string; // Added topic field
   created_at: Date;
 }
 

@@ -8,11 +8,13 @@ import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
 import chatConfigurationService from '../services/chatConfigurationService';
+import { GamificationService } from '../modules/quiz/gamification.service';
 
 const router = Router();
 
-// Initialize QdrantService
+// Initialize services
 const qdrantService = new QdrantService();
+const gamificationService = new GamificationService();
 
 // Advanced retrieval service for contextual compression
 class AdvancedRetrieval {
@@ -227,13 +229,16 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   };
 
   // Check if we need to enhance with user context (fallback to existing logic if needed)
+  let userContext: any = null;
   if (contextSettings?.includeUserDocuments || contextSettings?.includeUserNotes) {
-    const { userContext, contextDecision } = await contextManager.determineOptimalContext(
+    const contextResult = await contextManager.determineOptimalContext(
       content,
       userId,
       previousMessages.rows.slice(-5),
       contextSettings
     );
+    userContext = contextResult.userContext;
+    const contextDecision = contextResult.contextDecision;
 
     if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
       // Enhance the configured response with user context
@@ -272,6 +277,18 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   );
    
   await pool.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
+
+  // Award points for document usage if documents were used in the response
+  if (responseMetadata.userDocumentsUsed && responseMetadata.userDocumentsUsed > 0 && userContext?.userDocuments) {
+    try {
+      for (const document of userContext.userDocuments) {
+        await gamificationService.awardDocumentUsagePoints(document.id, chatId);
+      }
+    } catch (error) {
+      console.error('Error awarding document usage points:', error);
+      // Don't fail the chat response if points awarding fails
+    }
+  }
 
   const messageCountResult = await pool.query('SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2', [chatId, 'assistant']);
   let updatedChatTitle = null;

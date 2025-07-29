@@ -39,6 +39,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { useAuth } from '../contexts/AuthContext';
 import TeamService, { Team, TeamMember, TeamInvitation, JoinRequest, LeaderboardEntry } from '../services/teamService';
+import TeamList from '../components/Teams/TeamList';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -493,11 +494,11 @@ const Teams: React.FC = () => {
                     {(members || []).map((member) => (
                       <ListItem key={member.user_id}>
                         <Avatar sx={{ mr: 2 }}>
-                          {member.user?.name?.charAt(0).toUpperCase()}
+                          {member.user_name?.charAt(0).toUpperCase()}
                         </Avatar>
                         <ListItemText
-                          primary={member.user?.full_name || member.user?.name}
-                          secondary={member.user?.email}
+                          primary={member.user_name}
+                          secondary={member.user_email}
                         />
                         <Chip
                           label={member.role}
@@ -527,10 +528,10 @@ const Teams: React.FC = () => {
                           </Typography>
                         </Box>
                         <Avatar sx={{ mr: 2 }}>
-                          {entry.user?.name?.charAt(0).toUpperCase()}
+                          {entry.user_name?.charAt(0).toUpperCase()}
                         </Avatar>
                         <ListItemText
-                          primary={entry.user?.full_name || entry.user?.name}
+                          primary={entry.user_name}
                           secondary={`${entry.total_points} points`}
                         />
                       </ListItem>
@@ -545,8 +546,8 @@ const Teams: React.FC = () => {
                         {(invitations || []).map((invitation) => (
                           <ListItem key={invitation.id}>
                             <ListItemText
-                              primary={invitation.email}
-                              secondary={`Role: ${invitation.role} • Expires: ${new Date(invitation.expires_at).toLocaleDateString()}`}
+                              primary={invitation.invited_email}
+                              secondary={`Expires: ${new Date(invitation.expires_at).toLocaleDateString()}`}
                             />
                             <ListItemSecondaryAction>
                               <IconButton
@@ -612,6 +613,22 @@ const Teams: React.FC = () => {
           )}
         </Grid>
       </Grid>
+
+      {/* Team Discovery Section */}
+      {(!teams || teams.length === 0) && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Teams entdecken
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Finden Sie Teams zum Beitreten oder erstellen Sie Ihr eigenes Team.
+          </Typography>
+          <TeamList 
+            onJoinRequestSent={loadTeams}
+            currentUserTeam={selectedTeam}
+          />
+        </Box>
+      )}
 
       {/* Create Team Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>

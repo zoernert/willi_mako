@@ -3,6 +3,7 @@ import { TeamService } from '../services/teamService';
 import { GamificationService } from '../modules/quiz/gamification.service';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
+import pool from '../config/database';
 
 const router = Router();
 const teamService = new TeamService();
@@ -231,6 +232,22 @@ router.get('/leaderboard', asyncHandler(async (req: AuthenticatedRequest, res: R
   });
 }));
 
+// GET /api/teams/:teamId/leaderboard - Get specific team leaderboard
+router.get('/:teamId/leaderboard', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  const { limit = 10 } = req.query;
+  
+  const leaderboard = await gamificationService.getTeamLeaderboard(
+    teamId, 
+    parseInt(limit as string)
+  );
+  
+  res.json({
+    success: true,
+    data: leaderboard
+  });
+}));
+
 // ===== ADMIN ROUTES =====
 
 // Middleware to check team admin permissions
@@ -344,6 +361,45 @@ router.post('/join-requests/:requestId/reject', asyncHandler(async (req: Authent
   res.json({
     success: true,
     message: 'Join request rejected successfully'
+  });
+}));
+
+// Middleware to check team membership (any member can access)
+const checkTeamMembership = asyncHandler(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const { teamId } = req.params;
+  const userId = req.user!.id;
+  
+  if (!teamId) {
+    throw new AppError('Team ID is required', 400);
+  }
+  
+  // Check if user is a member of this team
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT 1 FROM team_members WHERE user_id = $1 AND team_id = $2',
+      [userId, teamId]
+    );
+    
+    if (result.rows.length === 0) {
+      throw new AppError('You are not a member of this team', 403);
+    }
+  } finally {
+    client.release();
+  }
+  
+  next();
+});
+
+// GET /api/teams/:teamId/members - Get team members (Team members only)
+router.get('/:teamId/members', authenticateToken, checkTeamMembership, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  
+  const members = await teamService.getTeamMembers(teamId);
+  
+  res.json({
+    success: true,
+    data: members
   });
 }));
 

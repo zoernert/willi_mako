@@ -19,9 +19,10 @@ export interface Quiz {
     id: string;
     quiz_id: string;
     question_text: string;
-    question_type: 'multiple-choice' | 'single-choice' | 'true-false' | 'short-answer';
+    question_type: 'multiple_choice' | 'single_choice' | 'true_false' | 'short_answer';
     answer_options: string[];
-    correct_answers: string[];
+    correct_answer_index?: number; // Legacy support
+    correct_answers?: number[]; // New index-based system
     explanation: string;
     difficulty_level: 'easy' | 'medium' | 'hard';
     points: number;

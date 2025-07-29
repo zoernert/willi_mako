@@ -24,6 +24,7 @@ import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Teams from './pages/Teams';
 import InvitationAcceptance from './pages/InvitationAcceptance';
+import TeamInvitationPage from './pages/TeamInvitationPage';
 
 const theme = createTheme({
   palette: {
@@ -108,6 +109,7 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/invitation/:token" element={<InvitationAcceptance />} />
+              <Route path="/team-invitation/:token" element={<TeamInvitationPage />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />

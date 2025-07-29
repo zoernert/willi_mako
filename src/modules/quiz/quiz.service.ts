@@ -41,7 +41,8 @@ export class QuizService {
     return newQuiz;
   }
 
-  async getQuizById(id: string): Promise<Quiz | null> {
+  async getQuizById(id: string, includeInactive: boolean = false): Promise<Quiz | null> {
+    const activeFilter = includeInactive ? '' : 'AND q.is_active = true';
     const query = `
       SELECT q.*, 
              json_agg(
@@ -58,7 +59,7 @@ export class QuizService {
              ) as questions
       FROM quizzes q
       LEFT JOIN quiz_questions qq ON q.id = qq.quiz_id
-      WHERE q.id = $1 AND q.is_active = true
+      WHERE q.id = $1 ${activeFilter}
       GROUP BY q.id
     `;
     
@@ -229,20 +230,29 @@ export class QuizService {
   }
 
   private checkAnswer(userAnswer: UserAnswer, question: QuizQuestion): boolean {
-    const correctAnswers = new Set(question.correct_answers.map(a => a.toLowerCase()));
-    const userAnswers = new Set(userAnswer.answer.map(a => a.toLowerCase()));
-
-    if (correctAnswers.size !== userAnswers.size) {
+    // Handle both legacy string-based answers and new index-based answers
+    if (question.correct_answers && question.correct_answers.length > 0) {
+      // New index-based system
+      const correctIndices = new Set(question.correct_answers);
+      const userIndices = new Set(userAnswer.answer.map(a => typeof a === 'string' ? parseInt(a) : a));
+      
+      if (correctIndices.size !== userIndices.size) {
         return false;
-    }
-
-    for (const answer of userAnswers) {
-        if (!correctAnswers.has(answer)) {
-            return false;
+      }
+      
+      for (const index of userIndices) {
+        if (!correctIndices.has(index)) {
+          return false;
         }
+      }
+      return true;
+    } else if (question.correct_answer_index !== undefined) {
+      // Legacy single answer system
+      const userIndex = typeof userAnswer.answer[0] === 'string' ? parseInt(userAnswer.answer[0]) : userAnswer.answer[0];
+      return userIndex === question.correct_answer_index;
     }
-
-    return true;
+    
+    return false;
   }
 
   // --- Admin Methods ---
@@ -359,9 +369,9 @@ export class QuizService {
     // 3. Map the raw questions to the QuizQuestion format
     const generatedQuestions: Omit<QuizQuestion, 'id' | 'quiz_id' | 'created_at'>[] = generatedQuestionsRaw.map(q => ({
         question_text: q.question,
-        question_type: 'multiple-choice' as const,  // Fix the type
+        question_type: 'multiple_choice' as const,  // Fix the type to match database
         answer_options: q.options,
-        correct_answers: [q.options[q.correctIndex]], // Assuming single correct answer for now
+        correct_answers: [q.correctIndex], // Store as array of indices, not strings
         explanation: q.explanation,
         difficulty_level: difficulty,
         points: difficulty === 'easy' ? 5 : difficulty === 'medium' ? 10 : 15,
@@ -379,7 +389,7 @@ export class QuizService {
       topic_area: topic,
       time_limit_minutes: numQuestions * 1.5, // 1.5 minutes per question
       question_count: generatedQuestions.length,
-      is_active: false, // Admin should activate it manually
+      is_active: true, // Auto-generated quizzes should be active immediately
       created_by: userId,
     };
 

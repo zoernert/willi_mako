@@ -231,9 +231,6 @@ const InvitationAcceptance: React.FC = () => {
             </Card>
 
             <Typography variant="body1" gutterBottom>
-              <strong>Rolle:</strong> {invitation.role === 'admin' ? 'Administrator' : 'Mitglied'}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
               <strong>Eingeladen von:</strong> {invitation.creator?.full_name || invitation.creator?.name}
             </Typography>
             <Typography variant="body1">

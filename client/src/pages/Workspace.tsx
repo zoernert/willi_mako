@@ -13,7 +13,9 @@ import {
   Chip,
   IconButton,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Notes as NotesIcon,
@@ -22,10 +24,12 @@ import {
   Dashboard as DashboardIcon,
   Storage as StorageIcon,
   AutoAwesome as AIIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Group as TeamIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { workspaceApi } from '../services/workspaceApi';
+import TeamService from '../services/teamService';
 import NotesManager from '../components/Workspace/NotesManager';
 import DocumentsManager from '../components/Workspace/DocumentsManager';
 import WorkspaceSettings from '../components/Workspace/WorkspaceSettings';
@@ -60,6 +64,11 @@ interface WorkspaceStats {
   storageLimitMB: number;
   aiContextEnabled: boolean;
   recentActivity: number;
+  // Team-related stats
+  teamDocuments?: number;
+  teamNotes?: number;
+  teamName?: string;
+  isTeamMember?: boolean;
 }
 
 const Workspace: React.FC = () => {
@@ -69,6 +78,8 @@ const Workspace: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showMobileStats, setShowMobileStats] = useState(false);
+  const [showTeamDocuments, setShowTeamDocuments] = useState(true);
+  const [userTeam, setUserTeam] = useState<any>(null);
   
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
@@ -83,6 +94,19 @@ const Workspace: React.FC = () => {
       setLoading(true);
       const data = await workspaceApi.getDashboard();
       setStats(data);
+      
+      // Check if user is in a team
+      try {
+        const team = await TeamService.getCurrentUserTeam();
+        setUserTeam(team);
+        if (team) {
+          const teamData = await workspaceApi.getTeamWorkspaceDashboard();
+          setStats(prev => ({ ...prev, ...teamData }));
+        }
+      } catch (teamError) {
+        // User is not in a team, continue without team features
+        console.log('User is not in a team:', teamError);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -198,6 +222,15 @@ const Workspace: React.FC = () => {
           >
             <DashboardIcon color="primary" />
             Mein Workspace
+            {userTeam && (
+              <Chip 
+                icon={<TeamIcon />} 
+                label={userTeam.name} 
+                size="small" 
+                color="secondary"
+                sx={{ ml: 1 }}
+              />
+            )}
           </Typography>
           
           <IconButton 
@@ -216,7 +249,29 @@ const Workspace: React.FC = () => {
         
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
           Verwalten Sie Ihre persönlichen Notizen und Dokumente mit KI-Unterstützung
+          {userTeam && (
+            <>
+              <br />
+              Als Mitglied von "{userTeam.name}" haben Sie auch Zugriff auf Team-Dokumente
+            </>
+          )}
         </Typography>
+
+        {/* Team Document Filter */}
+        {userTeam && (
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={showTeamDocuments} 
+                  onChange={(e) => setShowTeamDocuments(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Team-Dokumente anzeigen"
+            />
+          </Box>
+        )}
 
         {/* Smart Search Bar */}
         <Box sx={{ maxWidth: 600, mx: 'auto' }}>
@@ -364,7 +419,7 @@ const Workspace: React.FC = () => {
             aria-label="Navigate to my notes"
           />
           <Tab
-            label="Meine Dokumente"
+            label={userTeam && showTeamDocuments ? "Alle Dokumente" : "Meine Dokumente"}
             icon={<DocumentsIcon />}
             iconPosition="start"
             id="workspace-tab-1"
@@ -386,7 +441,11 @@ const Workspace: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={activeTab} index={1}>
-          <DocumentsManager onStatsUpdate={fetchWorkspaceStats} />
+          <DocumentsManager 
+            onStatsUpdate={fetchWorkspaceStats} 
+            showTeamDocuments={userTeam && showTeamDocuments}
+            teamName={userTeam?.name}
+          />
         </TabPanel>
 
         <TabPanel value={activeTab} index={2}>

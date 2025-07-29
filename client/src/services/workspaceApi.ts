@@ -53,4 +53,19 @@ export const workspaceApi = {
     const params = query ? { query } : {};
     return apiClient.get(API_ENDPOINTS.workspace.context, { params });
   },
+
+  // Team workspace data
+  getTeamWorkspaceDashboard: (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.teamDashboard);
+  },
+
+  // Get team documents and notes
+  getTeamDocuments: (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.teamDocuments);
+  },
+
+  // Team-wide search
+  searchTeamWorkspace: (searchRequest: SearchRequest): Promise<SearchResult[]> => {
+    return apiClient.post(API_ENDPOINTS.workspace.teamSearch, searchRequest);
+  },
 };

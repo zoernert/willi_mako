@@ -32,20 +32,28 @@ import {
   Visibility as PreviewIcon,
   MoreVert as MoreIcon,
   SmartToy as AIIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Group as TeamIcon,
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import DocumentPreview from './DocumentPreview';
 import DocumentUpload from './DocumentUpload';
 import { documentsApi } from '../../services/documentsApi';
+import { workspaceApi } from '../../services/workspaceApi';
 import { Document } from '../../types/workspace';
 
 interface DocumentsManagerProps {
   onStatsUpdate: () => void;
+  showTeamDocuments?: boolean;
+  teamName?: string;
 }
 
-const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) => {
+const DocumentsManager: React.FC<DocumentsManagerProps> = ({ 
+  onStatsUpdate, 
+  showTeamDocuments = false,
+  teamName 
+}) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -79,10 +87,18 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await documentsApi.getWorkspaceDocuments({
-        page: currentPage,
-        limit: 12
-      });
+      
+      let data;
+      if (showTeamDocuments) {
+        // Fetch team documents
+        data = await workspaceApi.getTeamDocuments();
+      } else {
+        // Fetch personal documents
+        data = await documentsApi.getWorkspaceDocuments({
+          page: currentPage,
+          limit: 12
+        });
+      }
       
       setDocuments(data.documents || []);
       setTotalPages(data.totalPages || Math.ceil((data.total || 0) / 12));
@@ -92,7 +108,7 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
     } finally {
       setLoading(false);
     }
-  }, [currentPage, showSnackbar]);
+  }, [currentPage, showSnackbar, showTeamDocuments]);
 
   useEffect(() => {
     fetchDocuments();
@@ -311,6 +327,19 @@ const DocumentsManager: React.FC<DocumentsManagerProps> = ({ onStatsUpdate }) =>
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Header with Team Info */}
+      {showTeamDocuments && teamName && (
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.50', borderRadius: 2 }}>
+          <Typography variant="h6" display="flex" alignItems="center" gap={1}>
+            <TeamIcon color="primary" />
+            Team-Dokumente von "{teamName}"
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Diese Dokumente wurden von Ihren Team-Kollegen hochgeladen und sind für alle Mitglieder sichtbar.
+          </Typography>
+        </Box>
+      )}
+
       {/* Upload Area with Drag & Drop */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
