@@ -104,7 +104,7 @@ export class QuizController {
         try {
             const userId = req.user!.id;
             const { quizId } = req.params;
-            const attempt = await this.quizService.startQuizAttempt(quizId, userId);
+            const attempt = await this.quizService.startQuizAttempt(userId, quizId);
             ResponseUtils.success(res, attempt);
         } catch (error) {
             next(error);
