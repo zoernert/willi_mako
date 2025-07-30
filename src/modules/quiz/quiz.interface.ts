@@ -34,13 +34,17 @@ export interface Quiz {
     id: string;
     user_id: string;
     quiz_id: string;
-    started_at: string;
+    start_time: string; // Changed from started_at to match database
+    end_time?: string; // Added end_time to match database
     completed_at?: string;
     score: number;
+    max_score?: number; // Added max_score to match database
     percentage: number;
-    is_passed: boolean;
-    time_taken_seconds: number;
+    is_completed?: boolean; // Added is_completed to match database
+    is_passed?: boolean; // Made optional since it's added via migration
+    time_spent_seconds?: number; // Changed from time_taken_seconds to match database
     answers?: UserAnswer[];
+    created_at?: string; // Added created_at to match database
   }
   
   export interface UserAnswer {

@@ -153,11 +153,11 @@ export class QuizService {
     }
 
     const percentage = (correctCount / quiz.questions.length) * 100;
-    const timeTaken = (new Date().getTime() - new Date(attempt.started_at).getTime()) / 1000;
+    const timeTaken = Math.round((new Date().getTime() - new Date(attempt.start_time).getTime()) / 1000);
 
     const updateQuery = `
         UPDATE user_quiz_attempts
-        SET completed_at = CURRENT_TIMESTAMP, score = $1, percentage = $2, is_passed = $3, time_taken_seconds = $4, answers = $5
+        SET completed_at = CURRENT_TIMESTAMP, score = $1, percentage = $2, is_passed = $3, time_spent_seconds = $4, answers = $5
         WHERE id = $6
         RETURNING *
     `;

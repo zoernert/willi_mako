@@ -46,7 +46,9 @@ export interface UserQuizAttempt {
   percentage: number;
   time_spent_seconds?: number;
   is_completed: boolean;
+  is_passed?: boolean; // Added is_passed field
   answers?: UserAnswer[];
+  completed_at?: Date; // Added completed_at field
   created_at: Date;
 }
 
