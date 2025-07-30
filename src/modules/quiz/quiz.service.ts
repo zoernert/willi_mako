@@ -167,6 +167,17 @@ export class QuizService {
         throw new AppError('Failed to update quiz attempt', 500);
     }
 
+    // Ensure numeric fields are properly converted from database strings
+    if (updatedAttempt.percentage && typeof updatedAttempt.percentage === 'string') {
+        updatedAttempt.percentage = parseFloat(updatedAttempt.percentage);
+    }
+    if (updatedAttempt.score && typeof updatedAttempt.score === 'string') {
+        updatedAttempt.score = parseInt(updatedAttempt.score);
+    }
+    if (updatedAttempt.time_spent_seconds && typeof updatedAttempt.time_spent_seconds === 'string') {
+        updatedAttempt.time_spent_seconds = parseInt(updatedAttempt.time_spent_seconds);
+    }
+
     const badgeEarned = await this.gamificationService.awardBadges(userId, {
         quizId: quiz.id,
         score: percentage,
@@ -190,6 +201,17 @@ export class QuizService {
 
     if (!attempt || !attempt.completed_at) {
         throw new AppError('Quiz attempt not found or not completed', 404);
+    }
+
+    // Ensure numeric fields are properly converted from database strings
+    if (attempt.percentage && typeof attempt.percentage === 'string') {
+        attempt.percentage = parseFloat(attempt.percentage);
+    }
+    if (attempt.score && typeof attempt.score === 'string') {
+        attempt.score = parseInt(attempt.score);
+    }
+    if (attempt.time_spent_seconds && typeof attempt.time_spent_seconds === 'string') {
+        attempt.time_spent_seconds = parseInt(attempt.time_spent_seconds);
     }
 
     const quiz = await this.getQuizById(attempt.quiz_id);
