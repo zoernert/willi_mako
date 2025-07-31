@@ -52,7 +52,9 @@ export class QuizController {
         try {
             const userId = req.user!.id;
             const quizzes = await this.quizService.getUserQuizzes(userId);
-            ResponseUtils.success(res, quizzes);
+            // Ensure we return an array even if quizzes is null/undefined
+            const quizzesArray = Array.isArray(quizzes) ? quizzes : [];
+            ResponseUtils.success(res, quizzesArray);
         } catch (error) {
             next(error);
         }
@@ -62,7 +64,9 @@ export class QuizController {
         try {
             const userId = req.user!.id;
             const suggestions = await this.quizService.getQuizSuggestions(userId);
-            ResponseUtils.success(res, suggestions);
+            // Ensure we return an array even if suggestions is null/undefined
+            const suggestionsArray = Array.isArray(suggestions) ? suggestions : [];
+            ResponseUtils.success(res, suggestionsArray);
         } catch (error) {
             next(error);
         }
@@ -126,7 +130,9 @@ export class QuizController {
     public getLeaderboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const leaderboard = await this.gamificationService.getLeaderboard();
-            ResponseUtils.success(res, leaderboard);
+            // Ensure we return an array even if leaderboard is null/undefined
+            const leaderboardArray = Array.isArray(leaderboard) ? leaderboard : [];
+            ResponseUtils.success(res, leaderboardArray);
         } catch (error) {
             next(error);
         }
@@ -136,7 +142,9 @@ export class QuizController {
     public getAdminQuizzes = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
         try {
             const quizzes = await this.quizService.getAllQuizzesForAdmin();
-            ResponseUtils.success(res, quizzes);
+            // Ensure we return an array even if quizzes is null/undefined
+            const quizzesArray = Array.isArray(quizzes) ? quizzes : [];
+            ResponseUtils.success(res, quizzesArray);
         } catch (error) {
             next(error);
         }
@@ -146,7 +154,9 @@ export class QuizController {
         try {
             const { quizId } = req.params;
             const questions = await this.quizService.getQuizQuestionsForAdmin(quizId);
-            ResponseUtils.success(res, questions);
+            // Ensure we return an array even if questions is null/undefined
+            const questionsArray = Array.isArray(questions) ? questions : [];
+            ResponseUtils.success(res, questionsArray);
         } catch (error) {
             next(error);
         }

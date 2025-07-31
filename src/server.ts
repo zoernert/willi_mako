@@ -74,7 +74,7 @@ app.use('/api/v2/user', userRoutesV2); // v2 user endpoints
 
 // New v2 routes  
 app.use('/api/v2/quiz', quizRoutesV2);
-app.use('/admin', authenticateToken, adminQuizRoutes);
+app.use('/api/admin/quizzes', adminQuizRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
