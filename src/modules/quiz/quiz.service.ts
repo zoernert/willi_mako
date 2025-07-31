@@ -283,7 +283,7 @@ export class QuizService {
     const query = `
       SELECT 
         q.*,
-        u.username as creator_name,
+        COALESCE(u.full_name, u.name, u.email) as creator_name,
         (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) as question_count,
         (SELECT COUNT(*) FROM user_quiz_attempts WHERE quiz_id = q.id) as attempt_count
       FROM quizzes q
@@ -329,9 +329,8 @@ export class QuizService {
 
   async deleteQuizAsAdmin(quizId: string): Promise<void> {
     // Using a transaction to delete the quiz and all its related data
+    // Note: user_quiz_attempts will be automatically deleted due to CASCADE constraint
     const operations = [
-      (client: any) => client.query('DELETE FROM user_answers WHERE attempt_id IN (SELECT id FROM user_quiz_attempts WHERE quiz_id = $1)', [quizId]),
-      (client: any) => client.query('DELETE FROM user_quiz_attempts WHERE quiz_id = $1', [quizId]),
       (client: any) => client.query('DELETE FROM quiz_questions WHERE quiz_id = $1', [quizId]),
       (client: any) => client.query('DELETE FROM quizzes WHERE id = $1', [quizId]),
     ];
@@ -409,7 +408,7 @@ export class QuizService {
       description: quizDescription,
       difficulty_level: difficulty,
       topic_area: topic,
-      time_limit_minutes: numQuestions * 1.5, // 1.5 minutes per question
+      time_limit_minutes: Math.round(numQuestions * 1.5), // 1.5 minutes per question, rounded to integer
       question_count: generatedQuestions.length,
       is_active: true, // Auto-generated quizzes should be active immediately
       created_by: userId,
