@@ -112,6 +112,7 @@ const Chat: React.FC = () => {
   }, [chatId]);
 
   useEffect(() => {
+    console.log('Messages state updated:', messages.length, 'messages');
     scrollToBottom();
   }, [messages]);
 
@@ -134,14 +135,22 @@ const Chat: React.FC = () => {
       // Reset loading state for message sending when switching chats
       setLoading(false);
       setIsTyping(false);
+      // Reset any pending clarifications when switching chats
+      setPendingClarification(null);
+      
       const chatData = await chatApi.getChat(id);
       console.log('Chat fetched:', chatData);
       setCurrentChat(chatData.chat);
-      setMessages(chatData.messages || []);
+      
+      // Ensure messages is always an array
+      const messagesData = chatData.messages || [];
+      console.log('Setting messages:', messagesData);
+      setMessages(messagesData);
       setError(null);
     } catch (error) {
       console.error('Error fetching chat:', error);
       setError('Fehler beim Laden des Chats');
+      setMessages([]); // Reset messages on error
     } finally {
       console.log('Setting chatLoading to false');
       setChatLoading(false);
@@ -155,10 +164,16 @@ const Chat: React.FC = () => {
       console.log('New chat created:', newChat);
       setChats([newChat, ...chats]);
       setCurrentChat(newChat);
+      
+      // Explicitly reset all relevant states
       setMessages([]);
-      // Reset loading states when creating new chat
       setLoading(false);
       setIsTyping(false);
+      setPendingClarification(null);
+      setError(null);
+      setChatLoading(false);
+      
+      console.log('New chat state initialized');
       window.history.pushState({}, '', `/chat/${newChat.id}`);
     } catch (error) {
       console.error('Error creating new chat:', error);
@@ -205,17 +220,24 @@ const Chat: React.FC = () => {
       console.log('Assistant message:', assistantMessage);
       console.log('Response type:', type);
       
+      // Always add user message first, regardless of response type
+      setMessages(prev => {
+        console.log('Adding user message to state:', userMessage);
+        return [...prev, userMessage];
+      });
+      
       // Handle clarification response
       if (type === 'clarification' && assistantMessage.metadata?.type === 'clarification') {
         // Parse clarification data from message content
         const clarificationData = JSON.parse(assistantMessage.content);
         setPendingClarification(clarificationData.clarificationResult);
-        
-        // Add user message to display
-        setMessages(prev => [...prev, userMessage]);
+        console.log('Clarification pending, assistant message not added to display');
       } else {
-        // Normal response
-        setMessages(prev => [...prev, userMessage, assistantMessage]);
+        // Normal response - add assistant message
+        setMessages(prev => {
+          console.log('Adding assistant message to state:', assistantMessage);
+          return [...prev, assistantMessage];
+        });
         setPendingClarification(null);
       }
       
@@ -424,28 +446,39 @@ const Chat: React.FC = () => {
                 </Box>
               ) : (
                 <List>
-                  {messages.map((message) => (
-                    <ListItem
-                      key={message.id}
-                      sx={{
-                        alignItems: 'flex-start',
-                        mb: 2,
-                        flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
-                      }}
-                    >
-                      <Avatar
+                  {messages.length === 0 ? (
+                    <ListItem>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ textAlign: 'center', width: '100%' }}
+                      >
+                        Starten Sie ein Gespräch mit Willi Mako
+                      </Typography>
+                    </ListItem>
+                  ) : (
+                    messages.map((message) => (
+                      <ListItem
+                        key={`${message.id}-${message.role}-${message.created_at}`}
                         sx={{
-                          mx: 1,
-                          bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
+                          alignItems: 'flex-start',
+                          mb: 2,
+                          flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                         }}
                       >
-                        {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
-                      </Avatar>
-                      <Paper
-                        sx={{
-                          p: 2,
-                          maxWidth: '70%',
-                          bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
+                        <Avatar
+                          sx={{
+                            mx: 1,
+                            bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
+                          }}
+                        >
+                          {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
+                        </Avatar>
+                        <Paper
+                          sx={{
+                            p: 2,
+                            maxWidth: '70%',
+                            bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
                           color: message.role === 'user' ? 'white' : 'text.primary',
                         }}
                       >
@@ -589,7 +622,8 @@ const Chat: React.FC = () => {
                         </Typography>
                       </Paper>
                     </ListItem>
-                  ))}
+                    ))
+                  )}
                   
                   {/* Clarification UI */}
                   {pendingClarification && (
