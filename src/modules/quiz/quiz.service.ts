@@ -153,7 +153,19 @@ export class QuizService {
     }
 
     const percentage = (correctCount / quiz.questions.length) * 100;
-    const timeTaken = Math.round((new Date().getTime() - new Date(attempt.start_time).getTime()) / 1000);
+    
+    // Calculate time taken with error handling
+    let timeTaken = 0;
+    try {
+        const startTime = new Date(attempt.start_time).getTime();
+        const endTime = new Date().getTime();
+        if (!isNaN(startTime) && !isNaN(endTime)) {
+            timeTaken = Math.round((endTime - startTime) / 1000);
+        }
+    } catch (error) {
+        console.error('Error calculating time taken:', error);
+        timeTaken = 0;
+    }
 
     const updateQuery = `
         UPDATE user_quiz_attempts
@@ -174,8 +186,12 @@ export class QuizService {
     if (updatedAttempt.score && typeof updatedAttempt.score === 'string') {
         updatedAttempt.score = parseInt(updatedAttempt.score);
     }
-    if (updatedAttempt.time_spent_seconds && typeof updatedAttempt.time_spent_seconds === 'string') {
-        updatedAttempt.time_spent_seconds = parseInt(updatedAttempt.time_spent_seconds);
+    if (updatedAttempt.time_spent_seconds !== null && updatedAttempt.time_spent_seconds !== undefined) {
+        if (typeof updatedAttempt.time_spent_seconds === 'string') {
+            updatedAttempt.time_spent_seconds = parseInt(updatedAttempt.time_spent_seconds);
+        }
+    } else {
+        updatedAttempt.time_spent_seconds = 0;
     }
 
     const badgeEarned = await this.gamificationService.awardBadges(userId, {
@@ -210,8 +226,12 @@ export class QuizService {
     if (attempt.score && typeof attempt.score === 'string') {
         attempt.score = parseInt(attempt.score);
     }
-    if (attempt.time_spent_seconds && typeof attempt.time_spent_seconds === 'string') {
-        attempt.time_spent_seconds = parseInt(attempt.time_spent_seconds);
+    if (attempt.time_spent_seconds !== null && attempt.time_spent_seconds !== undefined) {
+        if (typeof attempt.time_spent_seconds === 'string') {
+            attempt.time_spent_seconds = parseInt(attempt.time_spent_seconds);
+        }
+    } else {
+        attempt.time_spent_seconds = 0;
     }
 
     const quiz = await this.getQuizById(attempt.quiz_id);
@@ -252,11 +272,27 @@ export class QuizService {
   }
 
   private checkAnswer(userAnswer: UserAnswer, question: QuizQuestion): boolean {
+    console.log('Checking answer:', {
+      userAnswer: userAnswer.answer,
+      correctAnswers: question.correct_answers,
+      correctAnswerIndex: question.correct_answer_index
+    });
+
     // Handle both legacy string-based answers and new index-based answers
-    if (question.correct_answers && question.correct_answers.length > 0) {
+    if (question.correct_answers && Array.isArray(question.correct_answers) && question.correct_answers.length > 0) {
       // New index-based system
-      const correctIndices = new Set(question.correct_answers);
-      const userIndices = new Set(userAnswer.answer.map(a => typeof a === 'string' ? parseInt(a) : a));
+      const correctIndices = new Set(question.correct_answers.map(a => Number(a)));
+      
+      // Handle user answers - convert to numbers and ensure it's an array
+      let userAnswerArray = Array.isArray(userAnswer.answer) ? userAnswer.answer : [userAnswer.answer];
+      const userIndices = new Set(userAnswerArray.map(a => {
+        if (typeof a === 'string') {
+          return parseInt(a);
+        }
+        return Number(a);
+      }));
+      
+      console.log('Comparing sets:', { correctIndices: Array.from(correctIndices), userIndices: Array.from(userIndices) });
       
       if (correctIndices.size !== userIndices.size) {
         return false;
@@ -268,12 +304,14 @@ export class QuizService {
         }
       }
       return true;
-    } else if (question.correct_answer_index !== undefined) {
+    } else if (question.correct_answer_index !== undefined && question.correct_answer_index !== null) {
       // Legacy single answer system
-      const userIndex = typeof userAnswer.answer[0] === 'string' ? parseInt(userAnswer.answer[0]) : userAnswer.answer[0];
-      return userIndex === question.correct_answer_index;
+      const userIndex = Array.isArray(userAnswer.answer) ? userAnswer.answer[0] : userAnswer.answer;
+      const normalizedUserIndex = typeof userIndex === 'string' ? parseInt(userIndex) : Number(userIndex);
+      return normalizedUserIndex === Number(question.correct_answer_index);
     }
     
+    console.log('No valid answer format found');
     return false;
   }
 
@@ -505,11 +543,11 @@ export class QuizService {
   async generateQuizFromChats(userId: string, questionCount: number): Promise<Quiz> {
     // Get recent chat messages from the user to generate context-based quiz
     const chatQuery = `
-      SELECT cm.message, cm.created_at
-      FROM chat_messages cm
-      JOIN chats c ON cm.chat_id = c.id
-      WHERE c.user_id = $1
-      ORDER BY cm.created_at DESC
+      SELECT m.content as message, m.created_at
+      FROM messages m
+      JOIN chats c ON m.chat_id = c.id
+      WHERE c.user_id = $1 AND m.role = 'user'
+      ORDER BY m.created_at DESC
       LIMIT 50
     `;
     
