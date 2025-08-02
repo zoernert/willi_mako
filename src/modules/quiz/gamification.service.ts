@@ -103,17 +103,32 @@ export class GamificationService {
         try {
             await client.query('BEGIN');
             
-            // Find document uploader
+            // Find document uploader - fallback to user_id if uploaded_by_user_id is null
+            // Also check if document is processed to avoid awarding points for incomplete uploads
             const documentResult = await client.query(
-                'SELECT uploaded_by_user_id FROM user_documents WHERE id = $1',
+                'SELECT COALESCE(uploaded_by_user_id, user_id) as uploader_id, is_processed FROM user_documents WHERE id = $1',
                 [documentId]
             );
             
             if (documentResult.rows.length === 0) {
-                throw new AppError('Document not found', 404);
+                console.warn(`Document with ID ${documentId} not found when awarding usage points`);
+                throw new AppError(`Document not found: ${documentId}`, 404);
             }
             
-            const uploaderUserId = documentResult.rows[0].uploaded_by_user_id;
+            const uploaderUserId = documentResult.rows[0].uploader_id;
+            const isProcessed = documentResult.rows[0].is_processed;
+            
+            if (!uploaderUserId) {
+                console.warn(`Document ${documentId} has no uploader ID, skipping points award`);
+                await client.query('ROLLBACK');
+                return;
+            }
+            
+            if (!isProcessed) {
+                console.warn(`Document ${documentId} is not processed, skipping points award`);
+                await client.query('ROLLBACK');
+                return;
+            }
             
             // Check if points already awarded for this usage
             const existingUsage = await client.query(

@@ -821,6 +821,27 @@ Antworte nur als JSON ohne Markdown-Formatierung:
    * Generate embedding for text (for vector search)
    */
 
+  /**
+   * Generiert eine hypothetische Antwort für HyDE (Hypothetical Document Embeddings)
+   */
+  async generateHypotheticalAnswer(query: string): Promise<string> {
+    try {
+      const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Beantworte die folgende Frage prägnant und ausschließlich basierend auf deinem allgemeinen Wissen über die Marktprozesse. Gib nur die Antwort aus, ohne einleitende Sätze.
+
+Frage: ${query}
+
+Antwort:`;
+
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      return response.text().trim();
+    } catch (error) {
+      console.error('Error generating hypothetical answer:', error);
+      // Fallback zur ursprünglichen Query
+      return query;
+    }
+  }
+
   async generateSearchQueries(query: string): Promise<string[]> {
     try {
       const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen, die helfen würden, umfassenden Kontext aus einer Wissensdatenbank zu sammeln. Decke dabei verschiedene Aspekte und mögliche Intentionen der ursprünglichen Anfrage ab.
@@ -906,6 +927,190 @@ Strukturierter Kontext mit allen relevanten technischen Details:`;
       }).filter(text => text.trim().length > 0).join('\n\n');
       
       return fallbackContent || 'Keine relevanten Dokumente gefunden.';
+    }
+  }
+
+  /**
+   * Erweiterte Kontext-Synthese mit chunk_type-bewusster Verarbeitung
+   */
+  async synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string> {
+    try {
+      const contextParts: string[] = [];
+
+      // Gruppiere Ergebnisse nach chunk_type für bessere Strukturierung
+      const groupedResults = new Map<string, any[]>();
+      searchResults.forEach(result => {
+        const chunkType = result.payload?.chunk_type || 'paragraph';
+        if (!groupedResults.has(chunkType)) {
+          groupedResults.set(chunkType, []);
+        }
+        groupedResults.get(chunkType)!.push(result);
+      });
+
+      // Erstelle kontextspezifische Abschnitte
+      for (const [chunkType, results] of groupedResults.entries()) {
+        const sectionContent = results.map((r, i) => {
+          const content = r.payload?.contextual_content || r.payload?.content || r.payload?.text || '';
+          const source = r.payload?.document_metadata?.document_base_name || 'Unbekannte Quelle';
+          const page = r.payload?.page_number || 'N/A';
+          return `${content}\n[Quelle: ${source}, Seite ${page}]`;
+        }).join('\n\n');
+
+        if (sectionContent.trim()) {
+          let sectionHeader = '';
+          switch (chunkType) {
+            case 'definition':
+              sectionHeader = '## Definitionen und Begriffserklärungen\n';
+              break;
+            case 'abbreviation':
+              sectionHeader = '## Abkürzungen\n';
+              break;
+            case 'structured_table':
+              sectionHeader = '## Tabellarische Daten\n';
+              break;
+            case 'visual_summary':
+              sectionHeader = '## Diagramme und visuelle Darstellungen\n';
+              break;
+            default:
+              sectionHeader = '## Relevante Textauszüge\n';
+          }
+          contextParts.push(sectionHeader + sectionContent);
+        }
+      }
+
+      if (contextParts.length === 0) {
+        return 'Keine relevanten Informationen gefunden.';
+      }
+
+      const structuredContext = contextParts.join('\n\n');
+
+      // Verwende die strukturierten Informationen für die finale Synthese
+      const prompt = `Du bist ein KI-Assistent für die deutsche Energiewirtschaft. Beantworte die Nutzerfrage basierend auf den folgenden, nach Inhaltstypen strukturierten Auszügen aus den offiziellen Dokumenten.
+
+Nutzerfrage: ${query}
+
+--- STRUKTURIERTE KONTEXT-AUSZÜGE ---
+${structuredContext}
+
+Erstelle eine präzise, strukturierte Antwort die:
+1. Die wichtigsten Informationen zu Beginn zusammenfasst
+2. Technische Details und Definitionen klar erklärt
+3. Bei Tabellen die wichtigsten Werte hervorhebt
+4. Quellenangaben integriert
+5. Alle relevanten Aspekte der Anfrage abdeckt
+
+Antwort:`;
+
+      const result = await this.generateWithRetry(prompt);
+      const response = await result.response;
+      return response.text();
+
+    } catch (error) {
+      console.error('Error in chunk-type aware synthesis:', error);
+      // Fallback zur normalen Synthese
+      return this.synthesizeContext(query, searchResults);
+    }
+  }
+
+  /**
+   * Re-Ranking von Suchergebnissen basierend auf semantischer Ähnlichkeit
+   * (Vereinfachte Implementierung ohne externes Cross-Encoder Modell)
+   */
+  async reRankResults(originalQuery: string, searchResults: any[], topK: number = 5): Promise<any[]> {
+    if (searchResults.length <= topK) {
+      return searchResults;
+    }
+
+    try {
+      // Verwende eine vereinfachte Re-Ranking Strategie basierend auf Textähnlichkeit
+      const rankedResults = await Promise.all(
+        searchResults.map(async (result) => {
+          const content = result.payload?.text || result.payload?.content || '';
+          
+          // Berechne eine einfache Ähnlichkeit basierend auf gemeinsamen Begriffen
+          const queryTerms = originalQuery.toLowerCase().split(/\s+/);
+          const contentTerms = content.toLowerCase().split(/\s+/);
+          
+          const commonTerms = queryTerms.filter(term => 
+            contentTerms.some((cTerm: string) => cTerm.includes(term) || term.includes(cTerm))
+          );
+          
+          const textSimilarity = commonTerms.length / queryTerms.length;
+          
+          // Kombiniere ursprünglichen Vektor-Score mit Text-Ähnlichkeit
+          const combinedScore = (result.score * 0.7) + (textSimilarity * 0.3);
+          
+          return {
+            ...result,
+            rerank_score: combinedScore,
+            text_similarity: textSimilarity,
+            original_score: result.score
+          };
+        })
+      );
+
+      // Sortiere nach kombiniertem Score und nimm Top-K
+      return rankedResults
+        .sort((a, b) => b.rerank_score - a.rerank_score)
+        .slice(0, topK);
+
+    } catch (error) {
+      console.error('Error in re-ranking, returning original results:', error);
+      return searchResults.slice(0, topK);
+    }
+  }
+
+  /**
+   * Generiert finale Antwort mit transparenten Quellenangaben
+   */
+  async generateResponseWithSources(
+    query: string, 
+    context: string, 
+    contextSources: any[] = [],
+    previousMessages: any[] = [],
+    userPreferences: any = {}
+  ): Promise<{ response: string; sources: any[] }> {
+    try {
+      // Erstelle erweiterten System-Prompt mit Quellenanweisungen
+      const systemPrompt = `Du bist ein KI-Assistent für die deutsche Energiewirtschaft. Beantworte die Nutzerfrage basierend auf den bereitgestellten Kontext-Auszügen aus offiziellen Dokumenten.
+
+WICHTIGE ANFORDERUNGEN:
+1. Beziehe dich ausschließlich auf die bereitgestellten Kontexte
+2. Gib am Ende deiner Antwort eine Liste der verwendeten Quellen im Format '[Dokumentname, Seite X]' an
+3. Sei präzise und technisch korrekt
+4. Erkläre Fachbegriffe und Abkürzungen
+5. Strukturiere deine Antwort logisch und übersichtlich
+
+Nutzeranfrage: ${query}
+
+Kontext:
+${context}
+
+Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`;
+
+      const result = await this.generateWithRetry(systemPrompt);
+      const response = await result.response;
+      const responseText = response.text();
+
+      // Extrahiere Quellenangaben aus dem Context
+      const sources = contextSources.map(source => ({
+        document: source.source_document || source.document_metadata?.document_base_name || 'Unbekannt',
+        page: source.page_number || 'N/A',
+        chunk_type: source.chunk_type || 'paragraph',
+        score: source.score || 0
+      }));
+
+      return {
+        response: responseText,
+        sources: sources
+      };
+
+    } catch (error) {
+      console.error('Error generating response with sources:', error);
+      return {
+        response: 'Entschuldigung, bei der Generierung der Antwort ist ein Fehler aufgetreten.',
+        sources: []
+      };
     }
   }
 }

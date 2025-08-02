@@ -135,22 +135,90 @@ export class ChatConfigurationService {
           enabled: true
         });
 
-        const allResults = [];
-        for (const q of searchQueries) {
-          const results = await this.qdrantService.searchByText(
-            q, 
-            config.config.vectorSearch.limit, 
-            config.config.vectorSearch.scoreThreshold
-          );
-          allResults.push(...results);
+        let allResults = [];
+        let searchDetails: any[] = [];
+
+        // Verwende optimierte Suche wenn verfügbar
+        let useOptimizedSearch = true; // Standard aktiviert
+        
+        if (useOptimizedSearch) {
+          try {
+            // Optimierte Suche mit Pre-Filtering
+            const optimizedResults = await this.qdrantService.searchWithOptimizations(
+              query,
+              config.config.vectorSearch.limit * 2, // Mehr Ergebnisse für bessere Auswahl
+              config.config.vectorSearch.scoreThreshold,
+              true // HyDE aktiviert
+            );
+            
+            allResults = optimizedResults;
+            
+            // Dokumentiere die optimierte Suche
+            searchDetails.push({
+              query: query,
+              searchType: 'optimized',
+              resultsCount: optimizedResults.length,
+              results: optimizedResults.slice(0, 5).map((r: any) => ({
+                id: r.id,
+                score: r.score,
+                title: r.payload?.title || r.payload?.source_document || 'Unknown',
+                source: r.payload?.document_metadata?.document_base_name || 'Unknown',
+                chunk_type: r.payload?.chunk_type || 'paragraph',
+                chunk_index: r.payload?.chunk_index || 0,
+                content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
+              }))
+            });
+
+          } catch (error) {
+            console.error('Optimized search failed, falling back to standard search:', error);
+            // Fallback zur Standard-Suche
+            useOptimizedSearch = false;
+          }
+        }
+
+        if (!useOptimizedSearch) {
+          // Standard Multi-Query Suche
+          for (const q of searchQueries) {
+            const results = await this.qdrantService.searchByText(
+              q, 
+              config.config.vectorSearch.limit, 
+              config.config.vectorSearch.scoreThreshold
+            );
+            allResults.push(...results);
+
+            // Dokumentiere jede Suchanfrage
+            searchDetails.push({
+              query: q,
+              searchType: 'standard',
+              resultsCount: results.length,
+              results: results.slice(0, 5).map((r: any) => ({
+                id: r.id,
+                score: r.score,
+                title: r.payload?.title || r.payload?.source_document || 'Unknown',
+                source: r.payload?.document_metadata?.document_base_name || r.payload?.source || 'Unknown',
+                chunk_type: r.payload?.chunk_type || 'paragraph',
+                chunk_index: r.payload?.chunk_index || 0,
+                content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
+              }))
+            });
+          }
         }
 
         // Remove duplicates
         const uniqueResults = this.removeDuplicates(allResults);
 
+        // Berechne erweiterte Metriken
+        const scores = uniqueResults.map((r: any) => r.score).filter(s => s !== undefined);
+        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
         processingSteps[processingSteps.length - 1].endTime = Date.now();
         processingSteps[processingSteps.length - 1].output = { 
-          resultsCount: uniqueResults.length
+          searchDetails,
+          totalResultsFound: allResults.length,
+          uniqueResultsUsed: uniqueResults.length,
+          scoreThreshold: config.config.vectorSearch.scoreThreshold,
+          avgScore: avgScore,
+          searchType: useOptimizedSearch ? 'optimized' : 'standard'
         };
 
         // Step 3: Context Optimization (if enabled)
@@ -162,29 +230,73 @@ export class ChatConfigurationService {
           });
 
           if (uniqueResults.length > 0) {
-            // Extract content from results, prioritizing relevant information
-            const relevantContent = uniqueResults.map((r: any) => {
-              return r.payload?.content || r.content || r.payload?.text || '';
-            }).filter(text => text.trim().length > 0);
+            // Verwende chunk-type-bewusste Synthese wenn optimierte Suche verwendet wurde
+            if (useOptimizedSearch && uniqueResults.some((r: any) => r.payload?.chunk_type)) {
+              // Erweitere Ergebnisse mit Kontext-Information
+              const contextualizedResults = uniqueResults.map(result => {
+                const chunkType = result.payload?.chunk_type || 'paragraph';
+                let contextualPrefix = '';
 
-            const rawContext = relevantContent.join('\n\n');
+                switch (chunkType) {
+                  case 'structured_table':
+                    contextualPrefix = '[TABELLE] ';
+                    break;
+                  case 'definition':
+                    contextualPrefix = '[DEFINITION] ';
+                    break;
+                  case 'abbreviation':
+                    contextualPrefix = '[ABKÜRZUNG] ';
+                    break;
+                  case 'visual_summary':
+                    contextualPrefix = '[DIAGRAMM-BESCHREIBUNG] ';
+                    break;
+                  case 'full_page':
+                    contextualPrefix = '[VOLLTEXT] ';
+                    break;
+                  default:
+                    contextualPrefix = '[ABSATZ] ';
+                }
 
-            if (config.config.contextSynthesis.enabled && rawContext.length > config.config.contextSynthesis.maxLength) {
-              // Synthesize context for complex queries
-              contextUsed = await geminiService.synthesizeContext(query, uniqueResults);
-              
-              // Ensure synthesis produced meaningful content
-              if (contextUsed.length < 200) {
-                // If synthesis failed, use raw content (truncated if necessary)
-                contextUsed = rawContext.length > config.config.contextSynthesis.maxLength 
-                  ? rawContext.substring(0, config.config.contextSynthesis.maxLength) + '...'
-                  : rawContext;
-              }
+                return {
+                  ...result,
+                  payload: {
+                    ...result.payload,
+                    contextual_content: contextualPrefix + (result.payload?.text || result.payload?.content || '')
+                  }
+                };
+              });
+
+              contextUsed = await geminiService.synthesizeContextWithChunkTypes(query, contextualizedResults);
             } else {
-              // Use raw context, truncate if necessary
+              // Standard-Kontext-Synthese
+              if (config.config.contextSynthesis.enabled) {
+                contextUsed = await geminiService.synthesizeContext(query, uniqueResults);
+              } else {
+                // Extract content from results, prioritizing relevant information
+                const relevantContent = uniqueResults.map((r: any) => {
+                  return r.payload?.content || r.content || r.payload?.text || '';
+                }).filter(text => text.trim().length > 0);
+
+                contextUsed = relevantContent.join('\n\n');
+              }
+            }
+
+            // Ensure synthesis produced meaningful content
+            if (contextUsed.length < 200 && uniqueResults.length > 0) {
+              // If synthesis failed, use raw content (truncated if necessary)
+              const relevantContent = uniqueResults.map((r: any) => {
+                return r.payload?.content || r.content || r.payload?.text || '';
+              }).filter(text => text.trim().length > 0);
+              
+              const rawContext = relevantContent.join('\n\n');
               contextUsed = rawContext.length > config.config.contextSynthesis.maxLength 
                 ? rawContext.substring(0, config.config.contextSynthesis.maxLength) + '...'
                 : rawContext;
+            }
+
+            // Truncate if necessary
+            if (contextUsed.length > config.config.contextSynthesis.maxLength) {
+              contextUsed = contextUsed.substring(0, config.config.contextSynthesis.maxLength) + '...';
             }
           } else {
             contextUsed = '';
@@ -196,7 +308,9 @@ export class ChatConfigurationService {
             synthesized: config.config.contextSynthesis.enabled && contextUsed.length > 200,
             maxLength: config.config.contextSynthesis.maxLength,
             wasTruncated: contextUsed.endsWith('...'),
-            uniqueResultsUsed: uniqueResults.length
+            uniqueResultsUsed: uniqueResults.length,
+            chunkTypesFound: [...new Set(uniqueResults.map((r: any) => r.payload?.chunk_type || 'paragraph'))],
+            optimizedSearchUsed: useOptimizedSearch
           };
         } else {
           // Even without optimization, extract proper content

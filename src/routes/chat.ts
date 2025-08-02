@@ -24,35 +24,62 @@ class AdvancedRetrieval {
     limit: number = 10
   ): Promise<any[]> {
     try {
-      // 1. Hypothesis Generation: Generate diverse search queries
-      const searchQueries = await geminiService.generateSearchQueries(query);
+      // 1. Optimierte Suche mit Pre-Filtering und Query-Transformation
+      const optimizedResults = await qdrantService.searchWithOptimizations(
+        query,
+        limit * 2, // Hole mehr Ergebnisse für bessere Synthese
+        0.3, // Niedrigerer Threshold für mehr Ergebnisse
+        true // Verwende HyDE
+      );
 
-      // 2. Evidence Collection: Search for each query
-      const allResults = [];
-      for (const q of searchQueries) {
-        // The number of results per query can be adjusted.
-        // We fetch a bit more to have a richer pool for synthesis.
-        const results = await qdrantService.search('system', q, limit);
-        allResults.push(...results);
+      if (optimizedResults.length === 0) {
+        // Fallback zur normalen Suche
+        const searchQueries = await geminiService.generateSearchQueries(query);
+        const allResults = [];
+        for (const q of searchQueries) {
+          const results = await qdrantService.search('system', q, limit);
+          allResults.push(...results);
+        }
+        const uniqueResults = this.removeDuplicates(allResults);
+        
+        if (uniqueResults.length === 0) {
+          return [];
+        }
+
+        // Context Synthesis für Fallback
+        const synthesizedContext = await geminiService.synthesizeContext(query, uniqueResults);
+        return [
+          {
+            payload: {
+              text: synthesizedContext,
+            },
+            score: 1.0,
+            id: uuidv4(),
+          },
+        ];
       }
 
-      // Remove duplicates to avoid redundant information
-      const uniqueResults = this.removeDuplicates(allResults);
+      // 2. Entferne Duplikate
+      const uniqueResults = this.removeDuplicates(optimizedResults);
 
-      if (uniqueResults.length === 0) {
-        return [];
-      }
+      // 3. Intelligente Post-Processing basierend auf chunk_type
+      const contextualizedResults = this.enhanceResultsWithChunkTypeContext(uniqueResults);
 
-      // 3. Context Synthesis: Distill the results into a dense context
-      const synthesizedContext = await geminiService.synthesizeContext(query, uniqueResults);
+      // 4. Context Synthesis mit verbessertem Kontext
+      const synthesizedContext = await geminiService.synthesizeContextWithChunkTypes(query, contextualizedResults);
 
       // Return the synthesized context in the expected format
       return [
         {
           payload: {
             text: synthesizedContext,
+            sources: uniqueResults.map(r => ({
+              source_document: r.payload?.document_metadata?.document_base_name || 'Unknown',
+              page_number: r.payload?.page_number || 'N/A',
+              chunk_type: r.payload?.chunk_type || 'paragraph',
+              score: r.score
+            }))
           },
-          // Add a dummy score and id
           score: 1.0,
           id: uuidv4(),
         },
@@ -61,6 +88,60 @@ class AdvancedRetrieval {
       console.error('Error in advanced retrieval:', error);
       return [];
     }
+  }
+
+  /**
+   * Erweitert Ergebnisse mit kontextspezifischen Informationen basierend auf chunk_type
+   */
+  private enhanceResultsWithChunkTypeContext(results: any[]): any[] {
+    return results.map(result => {
+      const chunkType = result.payload?.chunk_type || 'paragraph';
+      let contextualPrefix = '';
+
+      switch (chunkType) {
+        case 'structured_table':
+          contextualPrefix = '[TABELLE] ';
+          break;
+        case 'definition':
+          contextualPrefix = '[DEFINITION] ';
+          break;
+        case 'abbreviation':
+          contextualPrefix = '[ABKÜRZUNG] ';
+          break;
+        case 'visual_summary':
+          contextualPrefix = '[DIAGRAMM-BESCHREIBUNG] ';
+          break;
+        case 'full_page':
+          contextualPrefix = '[VOLLTEXT] ';
+          break;
+        default:
+          contextualPrefix = '[ABSATZ] ';
+      }
+
+      return {
+        ...result,
+        payload: {
+          ...result.payload,
+          contextual_content: contextualPrefix + (result.payload?.text || result.payload?.content || ''),
+          chunk_type_description: this.getChunkTypeDescription(chunkType)
+        }
+      };
+    });
+  }
+
+  /**
+   * Beschreibt den Typ des Chunks für besseren Kontext
+   */
+  private getChunkTypeDescription(chunkType: string): string {
+    const descriptions: Record<string, string> = {
+      'structured_table': 'Tabellarische Darstellung von Daten',
+      'definition': 'Offizielle Definition eines Begriffs',
+      'abbreviation': 'Erklärung einer Abkürzung',
+      'visual_summary': 'Textuelle Beschreibung eines Diagramms oder einer visuellen Darstellung',
+      'full_page': 'Vollständiger Seiteninhalt',
+      'paragraph': 'Textabsatz'
+    };
+    return descriptions[chunkType] || 'Allgemeiner Textinhalt';
   }
 
   private removeDuplicates(results: any[]): any[] {
@@ -279,10 +360,13 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   await pool.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
 
   // Award points for document usage if documents were used in the response
-  if (responseMetadata.userDocumentsUsed && responseMetadata.userDocumentsUsed > 0 && userContext?.userDocuments) {
+  if (responseMetadata.userDocumentsUsed && responseMetadata.userDocumentsUsed > 0 && userContext?.suggestedDocuments) {
     try {
-      for (const document of userContext.userDocuments) {
-        await gamificationService.awardDocumentUsagePoints(document.id, chatId);
+      for (const document of userContext.suggestedDocuments) {
+        // Ensure document has a valid ID before awarding points
+        if (document && document.id && typeof document.id === 'string') {
+          await gamificationService.awardDocumentUsagePoints(document.id, chatId);
+        }
       }
     } catch (error) {
       console.error('Error awarding document usage points:', error);
