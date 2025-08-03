@@ -1,0 +1,1126 @@
+import geminiService from './gemini';
+import { QdrantService } from './qdrant';
+import { v4 as uuidv4 } from 'uuid';
+
+interface ReasoningStep {
+  step: string;
+  input: string;
+  output: string;
+  confidence: number;
+  iteration: number;
+  timestamp: Date;
+  qdrantQueries?: string[];
+  qdrantResults?: number;
+}
+
+interface QuestionAnalysis {
+  mainIntent: string;
+  specificQuestions: string[];
+  requiredContext: string[];
+  complexityLevel: 'simple' | 'medium' | 'complex';
+  marketCommunicationRelevance: number;
+  confidence: number;
+  semanticConcepts: string[];
+  domainKeywords: string[];
+}
+
+interface QdrantRelevanceAnalysis {
+  primaryConcepts: Array<{concept: string, relevance: number, sources: number}>;
+  relatedTopics: Array<{topic: string, connectionStrength: number}>;
+  domainCoverage: number;
+  conceptGaps: string[];
+  recommendedQueries: string[];
+}
+
+interface ContextAnalysis {
+  relevantSources: any[];
+  contextQuality: number;
+  coverageGaps: string[];
+  additionalSearchNeeded: boolean;
+  marketContextAvailable: boolean;
+  qdrantRelevance: QdrantRelevanceAnalysis;
+  semanticClusters: Array<{theme: string, sources: any[], relevance: number}>;
+}
+
+interface AnswerValidation {
+  isComplete: boolean;
+  isAccurate: boolean;
+  needsMoreContext: boolean;
+  missingAspects: string[];
+  qualityScore: number;
+  semanticConsistency: number;
+  factualGrounding: number;
+}
+
+export class AdvancedReasoningService {
+  private qdrantService: QdrantService;
+  private maxIterations = 10;
+
+  constructor() {
+    this.qdrantService = new QdrantService();
+  }
+
+  /**
+   * Helper method to parse JSON from AI responses that may contain markdown code blocks
+   */
+  private parseJsonFromResponse(response: string): any {
+    try {
+      // First try to parse as-is
+      return JSON.parse(response);
+    } catch (error) {
+      // Try to extract JSON from markdown code blocks (objects or arrays)
+      const jsonMatch = response.match(/```(?:json)?\s*([\[\{][\s\S]*?[\]\}])\s*```/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[1]);
+        } catch (innerError) {
+          console.error('Failed to parse JSON from markdown:', innerError);
+          throw new Error('Invalid JSON in AI response');
+        }
+      }
+      
+      // Try to find JSON object without code blocks
+      const jsonObjectMatch = response.match(/\{[\s\S]*?\}/);
+      if (jsonObjectMatch) {
+        try {
+          return JSON.parse(jsonObjectMatch[0]);
+        } catch (innerError) {
+          console.error('Failed to parse JSON object:', innerError);
+        }
+      }
+      
+      // Try to find JSON array without code blocks
+      const jsonArrayMatch = response.match(/\[[\s\S]*?\]/);
+      if (jsonArrayMatch) {
+        try {
+          return JSON.parse(jsonArrayMatch[0]);
+        } catch (innerError) {
+          console.error('Failed to parse JSON array:', innerError);
+        }
+      }
+      
+      console.error('No JSON found in response:', response);
+      throw new Error('No valid JSON found in AI response');
+    }
+  }
+
+  async generateReasonedResponse(
+    question: string,
+    chatHistory: any[],
+    userPreferences: any,
+    contextSettings: any
+  ): Promise<{
+    response: string;
+    reasoningSteps: ReasoningStep[];
+    finalQuality: number;
+    iterationsUsed: number;
+    pipelineDecisions: any;
+    qaAnalysis: QuestionAnalysis;
+    contextAnalysis: ContextAnalysis;
+  }> {
+    const reasoningSteps: ReasoningStep[] = [];
+    let currentIteration = 0;
+    let finalResponse = '';
+    let finalQuality = 0;
+    let qaAnalysis: QuestionAnalysis | undefined;
+    let contextAnalysis: ContextAnalysis | undefined;
+
+    try {
+      while (currentIteration < this.maxIterations) {
+        currentIteration++;
+
+        try {
+          // Schritt 1: Frage verstehen und semantische Konzepte über QDrant identifizieren
+          qaAnalysis = await this.analyzeQuestionWithQdrant(question, chatHistory, currentIteration);
+          reasoningSteps.push({
+            step: 'question_analysis',
+            input: question,
+            output: JSON.stringify(qaAnalysis),
+            confidence: qaAnalysis.confidence,
+            iteration: currentIteration,
+            timestamp: new Date(),
+            qdrantQueries: qaAnalysis.semanticConcepts,
+            qdrantResults: qaAnalysis.semanticConcepts.length
+          });
+
+          // Schritt 2: Multi-Stage QDrant-basierte Kontextsuche
+          contextAnalysis = await this.retrieveAndAnalyzeContextWithQdrant(
+            qaAnalysis, 
+            chatHistory, 
+            userPreferences,
+            currentIteration
+          );
+          reasoningSteps.push({
+            step: 'context_analysis',
+            input: JSON.stringify(qaAnalysis),
+            output: JSON.stringify(contextAnalysis),
+            confidence: contextAnalysis.contextQuality,
+            iteration: currentIteration,
+            timestamp: new Date(),
+            qdrantQueries: contextAnalysis.qdrantRelevance.recommendedQueries,
+            qdrantResults: contextAnalysis.relevantSources.length
+          });
+
+          // Schritt 3: Vorläufige Antwort mit semantischem Clustering
+          const preliminaryAnswer = await this.generatePreliminaryAnswerWithClusters(
+            qaAnalysis,
+            contextAnalysis,
+            chatHistory,
+            userPreferences,
+            currentIteration
+          );
+          reasoningSteps.push({
+            step: 'preliminary_answer',
+            input: JSON.stringify({ qaAnalysis, contextAnalysis }),
+            output: preliminaryAnswer,
+            confidence: 0.7,
+            iteration: currentIteration,
+            timestamp: new Date()
+          });
+
+          // Schritt 4: QDrant-basierte Antwortvalidierung
+          const validation = await this.validateAnswerWithQdrant(
+            preliminaryAnswer,
+            qaAnalysis,
+            contextAnalysis,
+            currentIteration
+          );
+          reasoningSteps.push({
+            step: 'answer_validation',
+            input: preliminaryAnswer,
+            output: JSON.stringify(validation),
+            confidence: validation.qualityScore,
+            iteration: currentIteration,
+            timestamp: new Date()
+          });
+
+          // Schritt 5: Intelligente QDrant-Nachsuche bei Bedarf
+          if (validation.needsMoreContext && currentIteration < this.maxIterations) {
+            const enhancedContext = await this.retrieveAdditionalContextWithQdrant(
+              validation.missingAspects,
+              qaAnalysis,
+              contextAnalysis.qdrantRelevance,
+              currentIteration
+            );
+            reasoningSteps.push({
+              step: 'enhanced_context_retrieval',
+              input: JSON.stringify(validation.missingAspects),
+              output: JSON.stringify(enhancedContext),
+              confidence: 0.8,
+              iteration: currentIteration,
+              timestamp: new Date(),
+              qdrantQueries: validation.missingAspects,
+              qdrantResults: enhancedContext.length
+            });
+
+            // Merge enhanced context and update clusters
+            contextAnalysis.relevantSources = [...contextAnalysis.relevantSources, ...enhancedContext];
+            contextAnalysis.semanticClusters = await this.recomputeSemanticClusters(
+              contextAnalysis.relevantSources,
+              qaAnalysis.semanticConcepts
+            );
+            contextAnalysis.contextQuality = Math.min(1.0, contextAnalysis.contextQuality + 0.1);
+          }
+
+          // Schritt 6: Finale Antwort mit QDrant-verifizierter Relevanz
+          if (validation.qualityScore >= 0.8 || currentIteration >= this.maxIterations) {
+            finalResponse = await this.generateFinalAnswerWithRelevanceVerification(
+              qaAnalysis,
+              contextAnalysis,
+              validation,
+              chatHistory,
+              userPreferences,
+              currentIteration,
+              reasoningSteps
+            );
+            
+            finalQuality = validation.qualityScore;
+            
+            reasoningSteps.push({
+              step: 'final_answer_generation',
+              input: JSON.stringify({ qaAnalysis, contextAnalysis, validation }),
+              output: finalResponse,
+              confidence: finalQuality,
+              iteration: currentIteration,
+              timestamp: new Date()
+            });
+
+            break;
+          }
+
+          // QDrant-basierte Frageenerweiterung für nächste Iteration
+          question = await this.refineQuestionWithQdrant(
+            question,
+            validation,
+            qaAnalysis,
+            contextAnalysis.qdrantRelevance,
+            currentIteration
+          );
+
+        } catch (error: any) {
+          console.error(`Error in reasoning iteration ${currentIteration}:`, error);
+          
+          // Check if it's a rate limit error
+          if (error?.message?.includes('429') || error?.message?.includes('Too Many Requests')) {
+            console.log('Rate limit hit, falling back to simple response');
+            finalResponse = await this.generateFallbackResponse(question, chatHistory, userPreferences);
+            finalQuality = 0.5;
+            break;
+          }
+          
+          if (currentIteration === 1) {
+            finalResponse = await this.generateFallbackResponse(question, chatHistory, userPreferences);
+            finalQuality = 0.5;
+            qaAnalysis = {
+              mainIntent: question,
+              specificQuestions: [],
+              requiredContext: [],
+              complexityLevel: 'simple',
+              marketCommunicationRelevance: 0.5,
+              confidence: 0.3,
+              semanticConcepts: [],
+              domainKeywords: []
+            };
+            contextAnalysis = {
+              relevantSources: [],
+              contextQuality: 0.3,
+              coverageGaps: [],
+              additionalSearchNeeded: false,
+              marketContextAvailable: false,
+              qdrantRelevance: {
+                primaryConcepts: [],
+                relatedTopics: [],
+                domainCoverage: 0,
+                conceptGaps: [],
+                recommendedQueries: []
+              },
+              semanticClusters: []
+            };
+            break;
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('Critical error in advanced reasoning service:', error);
+      
+      // Generate fallback response if needed
+      if (!finalResponse) {
+        finalResponse = await this.generateFallbackResponse(question, chatHistory, userPreferences);
+        finalQuality = 0.5;
+        
+        // Ensure we have basic analysis objects
+        if (!qaAnalysis) {
+          qaAnalysis = {
+            mainIntent: question,
+            specificQuestions: [],
+            requiredContext: [],
+            complexityLevel: 'simple',
+            marketCommunicationRelevance: 0.5,
+            confidence: 0.3,
+            semanticConcepts: [],
+            domainKeywords: []
+          };
+        }
+        
+        if (!contextAnalysis) {
+          contextAnalysis = {
+            relevantSources: [],
+            contextQuality: 0.3,
+            coverageGaps: [],
+            additionalSearchNeeded: false,
+            marketContextAvailable: false,
+            qdrantRelevance: {
+              primaryConcepts: [],
+              relatedTopics: [],
+              domainCoverage: 0,
+              conceptGaps: [],
+              recommendedQueries: []
+            },
+            semanticClusters: []
+          };
+        }
+      }
+    }
+
+    const pipelineDecisions = {
+      pipelineType: 'advanced_multi_step_reasoning',
+      chatFocus: this.analyzeChatFocus(chatHistory),
+      qualityThreshold: 0.8,
+      iterationsUsed: currentIteration,
+      maxIterations: this.maxIterations,
+      reasoningStrategy: 'qdrant_enhanced_iterative',
+      qdrantInsights: contextAnalysis ? this.summarizeQdrantInsights(contextAnalysis.qdrantRelevance, reasoningSteps) : 'Keine QDrant-Analyse verfügbar'
+    };
+
+    return {
+      response: finalResponse,
+      reasoningSteps,
+      finalQuality,
+      iterationsUsed: currentIteration,
+      pipelineDecisions,
+      qaAnalysis: qaAnalysis!,
+      contextAnalysis: contextAnalysis!
+    };
+  }
+
+  private async analyzeQuestionWithQdrant(
+    question: string, 
+    chatHistory: any[], 
+    iteration: number
+  ): Promise<QuestionAnalysis> {
+    // 1. Erstelle semantische Konzeptsuche über QDrant
+    const semanticSearchResults = await this.qdrantService.searchWithOptimizations(
+      question,
+      20, // Mehr Ergebnisse für Konzeptanalyse
+      0.1, // Niedrigerer Threshold für breitere Suche
+      true // HyDE aktiviert
+    );
+
+    // 2. Extrahiere Domain-Keywords aus QDrant-Ergebnissen
+    const domainKeywords = this.extractDomainKeywords(semanticSearchResults);
+    
+    // 3. Identifiziere semantische Konzepte
+    const semanticConcepts = await this.identifySemanticConcepts(question, semanticSearchResults);
+
+    const analysisPrompt = `
+Als Experte für Marktkommunikation bei Energieversorgern, analysiere diese Frage mit Fokus auf semantische Konzepte:
+
+Frage: "${question}"
+
+Chat-Historie (letzten 5 Nachrichten):
+${chatHistory.slice(-5).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+Verfügbare Domain-Keywords aus Wissensbasis: ${domainKeywords.join(', ')}
+Identifizierte semantische Konzepte: ${semanticConcepts.join(', ')}
+
+Analysiere die Frage bezüglich:
+1. Hauptintention der Frage
+2. Spezifische Teilfragen
+3. Benötigter Kontext aus der Energiebranche
+4. Komplexitätslevel
+5. Relevanz für Marktkommunikation (0-1)
+6. Semantische Konzepte erweitern
+7. Domain-spezifische Keywords
+
+Iteration: ${iteration}
+
+Antworte im JSON-Format:
+{
+  "mainIntent": "string",
+  "specificQuestions": ["string"],
+  "requiredContext": ["string"],
+  "complexityLevel": "simple|medium|complex",
+  "marketCommunicationRelevance": number,
+  "confidence": number,
+  "semanticConcepts": ["string"],
+  "domainKeywords": ["string"]
+}
+`;
+
+    const result = await geminiService.generateText(analysisPrompt);
+    const analysis = this.parseJsonFromResponse(result);
+    
+    // Merge mit QDrant-Erkenntnissen
+    return {
+      ...analysis,
+      semanticConcepts: [...new Set([...analysis.semanticConcepts, ...semanticConcepts])],
+      domainKeywords: [...new Set([...analysis.domainKeywords, ...domainKeywords])]
+    };
+  }
+
+  private async retrieveAndAnalyzeContextWithQdrant(
+    questionAnalysis: QuestionAnalysis,
+    chatHistory: any[],
+    userPreferences: any,
+    iteration: number
+  ): Promise<ContextAnalysis> {
+    // 1. Multi-Stage QDrant Search Strategy
+    const searchStages = [
+      // Stage 1: Direkter Intent
+      { queries: [questionAnalysis.mainIntent], weight: 1.0, limit: 15 },
+      // Stage 2: Spezifische Fragen
+      { queries: questionAnalysis.specificQuestions, weight: 0.8, limit: 10 },
+      // Stage 3: Semantische Konzepte
+      { queries: questionAnalysis.semanticConcepts, weight: 0.7, limit: 8 },
+      // Stage 4: Domain Keywords
+      { queries: questionAnalysis.domainKeywords, weight: 0.6, limit: 5 },
+      // Stage 5: Kontextuelle Expansion
+      { queries: questionAnalysis.requiredContext, weight: 0.5, limit: 5 }
+    ];
+
+    const allResults = [];
+    const qdrantQueries: string[] = [];
+    
+    // Parallele Suche in allen Stages
+    for (const stage of searchStages) {
+      const stagePromises = stage.queries.map(async (query) => {
+        qdrantQueries.push(query);
+        const results = await this.qdrantService.searchWithOptimizations(
+          query,
+          stage.limit,
+          0.2,
+          true
+        );
+        
+        // Gewichte die Ergebnisse basierend auf Stage
+        return results.map(r => ({
+          ...r,
+          score: r.score * stage.weight,
+          searchStage: stage.queries.indexOf(query),
+          sourceQuery: query
+        }));
+      });
+
+      const stageResults = await Promise.all(stagePromises);
+      allResults.push(...stageResults.flat());
+    }
+
+    // 2. Deduplizierung und Relevanz-Ranking
+    const uniqueResults = this.removeDuplicatesWithRelevance(allResults);
+    
+    // 3. Semantic Clustering der Ergebnisse
+    const semanticClusters = await this.computeSemanticClusters(
+      uniqueResults, 
+      questionAnalysis.semanticConcepts
+    );
+
+    // 4. QDrant-basierte Relevanzanalyse
+    const qdrantRelevance = await this.analyzeQdrantRelevance(
+      uniqueResults,
+      questionAnalysis,
+      qdrantQueries
+    );
+
+    // 5. Kontext-Qualitätsbewertung
+    const contextQuality = this.assessContextQuality(
+      uniqueResults,
+      semanticClusters,
+      qdrantRelevance
+    );
+
+    return {
+      relevantSources: uniqueResults,
+      contextQuality,
+      coverageGaps: qdrantRelevance.conceptGaps,
+      additionalSearchNeeded: contextQuality < 0.7,
+      marketContextAvailable: qdrantRelevance.domainCoverage > 0.5,
+      qdrantRelevance,
+      semanticClusters
+    };
+  }
+
+  private async computeSemanticClusters(
+    results: any[],
+    semanticConcepts: string[]
+  ): Promise<Array<{theme: string, sources: any[], relevance: number}>> {
+    const clusters = new Map<string, any[]>();
+    
+    for (const concept of semanticConcepts) {
+      clusters.set(concept, []);
+    }
+    
+    for (const result of results) {
+      const text = result.payload?.text || '';
+      const bestMatch = this.findBestSemanticMatch(text, semanticConcepts);
+      
+      if (bestMatch) {
+        const cluster = clusters.get(bestMatch) || [];
+        cluster.push(result);
+        clusters.set(bestMatch, cluster);
+      }
+    }
+    
+    return Array.from(clusters.entries()).map(([theme, sources]) => ({
+      theme,
+      sources,
+      relevance: sources.length > 0 ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length : 0
+    })).filter(cluster => cluster.sources.length > 0)
+      .sort((a, b) => b.relevance - a.relevance);
+  }
+
+  private async recomputeSemanticClusters(
+    allSources: any[],
+    semanticConcepts: string[]
+  ): Promise<Array<{theme: string, sources: any[], relevance: number}>> {
+    return this.computeSemanticClusters(allSources, semanticConcepts);
+  }
+
+  private findBestSemanticMatch(text: string, concepts: string[]): string | null {
+    let bestMatch = null;
+    let highestScore = 0;
+    
+    for (const concept of concepts) {
+      const score = this.calculateSemanticSimilarity(text.toLowerCase(), concept.toLowerCase());
+      if (score > highestScore && score > 0.3) {
+        highestScore = score;
+        bestMatch = concept;
+      }
+    }
+    
+    return bestMatch;
+  }
+
+  private calculateSemanticSimilarity(text: string, concept: string): number {
+    const textWords = new Set(text.split(/\s+/));
+    const conceptWords = new Set(concept.split(/\s+/));
+    
+    const intersection = new Set([...textWords].filter(w => conceptWords.has(w)));
+    const union = new Set([...textWords, ...conceptWords]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  private async analyzeQdrantRelevance(
+    results: any[],
+    questionAnalysis: QuestionAnalysis,
+    queries: string[]
+  ): Promise<QdrantRelevanceAnalysis> {
+    const conceptCoverage = this.analyzeConcepts(results, questionAnalysis.semanticConcepts);
+    const relatedTopics = await this.identifyRelatedTopics(results, questionAnalysis.mainIntent);
+    const domainCoverage = this.assessDomainCoverage(results, questionAnalysis.domainKeywords);
+    const conceptGaps = this.identifyConceptGaps(conceptCoverage, questionAnalysis.semanticConcepts);
+    const recommendedQueries = await this.generateRecommendedQueries(conceptGaps, questionAnalysis);
+
+    return {
+      primaryConcepts: conceptCoverage,
+      relatedTopics,
+      domainCoverage,
+      conceptGaps,
+      recommendedQueries
+    };
+  }
+
+  private analyzeConcepts(
+    results: any[], 
+    semanticConcepts: string[]
+  ): Array<{concept: string, relevance: number, sources: number}> {
+    return semanticConcepts.map(concept => {
+      const relevantSources = results.filter(r => {
+        const text = r.payload?.text || '';
+        return this.calculateSemanticSimilarity(text.toLowerCase(), concept.toLowerCase()) > 0.3;
+      });
+      
+      const avgRelevance = relevantSources.length > 0 
+        ? relevantSources.reduce((sum, s) => sum + s.score, 0) / relevantSources.length 
+        : 0;
+      
+      return {
+        concept,
+        relevance: avgRelevance,
+        sources: relevantSources.length
+      };
+    }).sort((a, b) => b.relevance - a.relevance);
+  }
+
+  private async identifyRelatedTopics(
+    results: any[],
+    mainIntent: string
+  ): Promise<Array<{topic: string, connectionStrength: number}>> {
+    const topTexts = results.slice(0, 5).map(r => r.payload?.text || '').join(' ');
+    
+    if (!topTexts.trim()) return [];
+    
+    const relatedResults = await this.qdrantService.searchWithOptimizations(
+      topTexts,
+      10,
+      0.4,
+      false
+    );
+    
+    const topics = new Map<string, number>();
+    
+    for (const result of relatedResults) {
+      const text = result.payload?.text || '';
+      const extractedTopics = this.extractTopicsFromText(text);
+      
+      for (const topic of extractedTopics) {
+        const currentStrength = topics.get(topic) || 0;
+        topics.set(topic, currentStrength + result.score);
+      }
+    }
+    
+    return Array.from(topics.entries())
+      .map(([topic, strength]) => ({ topic, connectionStrength: strength }))
+      .sort((a, b) => b.connectionStrength - a.connectionStrength)
+      .slice(0, 8);
+  }
+
+  private extractTopicsFromText(text: string): string[] {
+    const energyTopics = [
+      'Strommarkt', 'Energiewende', 'Netzbetrieb', 'Tarife', 'Ökostrom', 
+      'Netzentgelte', 'Bilanzkreis', 'Regelenergie', 'Lastmanagement',
+      'Smart Grid', 'Prosumer', 'Power Purchase Agreement', 'Grünstromzertifikat'
+    ];
+    
+    return energyTopics.filter(topic => 
+      text.toLowerCase().includes(topic.toLowerCase())
+    );
+  }
+
+  private assessDomainCoverage(results: any[], domainKeywords: string[]): number {
+    if (domainKeywords.length === 0) return 0;
+    
+    const coveredKeywords = domainKeywords.filter(keyword =>
+      results.some(r => {
+        const text = (r.payload?.text || '').toLowerCase();
+        return text.includes(keyword.toLowerCase());
+      })
+    );
+    
+    return coveredKeywords.length / domainKeywords.length;
+  }
+
+  private identifyConceptGaps(
+    conceptCoverage: Array<{concept: string, relevance: number, sources: number}>,
+    originalConcepts: string[]
+  ): string[] {
+    return conceptCoverage
+      .filter(c => c.relevance < 0.3 || c.sources < 2)
+      .map(c => c.concept);
+  }
+
+  private async generateRecommendedQueries(
+    conceptGaps: string[], 
+    questionAnalysis: QuestionAnalysis
+  ): Promise<string[]> {
+    if (conceptGaps.length === 0) return [];
+    
+    const queryPrompt = `
+Generiere spezifische Suchanfragen für diese fehlenden Konzepte in der Energiebranche:
+
+Fehlende Konzepte: ${conceptGaps.join(', ')}
+Hauptintention: ${questionAnalysis.mainIntent}
+Komplexität: ${questionAnalysis.complexityLevel}
+
+Erstelle 3-5 präzise Suchanfragen, die diese Gaps schließen könnten.
+Fokus auf Marktkommunikation bei Energieversorgern.
+
+Antworte als JSON-Array: ["query1", "query2", ...]
+`;
+
+    try {
+      const result = await geminiService.generateText(queryPrompt);
+      return this.parseJsonFromResponse(result);
+    } catch (error) {
+      console.error('Error generating recommended queries:', error);
+      // Fallback to manually created queries based on concepts
+      return conceptGaps.slice(0, 3).map(gap => 
+        `${gap} in der Energiewirtschaft Marktkommunikation`
+      );
+    }
+  }
+
+  private assessContextQuality(
+    results: any[],
+    clusters: Array<{theme: string, sources: any[], relevance: number}>,
+    qdrantRelevance: QdrantRelevanceAnalysis
+  ): number {
+    const factors = [
+      results.length > 5 ? 0.3 : (results.length / 5) * 0.3,
+      clusters.length > 2 ? 0.2 : (clusters.length / 2) * 0.2,
+      qdrantRelevance.domainCoverage * 0.3,
+      Math.min(1.0, qdrantRelevance.primaryConcepts.length / 3) * 0.2
+    ];
+    
+    return Math.min(1.0, factors.reduce((sum, f) => sum + f, 0));
+  }
+
+  private async generatePreliminaryAnswerWithClusters(
+    questionAnalysis: QuestionAnalysis,
+    contextAnalysis: ContextAnalysis,
+    chatHistory: any[],
+    userPreferences: any,
+    iteration: number
+  ): Promise<string> {
+    const clusterContext = contextAnalysis.semanticClusters
+      .map(cluster => `\n[${cluster.theme.toUpperCase()}]\n${cluster.sources.map(s => s.payload?.text || '').join('\n\n')}`)
+      .join('\n\n');
+
+    const contextText = contextAnalysis.relevantSources
+      .map(r => r.payload?.text || '')
+      .join('\n\n');
+
+    const preliminaryPrompt = `
+Du bist ein Experte für Marktkommunikation bei Energieversorgern. Erstelle eine vorläufige Antwort basierend auf semantischen Clustern.
+
+Frageanalyse: ${JSON.stringify(questionAnalysis)}
+Iteration: ${iteration}
+
+Semantische Cluster:
+${clusterContext}
+
+QDrant-Relevanz:
+- Domain-Abdeckung: ${contextAnalysis.qdrantRelevance.domainCoverage}
+- Primäre Konzepte: ${contextAnalysis.qdrantRelevance.primaryConcepts.map(c => c.concept).join(', ')}
+
+Chat-Historie:
+${chatHistory.slice(-5).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+Erstelle eine vorläufige Antwort, die:
+1. Die Hauptfrage direkt beantwortet
+2. Semantische Cluster logisch verknüpft
+3. Relevanten Marktkontext einbezieht
+4. Praktische Anwendung für Sachbearbeiter bietet
+
+WICHTIG: Markiere unsichere Bereiche mit [UNSICHER] und fehlende Informationen mit [FEHLT].
+`;
+
+    return await geminiService.generateResponse(
+      [{ role: 'user', content: preliminaryPrompt }],
+      contextText,
+      userPreferences
+    );
+  }
+
+  private async validateAnswerWithQdrant(
+    preliminaryAnswer: string,
+    questionAnalysis: QuestionAnalysis,
+    contextAnalysis: ContextAnalysis,
+    iteration: number
+  ): Promise<AnswerValidation> {
+    const semanticConsistency = await this.checkSemanticConsistency(
+      preliminaryAnswer,
+      contextAnalysis.semanticClusters
+    );
+
+    const factualGrounding = await this.verifyFactualGrounding(
+      preliminaryAnswer,
+      contextAnalysis.relevantSources
+    );
+
+    const validationPrompt = `
+Validiere diese vorläufige Antwort für einen Sachbearbeiter in der Marktkommunikation:
+
+Original-Frage: ${questionAnalysis.mainIntent}
+Vorläufige Antwort: ${preliminaryAnswer}
+
+QDrant-Analyse:
+- Semantische Konsistenz: ${semanticConsistency}
+- Faktische Fundierung: ${factualGrounding}
+- Domain-Abdeckung: ${contextAnalysis.qdrantRelevance.domainCoverage}
+- Verfügbare Cluster: ${contextAnalysis.semanticClusters.length}
+
+Bewerte:
+1. Vollständigkeit (alle Aspekte der Frage abgedeckt?)
+2. Genauigkeit (basiert auf verfügbarem Kontext?)
+3. Braucht mehr Kontext?
+4. Fehlende Aspekte
+5. Gesamtqualität (0-1)
+
+JSON-Format:
+{
+  "isComplete": boolean,
+  "isAccurate": boolean,
+  "needsMoreContext": boolean,
+  "missingAspects": ["string"],
+  "qualityScore": number,
+  "semanticConsistency": ${semanticConsistency},
+  "factualGrounding": ${factualGrounding}
+}
+`;
+
+    const result = await geminiService.generateText(validationPrompt);
+    return this.parseJsonFromResponse(result);
+  }
+
+  private async checkSemanticConsistency(
+    answer: string,
+    semanticClusters: Array<{theme: string, sources: any[], relevance: number}>
+  ): Promise<number> {
+    let totalConsistency = 0;
+    let checkedClusters = 0;
+
+    for (const cluster of semanticClusters.slice(0, 3)) {
+      const clusterTexts = cluster.sources
+        .map(s => s.payload?.text || '')
+        .join(' ')
+        .substring(0, 1000);
+
+      if (clusterTexts.trim()) {
+        const consistency = this.calculateSemanticSimilarity(
+          answer.toLowerCase(),
+          clusterTexts.toLowerCase()
+        );
+        totalConsistency += consistency * cluster.relevance;
+        checkedClusters++;
+      }
+    }
+
+    return checkedClusters > 0 ? totalConsistency / checkedClusters : 0.5;
+  }
+
+  private async verifyFactualGrounding(
+    answer: string,
+    sources: any[]
+  ): Promise<number> {
+    const answerWords = new Set(answer.toLowerCase().split(/\s+/));
+    let totalGrounding = 0;
+    let checkedSources = 0;
+
+    for (const source of sources.slice(0, 5)) {
+      const sourceText = source.payload?.text || '';
+      if (sourceText) {
+        const sourceWords = new Set(sourceText.toLowerCase().split(/\s+/));
+        const overlap = new Set([...answerWords].filter(w => sourceWords.has(w)));
+        const grounding = overlap.size / answerWords.size;
+        totalGrounding += grounding * source.score;
+        checkedSources++;
+      }
+    }
+
+    return checkedSources > 0 ? totalGrounding / checkedSources : 0.3;
+  }
+
+  private async retrieveAdditionalContextWithQdrant(
+    missingAspects: string[],
+    questionAnalysis: QuestionAnalysis,
+    qdrantRelevance: QdrantRelevanceAnalysis,
+    iteration: number
+  ): Promise<any[]> {
+    const searchQueries = [
+      ...missingAspects,
+      ...qdrantRelevance.recommendedQueries,
+      ...missingAspects.map(aspect => 
+        `${aspect} ${questionAnalysis.semanticConcepts[0] || questionAnalysis.mainIntent}`
+      )
+    ];
+
+    const additionalResults = [];
+    
+    const searchPromises = searchQueries.map(async (query) => {
+      const results = await this.qdrantService.searchWithOptimizations(
+        query,
+        8,
+        0.15,
+        true
+      );
+      return results;
+    });
+
+    const searchResults = await Promise.all(searchPromises);
+    additionalResults.push(...searchResults.flat());
+
+    return this.removeDuplicatesWithRelevance(additionalResults);
+  }
+
+  private async generateFinalAnswerWithRelevanceVerification(
+    questionAnalysis: QuestionAnalysis,
+    contextAnalysis: ContextAnalysis,
+    validation: AnswerValidation,
+    chatHistory: any[],
+    userPreferences: any,
+    iteration: number,
+    reasoningSteps: ReasoningStep[]
+  ): Promise<string> {
+    const contextText = contextAnalysis.relevantSources
+      .map(r => r.payload?.text || '')
+      .join('\n\n');
+
+    const chatFocus = this.analyzeChatFocus(chatHistory);
+    const qdrantInsights = this.summarizeQdrantInsights(contextAnalysis.qdrantRelevance, reasoningSteps);
+
+    const finalPrompt = `
+Erstelle die endgültige, professionelle Antwort für einen Sachbearbeiter in der Marktkommunikation.
+
+QDrant-Analyse-Zusammenfassung:
+${qdrantInsights}
+
+Validierung:
+- Semantische Konsistenz: ${validation.semanticConsistency}
+- Faktische Fundierung: ${validation.factualGrounding}
+- Qualitätsscore: ${validation.qualityScore}
+
+Semantische Cluster (${contextAnalysis.semanticClusters.length}):
+${contextAnalysis.semanticClusters.map(c => `- ${c.theme} (${c.sources.length} Quellen)`).join('\n')}
+
+Chat-Fokus: ${chatFocus}
+Iterationen: ${iteration}
+
+Die Antwort soll:
+1. **Direkte Antwort**: Klar und präzise auf die Hauptfrage eingehen
+2. **Semantische Integration**: Cluster-basierte Struktur nutzen
+3. **QDrant-verifizierte Relevanz**: Nur hochrelevante Informationen
+4. **Praktische Anwendung**: Konkrete Handlungsempfehlungen
+5. **Transparentes Reasoning**: Basis der Antwort erklären
+
+Struktur:
+- **Kernaussage** (Was ist die direkte Antwort?)
+- **Fachliche Einordnung** (Semantische Konzepte und Zusammenhänge)
+- **Praktische Umsetzung** (Handlungsempfehlungen)
+- **Vertiefung** (Verwandte Themen aus QDrant-Analyse)
+- **Quellenbasis** (Transparenz über verwendete Informationen)
+
+Stil: Professionell, strukturiert, quellenbasiert für die Energiebranche.
+`;
+
+    return await geminiService.generateResponse(
+      [{ role: 'user', content: finalPrompt }],
+      contextText,
+      userPreferences
+    );
+  }
+
+  private async refineQuestionWithQdrant(
+    originalQuestion: string,
+    validation: AnswerValidation,
+    questionAnalysis: QuestionAnalysis,
+    qdrantRelevance: QdrantRelevanceAnalysis,
+    iteration: number
+  ): Promise<string> {
+    if (validation.missingAspects.length === 0) {
+      return originalQuestion;
+    }
+
+    const refinementPrompt = `
+Verfeinere diese Frage für Iteration ${iteration + 1} basierend auf QDrant-Analyse:
+
+Original: "${originalQuestion}"
+Fehlende Aspekte: ${validation.missingAspects.join(', ')}
+Verfügbare Konzepte: ${qdrantRelevance.primaryConcepts.map(c => c.concept).join(', ')}
+Verwandte Themen: ${qdrantRelevance.relatedTopics.slice(0, 3).map(t => t.topic).join(', ')}
+
+Erstelle eine verfeinerte Frage, die:
+1. Die fehlenden Aspekte integriert
+2. Verfügbare semantische Konzepte nutzt
+3. Den Kern der ursprünglichen Frage beibehält
+4. Für Marktkommunikation in der Energiebranche optimiert ist
+
+Antwort als einfacher String.
+`;
+
+    return await geminiService.generateResponse(
+      [{ role: 'user', content: refinementPrompt }],
+      '',
+      {}
+    );
+  }
+
+  // Utility Methods
+  private extractDomainKeywords(results: any[]): string[] {
+    const energyKeywords = [
+      'Strommarkt', 'Energiewende', 'Netzbetrieb', 'Regelenergie', 'Bilanzkreis',
+      'Netzentgelte', 'Grundversorgung', 'Lieferantenwechsel', 'Lastprofil', 
+      'Einspeisemanagement', 'Redispatch', 'Blindleistung', 'Spitzenlast'
+    ];
+    
+    const foundKeywords = new Set<string>();
+    
+    for (const result of results) {
+      const text = (result.payload?.text || '').toLowerCase();
+      for (const keyword of energyKeywords) {
+        if (text.includes(keyword.toLowerCase())) {
+          foundKeywords.add(keyword);
+        }
+      }
+    }
+    
+    return Array.from(foundKeywords);
+  }
+
+  private async identifySemanticConcepts(question: string, results: any[]): Promise<string[]> {
+    const conceptTexts = results.slice(0, 10)
+      .map(r => r.payload?.text || '')
+      .join(' ')
+      .substring(0, 2000);
+    
+    if (!conceptTexts.trim()) return [];
+    
+    const conceptPrompt = `
+Identifiziere 3-5 zentrale semantische Konzepte aus diesem Text für die Energiebranche:
+
+Frage: "${question}"
+Text: ${conceptTexts}
+
+Extrahiere die wichtigsten Konzepte, die für die Marktkommunikation relevant sind.
+Antworte als JSON-Array: ["konzept1", "konzept2", ...]
+`;
+
+    try {
+      const result = await geminiService.generateText(conceptPrompt);
+      return this.parseJsonFromResponse(result);
+    } catch {
+      return [];
+    }
+  }
+
+  private removeDuplicatesWithRelevance(results: any[]): any[] {
+    const seen = new Map<string, any>();
+    
+    for (const result of results) {
+      const key = result.id || result.payload?.text?.substring(0, 100);
+      const existing = seen.get(key);
+      
+      if (!existing || result.score > existing.score) {
+        seen.set(key, result);
+      }
+    }
+    
+    return Array.from(seen.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 25);
+  }
+
+  private summarizeQdrantInsights(
+    qdrantRelevance: QdrantRelevanceAnalysis,
+    reasoningSteps: ReasoningStep[]
+  ): string {
+    const totalQueries = reasoningSteps.reduce((sum, step) => sum + (step.qdrantQueries?.length || 0), 0);
+    const totalResults = reasoningSteps.reduce((sum, step) => sum + (step.qdrantResults || 0), 0);
+
+    return `
+- Durchgeführte QDrant-Abfragen: ${totalQueries}
+- Gefundene Quellen: ${totalResults}
+- Domain-Abdeckung: ${(qdrantRelevance.domainCoverage * 100).toFixed(1)}%
+- Primäre Konzepte: ${qdrantRelevance.primaryConcepts.slice(0, 3).map(c => c.concept).join(', ')}
+- Verwandte Themen: ${qdrantRelevance.relatedTopics.slice(0, 3).map(t => t.topic).join(', ')}
+- Identifizierte Gaps: ${qdrantRelevance.conceptGaps.length}
+`;
+  }
+
+  private analyzeChatFocus(chatHistory: any[]): string {
+    const recentMessages = chatHistory.slice(-10);
+    const userMessages = recentMessages.filter(msg => msg.role === 'user');
+    
+    if (userMessages.length === 0) return 'Neue Unterhaltung';
+    
+    const focusIndicators = {
+      'detail': ['genauer', 'details', 'spezifisch', 'konkret', 'beispiel'],
+      'expansion': ['außerdem', 'zusätzlich', 'weitere', 'andere', 'auch'],
+      'clarification': ['verstehe nicht', 'unklar', 'erklärung', 'bedeutet'],
+      'application': ['umsetzen', 'anwenden', 'praktisch', 'wie macht man']
+    };
+    
+    const allText = userMessages.map(msg => msg.content.toLowerCase()).join(' ');
+    let dominantFocus = 'general';
+    let maxCount = 0;
+    
+    for (const [focus, indicators] of Object.entries(focusIndicators)) {
+      const count = indicators.reduce((sum, indicator) => 
+        sum + (allText.match(new RegExp(indicator, 'g')) || []).length, 0
+      );
+      if (count > maxCount) {
+        maxCount = count;
+        dominantFocus = focus;
+      }
+    }
+    
+    return dominantFocus;
+  }
+
+  private async generateFallbackResponse(
+    question: string,
+    chatHistory: any[],
+    userPreferences: any
+  ): Promise<string> {
+    return `Entschuldigung, ich konnte Ihre Frage zur Marktkommunikation trotz mehrerer QDrant-Analysen nicht vollständig beantworten. 
+    
+Bitte versuchen Sie:
+- Die Frage spezifischer zu formulieren
+- Konkretes Beispiel aus der Energiebranche zu nennen
+- Teilaspekte einzeln zu erfragen
+
+Ich helfe gerne bei spezifischen Fragen zur Energiewirtschaft und Marktkommunikation.`;
+  }
+}
+
+export default new AdvancedReasoningService();

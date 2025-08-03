@@ -27,6 +27,7 @@ import ClarificationUI from '../components/ClarificationUI';
 import QuickNoteButton from '../components/Workspace/QuickNoteButton';
 import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
+import PipelineInfoDialog from '../components/Chat/PipelineInfoDialog';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
@@ -491,8 +492,11 @@ const Chat: React.FC = () => {
                             {message.content}
                           </Typography>
                         ) : (
-                          <div className="chat-message assistant-message">
-                            <ReactMarkdown
+                          <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                              <Box sx={{ flex: 1 }}>
+                                <div className="chat-message assistant-message">
+                                  <ReactMarkdown
                               components={{
                                 p: ({ children }) => (
                                   <Typography variant="body1" sx={{ mb: 1 }}>
@@ -592,7 +596,30 @@ const Chat: React.FC = () => {
                             >
                               {message.content}
                             </ReactMarkdown>
-                          </div>
+                                </div>
+                              </Box>
+                              
+                              {/* Pipeline Info Button for assistant messages */}
+                              {message.metadata && (message.metadata.reasoningSteps || message.metadata.pipelineDecisions) && (
+                                <PipelineInfoDialog 
+                                  pipelineInfo={{
+                                    contextSources: message.metadata.contextSources || 0,
+                                    userContextUsed: message.metadata.userContextUsed || false,
+                                    contextReason: message.metadata.contextReason || '',
+                                    reasoningSteps: message.metadata.reasoningSteps || [],
+                                    finalQuality: message.metadata.finalQuality || 0,
+                                    iterationsUsed: message.metadata.iterationsUsed || 0,
+                                    qdrantQueries: message.metadata.qdrantQueries || 0,
+                                    qdrantResults: message.metadata.qdrantResults || 0,
+                                    semanticClusters: message.metadata.semanticClusters || 0,
+                                    pipelineDecisions: message.metadata.pipelineDecisions || {},
+                                    qaAnalysis: message.metadata.qaAnalysis || {},
+                                    contextAnalysis: message.metadata.contextAnalysis || {}
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
                         )}
                         
                         {/* Context Indicator for assistant messages */}

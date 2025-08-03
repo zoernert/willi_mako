@@ -16,37 +16,119 @@ export interface ChatMessage {
 }
 
 export class GeminiService {
-  private model;
+  private models: any[];
+  private currentModelIndex = 0;
   private codeLookupService: CodeLookupService;
+  private modelUsageCount = new Map<string, number>();
 
   constructor() {
-    this.model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      tools: [
-        {
-          functionDeclarations: [
-            {
-              name: 'lookup_energy_code',
-              description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
-              parameters: {
-                type: FunctionDeclarationSchemaType.OBJECT,
-                properties: {
-                  code: {
-                    type: FunctionDeclarationSchemaType.STRING,
-                    description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.'
-                  }
-                },
-                required: ['code']
+    // Initialize multiple models for load balancing (no lite models for better quality)
+    const modelConfigs = [
+      'gemini-2.0-flash',      // 15 RPM
+      'gemini-2.5-flash',      // 10 RPM  
+      'gemini-2.5-pro'         // 5 RPM
+    ];
+
+    this.models = modelConfigs.map(modelName => ({
+      name: modelName,
+      instance: genAI.getGenerativeModel({ 
+        model: modelName,
+        tools: [
+          {
+            functionDeclarations: [
+              {
+                name: 'lookup_energy_code',
+                description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
+                parameters: {
+                  type: FunctionDeclarationSchemaType.OBJECT,
+                  properties: {
+                    code: {
+                      type: FunctionDeclarationSchemaType.STRING,
+                      description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.'
+                    }
+                  },
+                  required: ['code']
+                }
               }
-            }
-          ]
-        }
-      ]
-    });
+            ]
+          }
+        ]
+      }),
+      rpmLimit: this.getRpmLimit(modelName),
+      lastUsed: 0
+    }));
+
+    // Initialize usage tracking
+    modelConfigs.forEach(model => this.modelUsageCount.set(model, 0));
+    
+    // Start usage counter reset timer
+    this.resetUsageCounters();
     
     // Initialize code lookup service
     const codeLookupRepository = new PostgresCodeLookupRepository(pool);
     this.codeLookupService = new CodeLookupService(codeLookupRepository);
+  }
+
+  private getRpmLimit(modelName: string): number {
+    const limits: Record<string, number> = {
+      'gemini-2.0-flash': 15,
+      'gemini-2.5-flash': 10,
+      'gemini-2.5-pro': 5
+    };
+    return limits[modelName] || 10;
+  }
+
+  private getNextAvailableModel() {
+    const now = Date.now();
+    
+    // Find the best available model based on multiple factors
+    let bestModel = this.models[0];
+    let bestScore = -Infinity;
+    
+    for (const model of this.models) {
+      const timeSinceLastUse = now - model.lastUsed;
+      const usageCount = this.modelUsageCount.get(model.name) || 0;
+      const intervalRequired = (60 * 1000) / model.rpmLimit; // ms between requests for this model
+      
+      // Calculate availability score
+      let score = 0;
+      
+      // Priority 1: Is the model immediately available?
+      const isImmediatelyAvailable = timeSinceLastUse >= intervalRequired;
+      if (isImmediatelyAvailable) {
+        score += 1000; // High bonus for immediate availability
+      } else {
+        // Penalize based on how long we need to wait
+        const waitTime = intervalRequired - timeSinceLastUse;
+        score -= waitTime / 100; // Convert to smaller penalty
+      }
+      
+      // Priority 2: Favor models with higher RPM limits
+      score += model.rpmLimit * 10;
+      
+      // Priority 3: Favor models with lower current usage
+      const usageRatio = usageCount / model.rpmLimit;
+      score -= usageRatio * 100;
+      
+      // Priority 4: Add some randomness to distribute load
+      score += Math.random() * 10;
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestModel = model;
+      }
+    }
+    
+    console.log(`Selected model: ${bestModel.name} (RPM: ${bestModel.rpmLimit}, Score: ${bestScore.toFixed(2)}, Usage: ${this.modelUsageCount.get(bestModel.name) || 0})`);
+    return bestModel;
+  }
+
+  // Reset usage counters every minute
+  private resetUsageCounters() {
+    setInterval(() => {
+      this.modelUsageCount.clear();
+      this.models.forEach(model => this.modelUsageCount.set(model.name, 0));
+    }, 60000); // Reset every minute
   }
 
   async generateResponse(
@@ -57,6 +139,9 @@ export class GeminiService {
     contextMode?: 'workspace-only' | 'standard' | 'system-only'
   ): Promise<string> {
     try {
+      // Select best available model
+      const selectedModel = this.getNextAvailableModel();
+      
       // Prepare system prompt with context
       const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
       
@@ -72,7 +157,7 @@ export class GeminiService {
         ...conversationHistory
       ];
 
-      const chat = this.model.startChat({
+      const chat = selectedModel.instance.startChat({
         history: messagesWithSystem
       });
 
@@ -266,7 +351,7 @@ Deine Antworten sollen:
 
 ${text}`;
 
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       return response.text();
@@ -282,13 +367,13 @@ ${text}`;
 
 ${text}`;
 
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       return response.text()
         .split(',')
-        .map(keyword => keyword.trim())
-        .filter(keyword => keyword.length > 0);
+        .map((keyword: string) => keyword.trim())
+        .filter((keyword: string) => keyword.length > 0);
     } catch (error) {
       console.error('Error extracting keywords:', error);
       throw new Error('Failed to extract keywords');
@@ -304,7 +389,7 @@ Mako Willi: ${assistantResponse}
 
 Antworte nur mit dem Titel, ohne weitere Erklärungen oder Anführungszeichen.`;
 
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       return response.text().trim();
@@ -352,7 +437,7 @@ Die Tags sollen die Hauptthemen der Frage widerspiegeln und für die Kategorisie
 
 Antwort ausschließlich im JSON-Format:`;
 
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       try {
@@ -448,7 +533,7 @@ Gib die Antwort als JSON zurück mit folgenden Feldern:
 
 Antwort nur als JSON ohne Markdown-Formatierung:`;
 
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       try {
@@ -602,7 +687,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
 }`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
       let responseText = response.text().trim();
@@ -647,20 +732,71 @@ Antworte nur als JSON ohne Markdown-Formatierung:
   }
 
   private async generateWithRetry(prompt: string, maxRetries: number = 3): Promise<any> {
+    let lastError: Error | null = null;
+    const triedModels = new Set<string>();
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let selectedModel = this.getNextAvailableModel();
+      
+      // If we've tried all models, start over but wait a bit
+      if (triedModels.has(selectedModel.name) && triedModels.size >= this.models.length) {
+        console.log(`All models tried, waiting before retry attempt ${attempt}/${maxRetries}`);
+        await this.sleep(1000 * attempt); // Progressive delay
+        triedModels.clear();
+        selectedModel = this.getNextAvailableModel();
+      }
+      
       try {
-        return await this.model.generateContent(prompt);
-      } catch (error: any) {
-        if (error.status === 429 && attempt < maxRetries) {
-          // Rate limit exceeded, wait and retry
-          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-          console.log(`Rate limit exceeded. Waiting ${delay}ms before retry ${attempt}/${maxRetries}`);
-          await this.sleep(delay);
-          continue;
+        // Check if this specific model needs to wait
+        const now = Date.now();
+        const timeSinceModelLastUsed = now - selectedModel.lastUsed;
+        const modelInterval = (60 * 1000) / selectedModel.rpmLimit; // Time per request for this model
+        
+        if (timeSinceModelLastUsed < modelInterval) {
+          const waitTime = Math.ceil(modelInterval - timeSinceModelLastUsed);
+          console.log(`Model ${selectedModel.name} rate limiting: waiting ${waitTime}ms (RPM: ${selectedModel.rpmLimit})`);
+          await this.sleep(waitTime);
         }
-        throw error;
+        
+        selectedModel.lastUsed = Date.now();
+        console.log(`Using model: ${selectedModel.name} for attempt ${attempt}/${maxRetries}`);
+        
+        const result = await selectedModel.instance.generateContent(prompt);
+        
+        // Success - update usage count
+        const currentCount = this.modelUsageCount.get(selectedModel.name) || 0;
+        this.modelUsageCount.set(selectedModel.name, currentCount + 1);
+        
+        return result;
+        
+      } catch (error: any) {
+        lastError = error;
+        triedModels.add(selectedModel.name);
+        console.error(`Gemini API attempt ${attempt}/${maxRetries} failed with model ${selectedModel.name}:`, error.message);
+        
+        if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
+          console.log(`Rate limit hit on ${selectedModel.name}, trying different model...`);
+          
+          // Mark this model as temporarily unavailable
+          selectedModel.lastUsed = Date.now() + (60 * 1000); // Block for 1 minute
+          
+          // If we have other models to try, continue immediately
+          if (triedModels.size < this.models.length) {
+            continue;
+          }
+        }
+        
+        // For other errors or if we've tried all models, wait before retry
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Max 5 second delay
+          console.log(`Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`);
+          await this.sleep(delay);
+        }
       }
     }
+    
+    // All retries failed
+    throw lastError || new Error('All retry attempts failed across all models');
   }
 
   private sleep(ms: number): Promise<void> {
@@ -1112,6 +1248,26 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
         sources: []
       };
     }
+  }
+
+  // Log current model usage statistics
+  public logModelUsage(): void {
+    console.log('\n=== Gemini Model Usage Statistics ===');
+    const now = Date.now();
+    
+    for (const model of this.models) {
+      const usageCount = this.modelUsageCount.get(model.name) || 0;
+      const timeSinceLastUse = now - model.lastUsed;
+      const intervalRequired = (60 * 1000) / model.rpmLimit;
+      const isAvailable = timeSinceLastUse >= intervalRequired;
+      
+      console.log(`${model.name}:`);
+      console.log(`  - RPM Limit: ${model.rpmLimit}`);
+      console.log(`  - Usage Count: ${usageCount}/${model.rpmLimit}`);
+      console.log(`  - Available: ${isAvailable ? 'Yes' : `Wait ${Math.ceil(intervalRequired - timeSinceLastUse)}ms`}`);
+      console.log(`  - Last Used: ${timeSinceLastUse}ms ago`);
+    }
+    console.log('=====================================\n');
   }
 }
 

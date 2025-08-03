@@ -8,6 +8,7 @@ import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
 import chatConfigurationService from '../services/chatConfigurationService';
+import advancedReasoningService from '../services/advancedReasoningService';
 import { GamificationService } from '../modules/quiz/gamification.service';
 
 const router = Router();
@@ -280,16 +281,15 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     [userId]
   );
 
-  // Use the configured chat pipeline for response generation
-  const configuredResult = await chatConfigurationService.generateConfiguredResponse(
+  // Use the advanced reasoning pipeline for better quality responses
+  const reasoningResult = await advancedReasoningService.generateReasonedResponse(
     content,
-    userId,
     previousMessages.rows,
     userPreferences.rows[0] || {},
     contextSettings
   );
 
-  let aiResponse = configuredResult.response;
+  let aiResponse = reasoningResult.response;
   let responseMetadata: {
     contextSources: number;
     userContextUsed: boolean;
@@ -297,16 +297,28 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     userDocumentsUsed?: number;
     userNotesUsed?: number;
     contextSummary?: string;
-    configurationUsed?: string;
-    processingSteps?: any[];
-    searchQueries?: string[];
+    reasoningSteps?: any[];
+    finalQuality?: number;
+    iterationsUsed?: number;
+    qdrantQueries?: number;
+    qdrantResults?: number;
+    semanticClusters?: number;
+    pipelineDecisions?: any;
+    qaAnalysis?: any;
+    contextAnalysis?: any;
   } = { 
-    contextSources: configuredResult.searchQueries.length,
-    userContextUsed: false, // Will be updated if user context is used
-    contextReason: 'Configured pipeline used',
-    configurationUsed: configuredResult.configurationUsed,
-    processingSteps: configuredResult.processingSteps,
-    searchQueries: configuredResult.searchQueries
+    contextSources: reasoningResult.reasoningSteps.filter((step: any) => step.step === 'context_analysis').length,
+    userContextUsed: false,
+    contextReason: 'Advanced multi-step reasoning pipeline used',
+    reasoningSteps: reasoningResult.reasoningSteps,
+    finalQuality: reasoningResult.finalQuality,
+    iterationsUsed: reasoningResult.iterationsUsed,
+    qdrantQueries: reasoningResult.reasoningSteps.reduce((sum: number, step: any) => sum + (step.qdrantQueries?.length || 0), 0),
+    qdrantResults: reasoningResult.reasoningSteps.reduce((sum: number, step: any) => sum + (step.qdrantResults || 0), 0),
+    semanticClusters: reasoningResult.contextAnalysis.semanticClusters?.length || 0,
+    pipelineDecisions: reasoningResult.pipelineDecisions,
+    qaAnalysis: reasoningResult.qaAnalysis,
+    contextAnalysis: reasoningResult.contextAnalysis
   };
 
   // Check if we need to enhance with user context (fallback to existing logic if needed)
@@ -322,7 +334,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     const contextDecision = contextResult.contextDecision;
 
     if (contextDecision.useUserContext && (userContext.userDocuments.length > 0 || userContext.userNotes.length > 0)) {
-      // Enhance the configured response with user context
+      // Enhance the response with user context
       let contextMode: 'workspace-only' | 'standard' | 'system-only' = 'standard';
       if (contextSettings?.useWorkspaceOnly) {
         contextMode = 'workspace-only';
@@ -334,7 +346,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
 
       aiResponse = await geminiService.generateResponseWithUserContext(
         previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
-        configuredResult.contextUsed,
+        reasoningResult.response, // Use reasoning result as enhanced context
         userContext.userDocuments,
         userContext.userNotes,
         userPreferences.rows[0] || {},
