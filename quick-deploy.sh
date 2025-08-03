@@ -42,19 +42,25 @@ check_ssh_connection() {
 build_application() {
     echo "🔨 Erstelle lokale Builds..."
     
-    # Client Build
-    echo "📦 Baue Client..."
-    cd client
+    # Legacy App Build
+    echo "📦 Baue Legacy App..."
+    cd app-legacy
     npm install
     
     # Build für Produktion (verwendet relative API-Pfade)
-    echo "🌐 Baue Client für Produktion mit relativen API-Pfaden..."
+    echo "🌐 Baue Legacy App für Produktion mit relativen API-Pfaden..."
     npm run build
     cd ..
     
+    # Next.js Build
+    echo "📦 Baue Next.js App..."
+    npm install
+    npm run build:legacy
+    npm run move:legacy
+    npm run build:next
+    
     # Server Build
     echo "📦 Baue Server..."
-    npm install
     npm run build
     
     echo "✅ Builds erfolgreich erstellt"
@@ -125,38 +131,65 @@ EOF
         exit 1
     fi
     
-    if [ -d "client/build" ]; then
-        mkdir -p "$TEMP_DIR/client/build"
-        cp -r client/build/* "$TEMP_DIR/client/build/"
+    # Next.js Build kopieren
+    if [ -d ".next" ]; then
+        cp -r .next "$TEMP_DIR/"
     else
-        echo "❌ client/build-Verzeichnis nicht gefunden. Client-Build fehlgeschlagen?"
+        echo "❌ .next-Verzeichnis nicht gefunden. Next.js Build fehlgeschlagen?"
         exit 1
+    fi
+    
+    # Public Dateien kopieren (inkl. Legacy App)
+    if [ -d "public" ]; then
+        cp -r public "$TEMP_DIR/"
+    else
+        echo "❌ public-Verzeichnis nicht gefunden."
+        exit 1
+    fi
+    
+    # Next.js Config kopieren
+    if [ -f "next.config.js" ]; then
+        cp next.config.js "$TEMP_DIR/"
     fi
     
     # Uploads-Verzeichnis erstellen
     mkdir -p "$TEMP_DIR/uploads"
     
-    # PM2 Ecosystem-Datei erstellen
+    # PM2 Ecosystem-Datei für Next.js erstellen
     cat > "$TEMP_DIR/ecosystem.config.js" << EOF
 module.exports = {
-  apps: [{
-    name: '$APP_NAME',
-    script: 'dist/server.js',
-    cwd: '$DEPLOY_DIR',
-    instances: 1,
-    exec_mode: 'cluster',
-    env: {
-      NODE_ENV: 'production',
-      PORT: $PROD_PORT
+  apps: [
+    {
+      name: '${APP_NAME}_backend',
+      script: 'dist/server.js',
+      cwd: '$DEPLOY_DIR',
+      instances: 1,
+      exec_mode: 'cluster',
+      env: {
+        NODE_ENV: 'production',
+        PORT: $PROD_PORT
+      }
     },
-    error_file: '$DEPLOY_DIR/logs/err.log',
-    out_file: '$DEPLOY_DIR/logs/out.log',
-    log_file: '$DEPLOY_DIR/logs/combined.log',
-    time: true,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G'
-  }]
+    {
+      name: '${APP_NAME}_frontend',
+      script: 'node_modules/next/dist/bin/next',
+      args: 'start -p 3000',
+      cwd: '$DEPLOY_DIR',
+      instances: 1,
+      exec_mode: 'cluster',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      error_file: '$DEPLOY_DIR/logs/frontend_err.log',
+      out_file: '$DEPLOY_DIR/logs/frontend_out.log',
+      log_file: '$DEPLOY_DIR/logs/frontend_combined.log',
+      time: true,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G'
+    }
+  ]
 };
 EOF
 

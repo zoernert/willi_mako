@@ -1,0 +1,64 @@
+User-agent: *
+Allow: /
+Allow: /wissen/
+Allow: /feed.xml
+Allow: /atom.xml
+Allow: /sitemap.xml
+
+# AI-Crawler spezifische Regeln
+User-agent: ChatGPT-User
+Allow: /wissen/
+Allow: /feed.xml
+Allow: /sitemap.xml
+Crawl-delay: 1
+
+User-agent: Claude-Web
+Allow: /wissen/
+Allow: /feed.xml
+Allow: /sitemap.xml
+Crawl-delay: 1
+
+User-agent: Google-Extended
+Allow: /wissen/
+Allow: /feed.xml
+
+User-agent: CCBot
+Allow: /wissen/
+Allow: /feed.xml
+
+User-agent: anthropic-ai
+Allow: /wissen/
+Allow: /feed.xml
+
+User-agent: Applebot-Extended
+Allow: /wissen/
+
+# Standard Crawler
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# Blockiere Scraper und schädliche Bots
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Sitemaps
+Sitemap: https://stromhaltig.de/sitemap.xml
+Sitemap: https://stromhaltig.de/feed.xml
+Sitemap: https://stromhaltig.de/atom.xml
+
+# Host (für bessere Crawling-Performance)
+Host: stromhaltig.de

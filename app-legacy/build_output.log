@@ -1,0 +1,91 @@
+
+> client@0.1.0 build
+> react-scripts build
+
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src/components/ClarificationUI.tsx
+  Line 15:3:  'IconButton' is defined but never used  @typescript-eslint/no-unused-vars
+
+src/components/IntelligentQuizCreator.tsx
+  Line 16:3:  'DialogActions' is defined but never used   @typescript-eslint/no-unused-vars
+  Line 54:9:  'steps' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+src/components/Quiz/QuizDashboard.tsx
+  Line 20:3:  'IconButton' is defined but never used  @typescript-eslint/no-unused-vars
+  Line 39:3:  'School' is defined but never used      @typescript-eslint/no-unused-vars
+
+src/components/Quiz/QuizPlayer.tsx
+  Line 20:3:   'Divider' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  Line 26:3:   'Cancel' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  Line 90:6:   React Hook useEffect has a missing dependency: 'loadQuiz'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  Line 107:6:  React Hook useEffect has a missing dependency: 'handleSubmit'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/Workspace/DocumentsManager.tsx
+  Line 1:38:   'useCallback' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 17:3:   'FormControl' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 18:3:   'InputLabel' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  Line 19:3:   'Select' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  Line 28:3:   'Input' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  Line 36:17:  'PreviewIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 89:6:   React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/Workspace/NotesManager.tsx
+  Line 31:17:  'FilterIcon' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  Line 62:10:  'availableTags' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  Line 81:6:   React Hook useEffect has a missing dependency: 'fetchNotes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/Workspace/WorkspaceSettings.tsx
+  Line 8:3:    'FormControlLabel' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  Line 9:3:    'TextField' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  Line 11:3:   'Slider' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  Line 14:3:   'Divider' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  Line 16:3:   'Chip' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  Line 25:3:   'IconButton' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 30:10:  'TagIcon' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  Line 66:6:   React Hook useEffect has a missing dependency: 'fetchSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/Admin.tsx
+  Line 72:6:    React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  Line 201:10:  'selectedUser' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  Line 213:6:   React Hook useEffect has a missing dependency: 'fetchUsers'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  Line 384:10:  'selectedDocument' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  Line 400:6:   React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 1257:6:  React Hook useEffect has a missing dependency: 'fetchSettings'. Either include it or remove the dependency array   react-hooks/exhaustive-deps
+  Line 1528:6:  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+
+src/pages/Documents.tsx
+  Line 78:13:  'response' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+src/pages/Login.tsx
+  Line 28:15:  'SecurityIcon' is defined but never used  @typescript-eslint/no-unused-vars
+
+src/pages/Workspace.tsx
+  Line 15:3:   'IconButton' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  Line 69:11:  'state' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  Line 76:6:   React Hook useEffect has a missing dependency: 'fetchWorkspaceStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  287.7 kB  build/static/js/main.be9f1e71.js
+  1.76 kB   build/static/js/453.a3c1d153.chunk.js
+  285 B     build/static/css/main.c782185c.css
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+
