@@ -11,7 +11,7 @@ const router = Router();
 
 // Get all FAQs for public display with links
 router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
-  const { limit = 10, offset = 0, tag } = req.query;
+  const { limit = 10, offset = 0, tag, search, sort = 'created_at', order = 'desc' } = req.query;
   
   let query = `
     SELECT id, title, description, context, answer, additional_info, tags,
@@ -22,19 +22,62 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   
   const queryParams: any[] = [];
   
+  // Search functionality
+  if (search) {
+    query += ` AND (
+      title ILIKE $${queryParams.length + 1} OR 
+      description ILIKE $${queryParams.length + 1} OR 
+      answer ILIKE $${queryParams.length + 1} OR 
+      context ILIKE $${queryParams.length + 1}
+    )`;
+    queryParams.push(`%${search}%`);
+  }
+  
+  // Tag filtering
   if (tag) {
     query += ` AND tags @> $${queryParams.length + 1}`;
     queryParams.push(JSON.stringify([tag]));
   }
   
-  query += `
-    ORDER BY created_at DESC
-    LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
-  `;
+  // Sorting
+  const validSortFields = ['created_at', 'updated_at', 'view_count', 'title'];
+  const validOrders = ['asc', 'desc'];
+  const sortField = validSortFields.includes(sort as string) ? sort : 'created_at';
+  const sortOrder = validOrders.includes(order as string) ? order as string : 'desc';
+  
+  query += ` ORDER BY ${sortField} ${sortOrder.toUpperCase()}`;
+  query += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
   
   queryParams.push(limit, offset);
   
   const result = await pool.query(query, queryParams);
+  
+  // Get total count for pagination
+  let countQuery = `
+    SELECT COUNT(*) 
+    FROM faqs 
+    WHERE is_active = true
+  `;
+  
+  const countParams: any[] = [];
+  
+  if (search) {
+    countQuery += ` AND (
+      title ILIKE $${countParams.length + 1} OR 
+      description ILIKE $${countParams.length + 1} OR 
+      answer ILIKE $${countParams.length + 1} OR 
+      context ILIKE $${countParams.length + 1}
+    )`;
+    countParams.push(`%${search}%`);
+  }
+  
+  if (tag) {
+    countQuery += ` AND tags @> $${countParams.length + 1}`;
+    countParams.push(JSON.stringify([tag]));
+  }
+  
+  const countResult = await pool.query(countQuery, countParams);
+  const totalCount = parseInt(countResult.rows[0].count);
   
   // Add linked terms to each FAQ
   const faqsWithLinks = await Promise.all(
@@ -49,7 +92,13 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   
   res.json({
     success: true,
-    data: faqsWithLinks
+    data: faqsWithLinks,
+    pagination: {
+      total: totalCount,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      hasMore: parseInt(offset as string) + parseInt(limit as string) < totalCount
+    }
   });
 }));
 
@@ -246,9 +295,28 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
     userId
   ]);
   
+  const newFAQ = faqResult.rows[0];
+  
+  // Store FAQ in vector database
+  try {
+    const qdrantService = new QdrantService();
+    await qdrantService.storeFAQContent(
+      newFAQ.id,
+      newFAQ.title,
+      newFAQ.description,
+      newFAQ.context,
+      newFAQ.answer,
+      newFAQ.additional_info,
+      newFAQ.tags
+    );
+  } catch (error) {
+    console.error('Error storing FAQ in vector database:', error);
+    // Don't fail the request if vector storage fails
+  }
+  
   res.json({
     success: true,
-    data: faqResult.rows[0]
+    data: newFAQ
   });
 }));
 
@@ -329,9 +397,28 @@ router.put('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHandle
     throw new AppError('FAQ not found', 404);
   }
 
+  const updatedFAQ = result.rows[0];
+  
+  // Update FAQ in vector database
+  try {
+    const qdrantService = new QdrantService();
+    await qdrantService.updateFAQContent(
+      updatedFAQ.id,
+      updatedFAQ.title,
+      updatedFAQ.description,
+      updatedFAQ.context,
+      updatedFAQ.answer,
+      updatedFAQ.additional_info,
+      updatedFAQ.tags
+    );
+  } catch (error) {
+    console.error('Error updating FAQ in vector database:', error);
+    // Don't fail the request if vector storage fails
+  }
+
   res.json({
     success: true,
-    data: result.rows[0]
+    data: updatedFAQ
   });
 }));
 
@@ -343,6 +430,15 @@ router.delete('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHan
   
   if (result.rowCount === 0) {
     throw new AppError('FAQ not found', 404);
+  }
+  
+  // Delete FAQ from vector database
+  try {
+    const qdrantService = new QdrantService();
+    await qdrantService.deleteFAQContent(id);
+  } catch (error) {
+    console.error('Error deleting FAQ from vector database:', error);
+    // Don't fail the request if vector deletion fails
   }
   
   res.json({
@@ -430,16 +526,73 @@ router.get('/admin/faqs/linking-stats', authenticateToken, requireAdminForFaq, a
 
 // Get public FAQs with links (for homepage)
 router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
-  const { limit = 10, offset = 0 } = req.query;
+  const { limit = 10, offset = 0, tag, search, sort = 'created_at', order = 'desc' } = req.query;
   
-  const result = await pool.query(`
+  let query = `
     SELECT id, title, description, context, answer, additional_info, tags,
            view_count, created_at, updated_at
     FROM faqs
     WHERE is_active = true AND is_public = true
-    ORDER BY created_at DESC
-    LIMIT $1 OFFSET $2
-  `, [limit, offset]);
+  `;
+  
+  const queryParams: any[] = [];
+  
+  // Search functionality
+  if (search) {
+    query += ` AND (
+      title ILIKE $${queryParams.length + 1} OR 
+      description ILIKE $${queryParams.length + 1} OR 
+      answer ILIKE $${queryParams.length + 1} OR 
+      context ILIKE $${queryParams.length + 1}
+    )`;
+    queryParams.push(`%${search}%`);
+  }
+  
+  // Tag filtering
+  if (tag) {
+    query += ` AND tags @> $${queryParams.length + 1}`;
+    queryParams.push(JSON.stringify([tag]));
+  }
+  
+  // Sorting
+  const validSortFields = ['created_at', 'updated_at', 'view_count', 'title'];
+  const validOrders = ['asc', 'desc'];
+  const sortField = validSortFields.includes(sort as string) ? sort : 'created_at';
+  const sortOrder = validOrders.includes(order as string) ? order as string : 'desc';
+  
+  query += ` ORDER BY ${sortField} ${sortOrder.toUpperCase()}`;
+  query += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+  
+  queryParams.push(limit, offset);
+  
+  const result = await pool.query(query, queryParams);
+  
+  // Get total count for pagination
+  let countQuery = `
+    SELECT COUNT(*) 
+    FROM faqs 
+    WHERE is_active = true AND is_public = true
+  `;
+  
+  const countParams: any[] = [];
+  
+  if (search) {
+    countQuery += ` AND (
+      title ILIKE $${countParams.length + 1} OR 
+      description ILIKE $${countParams.length + 1} OR 
+      answer ILIKE $${countParams.length + 1} OR 
+      context ILIKE $${countParams.length + 1}
+    )`;
+    countParams.push(`%${search}%`);
+  }
+  
+  if (tag) {
+    countQuery += ` AND tags @> $${countParams.length + 1}`;
+    countParams.push(JSON.stringify([tag]));
+  }
+  
+  const countResult = await pool.query(countQuery, countParams);
+  const totalCount = parseInt(countResult.rows[0].count);
   
   // Add linked terms to each FAQ
   const faqsWithLinks = await Promise.all(
@@ -454,7 +607,13 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
   
   res.json({
     success: true,
-    data: faqsWithLinks
+    data: faqsWithLinks,
+    pagination: {
+      total: totalCount,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      hasMore: parseInt(offset as string) + parseInt(limit as string) < totalCount
+    }
   });
 }));
 

@@ -63,149 +63,93 @@ class AdvancedReasoningService {
     let apiCallsUsed = 0;
 
     try {
-      // Step 1: Initial Query Analysis and Context Retrieval (2 API calls max)
+      console.log('🚀 Starting Advanced Reasoning Pipeline...');
+
+      // Step 1: Quick Context Retrieval (1 API call max)
       const step1Start = Date.now();
       
-      // Generate enhanced search queries (1 API call)
+      // Simple search first for speed
+      const quickResults = await this.qdrantService.search('system', query, 10);
+      
+      if (quickResults.length === 0) {
+        // If no results, try one enhanced search
+        const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
+        apiCallsUsed++;
+        const allResults = await this.performParallelSearch(searchQueries.slice(0, 3)); // Limit to 3 queries
+        
+        reasoningSteps.push({
+          step: 'enhanced_search',
+          description: `Enhanced search with ${searchQueries.length} queries found ${allResults.length} results`,
+          timestamp: step1Start,
+          duration: Date.now() - step1Start,
+          qdrantQueries: searchQueries,
+          qdrantResults: allResults.length
+        });
+
+        return await this.generateDirectResponse(query, allResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1);
+      }
+
+      // Quick analysis without API call
+      const contextAnalysis = this.analyzeContext(quickResults, query);
+      
+      reasoningSteps.push({
+        step: 'quick_retrieval',
+        description: `Quick search found ${quickResults.length} relevant documents`,
+        timestamp: step1Start,
+        duration: Date.now() - step1Start,
+        qdrantResults: quickResults.length,
+        result: { documentsFound: quickResults.length, quality: contextAnalysis.contextQuality }
+      });
+
+      // Step 2: Fast Response Generation (1 API call)
+      const step2Start = Date.now();
+      
+      // Check if we have enough context for a direct response
+      if (contextAnalysis.contextQuality > 0.5 || quickResults.length >= 5) {
+        console.log('✅ Sufficient context found, generating direct response');
+        return await this.generateDirectResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1);
+      }
+
+      // Step 3: Enhanced search only if needed (2 more API calls max)
+      console.log('🔍 Need more context, performing enhanced search...');
       const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
       apiCallsUsed++;
       
-      reasoningSteps.push({
-        step: 'query_analysis',
-        description: `Generated ${searchQueries.length} optimized search queries`,
-        timestamp: step1Start,
-        duration: Date.now() - step1Start,
-        qdrantQueries: searchQueries,
-        result: { searchQueries }
-      });
-
-      // Parallel QDrant searches for all queries
-      const allResults = await this.performParallelSearch(searchQueries);
-      const contextAnalysis = this.analyzeContext(allResults, query);
+      const enhancedResults = await this.performParallelSearch(searchQueries.slice(0, 4));
+      const combinedResults = [...quickResults, ...enhancedResults].slice(0, 15); // Limit total results
       
       reasoningSteps.push({
-        step: 'context_retrieval',
-        description: `Retrieved ${allResults.length} relevant documents`,
-        timestamp: Date.now(),
-        qdrantResults: allResults.length,
-        result: { documentsFound: allResults.length, quality: contextAnalysis.contextQuality }
-      });
-
-      // Step 2: Context Synthesis (1 API call)
-      const step2Start = Date.now();
-      const synthesizedContext = await geminiService.synthesizeContextWithChunkTypes(query, allResults);
-      apiCallsUsed++;
-
-      reasoningSteps.push({
-        step: 'context_synthesis',
-        description: 'Synthesized context from retrieved documents',
+        step: 'enhanced_retrieval',
+        description: `Enhanced search with ${searchQueries.length} queries`,
         timestamp: step2Start,
         duration: Date.now() - step2Start,
-        result: { contextLength: synthesizedContext.length }
+        qdrantQueries: searchQueries,
+        qdrantResults: enhancedResults.length
       });
 
-      // Step 3: QA Analysis and Pipeline Decision (1 API call)
-      const qaAnalysis = await this.performQAAnalysis(query, synthesizedContext);
-      apiCallsUsed++;
-
-      const pipelineDecision: PipelineDecision = {
-        useIterativeRefinement: qaAnalysis.confidence < 0.8 && apiCallsUsed < 8,
-        maxIterations: Math.min(2, Math.floor((this.maxApiCalls - apiCallsUsed) / 2)),
-        confidenceThreshold: 0.8,
-        reason: qaAnalysis.confidence < 0.8 ? 'Low confidence, enabling refinement' : 'High confidence, proceeding directly'
-      };
-
-      reasoningSteps.push({
-        step: 'qa_analysis',
-        description: `Analyzed answer quality (confidence: ${qaAnalysis.confidence})`,
-        timestamp: Date.now(),
-        result: { qaAnalysis, pipelineDecision }
-      });
-
-      // Step 4: Response Generation with optional refinement
-      let finalResponse = '';
-      let iterationsUsed = 0;
-      
-      if (pipelineDecision.useIterativeRefinement && pipelineDecision.maxIterations > 0) {
-        // Iterative refinement approach (max 4 more API calls)
-        const refinementResult = await this.performIterativeRefinement(
-          query, 
-          synthesizedContext, 
-          previousMessages, 
-          userPreferences,
-          pipelineDecision.maxIterations,
-          this.maxApiCalls - apiCallsUsed
-        );
-        
-        finalResponse = refinementResult.response;
-        iterationsUsed = refinementResult.iterationsUsed;
-        apiCallsUsed += refinementResult.apiCallsUsed;
-        reasoningSteps.push(...refinementResult.steps);
-      } else {
-        // Direct response generation (1 API call)
-        const step4Start = Date.now();
-        finalResponse = await geminiService.generateResponse(
-          previousMessages.concat([{ role: 'user', content: query }]),
-          synthesizedContext,
-          userPreferences,
-          true
-        );
-        apiCallsUsed++;
-
-        reasoningSteps.push({
-          step: 'response_generation',
-          description: 'Generated final response directly',
-          timestamp: step4Start,
-          duration: Date.now() - step4Start,
-          result: { responseLength: finalResponse.length }
-        });
-      }
-
-      // Step 5: Final Quality Assessment (1 API call if budget allows)
-      let finalQuality = 0.8; // Default assumption
-      if (apiCallsUsed < this.maxApiCalls) {
-        finalQuality = await this.assessResponseQuality(query, finalResponse, synthesizedContext);
-        apiCallsUsed++;
-
-        reasoningSteps.push({
-          step: 'quality_assessment',
-          description: `Final quality score: ${finalQuality}`,
-          timestamp: Date.now(),
-          result: { finalQuality }
-        });
-      }
-
-      console.log(`🎯 Advanced Reasoning completed: ${apiCallsUsed}/${this.maxApiCalls} API calls used`);
-
-      return {
-        response: finalResponse,
-        reasoningSteps,
-        finalQuality,
-        iterationsUsed,
-        contextAnalysis,
-        qaAnalysis,
-        pipelineDecisions: pipelineDecision,
-        apiCallsUsed
-      };
+      // Final response generation
+      return await this.generateDirectResponse(query, combinedResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1);
 
     } catch (error) {
-      console.error('Error in advanced reasoning:', error);
+      console.error('❌ Error in advanced reasoning:', error);
       
-      // Fallback: Simple response generation
+      // Fast fallback: Simple response generation
       try {
-        const fallbackContext = await this.qdrantService.search('system', query, 5);
-        const contextText = fallbackContext.map(r => r.payload?.text || '').join('\n');
+        const fallbackResults = await this.qdrantService.search('system', query, 5);
+        const contextText = fallbackResults.map(r => r.payload?.text || '').join('\n');
         const fallbackResponse = await geminiService.generateResponse(
           previousMessages.concat([{ role: 'user', content: query }]),
           contextText,
           userPreferences
         );
 
+        console.log('✅ Fallback response generated successfully');
+
         return {
           response: fallbackResponse,
           reasoningSteps: [{
             step: 'fallback',
-            description: 'Used fallback due to error in advanced reasoning',
+            description: 'Used fast fallback due to error in advanced reasoning',
             timestamp: Date.now(),
             error: error instanceof Error ? error.message : 'Unknown error'
           }],
@@ -231,18 +175,98 @@ class AdvancedReasoningService {
           apiCallsUsed: apiCallsUsed + 1
         };
       } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
+        console.error('❌ Fallback also failed:', fallbackError);
         throw fallbackError;
       }
     }
   }
 
-  private async generateOptimalSearchQueries(query: string, userPreferences: any): Promise<string[]> {
-    // Generate 3-5 diverse search queries to cover different aspects
-    const queries = await geminiService.generateSearchQueries(query);
+  private async generateDirectResponse(
+    query: string,
+    results: any[],
+    previousMessages: any[],
+    userPreferences: any,
+    reasoningSteps: ReasoningStep[],
+    apiCallsUsed: number
+  ): Promise<ReasoningResult> {
+    const responseStart = Date.now();
     
-    // Limit to max 5 queries to control QDrant calls
-    return queries.slice(0, 5);
+    // Synthesize context efficiently
+    const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
+    
+    // Generate response directly
+    const response = await geminiService.generateResponse(
+      previousMessages.concat([{ role: 'user', content: query }]),
+      context,
+      userPreferences,
+      true
+    );
+
+    reasoningSteps.push({
+      step: 'direct_response',
+      description: 'Generated response with available context',
+      timestamp: responseStart,
+      duration: Date.now() - responseStart,
+      result: { responseLength: response.length, contextLength: context.length }
+    });
+
+    const totalDuration = Date.now() - reasoningSteps[0].timestamp;
+    console.log(`✅ Direct response completed in ${totalDuration}ms with ${apiCallsUsed} API calls`);
+
+    return {
+      response,
+      reasoningSteps,
+      finalQuality: results.length >= 5 ? 0.8 : 0.7,
+      iterationsUsed: 1,
+      contextAnalysis: this.analyzeContext(results, query),
+      qaAnalysis: {
+        needsMoreContext: false,
+        answerable: true,
+        confidence: 0.8,
+        missingInfo: []
+      },
+      pipelineDecisions: {
+        useIterativeRefinement: false,
+        maxIterations: 1,
+        confidenceThreshold: 0.8,
+        reason: 'Direct response for speed'
+      },
+      apiCallsUsed
+    };
+  }
+
+  private async generateOptimalSearchQueries(query: string, userPreferences: any): Promise<string[]> {
+    try {
+      // Fast search query generation with reduced complexity
+      const simplePrompt = `Generate 3 search terms for: "${query}". Return only JSON array like ["term1", "term2", "term3"]:`;
+      
+      const result = await geminiService.generateText(simplePrompt);
+      
+      // Extract JSON array from response
+      let queries: string[] = [];
+      try {
+        const jsonMatch = result.match(/\[.*?\]/);
+        if (jsonMatch) {
+          queries = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.warn('Failed to parse search queries, using fallback');
+      }
+      
+      // Fallback: split query into keywords
+      if (queries.length === 0) {
+        const keywords = query.split(' ').filter(word => word.length > 3);
+        queries = keywords.slice(0, 3);
+      }
+      
+      // Always include original query
+      queries.unshift(query);
+      return [...new Set(queries)].slice(0, 4); // Limit to 4 unique queries
+      
+    } catch (error) {
+      console.error('Error generating search queries:', error);
+      return [query]; // Fallback to original query
+    }
   }
 
   private async performParallelSearch(queries: string[]): Promise<any[]> {

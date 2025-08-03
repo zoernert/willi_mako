@@ -59,6 +59,13 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Increase timeout for chat routes (45 seconds)
+app.use('/api/chat', (req, res, next) => {
+  req.setTimeout(45000);
+  res.setTimeout(45000);
+  next();
+});
+
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

@@ -36,6 +36,7 @@ import {
   Group as GroupIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
 
 const drawerWidth = 240;
 
@@ -137,6 +138,7 @@ const Layout: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Energiemarkt Coach
           </Typography>
+          <HeaderQuickNoteButton />
           <Button
             color="inherit"
             onClick={handleProfileMenuOpen}

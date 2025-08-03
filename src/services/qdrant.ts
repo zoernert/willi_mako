@@ -359,4 +359,110 @@ export class QdrantService {
       return [];
     }
   }
+
+  // Method for storing FAQ content in vector database
+  async storeFAQContent(
+    faqId: string,
+    title: string,
+    description: string,
+    context: string,
+    answer: string,
+    additionalInfo: string,
+    tags: string[]
+  ) {
+    try {
+      // Combine all FAQ content for embedding
+      const fullContent = `${title}\n\n${description}\n\n${context}\n\n${answer}\n\n${additionalInfo}`.trim();
+      
+      const embedding = await geminiService.generateEmbedding(fullContent);
+      
+      await this.client.upsert(QDRANT_COLLECTION_NAME, {
+        wait: true,
+        points: [
+          {
+            id: `faq_${faqId}`,
+            vector: embedding,
+            payload: {
+              type: 'faq',
+              faq_id: faqId,
+              title,
+              description,
+              context,
+              answer,
+              additional_info: additionalInfo,
+              tags,
+              text: fullContent,
+              created_at: new Date().toISOString(),
+            },
+          },
+        ],
+      });
+      
+      console.log(`FAQ ${faqId} stored in vector database`);
+    } catch (error) {
+      console.error('Error storing FAQ in vector database:', error);
+      throw error;
+    }
+  }
+
+  // Method for updating FAQ content in vector database
+  async updateFAQContent(
+    faqId: string,
+    title: string,
+    description: string,
+    context: string,
+    answer: string,
+    additionalInfo: string,
+    tags: string[]
+  ) {
+    try {
+      // Update is the same as store for Qdrant
+      await this.storeFAQContent(faqId, title, description, context, answer, additionalInfo, tags);
+      console.log(`FAQ ${faqId} updated in vector database`);
+    } catch (error) {
+      console.error('Error updating FAQ in vector database:', error);
+      throw error;
+    }
+  }
+
+  // Method for deleting FAQ from vector database
+  async deleteFAQContent(faqId: string) {
+    try {
+      await this.client.delete(QDRANT_COLLECTION_NAME, {
+        points: [`faq_${faqId}`],
+      });
+      console.log(`FAQ ${faqId} deleted from vector database`);
+    } catch (error) {
+      console.error('Error deleting FAQ from vector database:', error);
+      throw error;
+    }
+  }
+
+  // Method for searching FAQs specifically
+  async searchFAQs(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+    try {
+      const queryVector = await geminiService.generateEmbedding(query);
+      
+      const results = await this.client.search(QDRANT_COLLECTION_NAME, {
+        vector: queryVector,
+        limit,
+        score_threshold: scoreThreshold,
+        filter: {
+          must: [
+            {
+              key: 'type',
+              match: {
+                value: 'faq',
+              },
+            },
+          ],
+        },
+      });
+      
+      return results;
+    } catch (error) {
+      console.error('Error searching FAQs:', error);
+      return [];
+    }
+  }
 }

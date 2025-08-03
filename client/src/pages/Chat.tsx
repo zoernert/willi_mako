@@ -24,7 +24,6 @@ import {
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
-import QuickNoteButton from '../components/Workspace/QuickNoteButton';
 import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import PipelineInfoDialog from '../components/Chat/PipelineInfoDialog';
@@ -736,15 +735,6 @@ const Chat: React.FC = () => {
                   {loading ? <CircularProgress size={24} /> : <SendIcon />}
                 </Button>
               </Box>
-            </Box>
-
-            {/* Quick Note Button */}
-            <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-              <QuickNoteButton 
-                sourceType="chat"
-                sourceId={currentChat.id}
-                position="relative"
-              />
             </Box>
           </>
         )}

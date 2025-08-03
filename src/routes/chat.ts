@@ -225,6 +225,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   const { chatId } = req.params;
   const { content, contextSettings } = req.body;
   const userId = req.user!.id;
+  const startTime = Date.now();
   
   if (!content) {
     throw new AppError('Message content is required', 400);
@@ -281,13 +282,56 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     [userId]
   );
 
-  // Use the advanced reasoning pipeline for better quality responses
-  const reasoningResult = await advancedReasoningService.generateReasonedResponse(
+  // Use the advanced reasoning pipeline for better quality responses with timeout protection
+  const reasoningPromise = advancedReasoningService.generateReasonedResponse(
     content,
     previousMessages.rows,
     userPreferences.rows[0] || {},
     contextSettings
   );
+
+  // Add timeout protection (30 seconds)
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('REASONING_TIMEOUT')), 30000);
+  });
+
+  let reasoningResult: any;
+  try {
+    reasoningResult = await Promise.race([reasoningPromise, timeoutPromise]);
+  } catch (error: any) {
+    if (error.message === 'REASONING_TIMEOUT') {
+      console.warn('⚠️ Advanced reasoning timed out, using fallback');
+      // Fallback to simple response
+      const fallbackContext = await retrieval.getContextualCompressedResults(
+        content,
+        userPreferences.rows[0] || {},
+        5
+      );
+      const contextText = fallbackContext.map(r => r.payload?.text || '').join('\n');
+      const fallbackResponse = await geminiService.generateResponse(
+        previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
+        contextText,
+        userPreferences.rows[0] || {}
+      );
+      
+      reasoningResult = {
+        response: fallbackResponse,
+        reasoningSteps: [{
+          step: 'timeout_fallback',
+          description: 'Used fallback due to timeout',
+          timestamp: Date.now()
+        }],
+        finalQuality: 0.7,
+        iterationsUsed: 1,
+        contextAnalysis: { topicsIdentified: [], informationGaps: [], contextQuality: 0.7 },
+        qaAnalysis: { needsMoreContext: false, answerable: true, confidence: 0.7, missingInfo: [] },
+        pipelineDecisions: { useIterativeRefinement: false, maxIterations: 1, confidenceThreshold: 0.8, reason: 'Timeout fallback' },
+        apiCallsUsed: 2
+      };
+    } else {
+      throw error;
+    }
+  }
 
   let aiResponse = reasoningResult.response;
   let responseMetadata: {
@@ -397,6 +441,9 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
       console.error('Error generating chat title:', error);
     }
   }
+
+  const totalResponseTime = Date.now() - startTime;
+  console.log(`📊 Chat response completed in ${totalResponseTime}ms (API calls: ${reasoningResult.apiCallsUsed || 'unknown'})`);
 
   return res.json({
     success: true,

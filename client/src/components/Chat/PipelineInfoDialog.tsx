@@ -33,11 +33,12 @@ interface ReasoningStep {
   step: string;
   input: string;
   output: string;
-  confidence: number;
+  confidence?: number;
   iteration: number;
   timestamp: Date;
   qdrantQueries?: string[];
   qdrantResults?: number;
+  result?: any; // Contains the actual step results with various structures
 }
 
 interface PipelineInfo {
@@ -98,8 +99,86 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
     return titles[stepName] || stepName;
   };
 
-  const formatConfidence = (confidence: number) => {
+  const formatConfidence = (confidence?: number) => {
+    if (confidence === undefined || confidence === null || isNaN(confidence)) {
+      return 'N/A';
+    }
     return `${Math.round(confidence * 100)}%`;
+  };
+
+  const getConfidenceValue = (step: ReasoningStep): number => {
+    // Debug logging for confidence
+    console.log('Step confidence values:', {
+      step: step.step,
+      stepConfidence: step.confidence,
+      resultConfidence: step.result?.confidence,
+      fullStep: step
+    });
+    
+    // Try to get confidence from various sources
+    if (step.confidence !== undefined && !isNaN(step.confidence)) {
+      return step.confidence;
+    }
+    if (step.result?.confidence !== undefined && !isNaN(step.result.confidence)) {
+      return step.result.confidence;
+    }
+    return 0.5; // Default fallback
+  };
+
+  const getStepQueries = (step: ReasoningStep): string[] => {
+    const queries: string[] = [];
+    
+    console.log('Extracting queries from step:', step.step, {
+      qdrantQueries: step.qdrantQueries,
+      resultSearchQueries: step.result?.searchQueries,
+      resultQdrantQueries: step.result?.qdrantQueries,
+      fullResult: step.result
+    });
+    
+    // Check direct qdrantQueries
+    if (step.qdrantQueries && Array.isArray(step.qdrantQueries)) {
+      queries.push(...step.qdrantQueries);
+    }
+    
+    // Check result.searchQueries
+    if (step.result?.searchQueries && Array.isArray(step.result.searchQueries)) {
+      queries.push(...step.result.searchQueries);
+    }
+    
+    // Check result.qdrantQueries
+    if (step.result?.qdrantQueries && Array.isArray(step.result.qdrantQueries)) {
+      queries.push(...step.result.qdrantQueries);
+    }
+    
+    // Remove duplicates
+    const uniqueQueries = Array.from(new Set(queries));
+    console.log('Final queries for step:', step.step, uniqueQueries);
+    return uniqueQueries;
+  };
+
+  const extractQAAnalysis = () => {
+    // Debug logging
+    console.log('Pipeline Info - qaAnalysis:', pipelineInfo.qaAnalysis);
+    console.log('Pipeline Info - reasoningSteps:', pipelineInfo.reasoningSteps);
+    
+    // First check if qaAnalysis is directly available
+    if (pipelineInfo.qaAnalysis && Object.keys(pipelineInfo.qaAnalysis).length > 0) {
+      console.log('Using direct qaAnalysis:', pipelineInfo.qaAnalysis);
+      return pipelineInfo.qaAnalysis;
+    }
+    
+    // Check reasoning steps for qaAnalysis
+    if (pipelineInfo.reasoningSteps) {
+      for (const step of pipelineInfo.reasoningSteps) {
+        if (step.result?.qaAnalysis && Object.keys(step.result.qaAnalysis).length > 0) {
+          console.log('Found qaAnalysis in step:', step.step, step.result.qaAnalysis);
+          return step.result.qaAnalysis;
+        }
+      }
+    }
+    
+    console.log('No qaAnalysis found');
+    return null;
   };
 
   const getQualityColor = (quality: number): "success" | "warning" | "error" => {
@@ -237,7 +316,7 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
           </Accordion>
 
           {/* Frageanalyse */}
-          {pipelineInfo.qaAnalysis && (
+          {extractQAAnalysis() && (
             <Accordion 
               expanded={expandedAccordion === 'qa'} 
               onChange={handleAccordionChange('qa')}
@@ -252,17 +331,17 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       Hauptintention
                     </Typography>
                     <Typography variant="body2" paragraph>
-                      {pipelineInfo.qaAnalysis.mainIntent}
+                      {extractQAAnalysis()?.mainIntent || 'N/A'}
                     </Typography>
                     
                     <Typography variant="subtitle2" gutterBottom>
                       Komplexitätslevel
                     </Typography>
                     <Chip 
-                      label={pipelineInfo.qaAnalysis.complexityLevel} 
+                      label={extractQAAnalysis()?.complexityLevel || 'N/A'} 
                       color={
-                        pipelineInfo.qaAnalysis.complexityLevel === 'hard' ? 'error' :
-                        pipelineInfo.qaAnalysis.complexityLevel === 'medium' ? 'warning' : 'success'
+                        extractQAAnalysis()?.complexityLevel === 'hard' ? 'error' :
+                        extractQAAnalysis()?.complexityLevel === 'medium' ? 'warning' : 'success'
                       }
                       size="small"
                     />
@@ -272,7 +351,7 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                     </Typography>
                     <LinearProgress
                       variant="determinate"
-                      value={pipelineInfo.qaAnalysis.marketCommunicationRelevance * 100}
+                      value={(extractQAAnalysis()?.marketCommunicationRelevance || 0) * 100}
                       sx={{ mt: 1 }}
                     />
                   </Box>
@@ -281,18 +360,18 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       Semantische Konzepte
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                      {pipelineInfo.qaAnalysis.semanticConcepts?.map((concept: string, index: number) => (
+                      {extractQAAnalysis()?.semanticConcepts?.map((concept: string, index: number) => (
                         <Chip key={index} label={concept} size="small" variant="outlined" />
-                      ))}
+                      )) || <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>}
                     </Box>
                     
                     <Typography variant="subtitle2" gutterBottom>
                       Domain-Keywords
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {pipelineInfo.qaAnalysis.domainKeywords?.map((keyword: string, index: number) => (
+                      {extractQAAnalysis()?.domainKeywords?.map((keyword: string, index: number) => (
                         <Chip key={index} label={keyword} size="small" color="primary" variant="outlined" />
-                      ))}
+                      )) || <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>}
                     </Box>
                   </Box>
                 </Box>
@@ -325,23 +404,23 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         variant="outlined" 
                       />
                       <Chip
-                        label={`Vertrauen: ${formatConfidence(step.confidence)}`}
+                        label={`Vertrauen: ${formatConfidence(getConfidenceValue(step))}`}
                         size="small"
-                        color={step.confidence >= 0.7 ? 'success' : step.confidence >= 0.5 ? 'warning' : 'error'}
+                        color={getConfidenceValue(step) >= 0.7 ? 'success' : getConfidenceValue(step) >= 0.5 ? 'warning' : 'error'}
                       />
-                      {step.qdrantQueries && step.qdrantQueries.length > 0 && (
+                      {getStepQueries(step).length > 0 && (
                         <Chip
-                          label={`${step.qdrantQueries.length} QDrant-Abfragen`}
+                          label={`${getStepQueries(step).length} QDrant-Abfragen`}
                           size="small"
                           color="info"
                         />
                       )}
                     </Box>
                     
-                    {step.qdrantQueries && step.qdrantQueries.length > 0 && (
+                    {getStepQueries(step).length > 0 && (
                       <Box sx={{ ml: 4, mb: 1 }}>
                         <Typography variant="caption" color="text.secondary">
-                          QDrant-Abfragen: {step.qdrantQueries.join(', ')}
+                          QDrant-Abfragen: {getStepQueries(step).join(', ')}
                         </Typography>
                       </Box>
                     )}
