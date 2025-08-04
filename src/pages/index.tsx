@@ -414,7 +414,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             </Typography>
           </Box>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} justifyContent="center" alignItems="center">
+          <Box sx={{ mt: 4, display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button
               variant="contained"
               size="large"
@@ -423,26 +423,50 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
               sx={{ 
                 px: 6,
                 py: 2,
-                fontSize: '1.2rem',
-                fontWeight: 700,
+                fontSize: '1.1rem',
+                fontWeight: 600,
                 bgcolor: '#ee7f4b',
-                color: 'white',
                 '&:hover': { bgcolor: '#d66d3a' },
-                borderRadius: 3,
-                minWidth: 280
+                borderRadius: 3
               }}
             >
               7 Tage kostenlos testen
             </Button>
-            <Typography variant="body2" sx={{ 
-              color: 'rgba(255,255,255,0.7)',
-              fontStyle: 'italic'
-            }}>
-              ✓ Keine Kreditkarte erforderlich<br />
-              ✓ Vollzugriff auf alle Features<br />
-              ✓ Jederzeit kündbar
-            </Typography>
-          </Stack>
+            <Button
+              variant="outlined"
+              size="large"
+              component={Link}
+              href="/llm/willi-mako-showcase.txt"
+              target="_blank"
+              sx={{ 
+                px: 6,
+                py: 2,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+                borderColor: 'rgba(255,255,255,0.7)',
+                color: 'white',
+                '&:hover': { 
+                  borderColor: 'white',
+                  bgcolor: 'rgba(255,255,255,0.1)'
+                },
+                borderRadius: 3
+              }}
+              startIcon={<PlayIcon />}
+            >
+              AI/LLM-friendly Showcase
+            </Button>
+          </Box>
+          
+          <Typography variant="body2" sx={{ 
+            color: 'rgba(255,255,255,0.7)',
+            fontStyle: 'italic',
+            textAlign: 'center',
+            mt: 3
+          }}>
+            ✓ Keine Kreditkarte erforderlich<br />
+            ✓ Vollzugriff auf alle Features<br />
+            ✓ Jederzeit kündbar
+          </Typography>
         </Box>
       </Paper>
     </Layout>
