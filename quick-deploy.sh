@@ -111,18 +111,18 @@ prepare_deployment() {
         JWT_SECRET=$(generate_jwt_secret)
     fi
     
-    # Produktions-.env erstellen
+    # Produktions-.env erstellen (mit remote PostgreSQL)
     cat > "$TEMP_DIR/.env" << EOF
 # Environment Configuration
 NODE_ENV=production
 PORT=$BACKEND_PORT
 
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=$POSTGRES_PORT
-DB_NAME=$POSTGRES_DB
-DB_USER=$POSTGRES_USER
-DB_PASSWORD=$POSTGRES_PASSWORD
+# Database Configuration (Remote PostgreSQL)
+DB_HOST=10.0.0.2
+DB_PORT=5117
+DB_NAME=willi_mako
+DB_USER=willi_user
+DB_PASSWORD=willi_password
 
 # JWT Configuration
 JWT_SECRET=$JWT_SECRET
@@ -131,10 +131,22 @@ JWT_EXPIRES_IN=24h
 # Qdrant Configuration
 QDRANT_URL=http://10.0.0.2:6333
 QDRANT_API_KEY=str0mda0
-QDRANT_COLLECTION=willi
+QDRANT_COLLECTION=willi_mako
 
 # Google Gemini Configuration
 GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
+
+# SMTP Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+FROM_EMAIL=willi@stromhaltig.de
+FROM_NAME=Willi Mako
+
+# Frontend Configuration
+FRONTEND_URL=https://stromhaltig.de
 
 # Upload Configuration
 UPLOAD_PATH=./uploads
@@ -143,6 +155,12 @@ MAX_FILE_SIZE=50MB
 # Rate Limiting
 RATE_LIMIT_WINDOW=15
 RATE_LIMIT_MAX=100
+
+# Workspace Configuration
+WORKSPACE_STORAGE_LIMIT_MB=500
+WORKSPACE_MAX_FILE_SIZE_MB=50
+WORKSPACE_ALLOWED_EXTENSIONS=pdf,doc,docx,txt,md
+WORKSPACE_VECTOR_CHUNK_SIZE=1000
 EOF
 
     # package.json kopieren
@@ -243,59 +261,6 @@ module.exports = {
   ]
 };
 EOF
-
-    # Docker Compose für PostgreSQL erstellen
-    cat > "$TEMP_DIR/docker-compose.yml" << EOF
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: $POSTGRES_CONTAINER
-    environment:
-      POSTGRES_DB: $POSTGRES_DB
-      POSTGRES_USER: $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-      POSTGRES_INITDB_ARGS: --encoding=UTF-8 --lc-collate=C --lc-ctype=C
-    ports:
-      - "$POSTGRES_PORT:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
-    networks:
-      - willi_network
-
-volumes:
-  postgres_data:
-
-networks:
-  willi_network:
-    driver: bridge
-EOF
-
-    # Datenbank-Initialisierungsscript erstellen
-    cat > "$TEMP_DIR/init.sql" << 'EOF'
--- Datenbank-Initialisierung für Willi Mako
--- Hier können später Tabellen-Definitionen hinzugefügt werden
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Beispiel-Tabelle für Benutzer (kann angepasst werden)
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) DEFAULT 'user',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Index für bessere Performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-EOF
     
     echo "✅ Deployment-Dateien vorbereitet in: $TEMP_DIR"
 }
@@ -333,57 +298,24 @@ EOF
     echo "✅ Abhängigkeiten installiert"
 }
 
-# PostgreSQL-Container starten (falls nicht läuft)
-start_postgres() {
-    echo "🐳 Starte PostgreSQL-Container..."
+# Test der Datenbankverbindung
+test_database_connection() {
+    echo "� Teste Verbindung zur remote PostgreSQL-Datenbank..."
     
     ssh $PROD_SERVER << EOF
 cd $DEPLOY_DIR
-# Prüfe ob Container bereits läuft
-if ! docker ps | grep -q $POSTGRES_CONTAINER; then
-    echo "Container läuft nicht, starte neu..."
-    docker-compose up -d postgres
-    sleep 10
+echo "Teste Datenbankverbindung zu 10.0.0.2:5117..."
+# Einfacher Verbindungstest mit telnet oder nc
+if command -v nc &> /dev/null; then
+    if nc -z 10.0.0.2 5117; then
+        echo "✅ PostgreSQL Server ist erreichbar auf 10.0.0.2:5117"
+    else
+        echo "❌ PostgreSQL Server nicht erreichbar auf 10.0.0.2:5117"
+    fi
 else
-    echo "Container läuft bereits"
+    echo "⚠️  nc (netcat) nicht verfügbar - überspringe Verbindungstest"
 fi
-docker-compose logs --tail=20 postgres
 EOF
-    
-    echo "✅ PostgreSQL-Container Status geprüft"
-}
-
-# Demo-Benutzer einrichten
-setup_demo_users() {
-    echo "👥 Richte Demo-Benutzer ein..."
-    
-    ssh $PROD_SERVER << 'EOF'
-cd /opt/willi_mako
-echo "Erstelle/Aktualisiere Demo-Benutzer..."
-docker exec willi_mako_postgres psql -U willi_user -d willi_mako -c "
--- Erstelle oder aktualisiere Admin-Benutzer (behält bestehende FAQs und Chats)
-INSERT INTO users (email, password_hash, name, role, created_at, updated_at) VALUES
-('admin@willimako.com', '\$2b\$10\$aDTTXJ9TuRl9K5JHu5BqyeNn4FYYRMZ.jmQn9zZ1/dm.edmbo/oOG', 'Admin User', 'admin', NOW(), NOW())
-ON CONFLICT (email) DO UPDATE SET
-    password_hash = '\$2b\$10\$aDTTXJ9TuRl9K5JHu5BqyeNn4FYYRMZ.jmQn9zZ1/dm.edmbo/oOG',
-    name = 'Admin User',
-    role = 'admin',
-    updated_at = NOW();
-
--- Erstelle oder aktualisiere Test-Benutzer (behält bestehende FAQs und Chats)
-INSERT INTO users (email, password_hash, name, role, created_at, updated_at) VALUES
-('user@willimako.com', '\$2b\$10\$qdbWK6tKvFYpVKB6/SZ5Su5pSIpuyv/E/Ph.R3Fvga1JjJ6S6P83O', 'Test User', 'user', NOW(), NOW())
-ON CONFLICT (email) DO UPDATE SET
-    password_hash = '\$2b\$10\$qdbWK6tKvFYpVKB6/SZ5Su5pSIpuyv/E/Ph.R3Fvga1JjJ6S6P83O',
-    name = 'Test User',
-    role = 'user',
-    updated_at = NOW();
-"
-EOF
-    
-    echo "✅ Demo-Benutzer eingerichtet/aktualisiert (bestehende FAQs und Chats bleiben erhalten)"
-    echo "   - Admin: admin@willimako.com / admin123"
-    echo "   - User:  user@willimako.com / user123"
 }
 
 # Anwendung mit PM2 starten
@@ -404,11 +336,17 @@ check_status() {
     echo "🔍 Prüfe Status..."
     
     ssh $PROD_SERVER << EOF
-echo "Docker Container:"
-docker ps | grep postgres || echo "Kein PostgreSQL Container gefunden"
-echo ""
 echo "PM2 Prozesse:"
 pm2 list
+echo ""
+echo "Datenbankverbindung:"
+if command -v nc &> /dev/null; then
+    if nc -z 10.0.0.2 5117; then
+        echo "✅ Remote PostgreSQL erreichbar (10.0.0.2:5117)"
+    else
+        echo "❌ Remote PostgreSQL nicht erreichbar (10.0.0.2:5117)"
+    fi
+fi
 echo ""
 echo "Anwendung Status:"
 sleep 5
@@ -422,6 +360,10 @@ echo "Static Pages Test:"
 curl -s -I http://localhost:$FRONTEND_PORT/ | head -1 || echo "Homepage nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/app/ | head -1 || echo "Legacy App nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/wissen/ | head -1 || echo "Wissen Page nicht erreichbar"
+echo ""
+echo "RSS/Atom Feed Test:"
+curl -s -I http://localhost:$FRONTEND_PORT/feed.xml | head -1 || echo "RSS Feed nicht erreichbar"
+curl -s -I http://localhost:$FRONTEND_PORT/atom.xml | head -1 || echo "Atom Feed nicht erreichbar"
 EOF
 }
 
@@ -456,8 +398,7 @@ main() {
     
     transfer_files "$TEMP_DIR_PATH"
     install_dependencies
-    start_postgres
-    setup_demo_users
+    test_database_connection
     start_application
     check_status
     
@@ -466,18 +407,26 @@ main() {
     echo "Frontend läuft auf: http://$SERVER_IP:$FRONTEND_PORT (Next.js)"
     echo "Backend läuft auf: http://$SERVER_IP:$BACKEND_PORT (Express.js - intern)"
     echo "API verfügbar über: http://$SERVER_IP:$FRONTEND_PORT/api (proxied)"
+    echo "Remote PostgreSQL: 10.0.0.2:5117"
     echo ""
     echo "🔗 Verfügbare URLs:"
     echo "  - Frontend: http://$SERVER_IP:$FRONTEND_PORT/"
     echo "  - Legacy App: http://$SERVER_IP:$FRONTEND_PORT/app/"
     echo "  - FAQ Pages: http://$SERVER_IP:$FRONTEND_PORT/wissen/"
     echo "  - API: http://$SERVER_IP:$FRONTEND_PORT/api/"
+    echo "  - RSS Feed: http://$SERVER_IP:$FRONTEND_PORT/feed.xml"
+    echo "  - Atom Feed: http://$SERVER_IP:$FRONTEND_PORT/atom.xml"
     echo ""
     echo "📱 Legacy App Details:"
     echo "  - URL: http://$SERVER_IP:$FRONTEND_PORT/app/"
     echo "  - React Router basename: /app"
     echo "  - Statische Assets: /app/static/*"
     echo "  - Alle API-Calls werden über Next.js Frontend proxied"
+    echo ""
+    echo "🗃️ Datenbank:"
+    echo "  - Remote PostgreSQL auf 10.0.0.2:5117"
+    echo "  - Datenbank: willi_mako"
+    echo "  - Benutzer: willi_user"
     echo ""
     echo "Nützliche Befehle:"
     echo "  ./monitor.sh status"
