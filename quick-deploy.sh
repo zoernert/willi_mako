@@ -10,8 +10,8 @@ echo "======================================"
 
 # Konfiguration
 PROD_SERVER=${1:-"root@10.0.0.2"}
-FRONTEND_PORT=${2:-"3003"}  # Next.js Frontend (extern)
-BACKEND_PORT="3009"         # Express.js Backend (intern)
+FRONTEND_PORT=${2:-"4100"}  # Next.js Frontend (extern)
+BACKEND_PORT="4101"         # Express.js Backend (intern)
 POSTGRES_PORT="5117"
 APP_NAME="willi_mako"
 DEPLOY_DIR="/opt/willi_mako"
@@ -168,8 +168,12 @@ EOF
     fi
     
     # server.js für Production kopieren (Hybrid-Setup)
-    if [ -f "server.js" ]; then
+    if [ -f "server_production.js" ]; then
+        cp server_production.js "$TEMP_DIR/server.js"
+        echo "✅ Production server.js kopiert"
+    elif [ -f "server.js" ]; then
         cp server.js "$TEMP_DIR/"
+        echo "⚠️  Standard server.js kopiert - eventuell nicht für Produktion optimiert"
     else
         echo "❌ server.js nicht gefunden. Hybrid-Setup fehlgeschlagen?"
         exit 1
@@ -178,12 +182,12 @@ EOF
     # Uploads-Verzeichnis erstellen
     mkdir -p "$TEMP_DIR/uploads"
     
-    # PM2 Ecosystem-Datei für Hybrid-Architektur erstellen
-    cat > "$TEMP_DIR/ecosystem.config.js" << EOF
+    # PM2 Ecosystem-Datei für Port 4100/4101 Architektur erstellen
+    cat > "$TEMP_DIR/ecosystem_4100.config.js" << EOF
 module.exports = {
   apps: [
     {
-      name: '${APP_NAME}_backend',
+      name: 'willi_mako_backend_4101',
       script: 'dist/server.js',
       cwd: '$DEPLOY_DIR',
       instances: 1,
@@ -192,16 +196,16 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: $BACKEND_PORT
       },
-      error_file: '$DEPLOY_DIR/logs/backend_err.log',
-      out_file: '$DEPLOY_DIR/logs/backend_out.log',
-      log_file: '$DEPLOY_DIR/logs/backend_combined.log',
+      error_file: '$DEPLOY_DIR/logs/backend_4101_err.log',
+      out_file: '$DEPLOY_DIR/logs/backend_4101_out.log',
+      log_file: '$DEPLOY_DIR/logs/backend_4101_combined.log',
       time: true,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G'
     },
     {
-      name: '${APP_NAME}_frontend',
+      name: 'willi_mako_frontend_4100',
       script: 'server.js',
       cwd: '$DEPLOY_DIR',
       instances: 1,
@@ -210,9 +214,9 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: $FRONTEND_PORT
       },
-      error_file: '$DEPLOY_DIR/logs/frontend_err.log',
-      out_file: '$DEPLOY_DIR/logs/frontend_out.log',
-      log_file: '$DEPLOY_DIR/logs/frontend_combined.log',
+      error_file: '$DEPLOY_DIR/logs/frontend_4100_err.log',
+      out_file: '$DEPLOY_DIR/logs/frontend_4100_out.log',
+      log_file: '$DEPLOY_DIR/logs/frontend_4100_combined.log',
       time: true,
       autorestart: true,
       watch: false,
@@ -284,7 +288,7 @@ transfer_files() {
     echo "📤 Übertrage Dateien auf Produktivserver..."
     
     # Alte Anwendung stoppen
-    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 stop ${APP_NAME}_backend ${APP_NAME}_frontend 2>/dev/null || true"
+    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 stop willi_mako_backend_4101 willi_mako_frontend_4100 2>/dev/null || true"
     
     # Backup erstellen
     ssh $PROD_SERVER "cd $DEPLOY_DIR && [ -d dist ] && cp -r dist dist.backup.\$(date +%Y%m%d_%H%M%S) || true"
@@ -370,7 +374,7 @@ start_application() {
     
     ssh $PROD_SERVER << EOF
 cd $DEPLOY_DIR
-pm2 start ecosystem.config.js
+pm2 start ecosystem_4100.config.js
 pm2 save
 EOF
     
@@ -395,6 +399,11 @@ curl -s http://localhost:$FRONTEND_PORT/api/health || echo "Frontend Health-Chec
 echo ""
 echo "Backend (Port $BACKEND_PORT, intern):"
 curl -s http://localhost:$BACKEND_PORT/api/health || echo "Backend Health-Check fehlgeschlagen"
+echo ""
+echo "Static Pages Test:"
+curl -s -I http://localhost:$FRONTEND_PORT/ | head -1 || echo "Homepage nicht erreichbar"
+curl -s -I http://localhost:$FRONTEND_PORT/app/ | head -1 || echo "Legacy App nicht erreichbar"
+curl -s -I http://localhost:$FRONTEND_PORT/wissen/ | head -1 || echo "Wissen Page nicht erreichbar"
 EOF
 }
 
@@ -455,8 +464,8 @@ main() {
     echo "Nützliche Befehle:"
     echo "  ./monitor.sh status"
     echo "  ./monitor.sh logs"
-    echo "  ssh $PROD_SERVER 'pm2 restart ${APP_NAME}_backend'"
-    echo "  ssh $PROD_SERVER 'pm2 restart ${APP_NAME}_frontend'"
+    echo "  ssh $PROD_SERVER 'pm2 restart willi_mako_backend_4101'"
+    echo "  ssh $PROD_SERVER 'pm2 restart willi_mako_frontend_4100'"
     echo "  ssh $PROD_SERVER 'pm2 restart all'"
     echo ""
     echo "Verwendung: $0 [server] [frontend_port]"
