@@ -7,7 +7,8 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'willi_mako',
   user: process.env.DB_USER || 'willi_user',
   password: process.env.DB_PASSWORD || 'willi_password',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // SSL für remote PostgreSQL deaktiviert, da Server kein SSL unterstützt
+  ssl: false,
 });
 
 export default pool;
