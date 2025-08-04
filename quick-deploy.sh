@@ -2,7 +2,7 @@
 
 # Schnelles Deployment Script für Willi Mako (ohne System-Updates)
 # Für Server, die bereits konfiguriert sind
-git add -A;git commit -m "Auto" -a;git push origin 
+git add -A;git commit -m "Auto" -a;git push --set-upstream origin main || git push origin main
 set -e
 
 echo "🚀 Schnelles Deployment für Willi Mako"
