@@ -72,7 +72,17 @@ build_application() {
     npm install
     npm run build:legacy
     npm run move:legacy
-    npm run build:next
+    
+    # .env.production für Next.js Build erstellen
+    echo "🔧 Erstelle .env.production für Next.js Build..."
+    cat > .env.production << 'ENVEOF'
+NODE_ENV=production
+API_URL=http://127.0.0.1:4101
+ENVEOF
+    
+    # Next.js Build mit Produktionsumgebung
+    echo "🌐 Baue Next.js für Produktion (NODE_ENV=production)..."
+    NODE_ENV=production npm run build:next
     
     # Server Build
     echo "📦 Baue Server..."
@@ -165,6 +175,11 @@ EOF
     # Next.js Config kopieren
     if [ -f "next.config.js" ]; then
         cp next.config.js "$TEMP_DIR/"
+    fi
+    
+    # .env.production kopieren (für Next.js Runtime)
+    if [ -f ".env.production" ]; then
+        cp .env.production "$TEMP_DIR/"
     fi
     
     # server.js für Production kopieren (Hybrid-Setup)

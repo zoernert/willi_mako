@@ -1,6 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-const API_URL = process.env.API_URL || 'http://127.0.0.1:3009';
+// Produktionsumgebung: Backend läuft auf Port 4101
+// Entwicklungsumgebung: Backend läuft auf Port 3009
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'http://127.0.0.1:4101' 
+  : (process.env.API_URL || 'http://127.0.0.1:3009');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
