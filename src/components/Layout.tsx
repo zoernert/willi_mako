@@ -92,16 +92,14 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
       </List>
       <Divider sx={{ mt: 2 }} />
       <Box sx={{ p: 2 }}>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Hauptanwendung
-        </Typography>
         <ListItemButton
           component={Link}
           href="/app"
           sx={{ 
-            borderRadius: 1, 
+            borderRadius: 2, 
             bgcolor: '#ee7f4b',
             color: 'white',
+            py: 1.5,
             '&:hover': {
               bgcolor: '#d66d3a'
             },
@@ -114,8 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
             <EnergyIcon />
           </ListItemIcon>
           <ListItemText 
-            primary="Willi-Mako App" 
-            secondary="Vollständige Anwendung"
+            primary="Willi-Mako App"
           />
         </ListItemButton>
       </Box>

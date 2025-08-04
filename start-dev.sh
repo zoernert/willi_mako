@@ -10,17 +10,25 @@ echo "======================================================"
 cleanup_existing_processes() {
     echo "🧹 Prüfe und beende bestehende Entwicklungsserver..."
     
-    # Check for processes on our ports
-    if lsof -Pi :3003 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    # Check for processes on our ports using ss (more reliable than lsof)
+    if ss -tlnp | grep -q :3003; then
         echo "⚠️  Port 3003 ist bereits belegt - beende bestehende Prozesse..."
-        lsof -ti:3003 | xargs kill -9 2>/dev/null || true
+        # Extract PID from ss output and kill
+        ss -tlnp | grep :3003 | grep -o 'pid=[0-9]*' | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null || true
         sleep 1
     fi
     
-    if lsof -Pi :3009 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    if ss -tlnp | grep -q :3009; then
         echo "⚠️  Port 3009 ist bereits belegt - beende bestehende Prozesse..."
-        lsof -ti:3009 | xargs kill -9 2>/dev/null || true
+        # Extract PID from ss output and kill
+        ss -tlnp | grep :3009 | grep -o 'pid=[0-9]*' | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null || true
         sleep 1
+    fi
+    
+    # Fallback: use lsof if ss didn't work
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti:3003 | xargs -r kill -9 2>/dev/null || true
+        lsof -ti:3009 | xargs -r kill -9 2>/dev/null || true
     fi
     
     # Kill any remaining Next.js or tsx processes related to our project
@@ -29,6 +37,15 @@ cleanup_existing_processes() {
     
     # Wait a moment for cleanup
     sleep 2
+    
+    # Final verification
+    if ss -tlnp | grep -q ':3003\|:3009'; then
+        echo "⚠️  Einige Ports sind noch belegt. Verwende aggressivere Cleanup-Methoden..."
+        fuser -k 3003/tcp 2>/dev/null || true
+        fuser -k 3009/tcp 2>/dev/null || true
+        sleep 1
+    fi
+    
     echo "✅ Cleanup abgeschlossen"
 }
 

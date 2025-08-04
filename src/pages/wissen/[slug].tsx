@@ -1,6 +1,23 @@
 import { GetStaticPaths, GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
+import { 
+  Box, 
+  Typography, 
+  Chip, 
+  Paper,
+  Breadcrumbs,
+  Card,
+  CardContent,
+  Button,
+  Divider
+} from '@mui/material';
+import {
+  NavigateNext as NavigateNextIcon,
+  Home as HomeIcon,
+  QuestionAnswer as FAQIcon
+} from '@mui/icons-material';
+import Layout from '../../components/Layout';
 import { getAllPublicFAQs, getFAQBySlug, StaticFAQData } from '../../../lib/faq-api';
 import { generateMetadata, generateFAQJSONLD, generateBreadcrumbJSONLD } from '../../../lib/seo-utils';
 
@@ -14,7 +31,7 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
   const breadcrumbJSONLD = generateBreadcrumbJSONLD(faq);
 
   return (
-    <>
+    <Layout title={`${faq.title} | Wissensdatenbank`}>
       <Head>
         <title>{metadata.title}</title>
         <meta name="description" content={metadata.description} />
@@ -43,151 +60,187 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
         />
       </Head>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Box sx={{ mb: 8 }}>
         {/* Breadcrumb Navigation */}
-        <nav className="mb-8" aria-label="Breadcrumb">
-          <ol className="flex items-center space-x-2 text-sm text-gray-500">
-            <li>
-              <Link href="/" className="hover:text-blue-600">
-                Home
-              </Link>
-            </li>
-            <li>/</li>
-            <li>
-              <Link href="/wissen" className="hover:text-blue-600">
-                Wissensdatenbank
-              </Link>
-            </li>
-            <li>/</li>
-            <li className="text-gray-900 font-medium" aria-current="page">
-              {faq.title}
-            </li>
-          </ol>
-        </nav>
+        <Breadcrumbs 
+          separator={<NavigateNextIcon fontSize="small" />}
+          aria-label="breadcrumb"
+          sx={{ mb: 4 }}
+        >
+          <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <HomeIcon fontSize="small" />
+            <Typography color="text.primary">Home</Typography>
+          </Link>
+          <Link href="/wissen" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <FAQIcon fontSize="small" />
+            <Typography color="text.primary">Wissensdatenbank</Typography>
+          </Link>
+          <Typography color="text.secondary">{faq.title}</Typography>
+        </Breadcrumbs>
 
         {/* Main Content */}
-        <article className="bg-white">
+        <Paper sx={{ p: 4, mb: 4 }}>
           {/* Article Header */}
-          <header className="mb-8">
-            <div className="flex flex-wrap gap-2 mb-4">
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
               {faq.tags.map((tag: string) => (
-                <Link
+                <Chip
                   key={tag}
+                  label={tag}
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  component={Link}
                   href={`/wissen/thema/${tag.toLowerCase()}`}
-                  className="inline-block px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
-                >
-                  {tag}
-                </Link>
+                  clickable
+                />
               ))}
-            </div>
+            </Box>
 
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
               {faq.title}
-            </h1>
+            </Typography>
 
             {faq.description && (
-              <p className="text-xl text-gray-600 leading-relaxed mb-6">
+              <Typography variant="h6" color="text.secondary" paragraph sx={{ mb: 3 }}>
                 {faq.description}
-              </p>
+              </Typography>
             )}
 
-            <div className="flex items-center justify-between text-sm text-gray-500 border-b border-gray-200 pb-4">
-              <div className="flex items-center space-x-4">
-                <span>{faq.view_count} Aufrufe</span>
-                <time dateTime={faq.updated_at}>
-                  Zuletzt aktualisiert: {new Date(faq.updated_at).toLocaleDateString('de-DE')}
-                </time>
-              </div>
-            </div>
-          </header>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              color: 'text.secondary',
+              fontSize: '0.875rem',
+              borderBottom: 1,
+              borderColor: 'divider',
+              pb: 2,
+              mb: 4
+            }}>
+              <Typography variant="body2">{faq.view_count} Aufrufe</Typography>
+              <Typography variant="body2" component="time" dateTime={faq.updated_at}>
+                Zuletzt aktualisiert: {new Date(faq.updated_at).toLocaleDateString('de-DE')}
+              </Typography>
+            </Box>
+          </Box>
 
-          {/* FAQ Content using semantic HTML */}
-          <div className="prose prose-lg max-w-none">
-            <dl className="faq-content">
-              {faq.content && faq.content !== faq.answer && (
-                <>
-                  <dt className="text-lg font-semibold text-gray-900 mb-3">
-                    Kontext:
-                  </dt>
-                  <dd className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {faq.content}
-                  </dd>
-                </>
-              )}
+          {/* FAQ Content */}
+          <Box sx={{ mb: 4 }}>
+            {faq.content && faq.content !== faq.answer && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+                  Kontext:
+                </Typography>
+                <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                  {faq.content}
+                </Typography>
+              </Box>
+            )}
 
-              <dt className="text-lg font-semibold text-gray-900 mb-3">
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
                 Antwort:
-              </dt>
-              <dd className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
+              </Typography>
+              <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                 {faq.answer}
-              </dd>
+              </Typography>
+            </Box>
 
-              {faq.additional_info && (
-                <>
-                  <dt className="text-lg font-semibold text-gray-900 mb-3">
-                    Zusätzliche Informationen:
-                  </dt>
-                  <dd className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {faq.additional_info}
-                  </dd>
-                </>
-              )}
-            </dl>
-          </div>
+            {faq.additional_info && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+                  Zusätzliche Informationen:
+                </Typography>
+                <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                  {faq.additional_info}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Paper>
 
-          {/* Related FAQs */}
-          {faq.related_faqs && faq.related_faqs.length > 0 && (
-            <aside className="mt-12 p-6 bg-gray-50 rounded-lg">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Verwandte Themen
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {faq.related_faqs.map((relatedFAQ) => (
-                  <Link
-                    key={relatedFAQ.id}
-                    href={`/wissen/${relatedFAQ.slug}`}
-                    className="block p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <h3 className="font-medium text-gray-900 hover:text-blue-600">
+        {/* Related FAQs */}
+        {faq.related_faqs && faq.related_faqs.length > 0 && (
+          <Paper sx={{ p: 4, mb: 4 }}>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+              Verwandte Themen
+            </Typography>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, 
+              gap: 2 
+            }}>
+              {faq.related_faqs.map((relatedFAQ) => (
+                <Card 
+                  key={relatedFAQ.id}
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': { 
+                      boxShadow: 3,
+                      transform: 'translateY(-2px)',
+                      transition: 'all 0.2s ease-in-out'
+                    }
+                  }}
+                  component={Link}
+                  href={`/wissen/${relatedFAQ.slug}`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
                       {relatedFAQ.title}
-                    </h3>
+                    </Typography>
                     {relatedFAQ.similarity_score && (
-                      <span className="text-xs text-gray-500 mt-1 block">
+                      <Typography variant="caption" color="text.secondary">
                         Ähnlichkeit: {Math.round(relatedFAQ.similarity_score * 100)}%
-                      </span>
+                      </Typography>
                     )}
-                  </Link>
-                ))}
-              </div>
-            </aside>
-          )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </Paper>
+        )}
 
-          {/* Call to Action */}
-          <div className="mt-12 p-6 bg-blue-50 rounded-lg text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              Haben Sie weitere Fragen?
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Nutzen Sie unsere intelligente FAQ-Suche oder starten Sie einen Chat mit unserem Experten-System.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/wissen"
-                className="inline-block bg-white text-blue-600 border border-blue-600 px-6 py-2 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                ← Zurück zur Übersicht
-              </Link>
-              <Link
-                href="/app"
-                className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Zur Hauptanwendung →
-              </Link>
-            </div>
-          </div>
-        </article>
-      </div>
-    </>
+        {/* Call to Action */}
+        <Paper sx={{ p: 4, bgcolor: '#147a50', textAlign: 'center' }}>
+          <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
+            Haben Sie weitere Fragen?
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'rgba(255,255,255,0.9)' }}>
+            Nutzen Sie unsere intelligente FAQ-Suche oder starten Sie einen Chat mit unserem Experten-System.
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' }, 
+            gap: 2, 
+            justifyContent: 'center',
+            mt: 3
+          }}>
+            <Button
+              variant="outlined"
+              component={Link}
+              href="/wissen"
+              sx={{ minWidth: 200 }}
+            >
+              ← Zurück zur Übersicht
+            </Button>
+            <Button
+              variant="contained"
+              component={Link}
+              href="/app"
+              sx={{ 
+                minWidth: 200,
+                bgcolor: '#ee7f4b',
+                '&:hover': { bgcolor: '#d66d3a' }
+              }}
+            >
+              Zur Hauptanwendung →
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    </Layout>
   );
 }
 

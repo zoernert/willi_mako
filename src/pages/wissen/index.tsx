@@ -88,36 +88,46 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
         />
       </Head>
 
-      <div className="container mx-auto px-4 py-8">
+      <Box sx={{ mb: 8 }}>
         {/* Header */}
-        <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <Box sx={{ textAlign: 'center', mb: 8 }}>
+          <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
             Wissensdatenbank Energiewirtschaft
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 800, mx: 'auto' }}>
             Umfassende FAQ-Sammlung für Marktkommunikation in der Energiewirtschaft. 
             {totalCount} Artikel zu BDEW-Codes, EIC-Codes, Bilanzkreisen und mehr.
-          </p>
-        </header>
+          </Typography>
+        </Box>
 
         {/* Tag Navigation */}
-        <nav className="mb-12" aria-label="FAQ Kategorien">
-          <h2 className="text-2xl font-semibold mb-6">Themengebiete</h2>
-          <div className="flex flex-wrap gap-3">
+        <Box component="nav" aria-label="FAQ Kategorien" sx={{ mb: 8 }}>
+          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+            Themengebiete
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {tags.slice(0, 15).map(tag => (
-              <Link
+              <Chip
                 key={tag.tag}
+                label={`${tag.tag} (${tag.count})`}
+                variant="outlined"
+                color="primary"
+                component={Link}
                 href={`/wissen/thema/${tag.tag.toLowerCase()}`}
-                className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
-              >
-                <span className="font-medium">{tag.tag}</span>
-                <span className="ml-2 text-sm bg-blue-200 px-2 py-1 rounded-full">
-                  {tag.count}
-                </span>
-              </Link>
+                clickable
+                sx={{ 
+                  px: 2,
+                  py: 1,
+                  '&:hover': { 
+                    bgcolor: 'primary.50',
+                    transform: 'translateY(-1px)',
+                    boxShadow: 1
+                  }
+                }}
+              />
             ))}
-          </div>
-        </nav>
+          </Box>
+        </Box>
 
         {/* FAQ Sections by Tag */}
         {tags.slice(0, 8).map(tag => {
@@ -125,79 +135,112 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
           if (!tagFAQs || tagFAQs.length === 0) return null;
 
           return (
-            <section key={tag.tag} className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">
+            <Box key={tag.tag} component="section" sx={{ mb: 8 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h4" component="h2" sx={{ fontWeight: 600 }}>
                   {tag.tag}
-                </h2>
-                <Link
+                </Typography>
+                <Button
+                  component={Link}
                   href={`/wissen/thema/${tag.tag.toLowerCase()}`}
-                  className="text-blue-600 hover:text-blue-800 font-medium"
+                  variant="text"
+                  color="primary"
+                  sx={{ fontWeight: 600 }}
                 >
                   Alle {tag.count} Artikel anzeigen →
-                </Link>
-              </div>
+                </Button>
+              </Box>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, 
+                gap: 3 
+              }}>
                 {tagFAQs.map((faq: StaticFAQData) => (
-                  <article 
+                  <Card 
                     key={faq.id}
-                    className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    component="article"
+                    sx={{ 
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      cursor: 'pointer',
+                      '&:hover': { 
+                        boxShadow: 4,
+                        transform: 'translateY(-2px)',
+                        transition: 'all 0.2s ease-in-out'
+                      }
+                    }}
                   >
-                    <h3 className="text-lg font-semibold mb-3">
-                      <Link
-                        href={`/wissen/${faq.slug}`}
-                        className="text-gray-900 hover:text-blue-600"
-                      >
-                        {faq.title}
-                      </Link>
-                    </h3>
-                    
-                    <p className="text-gray-600 mb-4 text-sm leading-relaxed">
-                      {faq.description || faq.content.substring(0, 120) + '...'}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{faq.view_count} Aufrufe</span>
-                      <time dateTime={faq.updated_at}>
-                        {new Date(faq.updated_at).toLocaleDateString('de-DE')}
-                      </time>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {faq.tags.slice(0, 3).map((faqTag: string) => (
-                        <span
-                          key={faqTag}
-                          className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
+                        <Link
+                          href={`/wissen/${faq.slug}`}
+                          style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                          {faqTag}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
+                          {faq.title}
+                        </Link>
+                      </Typography>
+                      
+                      <Typography variant="body2" color="text.secondary" paragraph sx={{ flexGrow: 1 }}>
+                        {faq.description || faq.content.substring(0, 120) + '...'}
+                      </Typography>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {faq.view_count} Aufrufe
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" component="time" dateTime={faq.updated_at}>
+                          {new Date(faq.updated_at).toLocaleDateString('de-DE')}
+                        </Typography>
+                      </Box>
+
+                      {/* Tags */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 'auto' }}>
+                        {faq.tags.slice(0, 3).map((faqTag: string) => (
+                          <Chip
+                            key={faqTag}
+                            label={faqTag}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                          />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
                 ))}
-              </div>
-            </section>
+              </Box>
+            </Box>
           );
         })}
 
         {/* Call to Action */}
-        <section className="text-center mt-16 p-8 bg-blue-50 rounded-lg">
-          <h2 className="text-2xl font-semibold mb-4">
+        <Paper sx={{ p: 6, textAlign: 'center', bgcolor: '#147a50' }}>
+          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
             Suchen Sie spezifische Informationen?
-          </h2>
-          <p className="text-gray-600 mb-6">
+          </Typography>
+          <Typography variant="body1" paragraph sx={{ color: 'rgba(255,255,255,0.9)' }}>
             Nutzen Sie unsere erweiterte Suchfunktion oder registrieren Sie sich für Zugang zu Premium-Features.
-          </p>
-          <Link
+          </Typography>
+          <Button
+            variant="contained"
+            component={Link}
             href="/app"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            size="large"
+            sx={{ 
+              mt: 2,
+              px: 4,
+              py: 1.5,
+              bgcolor: '#ee7f4b',
+              '&:hover': { bgcolor: '#d66d3a' },
+              fontWeight: 600
+            }}
           >
             Zur Hauptanwendung →
-          </Link>
-        </section>
-      </div>
+          </Button>
+        </Paper>
+      </Box>
     </Layout>
   );
 }

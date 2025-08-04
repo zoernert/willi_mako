@@ -194,57 +194,63 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
           </Typography>
         </Box>
 
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, 
+          gap: 4 
+        }}>
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <Box>
               <SecurityIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
                 Hohe Prozessdisziplin
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Hoher Standardisierungsgrad erfordert absolute Präzision. 
-                Kleine Fehler können enorme Ressourcen verschlingen - Compliance ist entscheidend.
-              </Typography>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+            </Box>
+            <Typography variant="body1" color="text.secondary">
+              Hoher Standardisierungsgrad erfordert absolute Präzision. 
+              Kleine Fehler können enorme Ressourcen verschlingen - Compliance ist entscheidend.
+            </Typography>
+          </Card>
+          
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <Box>
               <TimerIcon sx={{ fontSize: 60, color: '#ee7f4b', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
                 Massenprozess-Effizienz
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Tausende Transaktionen täglich verlangen automatisierte, fehlerfreie Abläufe. 
-                Manuelle Prozesse sind nicht mehr zeitgemäß.
-              </Typography>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
+            </Box>
+            <Typography variant="body1" color="text.secondary">
+              Tausende Transaktionen täglich verlangen automatisierte, fehlerfreie Abläufe. 
+              Manuelle Prozesse sind nicht mehr zeitgemäß.
+            </Typography>
+          </Card>
+          
+          <Card sx={{ height: '100%', textAlign: 'center', p: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <Box>
               <TransparencyIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Expertenwissen-Management
+                Expertenwissen rund um die Uhr
               </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Breites, spezialisiertes Wissen muss strukturiert verfügbar sein. 
-                Expertise-Mangel darf keine Operationen gefährden.
-              </Typography>
-            </Card>
-          </Grid>
-        </Grid>
+            </Box>
+            <Typography variant="body1" color="text.secondary">
+              Breites, spezialisiertes Wissen muss strukturiert verfügbar sein. 
+              Expertise-Mangel darf keine Operationen gefährden.
+            </Typography>
+          </Card>
+        </Box>
       </Container>
 
       {/* Exclusive Content Section */}
       
 
       {/* Expert Team Section */}
-      <Paper sx={{ bgcolor: '#f8fafc', py: 6, mb: 6 }}>
+      <Paper sx={{ bgcolor: '#ee7f4b', py: 6, mb: 6 }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
               Von Experten kuratiert, täglich aktualisiert
             </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 600, mx: 'auto' }}>
+            <Typography variant="body1" paragraph sx={{ maxWidth: 600, mx: 'auto', color: 'rgba(255,255,255,0.9)' }}>
               Ein Expertenteam, das täglich mit den Herausforderungen der Branche arbeitet, 
               kuratiert und aktualisiert unsere Wissensplattform. Kein Algorithmus - echte Branchenerfahrung.
             </Typography>
@@ -252,26 +258,26 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
           
           <Stack direction="row" spacing={4} justifyContent="center" flexWrap="wrap">
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: '#147a50' }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: 'white' }}>
                 15+
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
                 Jahre Branchenerfahrung
               </Typography>
             </Box>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: '#ee7f4b' }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: 'white' }}>
                 500+
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
                 Unternehmen vertrauen uns
               </Typography>
             </Box>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: '#147a50' }}>
+              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color: 'white' }}>
                 täglich
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
                 Content-Updates
               </Typography>
             </Box>
