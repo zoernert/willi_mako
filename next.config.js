@@ -12,13 +12,18 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Legacy app integration
+  // Legacy app integration - handled by custom server
   async rewrites() {
     return [
-      // API Proxy zu Express.js Backend (Port 3001)
+      // Static assets für Legacy App
       {
-        source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        source: '/static/:path*',
+        destination: '/app/static/:path*',
+      },
+      // Manifest und andere Root-Assets für Legacy App
+      {
+        source: '/manifest.json',
+        destination: '/app/manifest.json',
       },
       // Fallback für Legacy App
       {

@@ -16,7 +16,7 @@ echo ""
 echo "1. 📋 Listing all configurations..."
 CONFIGS=$(curl -s -H "Authorization: Bearer $JWT_TOKEN" \
                -H "Content-Type: application/json" \
-               http://localhost:3001/api/admin/chat-config)
+               http://localhost:3009/api/admin/chat-config)
 
 echo "$CONFIGS" | jq '.[] | {id: .id, name: .name, is_active: .is_active}' 2>/dev/null || echo "❌ Failed to list configurations"
 echo ""
@@ -25,7 +25,7 @@ echo ""
 echo "2. ⭐ Getting currently active configuration..."
 ACTIVE_CONFIG=$(curl -s -H "Authorization: Bearer $JWT_TOKEN" \
                      -H "Content-Type: application/json" \
-                     http://localhost:3001/api/admin/chat-config/active)
+                     http://localhost:3009/api/admin/chat-config/active)
 
 echo "$ACTIVE_CONFIG" | jq '{id: .id, name: .name}' 2>/dev/null || echo "❌ Failed to get active configuration"
 echo ""
@@ -42,7 +42,7 @@ if [ "$FIRST_CONFIG_ID" != "null" ] && [ -n "$FIRST_CONFIG_ID" ]; then
                            -H "Authorization: Bearer $JWT_TOKEN" \
                            -H "Content-Type: application/json" \
                            -X POST \
-                           http://localhost:3001/api/admin/chat-config/$FIRST_CONFIG_ID/activate)
+                           http://localhost:3009/api/admin/chat-config/$FIRST_CONFIG_ID/activate)
     
     if [ "$ACTIVATE_RESULT" = "200" ]; then
         echo "   ✅ Configuration activated successfully"
@@ -76,7 +76,7 @@ CHAT_TEST=$(curl -s -w "%{http_code}" -o /tmp/chat_response \
                  -H "Content-Type: application/json" \
                  -X POST \
                  -d '{"message": "Was ist ein Bilanzkreis?"}' \
-                 http://localhost:3001/api/chat 2>/dev/null)
+                 http://localhost:3009/api/chat 2>/dev/null)
 
 if [ "$CHAT_TEST" = "200" ]; then
     echo "   ✅ Chat response generated successfully"

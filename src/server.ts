@@ -34,16 +34,21 @@ import db from './config/database';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3009', 10);
 
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false // Allow inline scripts for development
 }));
 
-// Simplified CORS for single-port setup
+// CORS configuration for development with Next.js
 app.use(cors({
-  origin: true,
+  origin: [
+    'http://localhost:3003',  // Next.js Frontend
+    'http://localhost:3000',  // Fallback
+    'http://localhost:3002',  // Legacy App (falls separat)
+    'https://stromhaltig.de'  // Production
+  ],
   credentials: true
 }));
 
@@ -110,10 +115,11 @@ app.get('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// Start server - auf allen Interfaces für internen Gebrauch
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🔗 Environment: ${process.env.NODE_ENV}`);
+  console.log(`⚠️  Server is bound to all interfaces for internal access`);
 });
 
 export default app;

@@ -16,7 +16,7 @@ async function initialize() {
     console.log('✅ Initialisierung erfolgreich abgeschlossen!');
     console.log('');
     console.log('🌟 Die Anwendung ist bereit:');
-    console.log('   - Backend: http://localhost:3001');
+    console.log('   - Backend: http://localhost:3009');
     console.log('   - Frontend: http://localhost:3000');
     console.log('   - Admin Login: admin@willi-mako.com / admin123');
     console.log('');

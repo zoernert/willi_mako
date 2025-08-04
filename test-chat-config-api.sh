@@ -16,13 +16,13 @@ echo "✅ JWT Token found"
 echo "1. Testing GET /api/admin/chat-config..."
 curl -s -H "Authorization: Bearer $JWT_TOKEN" \
      -H "Content-Type: application/json" \
-     http://localhost:3001/api/admin/chat-config | jq '.' || echo "❌ GET failed"
+     http://localhost:3009/api/admin/chat-config | jq '.' || echo "❌ GET failed"
 
 echo ""
 echo "2. Testing GET /api/admin/chat-config/test-sessions..."
 curl -s -H "Authorization: Bearer $JWT_TOKEN" \
      -H "Content-Type: application/json" \
-     http://localhost:3001/api/admin/chat-config/test-sessions | jq '.' || echo "❌ GET test-sessions failed"
+     http://localhost:3009/api/admin/chat-config/test-sessions | jq '.' || echo "❌ GET test-sessions failed"
 
 echo ""
 echo "✅ API-Tests abgeschlossen"

@@ -935,7 +935,7 @@ npm install --save-dev artillery
 ```yaml
 # artillery.yml
 config:
-  target: 'http://localhost:3001'
+  target: 'http://localhost:3009'
   phases:
     - duration: 60
       arrivalRate: 10

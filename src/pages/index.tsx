@@ -1,6 +1,23 @@
 import { GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Card, 
+  CardContent, 
+  Button, 
+  Chip,
+  Paper
+} from '@mui/material';
+import {
+  QuestionAnswer as FAQIcon,
+  TrendingUp as TrendingIcon,
+  ElectricBolt as EnergyIcon,
+  Search as SearchIcon
+} from '@mui/icons-material';
+import Layout from '../components/Layout';
 import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../lib/faq-api';
 
 interface HomeProps {
@@ -11,7 +28,7 @@ interface HomeProps {
 
 export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeProps) {
   return (
-    <>
+    <Layout title="Energiemarkt Wissensplattform">
       <Head>
         <title>Willi-Mako | Energiewirtschaft Expertensystem & FAQ-Datenbank</title>
         <meta 
@@ -57,257 +74,221 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
         />
       </Head>
 
-      <div className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-br from-blue-50 to-green-50 py-20">
-          <div className="container mx-auto px-4 text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Willi-Mako
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Das führende Expertensystem für Marktkommunikation in der Energiewirtschaft
-            </p>
-            <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
-              Zugang zu {totalFAQCount}+ verifizierten FAQ-Artikeln zu BDEW-Codes, EIC-Codes, 
-              Bilanzkreisen und allen relevanten Themen der Energiewirtschaft.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/wissen"
-                className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Wissensdatenbank durchsuchen
-              </Link>
-              <Link
-                href="/app"
-                className="inline-block bg-white text-blue-600 border-2 border-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition-colors"
-              >
-                Zur Hauptanwendung
-              </Link>
-            </div>
-          </div>
-        </section>
+      {/* Hero Section */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #ecfdf5 100%)',
+          p: 6,
+          mb: 4,
+          textAlign: 'center'
+        }}
+      >
+        <EnergyIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
+          Willi-Mako
+        </Typography>
+        <Typography variant="h5" color="text.secondary" paragraph sx={{ maxWidth: 600, mx: 'auto' }}>
+          Das führende Expertensystem für Marktkommunikation in der Energiewirtschaft
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph sx={{ maxWidth: 800, mx: 'auto' }}>
+          Zugang zu {totalFAQCount}+ verifizierten FAQ-Artikeln zu BDEW-Codes, EIC-Codes, 
+          Bilanzkreisen und allen relevanten Themen der Energiewirtschaft.
+        </Typography>
+        
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            size="large"
+            component={Link}
+            href="/wissen"
+            startIcon={<SearchIcon />}
+            sx={{ px: 4 }}
+          >
+            Wissensdatenbank durchsuchen
+          </Button>
+          <Button
+            variant="outlined"
+            size="large"
+            component={Link}
+            href="/app"
+            startIcon={<EnergyIcon />}
+            sx={{ px: 4 }}
+          >
+            Zur Hauptanwendung
+          </Button>
+        </Box>
+      </Paper>
 
-        {/* Featured FAQs */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Häufig gestellte Fragen
-              </h2>
-              <p className="text-lg text-gray-600">
-                Die wichtigsten Antworten zu Themen der Energiewirtschaft
-              </p>
-            </div>
+      {/* Featured FAQs */}
+      <Box sx={{ mb: 6 }}>
+        <Typography variant="h3" component="h2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FAQIcon color="primary" />
+          Häufig gestellte Fragen
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          Die wichtigsten Antworten zu Themen der Energiewirtschaft
+        </Typography>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredFAQs.map((faq) => (
-                <article 
-                  key={faq.id}
-                  className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
-                >
-                  <h3 className="text-lg font-semibold mb-3">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 3, mt: 2 }}>
+          {featuredFAQs.slice(0, 6).map((faq) => (
+            <Card key={faq.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" component="h3" gutterBottom>
                     <Link
                       href={`/wissen/${faq.slug}`}
-                      className="text-gray-900 hover:text-blue-600"
+                      style={{ textDecoration: 'none', color: 'inherit' }}
                     >
                       {faq.title}
                     </Link>
-                  </h3>
+                  </Typography>
                   
-                  <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+                  <Typography variant="body2" color="text.secondary" paragraph>
                     {faq.description || faq.content.substring(0, 120) + '...'}
-                  </p>
+                  </Typography>
 
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
                     <span>{faq.view_count} Aufrufe</span>
-                    <time dateTime={faq.updated_at}>
-                      {new Date(faq.updated_at).toLocaleDateString('de-DE')}
-                    </time>
-                  </div>
+                    <span>{new Date(faq.updated_at).toLocaleDateString('de-DE')}</span>
+                  </Box>
 
-                  <div className="flex flex-wrap gap-1">
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {faq.tags.slice(0, 3).map((tag: string) => (
-                      <span
+                      <Chip
                         key={tag}
-                        className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded"
-                      >
-                        {tag}
-                      </span>
+                        label={tag}
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                      />
                     ))}
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+        </Box>
 
-            <div className="text-center mt-12">
-              <Link
-                href="/wissen"
-                className="inline-block text-blue-600 hover:text-blue-700 font-semibold text-lg"
-              >
-                Alle {totalFAQCount} FAQ-Artikel anzeigen →
-              </Link>
-            </div>
-          </div>
-        </section>
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Button
+            variant="text"
+            size="large"
+            component={Link}
+            href="/wissen"
+            endIcon={<TrendingIcon />}
+          >
+            Alle {totalFAQCount} FAQ-Artikel anzeigen
+          </Button>
+        </Box>
+      </Box>
 
-        {/* Popular Topics */}
-        <section className="py-16 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Beliebte Themengebiete
-              </h2>
-              <p className="text-lg text-gray-600">
-                Entdecken Sie die wichtigsten Bereiche der Energiewirtschaft
-              </p>
-            </div>
+      {/* Popular Topics */}
+      <Paper sx={{ p: 4, bgcolor: 'grey.50' }}>
+        <Typography variant="h3" component="h2" gutterBottom>
+          Beliebte Themengebiete
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          Entdecken Sie die wichtigsten Bereiche der Energiewirtschaft
+        </Typography>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              {popularTags.slice(0, 12).map((tag) => (
-                <Link
-                  key={tag.tag}
-                  href={`/wissen/thema/${tag.tag.toLowerCase()}`}
-                  className="inline-flex items-center px-6 py-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all"
-                >
-                  <span className="font-medium text-gray-900">{tag.tag}</span>
-                  <span className="ml-3 text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                    {tag.count}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 3 }}>
+          {popularTags.slice(0, 12).map((tag) => (
+            <Button
+              key={tag.tag}
+              variant="outlined"
+              component={Link}
+              href={`/wissen/thema/${tag.tag.toLowerCase()}`}
+              sx={{ 
+                borderRadius: 2,
+                '& .MuiButton-endIcon': { ml: 1 }
+              }}
+              endIcon={
+                <Chip 
+                  label={tag.count} 
+                  size="small" 
+                  sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}
+                />
+              }
+            >
+              {tag.tag}
+            </Button>
+          ))}
+        </Box>
 
-        {/* Features */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Warum Willi-Mako?
-              </h2>
-            </div>
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Button variant="outlined" component={Link} href="/wissen">
+            Alle Themen anzeigen
+          </Button>
+        </Box>
+      </Paper>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Verifizierte Inhalte</h3>
-                <p className="text-gray-600">
-                  Alle FAQ-Artikel werden von Experten geprüft und regelmäßig aktualisiert.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Intelligente Suche</h3>
-                <p className="text-gray-600">
-                  KI-gestützte Suche findet auch semantisch verwandte Inhalte.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Umfassende Datenbank</h3>
-                <p className="text-gray-600">
-                  {totalFAQCount}+ Artikel zu allen Bereichen der Energiewirtschaft.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="bg-gray-900 text-white py-12">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="text-xl font-semibold mb-4">Willi-Mako</h3>
-                <p className="text-gray-400">
-                  Expertensystem für Marktkommunikation in der Energiewirtschaft
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold mb-4">Navigation</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><Link href="/wissen" className="hover:text-white">Wissensdatenbank</Link></li>
-                  <li><Link href="/app" className="hover:text-white">Hauptanwendung</Link></li>
-                  <li><Link href="/feed.xml" className="hover:text-white">RSS Feed</Link></li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-4">Beliebte Themen</h4>
-                <ul className="space-y-2 text-gray-400">
-                  {popularTags.slice(0, 4).map((tag) => (
-                    <li key={tag.tag}>
-                      <Link href={`/wissen/thema/${tag.tag.toLowerCase()}`} className="hover:text-white">
-                        {tag.tag}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-4">STROMDAO GmbH</h4>
-                <p className="text-gray-400 text-sm">
-                  © 2025 STROMDAO GmbH<br />
-                  Alle Rechte vorbehalten
-                </p>
-              </div>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </>
+      {/* CTA Section */}
+      <Paper 
+        sx={{ 
+          p: 6, 
+          mt: 4,
+          background: 'linear-gradient(135deg, #147a50 0%, #0d5538 100%)',
+          color: 'white',
+          textAlign: 'center'
+        }}
+      >
+        <Typography variant="h3" component="h2" gutterBottom sx={{ color: 'white' }}>
+          Bereit für die vollständige Willi-Mako Erfahrung?
+        </Typography>
+        <Typography variant="h6" paragraph sx={{ color: 'rgba(255,255,255,0.9)', maxWidth: 600, mx: 'auto' }}>
+          Entdecken Sie alle Features: KI-gestützter Chat, Dokumentenmanagement, 
+          Team-Collaboration und personalisierte Lernpfade.
+        </Typography>
+        <Button
+          variant="contained"
+          size="large"
+          component={Link}
+          href="/app"
+          sx={{ 
+            mt: 2,
+            bgcolor: 'white', 
+            color: 'primary.main',
+            '&:hover': { bgcolor: 'grey.100' }
+          }}
+        >
+          Jetzt zur Hauptanwendung
+        </Button>
+      </Paper>
+    </Layout>
   );
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps<HomeProps> = async () => {
   try {
-    const [allFAQs, tags] = await Promise.all([
-      getAllPublicFAQs(),
+    const [allFAQs, allTags] = await Promise.all([
+      getAllPublicFAQs(), // Alle FAQs holen
       getAllTags()
     ]);
 
-    // Sortiere FAQs nach View Count für Featured Section
-    const featuredFAQs = allFAQs
-      .sort((a: StaticFAQData, b: StaticFAQData) => b.view_count - a.view_count)
-      .slice(0, 6);
+    // Nehme die ersten 6 FAQs als featured
+    const featuredFAQs = allFAQs.slice(0, 6);
+
+    // Sortiere Tags nach Häufigkeit
+    const popularTags = allTags
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15);
 
     return {
       props: {
         featuredFAQs,
-        popularTags: tags.slice(0, 20),
+        popularTags,
         totalFAQCount: allFAQs.length
       },
-      revalidate: 3600, // Revalidate every hour
+      revalidate: 3600 // 1 Stunde ISR
     };
   } catch (error) {
-    console.error('Error in getStaticProps for homepage:', error);
-    
+    console.error('Error fetching homepage data:', error);
     return {
       props: {
         featuredFAQs: [],
         popularTags: [],
         totalFAQCount: 0
       },
-      revalidate: 60,
+      revalidate: 60 // Kürzere Revalidation bei Fehlern
     };
   }
 };

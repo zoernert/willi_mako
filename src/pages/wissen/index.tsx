@@ -1,6 +1,24 @@
 import { GetStaticProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
+import { 
+  Box, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Button, 
+  Chip,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
+} from '@mui/material';
+import {
+  ExpandMore as ExpandMoreIcon,
+  QuestionAnswer as FAQIcon,
+  Search as SearchIcon
+} from '@mui/icons-material';
+import Layout from '../../components/Layout';
 import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../../lib/faq-api';
 
 interface WissenIndexProps {
@@ -17,7 +35,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
   }, {} as Record<string, StaticFAQData[]>);
 
   return (
-    <>
+    <Layout title="Wissensdatenbank">
       <Head>
         <title>Wissensdatenbank | Energiewirtschaft FAQ | Willi-Mako</title>
         <meta 
@@ -180,7 +198,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
           </Link>
         </section>
       </div>
-    </>
+    </Layout>
   );
 }
 

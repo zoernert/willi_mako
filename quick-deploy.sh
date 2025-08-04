@@ -10,7 +10,8 @@ echo "======================================"
 
 # Konfiguration
 PROD_SERVER=${1:-"root@10.0.0.2"}
-PROD_PORT=${2:-"2110"}
+FRONTEND_PORT=${2:-"3003"}  # Next.js Frontend (extern)
+BACKEND_PORT="3009"         # Express.js Backend (intern)
 POSTGRES_PORT="5117"
 APP_NAME="willi_mako"
 DEPLOY_DIR="/opt/willi_mako"
@@ -47,9 +48,23 @@ build_application() {
     cd app-legacy
     npm install
     
-    # Build für Produktion (verwendet relative API-Pfade)
-    echo "🌐 Baue Legacy App für Produktion mit relativen API-Pfaden..."
+    # Build für Produktion mit /app basename (verwendet relative API-Pfade)
+    echo "🌐 Baue Legacy App für Produktion mit /app basename und relativen API-Pfaden..."
     npm run build
+    
+    # Prüfe ob Legacy App Build erfolgreich war
+    if [ ! -f "build/index.html" ]; then
+        echo "❌ Legacy App Build fehlgeschlagen - build/index.html nicht gefunden"
+        exit 1
+    fi
+    
+    # Prüfe ob die index.html die korrekten /app Pfade hat
+    if ! grep -q 'src="/app/static/js/' build/index.html; then
+        echo "❌ Legacy App Build hat falsche Pfade - /app basename nicht korrekt"
+        exit 1
+    fi
+    
+    echo "✅ Legacy App Build erfolgreich mit korrekten /app Pfaden"
     cd ..
     
     # Next.js Build
@@ -90,7 +105,7 @@ prepare_deployment() {
     cat > "$TEMP_DIR/.env" << EOF
 # Environment Configuration
 NODE_ENV=production
-PORT=$PROD_PORT
+PORT=$BACKEND_PORT
 
 # Database Configuration
 DB_HOST=localhost
@@ -152,10 +167,18 @@ EOF
         cp next.config.js "$TEMP_DIR/"
     fi
     
+    # server.js für Production kopieren (Hybrid-Setup)
+    if [ -f "server.js" ]; then
+        cp server.js "$TEMP_DIR/"
+    else
+        echo "❌ server.js nicht gefunden. Hybrid-Setup fehlgeschlagen?"
+        exit 1
+    fi
+    
     # Uploads-Verzeichnis erstellen
     mkdir -p "$TEMP_DIR/uploads"
     
-    # PM2 Ecosystem-Datei für Next.js erstellen
+    # PM2 Ecosystem-Datei für Hybrid-Architektur erstellen
     cat > "$TEMP_DIR/ecosystem.config.js" << EOF
 module.exports = {
   apps: [
@@ -167,19 +190,25 @@ module.exports = {
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
-        PORT: $PROD_PORT
-      }
+        PORT: $BACKEND_PORT
+      },
+      error_file: '$DEPLOY_DIR/logs/backend_err.log',
+      out_file: '$DEPLOY_DIR/logs/backend_out.log',
+      log_file: '$DEPLOY_DIR/logs/backend_combined.log',
+      time: true,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G'
     },
     {
       name: '${APP_NAME}_frontend',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3000',
+      script: 'server.js',
       cwd: '$DEPLOY_DIR',
       instances: 1,
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: $FRONTEND_PORT
       },
       error_file: '$DEPLOY_DIR/logs/frontend_err.log',
       out_file: '$DEPLOY_DIR/logs/frontend_out.log',
@@ -255,7 +284,7 @@ transfer_files() {
     echo "📤 Übertrage Dateien auf Produktivserver..."
     
     # Alte Anwendung stoppen
-    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 stop $APP_NAME 2>/dev/null || true"
+    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 stop ${APP_NAME}_backend ${APP_NAME}_frontend 2>/dev/null || true"
     
     # Backup erstellen
     ssh $PROD_SERVER "cd $DEPLOY_DIR && [ -d dist ] && cp -r dist dist.backup.\$(date +%Y%m%d_%H%M%S) || true"
@@ -361,7 +390,11 @@ pm2 list
 echo ""
 echo "Anwendung Status:"
 sleep 5
-curl -s http://localhost:$PROD_PORT/health || echo "Health-Check fehlgeschlagen"
+echo "Frontend (Port $FRONTEND_PORT):"
+curl -s http://localhost:$FRONTEND_PORT/api/health || echo "Frontend Health-Check fehlgeschlagen"
+echo ""
+echo "Backend (Port $BACKEND_PORT, intern):"
+curl -s http://localhost:$BACKEND_PORT/api/health || echo "Backend Health-Check fehlgeschlagen"
 EOF
 }
 
@@ -378,12 +411,13 @@ trap cleanup EXIT
 
 # Hauptfunktion
 main() {
-    echo "Starte schnelles Deployment für Willi Mako"
+    echo "Starte schnelles Deployment für Willi Mako (Hybrid-Architektur)"
     echo "Server: $PROD_SERVER"
     echo "Server-IP: $SERVER_IP"
-    echo "Port: $PROD_PORT"
+    echo "Frontend Port: $FRONTEND_PORT (Next.js - extern)"
+    echo "Backend Port: $BACKEND_PORT (Express.js - intern)"
     echo "PostgreSQL Port: $POSTGRES_PORT"
-    echo "API-URL: Relative Pfade (/api)"
+    echo "API-URL: Proxied via Frontend (/api → Backend:$BACKEND_PORT)"
     echo ""
     
     check_ssh_connection
@@ -402,16 +436,31 @@ main() {
     
     echo ""
     echo "🎉 Deployment erfolgreich abgeschlossen!"
-    echo "Anwendung läuft auf: http://$SERVER_IP:$PROD_PORT"
-    echo "API verfügbar unter: http://$SERVER_IP:$PROD_PORT/api (relativer Pfad: /api)"
+    echo "Frontend läuft auf: http://$SERVER_IP:$FRONTEND_PORT (Next.js)"
+    echo "Backend läuft auf: http://$SERVER_IP:$BACKEND_PORT (Express.js - intern)"
+    echo "API verfügbar über: http://$SERVER_IP:$FRONTEND_PORT/api (proxied)"
+    echo ""
+    echo "🔗 Verfügbare URLs:"
+    echo "  - Frontend: http://$SERVER_IP:$FRONTEND_PORT/"
+    echo "  - Legacy App: http://$SERVER_IP:$FRONTEND_PORT/app/"
+    echo "  - FAQ Pages: http://$SERVER_IP:$FRONTEND_PORT/wissen/"
+    echo "  - API: http://$SERVER_IP:$FRONTEND_PORT/api/"
+    echo ""
+    echo "📱 Legacy App Details:"
+    echo "  - URL: http://$SERVER_IP:$FRONTEND_PORT/app/"
+    echo "  - React Router basename: /app"
+    echo "  - Statische Assets: /app/static/*"
+    echo "  - Alle API-Calls werden über Next.js Frontend proxied"
     echo ""
     echo "Nützliche Befehle:"
     echo "  ./monitor.sh status"
     echo "  ./monitor.sh logs"
-    echo "  ssh $PROD_SERVER 'pm2 restart $APP_NAME'"
+    echo "  ssh $PROD_SERVER 'pm2 restart ${APP_NAME}_backend'"
+    echo "  ssh $PROD_SERVER 'pm2 restart ${APP_NAME}_frontend'"
+    echo "  ssh $PROD_SERVER 'pm2 restart all'"
     echo ""
-    echo "Verwendung: $0 [server] [port]"
-    echo "Beispiel: $0 root@10.0.0.2 2110"
+    echo "Verwendung: $0 [server] [frontend_port]"
+    echo "Beispiel: $0 root@10.0.0.2 3003"
 }
 
 # Script ausführen

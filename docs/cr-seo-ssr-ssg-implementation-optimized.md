@@ -12,8 +12,8 @@
 Dieser Change Request beschreibt die Implementierung einer umfassenden SEO-Optimierung für die Willi-Mako Anwendung durch Integration von Next.js als SEO-Layer. Die Analyse der bestehenden Codebasis zeigt eine vollständig implementierte FAQ-Infrastruktur mit semantischer Suche, die optimal für SEO-Optimierung geeignet ist.
 
 **Architektur-Analyse der bestehenden Anwendung:**
-- **Backend:** Express.js TypeScript Server (Port 3001) mit umfangreicher FAQ-API (`src/routes/faq.ts` - 621 Zeilen)
-- **Frontend:** React SPA (Port 3002) mit Material-UI, optimiert für FAQ-Display
+- **Backend:** Express.js TypeScript Server (Port 3009, intern) mit umfangreicher FAQ-API (`src/routes/faq.ts` - 621 Zeilen)
+- **Frontend:** Next.js (Port 3003, öffentlich) mit SEO-Optimierung und Legacy-Integration
 - **FAQ-System:** Vollständig implementiert mit PostgreSQL-Datenbank und Qdrant Vector Store
 - **Datenbank:** FAQs-Tabelle mit SEO-relevanten Feldern (title, description, tags, view_count, is_public)
 - **Semantische Verlinkung:** Automatische FAQ-Verlinkung via Vector Store bereits implementiert
@@ -47,23 +47,23 @@ Das strategische Ziel ist es, die Anwendung als führendes Tool für Wissen im B
 
 ## 4. Vorgeschlagene Lösung: Hybrid Next.js Architecture
 
-**Architektur-Entscheidung:** Integration statt Ersetzung
-- **Next.js Frontend (Port 3000):** SEO-optimierte öffentliche Seiten
-- **Express.js Backend (Port 3001):** Bestehende API bleibt unverändert
+**Architektur-Entscheidung:** Single-Port Setup (3003)
+- **Next.js Frontend (Port 3003):** Öffentlicher Zugang für SEO-optimierte Seiten und Legacy-App
+- **Express.js Backend (Port 3009):** Intern für API-Services, über Next.js Rewrites proxied
 - **React SPA Integration:** Legacy-App wird in Next.js public/app eingebettet
 
-**Routing-Struktur:**
+**Routing-Struktur (alle über Port 3003):**
 ```
 / (Next.js)                    → Landing Page (SSG)
 /wissen (Next.js)             → FAQ Overview (SSG with ISR)
 /wissen/[slug] (Next.js)      → FAQ Detail Pages (SSG with ISR)
 /app/* (React SPA)            → Legacy App (authentifizierte Bereiche)
-/api/* (Express.js)           → Bestehende Backend-API
+/api/* (Proxy → Express.js)   → Backend-API über Next.js Rewrites
 ```
 
 **Daten-Flow:**
 ```
-Next.js SSG Build → Express.js API (Port 3001) → PostgreSQL → FAQ Data → Static HTML
+Browser → Port 3003 (Next.js) → Rewrite → Port 3009 (Express.js) → PostgreSQL → Response
 ```
 
 ## 5. Implementierungsplan für GitHub Copilot Agent Mode
@@ -88,14 +88,15 @@ Next.js SSG Build → Express.js API (Port 3001) → PostgreSQL → FAQ Data →
    // Agent Task: Update root package.json scripts
    {
      "scripts": {
-       "dev": "concurrently \"npm run server:dev\" \"npm run next:dev\"",
-       "next:dev": "next dev -p 3000",
-       "server:dev": "nodemon src/server.ts",
+       "dev": "./start-dev.sh",
+       "dev:single": "./start-dev.sh",
+       "next:dev": "next dev -p 3003",
+       "server:dev": "nodemon --exec \"npx tsx src/server.ts\"",
        "build:legacy": "cd app-legacy && npm run build",
        "build:next": "next build",
        "build": "npm run build:legacy && npm run move:legacy && npm run build:next",
        "move:legacy": "rm -rf public/app && mv app-legacy/build public/app",
-       "start": "concurrently \"node dist/server.js\" \"next start\"",
+       "start": "concurrently \"npx tsx src/server.ts\" \"next start -p 3003\"",
        "test:seo": "lighthouse --output json --output html"
      }
    }
@@ -258,7 +259,7 @@ Next.js SSG Build → Express.js API (Port 3001) → PostgreSQL → FAQ Data →
 ## 8. Deployment & Go-Live Strategie
 
 **Staged Rollout:**
-1. **Development:** Next.js auf Port 3000, Express.js auf Port 3001
+1. **Development:** Single-Port Setup - Next.js auf Port 3003 mit Backend-Proxy
 2. **Staging:** Kombinierter Build mit nginx Proxy
 3. **Production:** Single-Process Deployment mit PM2
 

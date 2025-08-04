@@ -48,7 +48,7 @@ fi
 
 # 5. Test API-Erreichbarkeit (wenn Server läuft)
 echo "5. Teste API-Erreichbarkeit..."
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/admin/chat-config 2>/dev/null | grep -q "200\|401\|403"
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3009/api/admin/chat-config 2>/dev/null | grep -q "200\|401\|403"
 if [ $? -eq 0 ]; then
     echo "   ✅ API ist erreichbar (Server läuft)"
 else

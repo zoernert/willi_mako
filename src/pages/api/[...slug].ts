@@ -1,42 +1,45 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import httpProxy from 'http-proxy-middleware';
 
-const API_URL = process.env.API_URL || 'http://localhost:3001';
+const API_URL = process.env.API_URL || 'http://127.0.0.1:3009';
 
-// Proxy alle API-Calls zum Express.js Backend
-const proxy = httpProxy({
-  target: API_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api': '/api', // Keep the /api prefix
-  },
-  onError: (err, req, res) => {
-    console.error('API Proxy Error:', err);
-    res.writeHead(500, {
-      'Content-Type': 'application/json',
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    // Build the target URL
+    const { slug } = req.query;
+    const path = Array.isArray(slug) ? slug.join('/') : slug || '';
+    const targetUrl = `${API_URL}/api/${path}`;
+    
+    // Prepare headers
+    const forwardedFor = Array.isArray(req.headers['x-forwarded-for']) 
+      ? req.headers['x-forwarded-for'][0] 
+      : req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    
+    // Forward the request
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: {
+        'Content-Type': req.headers['content-type'] || 'application/json',
+        'Authorization': req.headers.authorization || '',
+        'x-forwarded-for': forwardedFor,
+        'x-forwarded-host': req.headers.host || '',
+      },
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
-    res.end(JSON.stringify({ 
+
+    // Forward the response
+    const data = await response.json().catch(() => ({}));
+    
+    res.status(response.status);
+    Object.entries(response.headers).forEach(([key, value]) => {
+      if (value) res.setHeader(key, value);
+    });
+    
+    res.json(data);
+  } catch (error) {
+    console.error('API Proxy Error:', error);
+    res.status(503).json({ 
       error: 'API Gateway Error', 
-      message: 'Backend service temporarily unavailable' 
-    }));
-  },
-});
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Disable Next.js body parsing so proxy can handle it
-  return new Promise<void>((resolve) => {
-    proxy(req, res, (result) => {
-      if (result instanceof Error) {
-        throw result;
-      }
-      resolve();
+      message: 'Backend service temporarily unavailable'
     });
-  });
+  }
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-    externalResolver: true,
-  },
-};

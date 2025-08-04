@@ -313,8 +313,8 @@ POST   /api/admin/chat-config/:id/activate      // Konfiguration aktivieren
 localStorage.getItem('token') // sollte einen JWT-Token zurückgeben
 
 # 2. Prüfe Browser-Konsole auf CORS-Errors
-# 3. Stelle sicher dass Backend läuft auf Port 3001
-curl http://localhost:3001/api/admin/chat-config -H "Authorization: Bearer YOUR_TOKEN"
+# 3. Stelle sicher dass Backend läuft auf Port 3009
+curl http://localhost:3009/api/admin/chat-config -H "Authorization: Bearer YOUR_TOKEN"
 
 # 4. Lösche Browser-Cache und starte neu
 ```

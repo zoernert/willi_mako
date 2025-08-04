@@ -10,7 +10,8 @@ echo "================================="
 
 # Konfiguration
 PROD_SERVER="root@10.0.0.2"
-PROD_PORT="2110"
+FRONTEND_PORT="3003"  # Next.js Frontend (extern)
+BACKEND_PORT="3009"   # Express.js Backend (intern)
 APP_NAME="willi_mako"
 DEPLOY_DIR="/opt/willi_mako"
 

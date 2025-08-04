@@ -87,9 +87,14 @@ const Layout: React.FC = () => {
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
         <EnergyIcon color="primary" />
-        <Typography variant="h6" component="div" color="primary" fontWeight="bold">
-          Stromhaltig
-        </Typography>
+        <Box>
+          <Typography variant="h6" component="div" color="primary" fontWeight="bold">
+            Stromhaltig
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Willi Mako
+          </Typography>
+        </Box>
       </Box>
       <Divider />
       <List>
@@ -136,7 +141,7 @@ const Layout: React.FC = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Energiemarkt Coach
+            Stromhaltig - Willi Mako
           </Typography>
           <HeaderQuickNoteButton />
           <Button
@@ -215,15 +220,91 @@ const Layout: React.FC = () => {
           component="footer" 
           sx={{ 
             mt: 'auto', 
-            py: 2, 
-            textAlign: 'center',
+            py: 3,
+            px: 2,
             borderTop: '1px solid',
             borderColor: 'divider',
+            backgroundColor: 'grey.50'
           }}
         >
-          <Typography variant="body2" color="text.secondary">
-            © 2025 <a href="https://stromdao.de/" target="_blank" rel="noopener noreferrer" style={{ color: '#147a50', textDecoration: 'none' }}>STROMDAO GmbH</a>
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'center', md: 'center' },
+            gap: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <EnergyIcon color="primary" fontSize="small" />
+              <Typography variant="body2" color="text.secondary">
+                © 2025 by STROMDAO GmbH
+              </Typography>
+            </Box>
+            
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 3,
+              flexWrap: 'wrap',
+              justifyContent: { xs: 'center', md: 'flex-end' }
+            }}>
+              <Typography 
+                variant="body2" 
+                color="primary" 
+                component="a" 
+                href="/impressum" 
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ 
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' } 
+                }}
+              >
+                Impressum
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="primary" 
+                component="a" 
+                href="/datenschutz" 
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ 
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' } 
+                }}
+              >
+                Datenschutz
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="primary" 
+                component="a" 
+                href="/nutzungsbedingungen" 
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ 
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' } 
+                }}
+              >
+                Nutzungsbedingungen
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="primary" 
+                component="a" 
+                href="/" 
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ 
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' } 
+                }}
+              >
+                Zur Startseite
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       </Box>
     </Box>

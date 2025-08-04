@@ -10,7 +10,8 @@ echo "============================="
 
 # Konfiguration
 PROD_SERVER="root@10.0.0.2"
-PROD_PORT="2110"
+FRONTEND_PORT="3003"  # Next.js Frontend (extern)
+BACKEND_PORT="3009"   # Express.js Backend (intern)
 APP_NAME="willi_mako"
 POSTGRES_CONTAINER="willi_mako_postgres"
 
@@ -49,13 +50,17 @@ check_pm2_status() {
     echo "⚙️  PM2 Prozess Status:"
     
     ssh $PROD_SERVER << EOF
-if pm2 list | grep -q $APP_NAME; then
-    pm2 show $APP_NAME
+if pm2 list | grep -q ${APP_NAME}_backend; then
+    echo "Backend Process:"
+    pm2 show ${APP_NAME}_backend
+    echo ""
+    echo "Frontend Process:"
+    pm2 show ${APP_NAME}_frontend
     echo ""
     echo "Memory Usage:"
     pm2 monit --no-colors | head -20
 else
-    echo -e "${RED}❌ PM2 Prozess '$APP_NAME' nicht gefunden${NC}"
+    echo -e "${RED}❌ PM2 Prozesse '${APP_NAME}_backend' oder '${APP_NAME}_frontend' nicht gefunden${NC}"
 fi
 EOF
 }
@@ -64,17 +69,26 @@ check_application_health() {
     echo "🏥 Anwendungs-Health-Check:"
     
     ssh $PROD_SERVER << EOF
-echo "Testing HTTP connection..."
-if curl -s -f http://localhost:$PROD_PORT/health > /dev/null; then
-    echo -e "${GREEN}✅ Anwendung ist erreichbar${NC}"
-    echo "Response: \$(curl -s http://localhost:$PROD_PORT/health)"
+echo "Testing Frontend (Port $FRONTEND_PORT)..."
+if curl -s -f http://localhost:$FRONTEND_PORT/api/health > /dev/null; then
+    echo -e "${GREEN}✅ Frontend ist erreichbar${NC}"
+    echo "Frontend Response: \$(curl -s http://localhost:$FRONTEND_PORT/api/health)"
 else
-    echo -e "${RED}❌ Anwendung nicht erreichbar${NC}"
+    echo -e "${RED}❌ Frontend nicht erreichbar${NC}"
+fi
+
+echo ""
+echo "Testing Backend (Port $BACKEND_PORT, intern)..."
+if curl -s -f http://localhost:$BACKEND_PORT/api/health > /dev/null; then
+    echo -e "${GREEN}✅ Backend ist erreichbar${NC}"
+    echo "Backend Response: \$(curl -s http://localhost:$BACKEND_PORT/api/health)"
+else
+    echo -e "${RED}❌ Backend nicht erreichbar${NC}"
 fi
 
 echo ""
 echo "Testing external access..."
-if curl -s -f http://10.0.0.2:$PROD_PORT/health > /dev/null; then
+if curl -s -f http://10.0.0.2:$FRONTEND_PORT/api/health > /dev/null; then
     echo -e "${GREEN}✅ Externe Erreichbarkeit OK${NC}"
 else
     echo -e "${RED}❌ Externe Erreichbarkeit fehlgeschlagen${NC}"

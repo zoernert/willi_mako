@@ -102,7 +102,7 @@ function App() {
       <CssBaseline />
       <AuthProvider>
         <SnackbarProvider>
-          <Router>
+          <Router basename="/app">
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />

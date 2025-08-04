@@ -33,7 +33,7 @@ tsc                   # TypeScript → JavaScript
 ```bash
 # Build testen
 npm run start         # Production Server starten
-curl http://localhost:3001/api/health
+curl http://localhost:3009/api/health
 
 # Frontend testen
 npx serve client/build -p 3000
@@ -61,7 +61,7 @@ npx serve client/build -p 3000
 NODE_ENV=production
 
 # Server Configuration
-PORT=3001
+PORT=3009
 HOST=0.0.0.0
 
 # Database
