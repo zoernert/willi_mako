@@ -182,8 +182,11 @@ EOF
         cp .env.production "$TEMP_DIR/"
     fi
     
-    # server.js für Production kopieren (Hybrid-Setup)
-    if [ -f "server_production.js" ]; then
+    # server.js für Production kopieren (Next.js-kompatibel)
+    if [ -f "server_fixed.js" ]; then
+        cp server_fixed.js "$TEMP_DIR/server.js"
+        echo "✅ Fixed server.js kopiert (Next.js API-kompatibel)"
+    elif [ -f "server_production.js" ]; then
         cp server_production.js "$TEMP_DIR/server.js"
         echo "✅ Production server.js kopiert"
     elif [ -f "server.js" ]; then
