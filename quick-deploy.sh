@@ -9,7 +9,49 @@ echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
 
 # Konfiguration
-PROD_SERVER=${1:-"root@10.0.0.2"}
+PROD_SE# Test der Datenbankverbindung
+test_database_connection() {
+    echo "🔍 Teste Verbindung zur remote PostgreSQL-Datenbank..."
+    
+    ssh $PROD_SERVER << EOF
+cd $DEPLOY_DIR
+echo "Teste Datenbankverbindung zu 10.0.0.2:5117..."
+# Einfacher Verbindungstest mit telnet oder nc
+if command -v nc &> /dev/null; then
+    if nc -z 10.0.0.2 5117; then
+        echo "✅ PostgreSQL Server ist erreichbar auf 10.0.0.2:5117"
+    else
+        echo "❌ PostgreSQL Server nicht erreichbar auf 10.0.0.2:5117"
+    fi
+else
+    echo "⚠️  nc (netcat) nicht verfügbar - überspringe Verbindungstest"
+fi
+
+# Test ob PostgreSQL Client verfügbar ist
+if command -v psql &> /dev/null; then
+    echo ""
+    echo "🔍 Teste FAQ-Datenbank Inhalt..."
+    echo "Anzahl FAQs in der Datenbank:"
+    PGPASSWORD=willi_password psql -h 10.0.0.2 -p 5117 -U willi_user -d willi_mako -c "
+    SELECT 
+        COUNT(*) as total_faqs,
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_faqs,
+        COUNT(CASE WHEN is_public = true THEN 1 END) as public_faqs,
+        COUNT(CASE WHEN is_active = true AND is_public = true THEN 1 END) as visible_faqs
+    FROM faqs;" 2>/dev/null || echo "❌ FAQ Tabelle nicht erreichbar oder existiert nicht"
+    
+    echo ""
+    echo "Neueste 3 FAQs:"
+    PGPASSWORD=willi_password psql -h 10.0.0.2 -p 5117 -U willi_user -d willi_mako -c "
+    SELECT title, is_active, is_public, created_at 
+    FROM faqs 
+    ORDER BY created_at DESC 
+    LIMIT 3;" 2>/dev/null || echo "❌ Kann keine FAQ-Daten abrufen"
+else
+    echo "⚠️  psql nicht verfügbar - überspringe Datenbank-Inhaltstest"
+fi
+EOF
+}0.0.2"}
 FRONTEND_PORT=${2:-"4100"}  # Next.js Frontend (extern)
 BACKEND_PORT="4101"         # Express.js Backend (intern)
 POSTGRES_PORT="5117"
@@ -364,6 +406,12 @@ echo ""
 echo "RSS/Atom Feed Test:"
 curl -s -I http://localhost:$FRONTEND_PORT/feed.xml | head -1 || echo "RSS Feed nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/atom.xml | head -1 || echo "Atom Feed nicht erreichbar"
+echo ""
+echo "FAQ API Test:"
+echo "Anzahl FAQs über API:"
+curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '. | length' 2>/dev/null || echo "FAQ API nicht erreichbar oder jq nicht verfügbar"
+echo "Erste FAQ über API:"
+curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '.[0].title' 2>/dev/null || echo "Keine FAQs über API verfügbar"
 EOF
 }
 
