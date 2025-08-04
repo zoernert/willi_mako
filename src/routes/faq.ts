@@ -83,9 +83,15 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   const faqsWithLinks = await Promise.all(
     result.rows.map(async (faq) => {
       const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
+      
+      // Import and get related FAQs
+      const { getRelatedFAQs } = await import('../../lib/faq-api');
+      const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
+      
       return {
         ...faq,
-        linked_terms: linkedTerms
+        linked_terms: linkedTerms,
+        related_faqs: relatedFAQs
       };
     })
   );
@@ -598,9 +604,15 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
   const faqsWithLinks = await Promise.all(
     result.rows.map(async (faq) => {
       const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
+      
+      // Import and get related FAQs
+      const { getRelatedFAQs } = await import('../../lib/faq-api');
+      const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
+      
       return {
         ...faq,
-        linked_terms: linkedTerms
+        linked_terms: linkedTerms,
+        related_faqs: relatedFAQs
       };
     })
   );

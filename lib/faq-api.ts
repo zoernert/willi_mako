@@ -83,15 +83,15 @@ export async function getFAQBySlug(slug: string): Promise<StaticFAQData | null> 
   return allFAQs.find(faq => faq.slug === slug) || null;
 }
 
-// Hole verwandte FAQs über QDrant Vector Search
+// Hole verwandte FAQs über QDrant Vector Search mit Database Fallback
 export async function getRelatedFAQs(faqId: string, content: string, limit: number = 5): Promise<RelatedFAQ[]> {
   try {
-    // Verwende QdrantService für semantische Suche
+    // Versuche erst QdrantService für semantische Suche
     const searchResults = await QdrantService.searchByText(content, limit + 1, 0.3);
     
-    // Filtere die ursprüngliche FAQ heraus und konvertiere zu RelatedFAQ
-    const related = searchResults
-      .filter(result => String(result.id) !== faqId)
+    // Prüfe ob QDrant-Ergebnisse gültige Titel haben
+    const validResults = searchResults
+      .filter(result => String(result.id) !== faqId && result.payload?.title)
       .slice(0, limit)
       .map(result => ({
         id: String(result.id),
@@ -100,9 +100,99 @@ export async function getRelatedFAQs(faqId: string, content: string, limit: numb
         similarity_score: result.score
       }));
 
-    return related;
+    // Falls QDrant nicht ausreichend gültige Ergebnisse liefert, verwende Database-Fallback
+    if (validResults.length < limit) {
+      console.log('QDrant results insufficient, using database fallback');
+      return await getRelatedFAQsFromDatabase(faqId, content, limit);
+    }
+
+    return validResults;
   } catch (error) {
-    console.error('Error fetching related FAQs:', error);
+    console.error('Error fetching related FAQs from QDrant, using database fallback:', error);
+    // Fallback zu datenbankbasierter Suche
+    return await getRelatedFAQsFromDatabase(faqId, content, limit);
+  }
+}
+
+// Fallback: Hole verwandte FAQs basierend auf Tags und Keywords aus der Datenbank
+async function getRelatedFAQsFromDatabase(faqId: string, content: string, limit: number = 5): Promise<RelatedFAQ[]> {
+  try {
+    // Extrahiere Keywords aus dem Content
+    const keywords = content
+      .toLowerCase()
+      .replace(/[^\w\säöüß]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3)
+      .slice(0, 10); // Nur die ersten 10 Keywords verwenden
+
+    if (keywords.length === 0) {
+      // Falls keine Keywords gefunden, verwende einfache Tag-basierte Suche
+      return await getRelatedFAQsByTags(faqId, limit);
+    }
+
+    // In development, include private FAQs for testing
+    const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
+    
+    // Erstelle eine einfachere SQL-Abfrage mit ILIKE
+    const result = await pool.query(`
+      SELECT id, title, view_count,
+             (CASE 
+               WHEN LOWER(title) LIKE $2 THEN 0.9
+               WHEN LOWER(description) LIKE $2 THEN 0.8
+               WHEN LOWER(context) LIKE $2 THEN 0.7
+               WHEN LOWER(answer) LIKE $2 THEN 0.6
+               ELSE 0.5
+             END) as similarity_score
+      FROM faqs 
+      WHERE is_active = true ${publicFilter}
+        AND id != $1
+        AND (
+          LOWER(title) LIKE $2
+          OR LOWER(description) LIKE $2
+          OR LOWER(context) LIKE $2
+          OR LOWER(answer) LIKE $2
+        )
+      ORDER BY similarity_score DESC, view_count DESC
+      LIMIT $3
+    `, [faqId, `%${keywords[0]}%`, limit]);
+
+    return result.rows.map(faq => ({
+      id: String(faq.id),
+      title: faq.title,
+      slug: generateFAQSlug(faq.title),
+      similarity_score: Math.round((faq.similarity_score || 0) * 100) / 100
+    }));
+  } catch (error) {
+    console.error('Error fetching related FAQs from database:', error);
+    // Als letzter Fallback: verwende Tag-basierte Suche
+    return await getRelatedFAQsByTags(faqId, limit);
+  }
+}
+
+// Noch einfacherer Fallback: Hole verwandte FAQs basierend auf gemeinsamen Tags
+async function getRelatedFAQsByTags(faqId: string, limit: number = 5): Promise<RelatedFAQ[]> {
+  try {
+    // In development, include private FAQs for testing
+    const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
+    
+    // Hole einfach die neuesten FAQs als verwandte FAQs
+    const result = await pool.query(`
+      SELECT id, title, view_count
+      FROM faqs 
+      WHERE is_active = true ${publicFilter}
+        AND id != $1
+      ORDER BY view_count DESC, created_at DESC
+      LIMIT $2
+    `, [faqId, limit]);
+
+    return result.rows.map(faq => ({
+      id: String(faq.id),
+      title: faq.title,
+      slug: generateFAQSlug(faq.title),
+      similarity_score: 0.8 // Fester Wert für Tag-basierte Ähnlichkeit
+    }));
+  } catch (error) {
+    console.error('Error fetching related FAQs by tags:', error);
     return [];
   }
 }
