@@ -11,10 +11,7 @@ import {
   Chip,
   Paper,
   Container,
-  Avatar,
-  Rating,
-  Stack,
-  Divider
+  Stack
 } from '@mui/material';
 import {
   QuestionAnswer as FAQIcon,
@@ -25,9 +22,7 @@ import {
   Security as SecurityIcon,
   Visibility as TransparencyIcon,
   Lock as LockIcon,
-  Star as StarIcon,
-  PlayArrow as PlayIcon,
-  Check as CheckIcon
+  PlayArrow as PlayIcon
 } from '@mui/icons-material';
 import Layout from '../components/Layout';
 import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../lib/faq-api';
@@ -40,7 +35,7 @@ interface HomeProps {
 
 export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeProps) {
   return (
-    <Layout title="Energiemarkt Wissensplattform">
+    <Layout title="Willi-Mako | Professionelle Marktkommunikation">
       <Head>
         <title>Willi-Mako | Marktkommunikation auf neuem Level - Effizienz, Sicherheit, Erfolg</title>
         <meta 
@@ -126,7 +121,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             color: '#ee7f4b',
             mb: 3
           }}>
-            Marktkommunikation auf neuem Level
+            Marktkommunikation auf neuem Niveau
           </Typography>
           <Typography variant="h5" paragraph sx={{ 
             maxWidth: 800, 
@@ -134,7 +129,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             mb: 2,
             fontWeight: 500
           }}>
-            Steigern Sie Effizienz, minimieren Sie Risiken und sichern Sie Ihren Vorsprung in der Energiewirtschaft
+            Moderne Energiewirtschaft erfordert neue Lösungen: Bewältigen Sie komplexe Massenprozesse mit höchster Präzision und Effizienz
           </Typography>
           <Typography variant="h6" paragraph sx={{ 
             maxWidth: 700, 
@@ -142,14 +137,16 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             color: 'rgba(255,255,255,0.9)',
             mb: 4
           }}>
-            Speziell für Sachbearbeiter: Schnelle, fehlerfreie Lösungen für Ihren Alltag.<br />
-            Für Vorgesetzte: Transparenz, Kontrolle und messbare Effizienzsteigerungen im Team.
+            Expertise-Mangel, hoher Standardisierungsgrad und strenge Prozessdisziplin fordern professionelle Tools.<br />
+            Für Sachbearbeiter: Fehlerfreie Lösungen. Für Führungskräfte: Kontrollierte Effizienz.
           </Typography>
           
           <Box sx={{ mt: 4, display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button
               variant="contained"
               size="large"
+              component={Link}
+              href="/app"
               sx={{ 
                 px: 6,
                 py: 2,
@@ -190,10 +187,10 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
       <Container maxWidth="lg" sx={{ mb: 8 }}>
         <Box sx={{ textAlign: 'center', mb: 6 }}>
           <Typography variant="h3" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
-            Die entscheidenden Vorteile für Ihr Unternehmen
+            Warum die Energiewirtschaft neue Tools braucht
           </Typography>
           <Typography variant="h6" color="text.secondary" paragraph>
-            Quantifizierbare Vorteile, die Ihren Arbeitsalltag und Ihr Unternehmen voranbringen
+            Komplexe Massenprozesse fordern innovative Lösungen für höchste Effizienz und Präzision
           </Typography>
         </Box>
 
@@ -202,11 +199,11 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
               <SecurityIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Risikominimierung
+                Hohe Prozessdisziplin
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Immer auf dem neuesten Stand mit den Marktregeln und Gesetzesänderungen. 
-                Compliance-Sicherheit durch Expertenwissen.
+                Hoher Standardisierungsgrad erfordert absolute Präzision. 
+                Kleine Fehler können enorme Ressourcen verschlingen - Compliance ist entscheidend.
               </Typography>
             </Card>
           </Grid>
@@ -214,11 +211,11 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
               <TimerIcon sx={{ fontSize: 60, color: '#ee7f4b', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Maximale Effizienz
+                Massenprozess-Effizienz
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Reduzieren Sie die Bearbeitungszeiten um bis zu 40%. 
-                Schnelle, fehlerfreie Lösungen für komplexe Marktkommunikation.
+                Tausende Transaktionen täglich verlangen automatisierte, fehlerfreie Abläufe. 
+                Manuelle Prozesse sind nicht mehr zeitgemäß.
               </Typography>
             </Card>
           </Grid>
@@ -226,11 +223,11 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             <Card sx={{ height: '100%', textAlign: 'center', p: 3 }}>
               <TransparencyIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Transparenz & Kontrolle
+                Expertenwissen-Management
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Volle Übersicht über alle Marktkommunikationsprozesse in Echtzeit. 
-                Bessere Teamleistung durch strukturiertes Wissen.
+                Breites, spezialisiertes Wissen muss strukturiert verfügbar sein. 
+                Expertise-Mangel darf keine Operationen gefährden.
               </Typography>
             </Card>
           </Grid>
@@ -318,63 +315,6 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
           </Box>
         </Container>
       </Paper>
-
-      {/* Testimonials Section */}
-      <Container maxWidth="lg" sx={{ mb: 8 }}>
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Typography variant="h3" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
-            Was unsere Kunden sagen
-          </Typography>
-          <Typography variant="h6" color="text.secondary" paragraph>
-            Echte Erfahrungen von Sachbearbeitern und Führungskräften
-          </Typography>
-        </Box>
-
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 4, height: '100%' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Avatar sx={{ bgcolor: '#147a50', mr: 2 }}>SM</Avatar>
-                <Box>
-                  <Typography variant="h6" component="div">Sarah Müller</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Sachbearbeiterin Marktkommunikation, Stadtwerke Hamburg
-                  </Typography>
-                </Box>
-              </Box>
-              <Rating value={5} readOnly sx={{ mb: 2 }} />
-              <Typography variant="body1" paragraph>
-                "Willi-Mako hat meinen Arbeitsalltag revolutioniert. Was früher Stunden gedauert hat, 
-                erledige ich jetzt in Minuten. Die Stress-Reduktion ist enorm!"
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                ⏱️ Zeitersparnis: 3-4 Stunden pro Tag
-              </Typography>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 4, height: '100%' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Avatar sx={{ bgcolor: '#ee7f4b', mr: 2 }}>MK</Avatar>
-                <Box>
-                  <Typography variant="h6" component="div">Michael König</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Abteilungsleiter Energiehandel, EnBW Energie
-                  </Typography>
-                </Box>
-              </Box>
-              <Rating value={5} readOnly sx={{ mb: 2 }} />
-              <Typography variant="body1" paragraph>
-                "Die Transparenz und Kontrolle, die Willi-Mako bietet, sind unschätzbar. 
-                Compliance-Probleme gehören der Vergangenheit an."
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                📈 Teameffizienz: +35% | ⚠️ Compliance-Vorfälle: -90%
-              </Typography>
-            </Card>
-          </Grid>
-        </Grid>
-      </Container>
 
       {/* Expert Team Section */}
       <Paper sx={{ bgcolor: '#f8fafc', py: 6, mb: 6 }}>
@@ -551,6 +491,8 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             <Button
               variant="contained"
               size="large"
+              component={Link}
+              href="/app"
               sx={{ 
                 px: 6,
                 py: 2,

@@ -98,7 +98,17 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
         <ListItemButton
           component={Link}
           href="/app"
-          sx={{ borderRadius: 1, bgcolor: 'action.hover' }}
+          sx={{ 
+            borderRadius: 1, 
+            bgcolor: '#ee7f4b',
+            color: 'white',
+            '&:hover': {
+              bgcolor: '#d66d3a'
+            },
+            '& .MuiListItemIcon-root': {
+              color: 'white'
+            }
+          }}
         >
           <ListItemIcon>
             <EnergyIcon />
@@ -135,7 +145,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Stromhaltig - {title}
+            {title}
           </Typography>
         </Toolbar>
       </AppBar>
