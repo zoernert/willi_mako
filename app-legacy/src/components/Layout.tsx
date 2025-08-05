@@ -34,6 +34,7 @@ import {
   Rule as RuleIcon,
   Search as SearchIcon,
   Group as GroupIcon,
+  AccountTree as ProcessIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -74,6 +75,7 @@ const Layout: React.FC = () => {
     { text: 'Teams', icon: <GroupIcon />, path: '/teams' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
+    { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
     { text: 'Code-Lookup', icon: <SearchIcon />, path: '/code-lookup' },

@@ -19,6 +19,7 @@ import FAQDetail from './pages/FAQDetail';
 import Workspace from './pages/Workspace';
 import MessageAnalyzerPage from './pages/MessageAnalyzer';
 import CodeLookupPage from './pages/CodeLookup';
+import ProcessesAndProcedures from './pages/ProcessesAndProcedures';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -120,6 +121,7 @@ function App() {
                 <Route path="faqs/:id" element={<FAQDetail />} />
                 <Route path="quiz" element={<ProtectedRoute><QuizDashboard /></ProtectedRoute>} />
                 <Route path="quiz/:quizId" element={<ProtectedRoute><QuizPlayer /></ProtectedRoute>} />
+                <Route path="processes" element={<ProtectedRoute><ProcessesAndProcedures /></ProtectedRoute>} />
                 <Route path="teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
