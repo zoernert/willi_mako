@@ -448,13 +448,13 @@ Antwort ausschließlich im JSON-Format:`;
       
       if (!parsedResponse) {
         console.error('Failed to parse AI response as JSON, using fallback');
-        // Fallback if JSON parsing fails
-        const fallbackAnswer = responseText || 'Antwort zur Energiewirtschaft';
+        console.error('Raw response that failed to parse:', responseText);
+        // Fallback if JSON parsing fails - do NOT use the raw response as answer
         return {
           title: 'Energiewirtschafts-FAQ',
           description: 'Frage zur Energiewirtschaft',
           context: 'Kontext zur Energiewirtschaft',
-          answer: fallbackAnswer,
+          answer: 'Antwort zur Energiewirtschaft konnte nicht automatisch generiert werden. Bitte bearbeiten Sie diesen FAQ-Eintrag manuell.',
           additionalInfo: 'Weitere Informationen können bei Bedarf ergänzt werden.',
           tags: ['Energiewirtschaft']
         };
@@ -547,7 +547,14 @@ Antwort nur als JSON ohne Markdown-Formatierung:`;
           }
         }
         
-        const parsedResponse = JSON.parse(responseText);
+        const parsedResponse = safeParseJsonResponse(responseText);
+        
+        if (!parsedResponse) {
+          console.error('Failed to parse enhanced FAQ response as JSON, using original data');
+          console.error('Raw response that failed to parse:', responseText);
+          return faqData;
+        }
+        
         return {
           title: (parsedResponse.title && parsedResponse.title.trim()) || faqData.title,
           description: (parsedResponse.description && parsedResponse.description.trim()) || faqData.description,
@@ -557,7 +564,7 @@ Antwort nur als JSON ohne Markdown-Formatierung:`;
           tags: Array.isArray(parsedResponse.tags) && parsedResponse.tags.length > 0 ? parsedResponse.tags : faqData.tags
         };
       } catch (parseError) {
-        console.error('JSON parsing failed in enhanceFAQWithContext, using original data:', parseError);
+        console.error('Error parsing enhanced FAQ response:', parseError);
         return faqData;
       }
     } catch (error) {
