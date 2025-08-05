@@ -60,8 +60,18 @@ export async function getAllPublicFAQs(): Promise<StaticFAQData[]> {
         const slug = generateFAQSlug(faq.title);
         const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer);
         
+        // Parse tags from JSON string to array
+        let parsedTags;
+        try {
+          parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
+        } catch (parseError) {
+          console.error('Error parsing tags for FAQ', faq.id, ':', parseError);
+          parsedTags = ['Energiewirtschaft']; // fallback
+        }
+        
         return {
           ...faq,
+          tags: parsedTags,
           slug,
           created_at: faq.created_at ? faq.created_at.toISOString() : new Date().toISOString(),
           updated_at: faq.updated_at ? faq.updated_at.toISOString() : new Date().toISOString(),

@@ -67,15 +67,40 @@ class ApiClient {
 
   private formatError(error: AxiosError<ApiResponse>): Error {
     if (error.response?.data?.error) {
-      return new Error(typeof error.response.data.error === 'string' ? error.response.data.error : JSON.stringify(error.response.data.error));
+      const errorData = error.response.data.error;
+      if (typeof errorData === 'string') {
+        return new Error(errorData);
+      } else {
+        // Safely stringify object error data
+        try {
+          return new Error(JSON.stringify(errorData));
+        } catch (stringifyError) {
+          return new Error('Error occurred but could not be formatted');
+        }
+      }
     }
     
     if (error.response?.data?.message) {
-      return new Error(typeof error.response.data.message === 'string' ? error.response.data.message : JSON.stringify(error.response.data.message));
+      const messageData = error.response.data.message;
+      if (typeof messageData === 'string') {
+        return new Error(messageData);
+      } else {
+        // Safely stringify object message data
+        try {
+          return new Error(JSON.stringify(messageData));
+        } catch (stringifyError) {
+          return new Error('Error occurred but could not be formatted');
+        }
+      }
     }
     
     if (error.response?.data) {
-      return new Error(`API Error (${error.response.status}): ${JSON.stringify(error.response.data)}`);
+      // Safely stringify the entire response data
+      try {
+        return new Error(`API Error (${error.response.status}): ${JSON.stringify(error.response.data)}`);
+      } catch (stringifyError) {
+        return new Error(`API Error (${error.response.status}): Unable to format error data`);
+      }
     }
     
     if (error.message) {

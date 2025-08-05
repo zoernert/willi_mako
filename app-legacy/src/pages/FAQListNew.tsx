@@ -58,6 +58,8 @@ interface PaginationInfo {
 }
 
 const FAQList: React.FC = () => {
+  console.log('FAQListNew: Component rendering...');
+  
   const [faqs, setFaqs] = useState<FAQWithLinks[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,10 +81,14 @@ const FAQList: React.FC = () => {
   const { showSnackbar } = useSnackbar();
 
   useEffect(() => {
+    console.log('FAQListNew: Component mounted, fetching available tags...');
     fetchAvailableTags();
   }, []);
 
   useEffect(() => {
+    console.log('FAQListNew: Dependencies changed, fetching FAQs...', {
+      searchTerm, selectedTag, sortBy, sortOrder, currentPage
+    });
     fetchFAQs();
   }, [searchTerm, selectedTag, sortBy, sortOrder, currentPage]);
 
@@ -96,6 +102,10 @@ const FAQList: React.FC = () => {
   };
 
   const fetchFAQs = useCallback(async () => {
+    console.log('FAQListNew: fetchFAQs called with params:', {
+      searchTerm, selectedTag, sortBy, sortOrder, currentPage, limit: pagination.limit
+    });
+    
     try {
       setLoading(true);
       setError(null);
@@ -115,21 +125,32 @@ const FAQList: React.FC = () => {
         params.append('tag', selectedTag);
       }
       
+      console.log('FAQListNew: Making API request to:', `/faqs?${params.toString()}`);
+      
       const response = await apiClient.get(`/faqs?${params.toString()}`) as any;
       
+      console.log('FAQListNew: API Response received:', response);
+      
       if (response && response.data) {
-        setFaqs(Array.isArray(response.data) ? response.data : []);
-        if (response.pagination) {
-          setPagination(response.pagination);
+        // Handle nested response structure: response.data.data contains the FAQ array
+        const faqData = response.data.data || response.data;
+        console.log('FAQListNew: Processing FAQ data:', faqData);
+        setFaqs(Array.isArray(faqData) ? faqData : []);
+        
+        if (response.data.pagination) {
+          console.log('FAQListNew: Setting pagination:', response.data.pagination);
+          setPagination(response.data.pagination);
         }
       } else {
+        console.log('FAQListNew: No response data, setting empty array');
         setFaqs([]);
       }
     } catch (error) {
-      console.error('Error fetching FAQs:', error);
+      console.error('FAQListNew: Error fetching FAQs:', error);
       setError('Fehler beim Laden der FAQs');
       setFaqs([]);
     } finally {
+      console.log('FAQListNew: fetchFAQs completed, setting loading to false');
       setLoading(false);
     }
   }, [searchTerm, selectedTag, sortBy, sortOrder, currentPage, pagination.limit]);
@@ -217,7 +238,7 @@ const FAQList: React.FC = () => {
             Häufig gestellte Fragen
           </Typography>
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Durchsuchen Sie unsere umfangreiche FAQ-Sammlung oder starten Sie einen Chat zu einem spezifischen Thema
+            Durchsuchen Sie unsere FAQ-Sammlung oder starten Sie einen Chat zu einem spezifischen Thema
           </Typography>
         </Box>
 

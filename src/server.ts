@@ -59,9 +59,54 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parsing middleware
+// Body parsing middleware with error handling
 app.use(compression());
-app.use(express.json({ limit: '50mb' }));
+
+// Debug middleware to log all requests
+app.use('/api/', (req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Body (pre-parse):', req.body);
+  next();
+});
+
+// Custom JSON parsing with error handling
+app.use('/api/', express.raw({ type: 'application/json', limit: '50mb' }), (req, res, next) => {
+  const contentLength = parseInt(req.get('content-length') || '0');
+  const contentType = req.get('content-type');
+  
+  // Handle empty or minimal JSON bodies
+  if (contentType && contentType.includes('application/json')) {
+    if (contentLength <= 2) {
+      console.log('Detected empty/minimal JSON body, content-length:', contentLength, 'body:', req.body?.toString());
+      req.body = {};
+      return next();
+    }
+    
+    try {
+      const bodyStr = req.body.toString();
+      console.log('Parsing JSON body:', bodyStr);
+      
+      // Handle empty quotes or just whitespace
+      if (bodyStr === '""' || bodyStr.trim() === '') {
+        console.log('Empty quotes or whitespace detected, setting body to {}');
+        req.body = {};
+      } else {
+        req.body = JSON.parse(bodyStr);
+      }
+    } catch (err) {
+      console.error('JSON parsing error:', err.message);
+      console.error('Raw body:', req.body?.toString());
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid JSON in request body: ' + err.message }
+      });
+    }
+  }
+  
+  next();
+});
+
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Increase timeout for chat routes (45 seconds)

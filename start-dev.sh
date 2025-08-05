@@ -6,6 +6,8 @@
 echo "🚀 Starting Willi-Mako Dual-Port Development Environment"
 echo "======================================================"
 
+npm run build
+
 # Cleanup function to kill any existing processes
 cleanup_existing_processes() {
     echo "🧹 Prüfe und beende bestehende Entwicklungsserver..."

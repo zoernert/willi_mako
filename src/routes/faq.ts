@@ -88,8 +88,18 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
       const { getRelatedFAQs } = await import('../../lib/faq-api');
       const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
       
+      // Parse tags from JSON string to array
+      let parsedTags;
+      try {
+        parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
+      } catch (parseError) {
+        console.error('Error parsing tags:', parseError);
+        parsedTags = ['Energiewirtschaft']; // fallback
+      }
+      
       return {
         ...faq,
+        tags: parsedTags,
         linked_terms: linkedTerms,
         related_faqs: relatedFAQs
       };
@@ -132,8 +142,19 @@ router.get('/faqs/:id', asyncHandler(async (req: Request, res: Response) => {
     [id]
   );
   
+  // Parse tags from JSON string to array
+  const faq = result.rows[0];
+  let parsedTags;
+  try {
+    parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
+  } catch (parseError) {
+    console.error('Error parsing tags:', parseError);
+    parsedTags = ['Energiewirtschaft']; // fallback
+  }
+  
   const faqWithLinks: FAQWithLinks = {
-    ...result.rows[0],
+    ...faq,
+    tags: parsedTags,
     linked_terms: linkedTerms
   };
   
@@ -268,8 +289,15 @@ router.get('/admin/chats/:chatId', authenticateToken, requireAdminForFaq, asyncH
 
 // Create FAQ from chat
 router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  console.log('=== CREATE FAQ ENDPOINT START ===');
+  console.log('Request params:', req.params);
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  console.log('User:', req.user?.id);
+  
   const { chatId } = req.params;
   const userId = req.user!.id;
+  
+  console.log('Processing chatId:', chatId, 'userId:', userId);
   
   // Get chat messages
   const messagesResult = await pool.query(`
@@ -282,38 +310,108 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
   
   const messages = messagesResult.rows;
   
-  // Generate FAQ content using LLM
-  const faqContent = await geminiService.generateFAQContent(messages);
+  // Generate FAQ content using LLM with error handling
+  console.log('Calling generateFAQContent with messages:', messages.length);
   
-  // Create FAQ with auto-generated content
+  let faqContent;
+  try {
+    faqContent = await geminiService.generateFAQContent(messages);
+    console.log('Generated FAQ content successfully');
+    
+    // Validate the FAQ content structure
+    if (!faqContent || typeof faqContent !== 'object') {
+      throw new Error('Invalid FAQ content structure returned from AI');
+    }
+    
+    // Ensure all required fields are present and valid
+    faqContent.title = (faqContent.title && faqContent.title.trim()) || 'FAQ aus Chat erstellt';
+    faqContent.description = (faqContent.description && faqContent.description.trim()) || 'Automatisch generierter FAQ-Eintrag';
+    faqContent.context = (faqContent.context && faqContent.context.trim()) || 'Basierend auf einer Unterhaltung';
+    faqContent.answer = (faqContent.answer && faqContent.answer.trim()) || 'Detaillierte Antwort';
+    faqContent.additionalInfo = (faqContent.additionalInfo && faqContent.additionalInfo.trim()) || 'Weitere Informationen';
+    faqContent.tags = Array.isArray(faqContent.tags) && faqContent.tags.length > 0 ? faqContent.tags : ['Energiewirtschaft'];
+    
+    console.log('Validated FAQ content:', {
+      title: faqContent.title.substring(0, 50) + '...',
+      tagsCount: faqContent.tags.length,
+      hasDescription: !!faqContent.description,
+      hasContext: !!faqContent.context,
+      hasAnswer: !!faqContent.answer
+    });
+    
+  } catch (error) {
+    console.error('Error generating FAQ content:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 500)
+    });
+    
+    // Provide fallback content if AI generation fails
+    faqContent = {
+      title: 'FAQ aus Chat erstellt',
+      description: 'Automatisch generierter FAQ-Eintrag aus einem Chat-Verlauf',
+      context: 'Basierend auf einer Unterhaltung mit einem Nutzer',
+      answer: 'Detaillierte Antwort wird bei der nächsten Bearbeitung ergänzt',
+      additionalInfo: 'Weitere Informationen können bei Bedarf ergänzt werden',
+      tags: ['Energiewirtschaft', 'Chat-FAQ']
+    };
+  }
+  
+  // Ensure tags are always an array and properly formatted
+  let tagsToStore;
+  if (Array.isArray(faqContent.tags)) {
+    tagsToStore = faqContent.tags;
+  } else if (typeof faqContent.tags === 'string') {
+    try {
+      tagsToStore = JSON.parse(faqContent.tags);
+    } catch (e) {
+      console.error('Failed to parse tags string:', faqContent.tags);
+      tagsToStore = ['Energiewirtschaft'];
+    }
+  } else {
+    tagsToStore = ['Energiewirtschaft'];
+  }
+  
+  console.log('Tags to store:', tagsToStore);
+  
+  // Create FAQ with auto-generated content - neue FAQs sollen öffentlich sichtbar sein
   const faqResult = await pool.query(`
-    INSERT INTO faqs (title, description, context, answer, additional_info, tags, source_chat_id, created_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, title, description, context, answer, additional_info, tags, created_at
+    INSERT INTO faqs (title, description, context, answer, additional_info, tags, source_chat_id, created_by, is_public)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id, title, description, context, answer, additional_info, tags, is_active, is_public, created_at
   `, [
     faqContent.title,
     faqContent.description,
     faqContent.context,
     faqContent.answer,
     faqContent.additionalInfo,
-    JSON.stringify(faqContent.tags),
+    JSON.stringify(tagsToStore),
     chatId,
-    userId
+    userId,
+    true  // is_public = true
   ]);
   
   const newFAQ = faqResult.rows[0];
+  
+  // Return tags as array (they were stored as JSON string)
+  const responseData = {
+    ...newFAQ,
+    tags: tagsToStore // Use the validated tags array
+  };
   
   // Store FAQ in vector database
   try {
     const qdrantService = new QdrantService();
     await qdrantService.storeFAQContent(
-      newFAQ.id,
-      newFAQ.title,
-      newFAQ.description,
-      newFAQ.context,
-      newFAQ.answer,
-      newFAQ.additional_info,
-      newFAQ.tags
+      responseData.id,
+      responseData.title,
+      responseData.description,
+      responseData.context,
+      responseData.answer,
+      responseData.additional_info,
+      // Pass the tags array to the vector database
+      tagsToStore
     );
   } catch (error) {
     console.error('Error storing FAQ in vector database:', error);
@@ -322,7 +420,7 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
   
   res.json({
     success: true,
-    data: newFAQ
+    data: responseData
   });
 }));
 
@@ -341,9 +439,21 @@ router.get('/admin/faqs', authenticateToken, requireAdminForFaq, asyncHandler(as
     LIMIT $1 OFFSET $2
   `, [limit, offset]);
   
+  // Parse tags for all FAQs
+  const faqs = result.rows.map(faq => ({
+    ...faq,
+    tags: typeof faq.tags === 'string' ? (() => {
+      try {
+        return JSON.parse(faq.tags);
+      } catch (e) {
+        return ['Energiewirtschaft'];
+      }
+    })() : faq.tags
+  }));
+  
   res.json({
     success: true,
-    data: result.rows
+    data: faqs
   });
 }));
 
@@ -422,9 +532,21 @@ router.put('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHandle
     // Don't fail the request if vector storage fails
   }
 
+  // Parse tags from JSON string to array before returning
+  let parsedTags;
+  try {
+    parsedTags = typeof updatedFAQ.tags === 'string' ? JSON.parse(updatedFAQ.tags) : updatedFAQ.tags;
+  } catch (parseError) {
+    console.error('Error parsing tags:', parseError);
+    parsedTags = ['Energiewirtschaft']; // fallback
+  }
+
   res.json({
     success: true,
-    data: updatedFAQ
+    data: {
+      ...updatedFAQ,
+      tags: parsedTags
+    }
   });
 }));
 
@@ -609,8 +731,18 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
       const { getRelatedFAQs } = await import('../../lib/faq-api');
       const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
       
+      // Parse tags from JSON string to array
+      let parsedTags;
+      try {
+        parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
+      } catch (parseError) {
+        console.error('Error parsing tags:', parseError);
+        parsedTags = ['Energiewirtschaft']; // fallback
+      }
+      
       return {
         ...faq,
+        tags: parsedTags,
         linked_terms: linkedTerms,
         related_faqs: relatedFAQs
       };

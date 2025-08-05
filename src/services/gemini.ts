@@ -440,33 +440,16 @@ Antwort ausschließlich im JSON-Format:`;
       const result = await this.generateWithRetry(prompt);
       const response = await result.response;
       
-      try {
-        let responseText = response.text().trim();
-        
-        // Remove markdown code blocks if present
-        if (responseText.startsWith('```json') && responseText.endsWith('```')) {
-          responseText = responseText.slice(7, -3).trim();
-        } else if (responseText.startsWith('```') && responseText.endsWith('```')) {
-          const firstNewline = responseText.indexOf('\n');
-          const lastNewline = responseText.lastIndexOf('\n');
-          if (firstNewline > 0 && lastNewline > firstNewline) {
-            responseText = responseText.slice(firstNewline + 1, lastNewline).trim();
-          }
-        }
-        
-        const parsedResponse = JSON.parse(responseText);
-        return {
-          title: (parsedResponse.title && parsedResponse.title.trim()) || 'Energiewirtschafts-FAQ',
-          description: (parsedResponse.description && parsedResponse.description.trim()) || 'Frage zur Energiewirtschaft',
-          context: (parsedResponse.context && parsedResponse.context.trim()) || 'Kontext zur Energiewirtschaft',
-          answer: (parsedResponse.answer && parsedResponse.answer.trim()) || 'Antwort zur Energiewirtschaft',
-          additionalInfo: (parsedResponse.additionalInfo && parsedResponse.additionalInfo.trim()) || 'Weitere Informationen können bei Bedarf ergänzt werden.',
-          tags: Array.isArray(parsedResponse.tags) && parsedResponse.tags.length > 0 ? parsedResponse.tags : ['Energiewirtschaft']
-        };
-      } catch (parseError) {
-        console.error('JSON parsing failed, using fallback:', parseError);
+      const responseText = response.text().trim();
+      console.log('Raw AI response:', responseText);
+      
+      // Use the safe JSON parser utility
+      const parsedResponse = safeParseJsonResponse(responseText);
+      
+      if (!parsedResponse) {
+        console.error('Failed to parse AI response as JSON, using fallback');
         // Fallback if JSON parsing fails
-        const fallbackAnswer = response.text().trim() || 'Antwort zur Energiewirtschaft';
+        const fallbackAnswer = responseText || 'Antwort zur Energiewirtschaft';
         return {
           title: 'Energiewirtschafts-FAQ',
           description: 'Frage zur Energiewirtschaft',
@@ -476,8 +459,22 @@ Antwort ausschließlich im JSON-Format:`;
           tags: ['Energiewirtschaft']
         };
       }
+      
+      return {
+        title: (parsedResponse.title && parsedResponse.title.trim()) || 'Energiewirtschafts-FAQ',
+        description: (parsedResponse.description && parsedResponse.description.trim()) || 'Frage zur Energiewirtschaft',
+        context: (parsedResponse.context && parsedResponse.context.trim()) || 'Kontext zur Energiewirtschaft',
+        answer: (parsedResponse.answer && parsedResponse.answer.trim()) || 'Antwort zur Energiewirtschaft',
+        additionalInfo: (parsedResponse.additionalInfo && parsedResponse.additionalInfo.trim()) || 'Weitere Informationen können bei Bedarf ergänzt werden.',
+        tags: Array.isArray(parsedResponse.tags) && parsedResponse.tags.length > 0 ? parsedResponse.tags : ['Energiewirtschaft']
+      };
     } catch (error) {
       console.error('Error generating FAQ content:', error);
+      console.error('Error type:', typeof error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       throw new Error('Failed to generate FAQ content');
     }
   }

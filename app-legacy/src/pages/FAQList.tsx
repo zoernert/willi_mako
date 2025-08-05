@@ -117,12 +117,36 @@ const FAQList: React.FC = () => {
       
       const response = await apiClient.get(`/faqs?${params.toString()}`) as any;
       
-      if (response && response.data) {
-        setFaqs(Array.isArray(response.data) ? response.data : []);
-        if (response.pagination) {
-          setPagination(response.pagination);
+      console.log('=== FAQ API Response Debug ===');
+      console.log('Response:', response);
+      console.log('Response.data:', response.data);
+      console.log('Response.data.success:', response.data?.success);
+      console.log('Response.data.data (FAQ Array):', response.data?.data);
+      console.log('Response.data.data is Array:', Array.isArray(response.data?.data));
+      console.log('FAQ Array length:', response.data?.data?.length);
+      
+      if (response && Array.isArray(response)) {
+        // API returns FAQ array directly
+        console.log('=== Direct FAQ array detected ===');
+        setFaqs(response);
+        // Set default pagination if not provided
+        setPagination({
+          total: response.length,
+          limit: pagination.limit,
+          offset: 0,
+          hasMore: false
+        });
+        console.log('=== FAQs set successfully (direct array) ===');
+      } else if (response && response.data && response.data.success) {
+        // Backend returns { success: true, data: [FAQ-Array], pagination: {...} }
+        console.log('=== Structured response detected ===');
+        setFaqs(Array.isArray(response.data.data) ? response.data.data : []);
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
         }
+        console.log('=== FAQs set successfully (structured) ===');
       } else {
+        console.log('=== Failed to parse response, setting empty FAQs ===');
         setFaqs([]);
       }
     } catch (error) {
@@ -217,7 +241,7 @@ const FAQList: React.FC = () => {
             Häufig gestellte Fragen
           </Typography>
           <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Durchsuchen Sie unsere umfangreiche FAQ-Sammlung oder starten Sie einen Chat zu einem spezifischen Thema
+            Durchsuchen Sie unsere umfangreiche Sammlung zu MaKo-Themen oder starten Sie einen Chat zu einem spezifischen Thema
           </Typography>
         </Box>
 

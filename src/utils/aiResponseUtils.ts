@@ -25,6 +25,14 @@ export function cleanJsonResponse(response: string): string {
     }
   }
   
+  // Fix common AI response issues with quotes
+  // Remove triple quotes that might appear at beginning/end
+  cleanResponse = cleanResponse.replace(/^"""/, '').replace(/"""$/, '');
+  cleanResponse = cleanResponse.replace(/^"/, '').replace(/"$/, '');
+  
+  // Fix double-escaped quotes in JSON values
+  cleanResponse = cleanResponse.replace(/\\"/g, '"');
+  
   return cleanResponse;
 }
 
@@ -40,6 +48,7 @@ export function safeParseJsonResponse(response: string): any | null {
   } catch (error) {
     console.error('Error parsing AI JSON response:', error);
     console.error('Raw response:', response);
+    console.error('Cleaned response:', cleanJsonResponse(response));
     return null;
   }
 }
