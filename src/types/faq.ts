@@ -35,6 +35,7 @@ export interface LinkedTerm {
   target_faq_id: string;
   display_text?: string;
   link_id?: string;
+  similarity_score?: number;
 }
 
 export interface FAQWithLinks extends FAQ {

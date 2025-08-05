@@ -1,14 +1,16 @@
 import pool from '../config/database';
 import { FAQ, FAQLink, LinkedTerm, CreateFAQLinkRequest } from '../types/faq';
+import geminiService from './gemini';
+import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 export class FAQLinkingService {
   /**
-   * Findet automatisch verlinkbare Begriffe in einer FAQ-Antwort
+   * Findet automatisch verlinkbare Begriffe in einer FAQ-Antwort mittels semantischer Analyse
    */
   async findLinkableTerms(faqId: string, answerText: string): Promise<LinkedTerm[]> {
-    // Hole alle anderen öffentlichen FAQs
+    // Hole alle anderen öffentlichen FAQs mit ihren Inhalten
     const result = await pool.query(`
-      SELECT id, title, description
+      SELECT id, title, description, context, answer, tags
       FROM faqs
       WHERE id != $1 AND is_active = true AND is_public = true
     `, [faqId]);
@@ -16,26 +18,54 @@ export class FAQLinkingService {
     const otherFAQs = result.rows;
     const links: LinkedTerm[] = [];
 
+    // Hole die aktuelle FAQ für besseren Kontext
+    const currentFaqResult = await pool.query(`
+      SELECT title, description, context, tags FROM faqs WHERE id = $1
+    `, [faqId]);
+    
+    if (currentFaqResult.rows.length === 0) {
+      return links;
+    }
+
+    const currentFaq = currentFaqResult.rows[0];
+
+    // Extrahiere semantische Begriffe aus der aktuellen FAQ
+    const semanticTerms = await this.extractSemanticTerms(answerText, currentFaq);
+
     for (const faq of otherFAQs) {
-      const keywords = this.extractKeywords(faq.title);
-      
-      for (const keyword of keywords) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        if (regex.test(answerText)) {
+      // Analysiere semantische Ähnlichkeit zwischen FAQs
+      const similarity = await this.calculateSemanticSimilarity(
+        currentFaq,
+        faq,
+        answerText
+      );
+
+      if (similarity.score > 0.3) { // Minimum Ähnlichkeits-Schwellenwert
+        // Finde den besten Begriff für die Verlinkung
+        const linkTerm = await this.findBestLinkTerm(
+          semanticTerms,
+          faq,
+          answerText,
+          similarity.suggestedTerms
+        );
+
+        if (linkTerm && linkTerm.length > 2) {
           // Prüfe ob bereits ein Link existiert
-          const existingLink = await this.getLinkExists(faqId, faq.id, keyword);
+          const existingLink = await this.getLinkExists(faqId, faq.id, linkTerm);
           if (!existingLink) {
             links.push({
-              term: keyword,
+              term: linkTerm,
               target_faq_id: faq.id,
-              display_text: keyword
+              display_text: linkTerm,
+              similarity_score: similarity.score
             });
           }
         }
       }
     }
 
-    return links;
+    // Sortiere nach Ähnlichkeits-Score (höchste zuerst)
+    return links.sort((a, b) => (b.similarity_score || 0) - (a.similarity_score || 0));
   }
 
   /**
@@ -139,22 +169,7 @@ export class FAQLinkingService {
     return processedText;
   }
 
-  /**
-   * Extrahiert Schlüsselwörter aus einem FAQ-Titel
-   */
-  private extractKeywords(title: string): string[] {
-    const stopWords = [
-      'was', 'ist', 'eine', 'ein', 'der', 'die', 'das', 'wie', 'wer', 'wo', 'wann', 'warum',
-      'und', 'oder', 'aber', 'auch', 'noch', 'nur', 'so', 'zu', 'von', 'mit', 'bei', 'für'
-    ];
-    
-    return title
-      .toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.includes(word))
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1)); // Capitalize
-  }
+
 
   /**
    * Prüft ob ein Link bereits existiert
@@ -200,6 +215,235 @@ export class FAQLinkingService {
       most_linked_faq: mostLinkedResult.rows[0] || null
     };
   }
+
+  /**
+   * Extrahiert semantische Begriffe aus FAQ-Text mittels AI
+   */
+  private async extractSemanticTerms(answerText: string, currentFaq: any): Promise<string[]> {
+    try {
+      const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Extrahiere die wichtigsten Fachbegriffe und Schlüsselwörter aus dem folgenden Text.
+
+WICHTIGE ANFORDERUNGEN:
+- Fokussiere dich auf technische Begriffe, Prozesse, Standards und Normen der Energiewirtschaft
+- Ignoriere Füllwörter wie "der", "die", "das", "kann", "wird", "haben", "sein"
+- Bevorzuge zusammengesetzte Fachbegriffe (z.B. "Marktkommunikation", "Messstellenbetreiber")
+- Berücksichtige Abkürzungen und Standards (z.B. "BDEW", "EDIFACT", "UTILMD")
+
+FAQ-Titel: ${currentFaq.title}
+FAQ-Beschreibung: ${currentFaq.description}
+FAQ-Kontext: ${currentFaq.context}
+
+Haupttext zur Analyse:
+${answerText}
+
+Gib nur die 5-10 wichtigsten Fachbegriffe zurück, getrennt durch Kommas.
+Beispiel: Marktkommunikation, Netzbetreiber, BDEW, EDIFACT, Messstellenbetreiber, Bilanzkreis, Marktlokation
+
+ANTWORT (nur Begriffe, keine Erklärungen):`;
+
+      const result = await geminiService.generateText(prompt);
+      console.log('Raw semantic terms AI response:', result.substring(0, 100) + '...');
+      
+      // Parse die Antwort und extrahiere die Begriffe
+      return result
+        .split(',')
+        .map(term => term.trim())
+        .filter(term => term.length > 2 && !this.isStopWord(term))
+        .slice(0, 10); // Limitiere auf 10 Begriffe
+        
+    } catch (error) {
+      console.error('Error extracting semantic terms:', error);
+      return this.fallbackKeywordExtraction(answerText + ' ' + currentFaq.title);
+    }
+  }
+
+  /**
+   * Sichere JSON-Parsing mit mehreren Fallback-Strategien
+   */
+  private parseAIJsonResponse(response: string): any {
+    try {
+      // Zuerst mit der utility aus aiResponseUtils versuchen
+      const parsed = safeParseJsonResponse(response);
+      if (parsed) {
+        return parsed;
+      }
+    } catch (error) {
+      console.log('safeParseJsonResponse failed, trying manual parsing');
+    }
+
+    // Manuelle Bereinigung und Parsing
+    // Use the robust safeParseJsonResponse function
+    return safeParseJsonResponse(response);
+  }
+
+  /**
+   * Berechnet semantische Ähnlichkeit zwischen zwei FAQs
+   */
+  private async calculateSemanticSimilarity(currentFaq: any, targetFaq: any, answerText: string): Promise<{
+    score: number;
+    suggestedTerms: string[];
+  }> {
+    try {
+      const prompt = `Du bist ein KI-Experte für die deutsche Energiewirtschaft. Analysiere die thematische Überschneidung zwischen diesen beiden FAQ-Einträgen.
+
+FAQ 1 (Aktuell):
+Titel: ${currentFaq.title}
+Beschreibung: ${currentFaq.description}
+Antwort: ${answerText.substring(0, 800)}${answerText.length > 800 ? '...' : ''}
+
+FAQ 2 (Ziel):
+Titel: ${targetFaq.title}
+Beschreibung: ${targetFaq.description}
+Kontext: ${targetFaq.context || ''}
+
+AUFGABE:
+1. Bewerte die thematische Ähnlichkeit (0.0 = völlig unterschiedlich, 1.0 = sehr ähnlich)
+2. Schlage 2-4 spezifische Fachbegriffe vor, die als Verlinkungsbegriffe geeignet wären
+3. Berücksichtige dabei: Energiewirtschaftliche Prozesse, Normen, Standards, Akteure, Technologien
+
+Bewertungskriterien:
+- Behandeln beide FAQs ähnliche Energiewirtschaftsprozesse? (+0.3)
+- Beziehen sie sich auf dieselben Akteure (Netzbetreiber, MSB, Lieferanten)? (+0.2)
+- Verwenden sie ähnliche Fachbegriffe oder Standards? (+0.3)
+- Haben sie thematische Überschneidungen? (+0.2)
+
+Antworte ausschließlich mit sauberem JSON ohne Markdown-Formatierung oder Code-Blöcke:
+{
+  "similarity_score": 0.0-1.0,
+  "suggested_terms": ["Fachbegriff1", "Fachbegriff2", "Fachbegriff3"],
+  "reason": "Kurze Begründung der Bewertung"
+}
+
+WICHTIG: Keine \`\`\`json oder \`\`\` Blöcke verwenden, nur das reine JSON-Objekt!`;
+
+      const result = await geminiService.generateText(prompt);
+      console.log('Raw semantic similarity AI response:', result.substring(0, 200) + '...');
+      
+      const parsed = this.parseAIJsonResponse(result);
+      
+      if (!parsed) {
+        console.error('Failed to parse semantic similarity response as JSON, using fallback');
+        console.error('Raw response that failed to parse:', result);
+        return this.fallbackSimilarityCalculation(currentFaq, targetFaq, answerText);
+      }
+      
+      return {
+        score: Math.min(Math.max(parsed.similarity_score || 0, 0), 1), // Clamp zwischen 0-1
+        suggestedTerms: Array.isArray(parsed.suggested_terms) ? parsed.suggested_terms : []
+      };
+      
+    } catch (error) {
+      console.error('Error calculating semantic similarity:', error);
+      // Fallback: Einfache Wort-basierte Ähnlichkeit
+      return this.fallbackSimilarityCalculation(currentFaq, targetFaq, answerText);
+    }
+  }
+
+  /**
+   * Findet den besten Begriff für eine Verlinkung
+   */
+  private async findBestLinkTerm(
+    semanticTerms: string[], 
+    targetFaq: any, 
+    answerText: string,
+    suggestedTerms: string[]
+  ): Promise<string | null> {
+    // Kombiniere semantische Begriffe mit AI-Vorschlägen
+    const allTerms = [...new Set([...semanticTerms, ...suggestedTerms])];
+    
+    // Prüfe welche Begriffe tatsächlich im Text vorkommen
+    const candidateTerms = allTerms.filter(term => {
+      const regex = new RegExp(`\\b${this.escapeRegExp(term)}\\b`, 'gi');
+      return regex.test(answerText);
+    });
+
+    if (candidateTerms.length === 0) {
+      // Fallback: Prüfe ob Teile des Ziel-FAQ-Titels im Text vorkommen
+      const titleWords = this.extractMeaningfulWords(targetFaq.title);
+      for (const word of titleWords) {
+        const regex = new RegExp(`\\b${this.escapeRegExp(word)}\\b`, 'gi');
+        if (regex.test(answerText) && word.length > 3) {
+          return word;
+        }
+      }
+      return null;
+    }
+
+    // Wähle den längsten/spezifischsten Begriff
+    return candidateTerms.reduce((best, current) => 
+      current.length > best.length ? current : best
+    );
+  }
+
+  /**
+   * Fallback-Methode für Keyword-Extraktion
+   */
+  private fallbackKeywordExtraction(text: string): string[] {
+    const energyTerms = [
+      'Netzbetreiber', 'Messstellenbetreiber', 'Lieferant', 'Marktkommunikation',
+      'BDEW', 'EDIFACT', 'UTILMD', 'MSCONS', 'APERAK', 'Bilanzkreis',
+      'Marktlokation', 'Messlokation', 'Zählpunkt', 'Sperrung', 'Entsperrung',
+      'Anschlussnutzung', 'Netznutzung', 'Stromzähler', 'Lastgang',
+      'Verbrauchsstelle', 'Erzeugungsanlage', 'Regelenergie', 'Übertragungsnetz'
+    ];
+
+    return energyTerms.filter(term => {
+      const regex = new RegExp(`\\b${term}\\b`, 'gi');
+      return regex.test(text);
+    });
+  }
+
+  /**
+   * Fallback-Ähnlichkeitsberechnung basierend auf gemeinsamen Begriffen
+   */
+  private fallbackSimilarityCalculation(currentFaq: any, targetFaq: any, answerText: string): {
+    score: number;
+    suggestedTerms: string[];
+  } {
+    const currentWords = this.extractMeaningfulWords(
+      `${currentFaq.title} ${currentFaq.description} ${answerText}`
+    );
+    const targetWords = this.extractMeaningfulWords(
+      `${targetFaq.title} ${targetFaq.description} ${targetFaq.context || ''}`
+    );
+
+    const commonWords = currentWords.filter(word => targetWords.includes(word));
+    const score = commonWords.length / Math.max(currentWords.length, targetWords.length, 1);
+
+    return {
+      score: Math.min(score, 1),
+      suggestedTerms: commonWords.slice(0, 3)
+    };
+  }
+
+  /**
+   * Extrahiert bedeutungsvolle Wörter (ohne Stoppwörter)
+   */
+  private extractMeaningfulWords(text: string): string[] {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !this.isStopWord(word))
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1));
+  }
+
+  /**
+   * Erweiterte Stoppwort-Erkennung
+   */
+  private isStopWord(word: string): boolean {
+    const stopWords = [
+      'was', 'ist', 'eine', 'ein', 'der', 'die', 'das', 'wie', 'wer', 'wo', 'wann', 'warum',
+      'und', 'oder', 'aber', 'auch', 'noch', 'nur', 'so', 'zu', 'von', 'mit', 'bei', 'für',
+      'sich', 'werden', 'wird', 'kann', 'könnte', 'soll', 'sollte', 'muss', 'müssen',
+      'haben', 'hat', 'hatte', 'sind', 'war', 'waren', 'sein', 'seine', 'ihrer', 'diesem',
+      'diese', 'dieser', 'dieses', 'alle', 'jeden', 'jeder', 'jede', 'durch', 'über', 'unter',
+      'zwischen', 'während', 'nach', 'vor', 'seit', 'bis', 'ohne', 'gegen', 'damit', 'dabei'
+    ];
+    
+    return stopWords.includes(word.toLowerCase());
+  }
+
 }
 
 export const faqLinkingService = new FAQLinkingService();
