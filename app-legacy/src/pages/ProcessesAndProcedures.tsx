@@ -122,14 +122,18 @@ const ProcessesAndProcedures: React.FC = () => {
 
   // Helper function to check if mermaid code is valid
   const isValidMermaidCode = (code: string): boolean => {
-    if (!code || !code.trim()) return false;
+    if (!code || !code.trim()) {
+      console.log('MermaidValidator: No code provided');
+      return false;
+    }
     
     const cleaned = code
       .replace(/^```mermaid\s*\n?/i, '')
       .replace(/\n?```\s*$/i, '')
       .trim();
     
-    console.log('MermaidValidator: Checking code:', cleaned.substring(0, 100) + '...');
+    console.log('MermaidValidator: Checking code (first 100 chars):', cleaned.substring(0, 100));
+    console.log('MermaidValidator: Full code length:', cleaned.length);
     
     // Basic validation - should start with a mermaid diagram type
     const mermaidTypes = [
@@ -152,12 +156,15 @@ const ProcessesAndProcedures: React.FC = () => {
                           cleaned.includes('subgraph') ||
                           cleaned.includes('participant') ||
                           cleaned.includes('activate') ||
-                          cleaned.includes('note');
+                          cleaned.includes('note') ||
+                          cleaned.includes('[') ||
+                          cleaned.includes('(') ||
+                          cleaned.includes('{');
     
-    console.log('MermaidValidator: Has valid syntax:', hasValidSyntax);
+    console.log('MermaidValidator: Has valid syntax patterns:', hasValidSyntax);
     
-    const isValid = startsWithValidType && hasValidSyntax && cleaned.length > 10;
-    console.log('MermaidValidator: Final result:', isValid);
+    const isValid = startsWithValidType && cleaned.length > 20; // Be less strict about syntax
+    console.log('MermaidValidator: Final validation result:', isValid);
     
     return isValid;
   };
@@ -419,44 +426,62 @@ const ProcessesAndProcedures: React.FC = () => {
                       {process.env.NODE_ENV === 'development' && (
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="caption" color="text.secondary">
-                            Debug - Mermaid Code ({diagram.mermaidCode.length} chars): Valid = {isValidMermaidCode(diagram.mermaidCode) ? 'Yes' : 'No'}
+                            Debug - Mermaid Code ({diagram.mermaidCode?.length || 0} chars): 
+                            Valid = {isValidMermaidCode(diagram.mermaidCode) ? 'Yes' : 'No'}
                           </Typography>
-                          <Typography variant="caption" component="pre" sx={{ 
-                            fontSize: '0.7rem', 
-                            display: 'block', 
-                            maxHeight: 100, 
-                            overflow: 'auto', 
-                            bgcolor: 'grey.100', 
-                            p: 1, 
-                            mt: 1,
-                            border: '1px solid',
-                            borderColor: 'grey.300',
-                            borderRadius: 1
-                          }}>
-                            {diagram.mermaidCode.substring(0, 300)}...
-                          </Typography>
+                          {diagram.mermaidCode && (
+                            <Typography variant="caption" component="pre" sx={{ 
+                              fontSize: '0.7rem', 
+                              display: 'block', 
+                              maxHeight: 100, 
+                              overflow: 'auto', 
+                              bgcolor: 'grey.100', 
+                              p: 1, 
+                              mt: 1,
+                              border: '1px solid',
+                              borderColor: 'grey.300',
+                              borderRadius: 1
+                            }}>
+                              {diagram.mermaidCode.substring(0, 300)}...
+                            </Typography>
+                          )}
                         </Box>
                       )}
 
                       {/* Mermaid Diagram */}
-                      {isValidMermaidCode(diagram.mermaidCode) ? (
-                        <MermaidRenderer
-                          code={diagram.mermaidCode}
-                          title={cleanTitle(diagram.title)}
-                          id={`diagram-${diagram.id}`}
-                          height={400}
-                          onError={(error) => {
-                            console.error(`Mermaid error for ${diagram.title}:`, error);
-                            console.log('Mermaid code:', diagram.mermaidCode);
-                          }}
-                        />
+                      {diagram.mermaidCode && diagram.mermaidCode.trim() ? (
+                        isValidMermaidCode(diagram.mermaidCode) ? (
+                          <Box sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1, bgcolor: 'grey.50' }}>
+                            <Typography variant="caption" color="primary" sx={{ mb: 1, display: 'block' }}>
+                              Mermaid-Diagramm:
+                            </Typography>
+                            <MermaidRenderer
+                              code={diagram.mermaidCode}
+                              title={cleanTitle(diagram.title)}
+                              id={`diagram-${diagram.id}`}
+                              height={400}
+                              onError={(error) => {
+                                console.error(`Mermaid error for ${diagram.title}:`, error);
+                                console.log('Full mermaid code:', diagram.mermaidCode);
+                              }}
+                            />
+                          </Box>
+                        ) : (
+                          <Alert severity="warning" sx={{ mt: 2 }}>
+                            <strong>Mermaid-Code Format-Problem</strong>
+                            <br />
+                            Der Diagramm-Code entspricht nicht dem erwarteten Mermaid-Format.
+                            <br />
+                            <Typography variant="caption" component="pre" sx={{ mt: 1, fontSize: '0.7rem', bgcolor: 'rgba(0,0,0,0.1)', p: 1, borderRadius: 1 }}>
+                              Code Anfang: {diagram.mermaidCode.substring(0, 100)}...
+                            </Typography>
+                          </Alert>
+                        )
                       ) : (
-                        <Alert severity="warning" sx={{ mt: 2 }}>
-                          <strong>Mermaid-Code nicht verfügbar oder ungültig</strong>
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          <strong>Kein Mermaid-Code verfügbar</strong>
                           <br />
-                          {diagram.mermaidCode ? 
-                            'Der Diagramm-Code entspricht nicht dem erwarteten Mermaid-Format.' : 
-                            'Für dieses Diagramm ist kein Mermaid-Code verfügbar.'}
+                          Für dieses Diagramm ist leider kein Mermaid-Code in der Datenbank hinterlegt.
                         </Alert>
                       )}
                     </AccordionDetails>
