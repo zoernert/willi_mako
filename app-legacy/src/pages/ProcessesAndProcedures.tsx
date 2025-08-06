@@ -97,7 +97,25 @@ const ProcessesAndProcedures: React.FC = () => {
     }
     
     // Remove any remaining leading punctuation or whitespace
-    cleaned = cleaned.replace(/^[:\-\s]+/, '').trim();
+    cleaned = cleaned.replace(/^[:\-\s\.\,]+/, '').trim();
+    
+    // If content starts with "Dieses Diagramm visualisiert", extract the meaningful part
+    if (cleaned.toLowerCase().startsWith('dieses diagramm visualisiert')) {
+      const match = cleaned.match(/visualisiert den prozessablauf für den anwendungsfall[:\s]*"([^"]+)"/i);
+      if (match) {
+        cleaned = `**Anwendungsfall:** ${match[1]}\n\n${cleaned}`;
+      }
+    }
+    
+    // Remove duplicate sentences (common in AI-generated content)
+    const sentences = cleaned.split(/\.\s+/);
+    const uniqueSentences = sentences.filter((sentence, index) => {
+      return !sentences.slice(0, index).some(prev => 
+        prev.toLowerCase().includes(sentence.toLowerCase().substring(0, 50)) ||
+        sentence.toLowerCase().includes(prev.toLowerCase().substring(0, 50))
+      );
+    });
+    cleaned = uniqueSentences.join('. ').trim();
     
     return cleaned || 'Keine zusätzlichen Informationen verfügbar.';
   };
@@ -111,9 +129,37 @@ const ProcessesAndProcedures: React.FC = () => {
       .replace(/\n?```\s*$/i, '')
       .trim();
     
+    console.log('MermaidValidator: Checking code:', cleaned.substring(0, 100) + '...');
+    
     // Basic validation - should start with a mermaid diagram type
-    const mermaidTypes = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'];
-    return mermaidTypes.some(type => cleaned.toLowerCase().startsWith(type.toLowerCase()));
+    const mermaidTypes = [
+      'graph', 'flowchart', 'sequenceDiagram', 'sequencediagram',
+      'classDiagram', 'classdiagram', 'erDiagram', 'erdiagram',
+      'journey', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline'
+    ];
+    
+    const startsWithValidType = mermaidTypes.some(type => 
+      cleaned.toLowerCase().startsWith(type.toLowerCase())
+    );
+    
+    console.log('MermaidValidator: Starts with valid type:', startsWithValidType);
+    
+    // Additional check: should contain typical mermaid syntax
+    const hasValidSyntax = cleaned.includes('-->') || 
+                          cleaned.includes('->') || 
+                          cleaned.includes('---') ||
+                          cleaned.includes('::') ||
+                          cleaned.includes('subgraph') ||
+                          cleaned.includes('participant') ||
+                          cleaned.includes('activate') ||
+                          cleaned.includes('note');
+    
+    console.log('MermaidValidator: Has valid syntax:', hasValidSyntax);
+    
+    const isValid = startsWithValidType && hasValidSyntax && cleaned.length > 10;
+    console.log('MermaidValidator: Final result:', isValid);
+    
+    return isValid;
   };
 
   const handleSearch = async () => {
@@ -349,10 +395,23 @@ const ProcessesAndProcedures: React.FC = () => {
                     <AccordionDetails>
                       {/* Cleaned content description */}
                       {cleanContent(diagram.content, diagram.title) !== 'Keine zusätzlichen Informationen verfügbar.' && (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" paragraph>
+                        <Box sx={{ 
+                          mb: 2,
+                          '& p': { mb: 1, fontSize: '0.875rem', color: 'text.secondary' },
+                          '& ul, & ol': { pl: 2, mb: 1 },
+                          '& li': { mb: 0.5, fontSize: '0.875rem', color: 'text.secondary' },
+                          '& h1, & h2, & h3, & h4, & h5, & h6': { 
+                            fontSize: '0.875rem', 
+                            fontWeight: 'bold', 
+                            mb: 1,
+                            color: 'text.secondary'
+                          },
+                          '& strong': { fontWeight: 'bold' },
+                          '& em': { fontStyle: 'italic' }
+                        }}>
+                          <ReactMarkdown>
                             {cleanContent(diagram.content, diagram.title)}
-                          </Typography>
+                          </ReactMarkdown>
                         </Box>
                       )}
                       

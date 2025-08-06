@@ -27,9 +27,11 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({
 
   useEffect(() => {
     // Initialize Mermaid with configuration
+    console.log('MermaidRenderer: Initializing mermaid...');
     mermaid.initialize({
       startOnLoad: false,
       theme: 'default',
+      securityLevel: 'loose', // Allow more flexible rendering
       themeVariables: {
         primaryColor: '#147a50',
         primaryTextColor: '#000000',
@@ -68,12 +70,36 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({
         topAxis: false
       }
     });
+    console.log('MermaidRenderer: Mermaid initialized');
   }, []);
 
   useEffect(() => {
     const renderDiagram = async () => {
-      if (!code || !elementRef.current) {
-        console.log('MermaidRenderer: Missing code or element ref');
+      console.log('MermaidRenderer: Starting render with:', {
+        hasCode: !!code,
+        codeLength: code?.length || 0,
+        hasElementRef: !!elementRef.current,
+        id: id
+      });
+      
+      if (!code || !code.trim()) {
+        console.log('MermaidRenderer: No code provided');
+        setError('Kein Mermaid-Code verfügbar');
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!elementRef.current) {
+        console.log('MermaidRenderer: Element ref not available, waiting...');
+        // Wait a bit and try again
+        setTimeout(() => {
+          if (elementRef.current) {
+            renderDiagram();
+          } else {
+            setError('Element-Referenz nicht verfügbar');
+            setIsLoading(false);
+          }
+        }, 100);
         return;
       }
 
