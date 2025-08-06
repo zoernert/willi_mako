@@ -89,6 +89,14 @@ export const API_ENDPOINTS = {
     register: '/auth/register',
   },
 
+  // Processes
+  processes: {
+    search: '/processes/search',
+    optimize: '/processes/optimize',
+    related: '/processes/related',
+    health: '/processes/health',
+  },
+
   // Teams
   teams: {
     list: '/teams',

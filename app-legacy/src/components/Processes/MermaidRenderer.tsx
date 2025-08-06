@@ -72,7 +72,10 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({
 
   useEffect(() => {
     const renderDiagram = async () => {
-      if (!code || !elementRef.current) return;
+      if (!code || !elementRef.current) {
+        console.log('MermaidRenderer: Missing code or element ref');
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
@@ -84,54 +87,74 @@ const MermaidRenderer: React.FC<MermaidRendererProps> = ({
           .replace(/\n?```\s*$/i, '')
           .trim();
 
+        console.log('MermaidRenderer: Clean code:', cleanCode.substring(0, 100) + '...');
+
         if (!cleanCode) {
           throw new Error('Leerer Mermaid-Code');
         }
 
         // Generate unique ID for this diagram
-        const diagramId = id || `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+        const diagramId = id || `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
         // Clear the container
         elementRef.current.innerHTML = '';
 
-        // Validate and render the diagram
-        const isValid = await mermaid.parse(cleanCode);
-        if (!isValid) {
-          throw new Error('Ungültiger Mermaid-Code');
+        // Validate the diagram syntax first
+        try {
+          const parseResult = await mermaid.parse(cleanCode);
+          console.log('MermaidRenderer: Parse result:', parseResult);
+        } catch (parseError) {
+          console.error('MermaidRenderer: Parse error:', parseError);
+          throw new Error(`Ungültiger Mermaid-Code: ${parseError instanceof Error ? parseError.message : 'Syntax-Fehler'}`);
         }
 
-        const { svg, bindFunctions } = await mermaid.render(diagramId, cleanCode);
+        // Render the diagram
+        const result = await mermaid.render(diagramId, cleanCode);
+        console.log('MermaidRenderer: Render result keys:', Object.keys(result));
+        
+        let svg: string;
+        if (typeof result === 'string') {
+          svg = result;
+        } else {
+          svg = result.svg;
+        }
         
         // Set the SVG content
         elementRef.current.innerHTML = svg;
         setSvgContent(svg);
 
-        // Apply any interactive bindings
-        if (bindFunctions) {
-          bindFunctions(elementRef.current);
+        // Apply any interactive bindings if available
+        if (typeof result === 'object' && result.bindFunctions) {
+          result.bindFunctions(elementRef.current);
         }
 
-        // Apply scaling
-        const svgElement = elementRef.current.querySelector('svg');
-        if (svgElement) {
-          svgElement.style.transform = `scale(${scale})`;
-          svgElement.style.transformOrigin = 'top left';
-          svgElement.style.width = `${100 * scale}%`;
-          svgElement.style.height = 'auto';
-        }
-
+        console.log('MermaidRenderer: Successfully rendered diagram');
         setIsLoading(false);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Fehler beim Rendern des Diagramms';
+        console.error('MermaidRenderer: Full error:', err);
+        console.error('MermaidRenderer: Code that failed:', code);
         setError(errorMessage);
         setIsLoading(false);
         onError?.(errorMessage);
-        console.error('Mermaid rendering error:', err);
       }
     };
 
     renderDiagram();
-  }, [code, id, onError, scale]);
+  }, [code, id, onError]);
+
+  // Separate effect for scaling to avoid re-rendering
+  useEffect(() => {
+    if (elementRef.current) {
+      const svgElement = elementRef.current.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.transform = `scale(${scale})`;
+        svgElement.style.transformOrigin = 'top left';
+        svgElement.style.width = `${100 * scale}%`;
+        svgElement.style.height = 'auto';
+      }
+    }
+  }, [scale]);
 
   const handleDownload = async () => {
     if (!elementRef.current) return;

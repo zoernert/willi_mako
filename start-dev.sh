@@ -67,9 +67,9 @@ echo "   - API (proxied): http://localhost:3003/api/"
 echo "   - Backend (direct, internal): http://localhost:3009/api/"
 echo ""
 
-# Start backend in background
-echo "⏳ Starting backend server..."
-PORT=3009 npx tsx src/server.ts &
+# Start backend in background (ohne nodemon)
+echo "⏳ Starting backend server (ohne file watching)..."
+NODE_ENV=development PORT=3009 npx tsx src/server.ts &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
@@ -103,6 +103,11 @@ echo "✅ Frontend server started successfully (PID: $FRONTEND_PID)"
 echo ""
 echo "🎉 Development environment is ready!"
 echo "📱 Open your browser: http://localhost:3003"
+echo ""
+echo "⚠️  HINWEIS: File watching ist deaktiviert um 'System limit for number of file watchers reached' zu vermeiden."
+echo "   Bei Backend-Änderungen muss der Server manuell neugestartet werden:"
+echo "   Strg+C drücken und dann './start-dev.sh' erneut ausführen"
+echo ""
 
 # Function to clean up background processes
 cleanup() {

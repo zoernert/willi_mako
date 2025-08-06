@@ -1,5 +1,72 @@
 # Change Request: Prozesse und Verfahren - Deep Research Funktion
 
+## Status: ✅ IMPLEMENTIERT mit aktiven Verbesserungen (v2.0)
+
+**Zuletzt aktualisiert:** 6. August 2025
+
+## 🔧 Aktuelle Verbesserungen (v2.0)
+
+### Behobene Probleme
+
+1. **Mermaid-Diagramm Rendering**
+   - ✅ Verbesserte Fehlerbehandlung und Logging
+   - ✅ Getrennte Scale-Effekte zur Vermeidung von Re-Rendering
+   - ✅ Bessere TypeScript-Unterstützung für Mermaid-API
+   - ✅ Erweiterte Debug-Ausgaben für Entwicklung
+
+2. **Content-Bereinigung**
+   - ✅ Entfernung von Markdown-Artefakten (`####`, `[cite: 123]`)
+   - ✅ Bessere Titel-Bereinigung und Duplikat-Vermeidung
+   - ✅ Intelligente Content-Filterung ohne Redundanz
+
+3. **Markdown-Rendering**
+   - ✅ Installation von `react-markdown`
+   - ✅ Proper Markdown-Rendering für KI-Erklärungen
+   - ✅ Formatierte Konversationshistorie
+
+4. **UI/UX Verbesserungen**
+   - ✅ Mermaid-Code Validierung vor Rendering
+   - ✅ Debug-Informationen nur in Development-Modus
+   - ✅ Verbesserte Error-Messages und Fallback-Inhalte
+   - ✅ Erhöhte Diagramm-Höhe für bessere Sichtbarkeit
+
+### Debugging Features
+
+- **Development-Only Debug Panel**: Zeigt Mermaid-Code-Status und Validation
+- **API Health Check**: Teste Backend-Verbindung direkt
+- **Token Validation**: Überprüfe Authentifizierung-Status
+- **Enhanced Logging**: Detaillierte Console-Ausgaben für Troubleshooting
+
+### Geänderte Dateien (v2.0)
+
+```
+app-legacy/src/pages/ProcessesAndProcedures.tsx
+├── + ReactMarkdown Import
+├── + cleanContent() Funktion
+├── + isValidMermaidCode() Validation
+├── + Verbesserte Debug-Funktionen
+└── + Markdown-Rendering für Explanations
+
+app-legacy/src/components/Processes/MermaidRenderer.tsx
+├── + Erweiterte Error-Behandlung
+├── + Getrennte Scale-Effekte
+├── + Bessere TypeScript-Unterstützung
+├── + Debug-Logging
+└── + Robuste Diagram-Validierung
+
+package.json
+└── + react-markdown Dependency
+```
+
+### 🎯 Nächste Optimierungen
+
+1. **Performance-Tests** mit echten Daten
+2. **Export-Funktionalität** finalisieren (PNG/SVG)
+3. **Weitere UI-Optimierungen** basierend auf User-Feedback
+4. **Caching-Strategien** für häufig abgerufene Diagramme
+
+---
+
 ## Übersicht
 Integration einer neuen Basisfunktion "Prozesse und Verfahren" in die Willi-Mako Anwendung, die Deep Research mit Mermaid-Diagrammen ermöglicht.
 
@@ -141,10 +208,39 @@ Integration einer neuen Basisfunktion "Prozesse und Verfahren" in die Willi-Mako
 - ✅ Build-Prozess erfolgreich
 - ✅ TypeScript Kompilierung ohne Fehler  
 - ✅ API-Routen registriert
+- ✅ File Watcher Problem gelöst (siehe FILE_WATCHER_SOLUTIONS.md)
 - 🔄 Runtime-Testing läuft
+
+## Entwicklungsumgebung
+- **Standard:** `npm run dev` (ohne File Watching für Backend)
+- **Alternative:** `npm run dev:limited` (reduziertes File Watching)
+- **Einzeln:** `npm run dev:backend-no-watch` + `npm run dev:next-only`
+- **Dokumentation:** `docs/FILE_WATCHER_SOLUTIONS.md`
 
 ## Nächste Schritte
 1. End-to-End Testing mit echten Mermaid-Daten
-2. Performance-Optimierung für große Diagramme
-3. Erweiterte Export-Optionen (SVG, PDF)
-4. Kollaborative Features (Teilen, Kommentieren)
+2. Authentication-Problem lösen (Token-Check implementiert)
+3. Performance-Optimierung für große Diagramme
+4. Erweiterte Export-Optionen (SVG, PDF)
+5. Kollaborative Features (Teilen, Kommentieren)
+
+## Debugging & Troubleshooting
+
+### Authentication-Probleme
+Die Seite enthält Debug-Buttons zum Testen:
+- **"API Test"** - Testet die Verbindung zur `/api/processes/health` Route
+- **"Token Check"** - Überprüft, ob ein Token im localStorage vorhanden ist
+
+### Häufige Probleme
+1. **401 Unauthorized:** Benutzer ist nicht angemeldet oder Token abgelaufen
+2. **404 Not Found:** API-Route ist nicht deployed oder Server läuft nicht
+3. **Token fehlt:** Benutzer muss sich über `/app/login` anmelden
+
+### Logs überprüfen
+```bash
+# Backend-Logs
+tail -f /path/to/server.log
+
+# Browser Console
+F12 → Console → ProcessesAndProcedures Logs
+```

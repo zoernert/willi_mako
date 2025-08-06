@@ -25,7 +25,9 @@ import {
   Refresh as RefreshIcon,
   AccountTree as ProcessIcon,
 } from '@mui/icons-material';
+import ReactMarkdown from 'react-markdown';
 import MermaidRenderer from '../components/Processes/MermaidRenderer';
+import ProcessService, { ProcessSearchResult, ConversationMessage } from '../services/processService';
 
 interface MermaidDiagram {
   id: string;
@@ -35,22 +37,84 @@ interface MermaidDiagram {
   score: number;
 }
 
-interface ProcessSearchResult {
-  diagrams: MermaidDiagram[];
-  textualExplanation: string;
-  processSteps: string[];
-}
+// Use interfaces from ProcessService instead of redefining
+// Remove these local interfaces as they're imported from ProcessService
 
 const ProcessesAndProcedures: React.FC = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ProcessSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [conversationHistory, setConversationHistory] = useState<Array<{
-    type: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-  }>>([]);
+  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+
+  // Debug: Check if token is available
+  useEffect(() => {
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    console.log('ProcessesAndProcedures - Token check:', token ? 'Token found' : 'No token found');
+    if (!token) {
+      setError('Kein Authentifizierungs-Token gefunden. Bitte melden Sie sich erneut an.');
+    }
+  }, []);
+
+  // Test API connection
+  const testApiConnection = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const healthCheck = await ProcessService.checkHealth();
+      console.log('API Health Check:', healthCheck);
+      setError(`API Test erfolgreich: ${healthCheck.status} (${healthCheck.timestamp})`);
+    } catch (err) {
+      console.error('API Test failed:', err);
+      setError(`API Test fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to clean diagram titles
+  const cleanTitle = (title: string): string => {
+    return title
+      .replace(/^#+\s*/, '') // Remove markdown headers (###, ####)
+      .replace(/\[cite:\s*\d+(?:,\s*\d+)*\]/g, '') // Remove citation markers
+      .replace(/^\d+\.\d+\s+/, '') // Remove numbering like "1.1 "
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+
+  // Helper function to clean content and remove redundant title repetition
+  const cleanContent = (content: string, title: string): string => {
+    let cleaned = content
+      .replace(/^#+\s*/, '') // Remove markdown headers
+      .replace(/\[cite:\s*\d+(?:,\s*\d+)*\]/g, '') // Remove citation markers
+      .replace(/^\d+\.\d+\s+/, '') // Remove numbering
+      .trim();
+    
+    // Remove title repetition at the beginning of content
+    const cleanedTitle = cleanTitle(title);
+    if (cleaned.toLowerCase().startsWith(cleanedTitle.toLowerCase())) {
+      cleaned = cleaned.substring(cleanedTitle.length).trim();
+    }
+    
+    // Remove any remaining leading punctuation or whitespace
+    cleaned = cleaned.replace(/^[:\-\s]+/, '').trim();
+    
+    return cleaned || 'Keine zusätzlichen Informationen verfügbar.';
+  };
+
+  // Helper function to check if mermaid code is valid
+  const isValidMermaidCode = (code: string): boolean => {
+    if (!code || !code.trim()) return false;
+    
+    const cleaned = code
+      .replace(/^```mermaid\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+    
+    // Basic validation - should start with a mermaid diagram type
+    const mermaidTypes = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitgraph'];
+    return mermaidTypes.some(type => cleaned.toLowerCase().startsWith(type.toLowerCase()));
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -60,34 +124,24 @@ const ProcessesAndProcedures: React.FC = () => {
 
     try {
       // Add user message to conversation
-      const userMessage = {
-        type: 'user' as const,
+      const userMessage: ConversationMessage = {
+        type: 'user',
         content: query,
         timestamp: new Date(),
       };
       setConversationHistory(prev => [...prev, userMessage]);
 
-      const response = await fetch('/api/processes/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          query,
-          conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
-        }),
+      // Use ProcessService instead of direct fetch
+      const data = await ProcessService.searchProcesses({
+        query,
+        conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
       });
 
-      if (!response.ok) {
-        throw new Error('Fehler bei der Prozesssuche');
-      }
-
-      const data = await response.json();
       setResults(data);
 
       // Add assistant response to conversation
-      const assistantMessage = {
-        type: 'assistant' as const,
+      const assistantMessage: ConversationMessage = {
+        type: 'assistant',
         content: data.textualExplanation,
         timestamp: new Date(),
       };
@@ -95,7 +149,20 @@ const ProcessesAndProcedures: React.FC = () => {
 
       setQuery('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ein unbekannter Fehler ist aufgetreten');
+      console.error('ProcessSearch Error:', err);
+      
+      // Handle specific error types
+      if (err instanceof Error) {
+        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+          setError('Authentifizierung fehlgeschlagen. Bitte melden Sie sich erneut an.');
+        } else if (err.message.includes('404') || err.message.includes('Not Found')) {
+          setError('API-Endpunkt nicht gefunden. Möglicherweise ist der Server nicht verfügbar.');
+        } else {
+          setError(`Fehler bei der Prozesssuche: ${err.message}`);
+        }
+      } else {
+        setError('Ein unbekannter Fehler ist aufgetreten');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +200,7 @@ const ProcessesAndProcedures: React.FC = () => {
 
       {/* Search Input */}
       <Paper sx={{ p: 3, mb: 4 }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end', mb: 2 }}>
           <TextField
             fullWidth
             multiline
@@ -162,6 +229,29 @@ const ProcessesAndProcedures: React.FC = () => {
               </IconButton>
             </Tooltip>
           )}
+        </Box>
+        
+        {/* Debug/Test Buttons */}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={testApiConnection}
+            disabled={loading}
+          >
+            API Test
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => {
+              const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+              console.log('Current token:', token);
+              alert(token ? 'Token gefunden (siehe Console)' : 'Kein Token gefunden');
+            }}
+          >
+            Token Check
+          </Button>
         </Box>
       </Paper>
 
@@ -193,9 +283,26 @@ const ProcessesAndProcedures: React.FC = () => {
                 <Typography variant="caption" display="block" sx={{ mb: 1, opacity: 0.8 }}>
                   {message.type === 'user' ? 'Sie' : 'KI-Assistent'} • {message.timestamp.toLocaleTimeString()}
                 </Typography>
-                <Typography variant="body2">
-                  {message.content}
-                </Typography>
+                {message.type === 'user' ? (
+                  <Typography variant="body2">
+                    {message.content}
+                  </Typography>
+                ) : (
+                  <Box sx={{ 
+                    '& p': { mb: 1, fontSize: '0.875rem' },
+                    '& ul, & ol': { pl: 2, mb: 1 },
+                    '& li': { mb: 0.5, fontSize: '0.875rem' },
+                    '& h1, & h2, & h3, & h4, & h5, & h6': { 
+                      fontSize: '0.875rem', 
+                      fontWeight: 'bold', 
+                      mb: 1 
+                    }
+                  }}>
+                    <ReactMarkdown>
+                      {message.content}
+                    </ReactMarkdown>
+                  </Box>
+                )}
               </Box>
             ))}
           </Box>
@@ -219,7 +326,7 @@ const ProcessesAndProcedures: React.FC = () => {
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
                         <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                          {diagram.title}
+                          {cleanTitle(diagram.title)}
                         </Typography>
                         <Chip 
                           label={`${Math.round(diagram.score * 100)}% Relevanz`} 
@@ -240,20 +347,59 @@ const ProcessesAndProcedures: React.FC = () => {
                       </Box>
                     </AccordionSummary>
                     <AccordionDetails>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary" paragraph>
-                          {diagram.content}
-                        </Typography>
-                      </Box>
+                      {/* Cleaned content description */}
+                      {cleanContent(diagram.content, diagram.title) !== 'Keine zusätzlichen Informationen verfügbar.' && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" paragraph>
+                            {cleanContent(diagram.content, diagram.title)}
+                          </Typography>
+                        </Box>
+                      )}
                       
+                      {/* Debug Mermaid Code - only show if needed */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Debug - Mermaid Code ({diagram.mermaidCode.length} chars): Valid = {isValidMermaidCode(diagram.mermaidCode) ? 'Yes' : 'No'}
+                          </Typography>
+                          <Typography variant="caption" component="pre" sx={{ 
+                            fontSize: '0.7rem', 
+                            display: 'block', 
+                            maxHeight: 100, 
+                            overflow: 'auto', 
+                            bgcolor: 'grey.100', 
+                            p: 1, 
+                            mt: 1,
+                            border: '1px solid',
+                            borderColor: 'grey.300',
+                            borderRadius: 1
+                          }}>
+                            {diagram.mermaidCode.substring(0, 300)}...
+                          </Typography>
+                        </Box>
+                      )}
+
                       {/* Mermaid Diagram */}
-                      <MermaidRenderer
-                        code={diagram.mermaidCode}
-                        title={diagram.title}
-                        id={`diagram-${diagram.id}`}
-                        height={300}
-                        onError={(error) => console.error(`Mermaid error for ${diagram.title}:`, error)}
-                      />
+                      {isValidMermaidCode(diagram.mermaidCode) ? (
+                        <MermaidRenderer
+                          code={diagram.mermaidCode}
+                          title={cleanTitle(diagram.title)}
+                          id={`diagram-${diagram.id}`}
+                          height={400}
+                          onError={(error) => {
+                            console.error(`Mermaid error for ${diagram.title}:`, error);
+                            console.log('Mermaid code:', diagram.mermaidCode);
+                          }}
+                        />
+                      ) : (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                          <strong>Mermaid-Code nicht verfügbar oder ungültig</strong>
+                          <br />
+                          {diagram.mermaidCode ? 
+                            'Der Diagramm-Code entspricht nicht dem erwarteten Mermaid-Format.' : 
+                            'Für dieses Diagramm ist kein Mermaid-Code verfügbar.'}
+                        </Alert>
+                      )}
                     </AccordionDetails>
                   </Accordion>
                 ))}
@@ -274,9 +420,20 @@ const ProcessesAndProcedures: React.FC = () => {
                     <Typography variant="subtitle2" gutterBottom color="primary">
                       Erklärung
                     </Typography>
-                    <Typography variant="body2" paragraph>
-                      {results.textualExplanation}
-                    </Typography>
+                    <Box sx={{ 
+                      '& p': { mb: 1 },
+                      '& ul, & ol': { pl: 2, mb: 1 },
+                      '& li': { mb: 0.5 },
+                      '& h1, & h2, & h3, & h4, & h5, & h6': { 
+                        fontSize: 'inherit', 
+                        fontWeight: 'bold', 
+                        mb: 1 
+                      }
+                    }}>
+                      <ReactMarkdown>
+                        {results.textualExplanation}
+                      </ReactMarkdown>
+                    </Box>
                   </Box>
                 )}
 
