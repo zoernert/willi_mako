@@ -26,13 +26,13 @@ export class ProcessService {
   /**
    * Searches for Mermaid diagrams in the Qdrant collection based on a natural language query
    */
-  static async searchProcesses(
-    query: string, 
-    conversationHistory: ConversationMessage[] = []
-  ): Promise<ProcessSearchResult> {
+  static async searchProcesses(request: {
+    query: string;
+    conversationHistory?: ConversationMessage[];
+  }): Promise<ProcessSearchResult> {
     try {
       // Enhanced query with context from conversation
-      const contextualQuery = this.buildContextualQuery(query, conversationHistory);
+      const contextualQuery = this.buildContextualQuery(request.query, request.conversationHistory || []);
       
       // Search for Mermaid diagrams in Qdrant
       const searchResults = await QdrantService.searchByText(contextualQuery, 10, 0.3);
@@ -52,7 +52,7 @@ export class ProcessService {
       }));
 
       // Generate process explanation using AI
-      const textualExplanation = await this.generateProcessExplanation(query, diagrams);
+      const textualExplanation = await this.generateProcessExplanation(request.query, diagrams);
       
       // Extract process steps
       const processSteps = await this.extractProcessSteps(diagrams);
@@ -69,10 +69,136 @@ export class ProcessService {
   }
 
   /**
+   * Searches for processes with automatic Mermaid code improvement
+   */
+  static async searchProcessesWithImprovement(request: {
+    query: string;
+    conversationHistory: ConversationMessage[];
+  }): Promise<ProcessSearchResult> {
+    try {
+      console.log('ProcessService: Starting search with Mermaid improvement');
+      
+      // First get the basic results
+      const basicResults = await this.searchProcesses(request);
+      
+      // Improve each Mermaid code
+      const improvedDiagrams = await Promise.all(
+        basicResults.diagrams.map(async (diagram) => {
+          if (diagram.mermaidCode && diagram.mermaidCode.trim()) {
+            console.log(`ProcessService: Improving Mermaid code for diagram: ${diagram.title}`);
+            const improvedCode = await this.improveMermaidCode(diagram.mermaidCode, diagram.title);
+            return {
+              ...diagram,
+              mermaidCode: improvedCode
+            };
+          }
+          return diagram;
+        })
+      );
+
+      console.log(`ProcessService: Improved ${improvedDiagrams.length} diagrams`);
+
+      return {
+        ...basicResults,
+        diagrams: improvedDiagrams
+      };
+    } catch (error) {
+      console.error('Error in ProcessService.searchProcessesWithImprovement:', error);
+      throw new Error('Fehler bei der verbesserten Prozesssuche. Bitte versuchen Sie es erneut.');
+    }
+  }
+
+  /**
+   * Improves Mermaid code quality using LLM before rendering
+   * Fixes syntax errors, improves readability, and ensures compatibility
+   */
+  static async improveMermaidCode(originalCode: string, context?: string): Promise<string> {
+    if (!originalCode || !originalCode.trim()) {
+      return originalCode;
+    }
+
+    try {
+      console.log('ProcessService: Starting Mermaid code improvement');
+      console.log('Original code length:', originalCode.length);
+
+      // First, clean the code to remove obvious issues
+      const cleanedCode = this.cleanMermaidCode(originalCode);
+      console.log('ProcessService: Code cleaned, length:', cleanedCode.length);
+
+      // Validate the cleaned code
+      const validation = this.validateMermaidCode(cleanedCode);
+      if (validation.isValid) {
+        console.log('ProcessService: Code is valid after cleaning, skipping LLM improvement');
+        return cleanedCode;
+      } else {
+        console.log('ProcessService: Code still has issues after cleaning:', validation.errors);
+      }
+
+      const prompt = `
+Du bist ein Experte für Mermaid-Diagramm-Syntax. Analysiere den folgenden Mermaid-Code und verbessere ihn:
+
+ORIGINAL CODE:
+\`\`\`mermaid
+${cleanedCode}
+\`\`\`
+
+KONTEXT: ${context || 'Allgemeiner Prozess'}
+
+BEKANNTE PROBLEME:
+${validation.errors.map(error => `- ${error}`).join('\n')}
+
+AUFGABEN:
+1. Korrigiere alle Syntax-Fehler
+2. Entferne HTML-Tags wie <br>, <div>, etc.
+3. Verbessere die Lesbarkeit
+4. Stelle sicher, dass der Code valid Mermaid-Syntax ist
+5. Behalte die ursprüngliche Bedeutung und Struktur bei
+6. Verwende deutsche Labels und Beschreibungen
+7. Optimiere für bessere Darstellung
+
+REGELN:
+- Verwende nur gültige Mermaid-Syntax (graph TD, flowchart, sequenceDiagram, etc.)
+- Keine HTML-Tags in Node-Labels
+- Keine broken syntax wie "---" am Ende
+- Verwende klare, deutsche Bezeichnungen
+- Strukturiere Subgraphs logisch
+- Nutze passende Pfeil-Typen und Node-Formen
+- Escape special characters in node labels properly
+
+Gib nur den verbesserten Mermaid-Code zurück, ohne zusätzliche Erklärungen oder Markdown-Blöcke:`;
+
+      const improvedCode = await geminiService.generateText(prompt);
+      
+      if (improvedCode && improvedCode.trim()) {
+        // Clean the response to ensure it's just the code
+        const finalCode = this.cleanMermaidCode(improvedCode);
+        
+        // Validate the improved code
+        const finalValidation = this.validateMermaidCode(finalCode);
+        if (finalValidation.isValid) {
+          console.log('ProcessService: Mermaid code successfully improved by LLM');
+          console.log('Original length:', originalCode.length);
+          console.log('Final length:', finalCode.length);
+          return finalCode;
+        } else {
+          console.warn('ProcessService: LLM improved code still has issues:', finalValidation.errors);
+          return cleanedCode; // Return cleaned version instead of invalid improved version
+        }
+      } else {
+        console.warn('ProcessService: LLM did not return improved code, using cleaned version');
+        return cleanedCode;
+      }
+    } catch (error) {
+      console.error('Error improving Mermaid code with LLM:', error);
+      return this.cleanMermaidCode(originalCode); // Fallback to cleaned original
+    }
+  }
+
+  /**
    * Builds a contextual query by incorporating conversation history
    */
-  private static buildContextualQuery(query: string, conversationHistory: ConversationMessage[]): string {
-    if (conversationHistory.length === 0) {
+  private static buildContextualQuery(query: string, conversationHistory: ConversationMessage[] = []): string {
+    if (!conversationHistory || conversationHistory.length === 0) {
       return query;
     }
 
@@ -166,21 +292,125 @@ Format: Einfache Liste ohne Nummerierung.`;
   }
 
   /**
+   * Health check for the service
+   */
+  static async checkHealth(): Promise<{ status: string; timestamp: string }> {
+    return {
+      status: 'OK',
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Validates Mermaid code syntax
+   */
+  static validateMermaidCode(code: string): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    if (!code || !code.trim()) {
+      errors.push('Leerer Mermaid-Code');
+      return { isValid: false, errors };
+    }
+
+    const cleaned = code
+      .replace(/^```mermaid\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+
+    // Check for valid diagram types
+    const validTypes = [
+      'graph', 'flowchart', 'sequenceDiagram', 'sequencediagram',
+      'classDiagram', 'classdiagram', 'erDiagram', 'erdiagram',
+      'journey', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline'
+    ];
+    
+    const startsWithValidType = validTypes.some(type => 
+      cleaned.toLowerCase().startsWith(type.toLowerCase())
+    );
+    
+    if (!startsWithValidType) {
+      errors.push('Code startet nicht mit einem gültigen Mermaid-Diagramm-Typ');
+    }
+
+    // Check for problematic HTML tags that break Mermaid parsing
+    if (cleaned.includes('<br>') || cleaned.includes('<BR>')) {
+      errors.push('HTML Line-Break Tags (<br>) sind in Mermaid nicht erlaubt');
+    }
+
+    if (cleaned.includes('<div>') || cleaned.includes('<span>')) {
+      errors.push('HTML Block-Tags sind in Mermaid nicht erlaubt');
+    }
+
+    // Check for common syntax issues
+    if (cleaned.includes('---') && !cleaned.includes('sequenceDiagram')) {
+      errors.push('Ungültige "---" Syntax (außerhalb von Sequence Diagrams)');
+    }
+
+    if (cleaned.length < 10) {
+      errors.push('Code zu kurz für ein valides Mermaid-Diagramm');
+    }
+
+    // Check for unmatched brackets (including different types)
+    const openSquare = (cleaned.match(/\[/g) || []).length;
+    const closeSquare = (cleaned.match(/\]/g) || []).length;
+    const openParen = (cleaned.match(/\(/g) || []).length;
+    const closeParen = (cleaned.match(/\)/g) || []).length;
+    const openBrace = (cleaned.match(/\{/g) || []).length;
+    const closeBrace = (cleaned.match(/\}/g) || []).length;
+
+    if (openSquare !== closeSquare) {
+      errors.push('Unausgeglichene eckige Klammern [] im Code');
+    }
+    if (openParen !== closeParen) {
+      errors.push('Unausgeglichene runde Klammern () im Code');
+    }
+    if (openBrace !== closeBrace) {
+      errors.push('Unausgeglichene geschweifte Klammern {} im Code');
+    }
+
+    // Check for empty node definitions
+    if (cleaned.match(/\[\s*\]/)) {
+      errors.push('Leere Node-Definitionen [] gefunden');
+    }
+
+    // Check for invalid characters in node IDs
+    const nodeIdRegex = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
+    const lines = cleaned.split('\n');
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine && !trimmedLine.startsWith('//') && !trimmedLine.startsWith('%')) {
+        // Check if line contains invalid syntax patterns
+        if (trimmedLine.includes('>>') && !trimmedLine.includes('-->')) {
+          errors.push(`Zeile ${index + 1}: Ungültige Pfeil-Syntax ">>" gefunden`);
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
    * Optimizes an existing process description based on user feedback
    */
-  static async optimizeProcess(
-    originalQuery: string,
-    optimizationRequest: string,
-    currentDiagrams: MermaidDiagram[]
-  ): Promise<ProcessSearchResult> {
+  static async optimizeProcess(request: {
+    originalQuery: string;
+    optimizationRequest: string;
+    currentDiagrams?: MermaidDiagram[];
+  }): Promise<ProcessSearchResult> {
     const combinedQuery = `
-    Ursprüngliche Anfrage: ${originalQuery}
-    Optimierungsanfrage: ${optimizationRequest}
+    Ursprüngliche Anfrage: ${request.originalQuery}
+    Optimierungsanfrage: ${request.optimizationRequest}
     
     Verbessere oder erweitere die Prozesssuche basierend auf der Optimierungsanfrage.
     `;
 
-    return this.searchProcesses(combinedQuery);
+    return this.searchProcesses({
+      query: combinedQuery,
+      conversationHistory: []
+    });
   }
 
   /**
@@ -211,6 +441,51 @@ Format: Einfache Liste ohne Nummerierung.`;
       return [];
     }
   }
+
+  /**
+   * Cleans and fixes common Mermaid code issues
+   */
+  static cleanMermaidCode(code: string): string {
+    if (!code || !code.trim()) {
+      return code;
+    }
+
+    let cleaned = code
+      .replace(/^```mermaid\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+
+    // Remove problematic HTML tags
+    cleaned = cleaned
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<div[^>]*>/gi, ' ')
+      .replace(/<\/div>/gi, ' ')
+      .replace(/<span[^>]*>/gi, ' ')
+      .replace(/<\/span>/gi, ' ')
+      .replace(/<p[^>]*>/gi, ' ')
+      .replace(/<\/p>/gi, ' ');
+
+    // Clean up whitespace and line breaks
+    cleaned = cleaned
+      .replace(/\s+/g, ' ')
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+
+    // Fix common syntax issues
+    cleaned = cleaned
+      .replace(/\[\s+/g, '[')
+      .replace(/\s+\]/g, ']')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/\{\s+/g, '{')
+      .replace(/\s+\}/g, '}');
+
+    // Ensure proper line breaks for readability
+    const lines = cleaned.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    return lines.join('\n');
+  }
 }
 
 export default ProcessService;
+export type { MermaidDiagram, ProcessSearchResult, ConversationMessage };

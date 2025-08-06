@@ -135,6 +135,13 @@ const ProcessesAndProcedures: React.FC = () => {
     console.log('MermaidValidator: Checking code (first 100 chars):', cleaned.substring(0, 100));
     console.log('MermaidValidator: Full code length:', cleaned.length);
     
+    // Check for problematic HTML tags
+    if (cleaned.includes('<br>') || cleaned.includes('<BR>') || 
+        cleaned.includes('<div>') || cleaned.includes('<span>')) {
+      console.log('MermaidValidator: Contains problematic HTML tags');
+      return false;
+    }
+    
     // Basic validation - should start with a mermaid diagram type
     const mermaidTypes = [
       'graph', 'flowchart', 'sequenceDiagram', 'sequencediagram',
@@ -147,6 +154,20 @@ const ProcessesAndProcedures: React.FC = () => {
     );
     
     console.log('MermaidValidator: Starts with valid type:', startsWithValidType);
+    
+    // Check for unmatched brackets
+    const openSquare = (cleaned.match(/\[/g) || []).length;
+    const closeSquare = (cleaned.match(/\]/g) || []).length;
+    const openParen = (cleaned.match(/\(/g) || []).length;
+    const closeParen = (cleaned.match(/\)/g) || []).length;
+    const openBrace = (cleaned.match(/\{/g) || []).length;
+    const closeBrace = (cleaned.match(/\}/g) || []).length;
+
+    const balancedBrackets = (openSquare === closeSquare) && 
+                           (openParen === closeParen) && 
+                           (openBrace === closeBrace);
+    
+    console.log('MermaidValidator: Balanced brackets:', balancedBrackets);
     
     // Additional check: should contain typical mermaid syntax
     const hasValidSyntax = cleaned.includes('-->') || 
@@ -163,7 +184,7 @@ const ProcessesAndProcedures: React.FC = () => {
     
     console.log('MermaidValidator: Has valid syntax patterns:', hasValidSyntax);
     
-    const isValid = startsWithValidType && cleaned.length > 20; // Be less strict about syntax
+    const isValid = startsWithValidType && cleaned.length > 20 && balancedBrackets;
     console.log('MermaidValidator: Final validation result:', isValid);
     
     return isValid;
@@ -184,8 +205,9 @@ const ProcessesAndProcedures: React.FC = () => {
       };
       setConversationHistory(prev => [...prev, userMessage]);
 
-      // Use ProcessService instead of direct fetch
-      const data = await ProcessService.searchProcesses({
+      // Use ProcessService with automatic Mermaid improvement
+      console.log('ProcessesAndProcedures: Starting search with Mermaid improvement');
+      const data = await ProcessService.searchProcessesWithImprovement({
         query,
         conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
       });
@@ -428,6 +450,7 @@ const ProcessesAndProcedures: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">
                             Debug - Mermaid Code ({diagram.mermaidCode?.length || 0} chars): 
                             Valid = {isValidMermaidCode(diagram.mermaidCode) ? 'Yes' : 'No'}
+                            {diagram.mermaidCode?.includes('Improved by LLM') && ' | LLM Enhanced'}
                           </Typography>
                           {diagram.mermaidCode && (
                             <Typography variant="caption" component="pre" sx={{ 

@@ -95,6 +95,8 @@ export const API_ENDPOINTS = {
     optimize: '/processes/optimize',
     related: '/processes/related',
     health: '/processes/health',
+    improveMermaid: '/processes/improve-mermaid',
+    validateMermaid: '/processes/validate-mermaid',
   },
 
   // Teams
