@@ -159,26 +159,13 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             >
               7 Tage kostenlos testen
             </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              sx={{ 
-                px: 6,
-                py: 2,
-                fontSize: '1.1rem',
-                fontWeight: 600,
-                borderColor: 'rgba(255,255,255,0.7)',
-                color: 'white',
-                '&:hover': { 
-                  borderColor: 'white',
-                  bgcolor: 'rgba(255,255,255,0.1)'
-                },
-                borderRadius: 3
-              }}
-              startIcon={<PlayIcon />}
-            >
-              System-Demo ansehen
-            </Button>
+            <Typography variant="body2" sx={{ 
+              color: 'rgba(255,255,255,0.8)',
+              textAlign: 'center',
+              mt: 2
+            }}>
+              <strong>Endet automatisch.</strong> Keine Kreditkarte, kein Abo, keine Verpflichtung.
+            </Typography>
           </Box>
         </Box>
       </Paper>
