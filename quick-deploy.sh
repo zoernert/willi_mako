@@ -7,22 +7,34 @@ set -e
 
 echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
-# 1. Backend Build erstellen (vergessen!)
-echo "🔍 Teste Build-Reihenfolge..."
 
-# 1. Legacy App Build
+# Teste die Build-Pipeline lokal:
+echo "🔍 Erstelle alle lokalen Builds..."
+
+# 1. Backend Build (zuerst, da es am wahrscheinlichsten fehlschlägt)
+echo "📦 Baue Backend..."
+npm run build:backend
+ls -la dist/
+
+# 2. Legacy App Build
+echo "📦 Baue Legacy App..."
 cd app-legacy && npm run build && cd ..
 ls -la app-legacy/build/
 
-# 2. Next.js Pipeline  
+# 3. Next.js Pipeline  
+echo "📦 Baue Next.js App..."
+
+# .env.production für Next.js Build erstellen
+echo "🔧 Erstelle .env.production für Next.js Build..."
+cat > .env.production << 'ENVEOF'
+NODE_ENV=production
+API_URL=http://127.0.0.1:4101
+ENVEOF
+
 npm run build:legacy
 npm run move:legacy
-npm run build:next
+NODE_ENV=production npm run build:next
 ls -la .next/
-
-# 3. Backend Build
-npm run build
-ls -la dist/
 
 echo "✅ Alle Builds erfolgreich"
 
@@ -58,56 +70,45 @@ check_ssh_connection() {
     fi
 }
 
-# Lokale Builds erstellen
-build_application() {
-    echo "🔨 Erstelle lokale Builds..."
+# Validiere dass alle Builds vorhanden sind
+validate_builds() {
+    echo "� Validiere vorhandene Builds..."
     
-    # Legacy App Build
-    echo "📦 Baue Legacy App..."
-    cd app-legacy
-    npm install
+    # Prüfe Backend Build
+    if [ ! -f "dist/server.js" ]; then
+        echo "❌ Backend Build nicht gefunden - dist/server.js fehlt"
+        exit 1
+    fi
+    echo "✅ Backend Build gefunden"
     
-    # Build für Produktion mit /app basename (verwendet relative API-Pfade)
-    echo "🌐 Baue Legacy App für Produktion mit /app basename und relativen API-Pfaden..."
-    npm run build
-    
-    # Prüfe ob Legacy App Build erfolgreich war
-    if [ ! -f "build/index.html" ]; then
-        echo "❌ Legacy App Build fehlgeschlagen - build/index.html nicht gefunden"
+    # Prüfe Legacy App Build
+    if [ ! -f "app-legacy/build/index.html" ]; then
+        echo "❌ Legacy App Build nicht gefunden - app-legacy/build/index.html fehlt"
         exit 1
     fi
     
     # Prüfe ob die index.html die korrekten /app Pfade hat
-    if ! grep -q 'src="/app/static/js/' build/index.html; then
+    if ! grep -q 'src="/app/static/js/' app-legacy/build/index.html; then
         echo "❌ Legacy App Build hat falsche Pfade - /app basename nicht korrekt"
         exit 1
     fi
+    echo "✅ Legacy App Build mit korrekten /app Pfaden gefunden"
     
-    echo "✅ Legacy App Build erfolgreich mit korrekten /app Pfaden"
-    cd ..
+    # Prüfe Next.js Build
+    if [ ! -d ".next" ]; then
+        echo "❌ Next.js Build nicht gefunden - .next Verzeichnis fehlt"
+        exit 1
+    fi
+    echo "✅ Next.js Build gefunden"
     
-    # Next.js Build
-    echo "📦 Baue Next.js App..."
-    npm install
-    npm run build:legacy
-    npm run move:legacy
+    # Prüfe ob Legacy App in public/app kopiert wurde
+    if [ ! -f "public/app/index.html" ]; then
+        echo "❌ Legacy App nicht in public/app gefunden"
+        exit 1
+    fi
+    echo "✅ Legacy App in public/app kopiert"
     
-    # .env.production für Next.js Build erstellen
-    echo "🔧 Erstelle .env.production für Next.js Build..."
-    cat > .env.production << 'ENVEOF'
-NODE_ENV=production
-API_URL=http://127.0.0.1:4101
-ENVEOF
-    
-    # Next.js Build mit Produktionsumgebung
-    echo "🌐 Baue Next.js für Produktion (NODE_ENV=production)..."
-    NODE_ENV=production npm run build:next
-    
-    # Server Build
-    echo "📦 Baue Server..."
-    npm run build
-    
-    echo "✅ Builds erfolgreich erstellt"
+    echo "✅ Alle Builds validiert"
 }
 
 # Deployment-Dateien vorbereiten
@@ -217,6 +218,12 @@ EOF
     # .env.production kopieren (für Next.js Runtime)
     if [ -f ".env.production" ]; then
         cp .env.production "$TEMP_DIR/"
+    fi
+    
+    # lib Verzeichnis kopieren (für Backend-Abhängigkeiten)
+    if [ -d "lib" ]; then
+        cp -r lib "$TEMP_DIR/"
+        echo "✅ lib Verzeichnis kopiert"
     fi
     
     # server.js für Production kopieren (Next.js-kompatibel)
@@ -439,7 +446,7 @@ main() {
     echo ""
     
     check_ssh_connection
-    build_application
+    validate_builds
     
     # Deployment-Dateien vorbereiten
     prepare_deployment

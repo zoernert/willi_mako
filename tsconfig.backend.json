@@ -14,7 +14,12 @@
     "declarationMap": true,
     "sourceMap": true,
     "allowJs": true,
-    "noEmitOnError": false
+    "noEmitOnError": false,
+    "baseUrl": "./",
+    "paths": {
+      "../lib/*": ["./lib/*"],
+      "../../lib/*": ["./lib/*"]
+    }
   },
   "include": [
     "src/server.ts",
