@@ -81,14 +81,14 @@ validate_builds() {
     fi
     echo "✅ Backend Build gefunden"
     
-    # Prüfe Legacy App Build
-    if [ ! -f "app-legacy/build/index.html" ]; then
-        echo "❌ Legacy App Build nicht gefunden - app-legacy/build/index.html fehlt"
+    # Prüfe Legacy App Build (wurde nach public/app verschoben)
+    if [ ! -f "public/app/index.html" ]; then
+        echo "❌ Legacy App Build nicht gefunden - public/app/index.html fehlt"
         exit 1
     fi
     
     # Prüfe ob die index.html die korrekten /app Pfade hat
-    if ! grep -q 'src="/app/static/js/' app-legacy/build/index.html; then
+    if ! grep -q 'src="/app/static/js/' public/app/index.html; then
         echo "❌ Legacy App Build hat falsche Pfade - /app basename nicht korrekt"
         exit 1
     fi
