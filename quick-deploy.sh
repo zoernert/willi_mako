@@ -8,7 +8,23 @@ set -e
 echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
 # 1. Backend Build erstellen (vergessen!)
+echo "🔍 Teste Build-Reihenfolge..."
+
+# 1. Legacy App Build
+cd app-legacy && npm run build && cd ..
+ls -la app-legacy/build/
+
+# 2. Next.js Pipeline  
+npm run build:legacy
+npm run move:legacy
+npm run build:next
+ls -la .next/
+
+# 3. Backend Build
 npm run build
+ls -la dist/
+
+echo "✅ Alle Builds erfolgreich"
 
 
 # Konfiguration
