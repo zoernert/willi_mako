@@ -170,23 +170,13 @@ export class ProcessService {
   }
 
   /**
-   * Search processes with automatic Mermaid code improvement
+   * Search processes with automatic improvement (now redundant as all data is in structured format)
+   * This method now simply calls the regular search as improvement is no longer needed.
    */
   static async searchProcessesWithImprovement(request: ProcessSearchRequest): Promise<ProcessSearchResult> {
-    try {
-      console.log('ProcessService: Calling searchProcessesWithImprovement');
-      const response = await apiClient.post<ProcessSearchResult>(
-        `${API_ENDPOINTS.processes.search}/with-improvement`,
-        request
-      );
-      console.log('ProcessService: Received improved search results');
-      return response;
-    } catch (error) {
-      console.error('Error searching processes with improvement:', error);
-      // Fallback to regular search if improvement fails
-      console.log('ProcessService: Falling back to regular search');
-      return this.searchProcesses(request);
-    }
+    console.log('ProcessService: Using regular search (improvement no longer needed with structured data)');
+    // Since all data is now in structured format, no improvement is needed
+    return this.searchProcesses(request);
   }
 }
 

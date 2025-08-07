@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, createRef } from 'react';
 import {
   Box,
   Typography,
@@ -26,7 +26,7 @@ import {
   AccountTree as ProcessIcon,
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
-import MermaidRenderer from '../components/Processes/MermaidRenderer';
+import MermaidRenderer, { MermaidRendererHandles } from '../components/Processes/MermaidRenderer';
 import ProcessService, { ProcessSearchResult, ConversationMessage } from '../services/processService';
 
 interface MermaidDiagram {
@@ -35,6 +35,10 @@ interface MermaidDiagram {
   content: string;
   mermaidCode: string;
   score: number;
+  structuredData?: {
+    process_steps: Array<{ id: string; label: string; shape?: string }>;
+    connections: Array<{ from: string; to: string; label?: string }>;
+  };
 }
 
 // Use interfaces from ProcessService instead of redefining
@@ -46,6 +50,7 @@ const ProcessesAndProcedures: React.FC = () => {
   const [results, setResults] = useState<ProcessSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const mermaidRefs = useRef<React.RefObject<MermaidRendererHandles>[]>([]);
 
   // Debug: Check if token is available
   useEffect(() => {
@@ -56,21 +61,14 @@ const ProcessesAndProcedures: React.FC = () => {
     }
   }, []);
 
-  // Test API connection
-  const testApiConnection = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const healthCheck = await ProcessService.checkHealth();
-      console.log('API Health Check:', healthCheck);
-      setError(`API Test erfolgreich: ${healthCheck.status} (${healthCheck.timestamp})`);
-    } catch (err) {
-      console.error('API Test failed:', err);
-      setError(`API Test fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
-    } finally {
-      setLoading(false);
+  // When results change, create refs for each diagram
+  useEffect(() => {
+    if (results?.diagrams) {
+      mermaidRefs.current = results.diagrams.map(
+        (_, i) => mermaidRefs.current[i] ?? createRef<MermaidRendererHandles>()
+      );
     }
-  };
+  }, [results?.diagrams]);
 
   // Helper function to clean diagram titles
   const cleanTitle = (title: string): string => {
@@ -120,6 +118,22 @@ const ProcessesAndProcedures: React.FC = () => {
     return cleaned || 'Keine zusätzlichen Informationen verfügbar.';
   };
 
+  // Helper function to clean mermaid code on the frontend before rendering
+  const cleanMermaidCodeForFrontend = (code: string): string => {
+    if (!code) return '';
+    // Replace <br> tags with newlines, as they are problematic for Mermaid rendering
+    let cleanedCode = code.replace(/<br\s*\/?>/gi, '\n');
+    
+    // Fix common arrow syntax issues by removing spaces around arrows
+    cleanedCode = cleanedCode.replace(/--\s+>/g, '-->');
+    cleanedCode = cleanedCode.replace(/-\s+->/g, '->');
+    
+    // Fix for labeled arrows with spaces, e.g., '-- text -- >'
+    cleanedCode = cleanedCode.replace(/--\s*([^->\n]+?)\s*--\s*>/g, '-- $1 -->');
+
+    return cleanedCode;
+  };
+
   // Helper function to check if mermaid code is valid
   const isValidMermaidCode = (code: string): boolean => {
     if (!code || !code.trim()) {
@@ -142,17 +156,44 @@ const ProcessesAndProcedures: React.FC = () => {
       return false;
     }
     
+    // Check for broken arrow syntax
+    if (cleaned.includes('-- >') || cleaned.includes('- ->')) {
+      console.log('MermaidValidator: Contains broken arrow syntax');
+      return false;
+    }
+    
+    // This check is now considered too strict, as the backend service
+    // is responsible for cleaning and fixing arrow syntax. Removing it
+    // prevents the frontend from rejecting valid, backend-corrected code.
+    /*
+    const incompleteLabeledArrows = cleaned.match(/--\s*[^->\n]+?\s*--(?!\s*>)/g);
+    if (incompleteLabeledArrows) {
+      console.log('MermaidValidator: Contains incomplete labeled arrows:', incompleteLabeledArrows);
+      return false;
+    }
+    */
+
+    // Check for duplicate node definitions (a common source of parse errors)
+    const nodeDefinitions = cleaned.match(/^\s*([a-zA-Z0-9_]+)\s*(\[|\(|\{|>)/gm);
+    if (nodeDefinitions) {
+      const nodeIds = nodeDefinitions.map(def => def.trim().split(/[\(\[\{>]/)[0]);
+      const uniqueNodeIds = new Set(nodeIds);
+      if (nodeIds.length !== uniqueNodeIds.size) {
+        const duplicates = nodeIds.filter((id, index) => nodeIds.indexOf(id) !== index);
+        console.log('MermaidValidator: Contains duplicate node definitions:', duplicates);
+        return false;
+      }
+    }
+    
     // Basic validation - should start with a mermaid diagram type
     const mermaidTypes = [
       'graph', 'flowchart', 'sequenceDiagram', 'sequencediagram',
       'classDiagram', 'classdiagram', 'erDiagram', 'erdiagram',
       'journey', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline'
     ];
-    
     const startsWithValidType = mermaidTypes.some(type => 
       cleaned.toLowerCase().startsWith(type.toLowerCase())
     );
-    
     console.log('MermaidValidator: Starts with valid type:', startsWithValidType);
     
     // Check for unmatched brackets
@@ -162,11 +203,9 @@ const ProcessesAndProcedures: React.FC = () => {
     const closeParen = (cleaned.match(/\)/g) || []).length;
     const openBrace = (cleaned.match(/\{/g) || []).length;
     const closeBrace = (cleaned.match(/\}/g) || []).length;
-
     const balancedBrackets = (openSquare === closeSquare) && 
                            (openParen === closeParen) && 
                            (openBrace === closeBrace);
-    
     console.log('MermaidValidator: Balanced brackets:', balancedBrackets);
     
     // Additional check: should contain typical mermaid syntax
@@ -181,13 +220,121 @@ const ProcessesAndProcedures: React.FC = () => {
                           cleaned.includes('[') ||
                           cleaned.includes('(') ||
                           cleaned.includes('{');
-    
     console.log('MermaidValidator: Has valid syntax patterns:', hasValidSyntax);
     
-    const isValid = startsWithValidType && cleaned.length > 20 && balancedBrackets;
+    const isValid = startsWithValidType && 
+                    cleaned.length > 15 && // Reduced min length slightly for very simple diagrams
+                    balancedBrackets && 
+                    hasValidSyntax; // Make syntax pattern check mandatory
+
     console.log('MermaidValidator: Final validation result:', isValid);
     
     return isValid;
+  };
+
+  // Frontend function to generate Mermaid code from structured data
+  // This ensures 100% compatibility with frontend validation
+  const generateMermaidCodeInFrontend = (processData: {
+    process_steps: Array<{ id: string; label: string; shape?: string }>;
+    connections: Array<{ from: string; to: string; label?: string }>;
+  }): string => {
+    if (!processData || !processData.process_steps || !processData.connections) {
+      console.warn('Frontend: Invalid process data provided');
+      return 'graph TD\n    error[Ungültige Prozessdaten]';
+    }
+
+    const { process_steps, connections } = processData;
+    let mermaidCode = 'graph TD\n';
+
+    // 1. Define all nodes with sanitized labels and proper bracket handling
+    process_steps.forEach(step => {
+      // Thoroughly clean labels to prevent bracket issues
+      const label = step.label
+        .replace(/["\[\]{}()]/g, '')  // Remove all bracket types and quotes
+        .replace(/[|]/g, '')          // Remove pipes
+        .replace(/\s+/g, ' ')         // Normalize whitespace
+        .trim();
+      
+      // Ensure we have a valid label
+      const safeLabel = label || 'Schritt';
+      
+      let nodeDefinition;
+      switch (step.shape) {
+        case 'diamond':
+          nodeDefinition = `${step.id}{${safeLabel}}`;
+          break;
+        case 'round':
+          nodeDefinition = `${step.id}(${safeLabel})`;
+          break;
+        default:
+          nodeDefinition = `${step.id}[${safeLabel}]`;
+          break;
+      }
+      mermaidCode += `    ${nodeDefinition}\n`;
+    });
+
+    mermaidCode += '\n';
+
+    // 2. Define connections with ultra-clean syntax
+    connections.forEach(conn => {
+      if (conn.label && conn.label.trim()) {
+        // Clean label thoroughly - no special characters at all
+        const label = conn.label
+          .replace(/["\[\]{}()|]/g, '')  // Remove all problematic characters
+          .replace(/\s+/g, ' ')          // Normalize whitespace
+          .trim();
+        
+        if (label) {
+          // Use the cleanest possible syntax: A --text--> B
+          mermaidCode += `    ${conn.from} --${label}--> ${conn.to}\n`;
+        } else {
+          mermaidCode += `    ${conn.from} --> ${conn.to}\n`;
+        }
+      } else {
+        mermaidCode += `    ${conn.from} --> ${conn.to}\n`;
+      }
+    });
+
+    const result = mermaidCode.trim();
+    console.log('Frontend: Generated Mermaid code:', result.substring(0, 200) + '...');
+    return result;
+  };
+
+  // Process diagrams received from backend to ensure clean Mermaid code
+  const processSearchResults = (data: ProcessSearchResult): ProcessSearchResult => {
+    const processedDiagrams = data.diagrams.map(diagram => {
+      // If we have structured data, regenerate the Mermaid code in the frontend
+      if ((diagram as any).structuredData) {
+        console.log('Frontend: Using structured data to generate clean Mermaid code for:', diagram.title);
+        const frontendGeneratedCode = generateMermaidCodeInFrontend((diagram as any).structuredData);
+        return {
+          ...diagram,
+          mermaidCode: frontendGeneratedCode
+        };
+      }
+      
+      // Otherwise, clean any problematic syntax from backend-generated code
+      if (diagram.mermaidCode.includes('-- ') && diagram.mermaidCode.includes(' -->')) {
+        console.log('Frontend: Cleaning backend-generated Mermaid code for:', diagram.title);
+        const cleanedCode = diagram.mermaidCode
+          .replace(/--\s*\|([^|]+)\|\s*-->/g, '--$1-->')  // Remove pipes from labeled arrows
+          .replace(/--\s*"([^"]+)"\s*-->/g, '--$1-->')    // Remove quotes from labeled arrows
+          .replace(/--\s+/g, '--')                         // Remove extra spaces after --
+          .replace(/\s+-->/g, '-->')                       // Remove extra spaces before -->
+          .trim();
+        
+        return {
+          ...diagram,
+          mermaidCode: cleanedCode
+        };
+      }
+      return diagram;
+    });
+
+    return {
+      ...data,
+      diagrams: processedDiagrams
+    };
   };
 
   const handleSearch = async () => {
@@ -212,7 +359,9 @@ const ProcessesAndProcedures: React.FC = () => {
         conversationHistory: conversationHistory.slice(-5) // Last 5 messages for context
       });
 
-      setResults(data);
+      // Process the results to ensure clean Mermaid code
+      const processedResults = processSearchResults(data);
+      setResults(processedResults);
 
       // Add assistant response to conversation
       const assistantMessage: ConversationMessage = {
@@ -250,9 +399,9 @@ const ProcessesAndProcedures: React.FC = () => {
     }
   };
 
-  const exportDiagram = (diagram: MermaidDiagram) => {
-    // TODO: Implement diagram export functionality
-    console.log('Exporting diagram:', diagram.title);
+  const exportDiagram = (diagramIndex: number) => {
+    console.log(`Triggering export for diagram index: ${diagramIndex}`);
+    mermaidRefs.current[diagramIndex]?.current?.export();
   };
 
   const clearConversation = () => {
@@ -305,29 +454,6 @@ const ProcessesAndProcedures: React.FC = () => {
             </Tooltip>
           )}
         </Box>
-        
-        {/* Debug/Test Buttons */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={testApiConnection}
-            disabled={loading}
-          >
-            API Test
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-              console.log('Current token:', token);
-              alert(token ? 'Token gefunden (siehe Console)' : 'Kein Token gefunden');
-            }}
-          >
-            Token Check
-          </Button>
-        </Box>
       </Paper>
 
       {/* Error Display */}
@@ -337,49 +463,34 @@ const ProcessesAndProcedures: React.FC = () => {
         </Alert>
       )}
 
-      {/* Conversation History */}
+      {/* Process Requirements (User Input History) */}
       {conversationHistory.length > 0 && (
         <Paper sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
-            Konversationsverlauf
+            Prozess Anforderungen
           </Typography>
-          <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-            {conversationHistory.map((message, index) => (
-              <Box
-                key={index}
-                sx={{
-                  mb: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: message.type === 'user' ? 'primary.light' : 'grey.100',
-                  color: message.type === 'user' ? 'primary.contrastText' : 'text.primary',
-                }}
-              >
-                <Typography variant="caption" display="block" sx={{ mb: 1, opacity: 0.8 }}>
-                  {message.type === 'user' ? 'Sie' : 'KI-Assistent'} • {message.timestamp.toLocaleTimeString()}
-                </Typography>
-                {message.type === 'user' ? (
+          <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+            {conversationHistory
+              .filter(message => message.type === 'user') // Only show user requirements
+              .map((message, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: 'primary.light',
+                    color: 'primary.contrastText',
+                  }}
+                >
+                  <Typography variant="caption" display="block" sx={{ mb: 1, opacity: 0.8 }}>
+                    Anforderung • {message.timestamp.toLocaleTimeString()}
+                  </Typography>
                   <Typography variant="body2">
                     {message.content}
                   </Typography>
-                ) : (
-                  <Box sx={{ 
-                    '& p': { mb: 1, fontSize: '0.875rem' },
-                    '& ul, & ol': { pl: 2, mb: 1 },
-                    '& li': { mb: 0.5, fontSize: '0.875rem' },
-                    '& h1, & h2, & h3, & h4, & h5, & h6': { 
-                      fontSize: '0.875rem', 
-                      fontWeight: 'bold', 
-                      mb: 1 
-                    }
-                  }}>
-                    <ReactMarkdown>
-                      {message.content}
-                    </ReactMarkdown>
-                  </Box>
-                )}
-              </Box>
-            ))}
+                </Box>
+              ))}
           </Box>
         </Paper>
       )}
@@ -387,7 +498,7 @@ const ProcessesAndProcedures: React.FC = () => {
       {/* Results Display */}
       {results && (
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
-          {/* Mermaid Diagrams */}
+          {/* Mermaid Diagrams - Left Column */}
           {results.diagrams && results.diagrams.length > 0 && (
             <Box sx={{ flex: 1 }}>
               <Paper sx={{ p: 3 }}>
@@ -396,7 +507,11 @@ const ProcessesAndProcedures: React.FC = () => {
                   <Chip label={`${results.diagrams.length} gefunden`} size="small" color="primary" />
                 </Typography>
                 
-                {results.diagrams.map((diagram, index) => (
+                {results.diagrams.map((diagram, index) => {
+                  // Clean mermaid code once before validation and rendering
+                  const cleanedCode = cleanMermaidCodeForFrontend(diagram.mermaidCode);
+
+                  return (
                   <Accordion key={diagram.id} defaultExpanded={index === 0}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
@@ -413,7 +528,7 @@ const ProcessesAndProcedures: React.FC = () => {
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              exportDiagram(diagram);
+                              exportDiagram(index);
                             }}
                           >
                             <DownloadIcon />
@@ -444,63 +559,38 @@ const ProcessesAndProcedures: React.FC = () => {
                         </Box>
                       )}
                       
-                      {/* Debug Mermaid Code - only show if needed */}
-                      {process.env.NODE_ENV === 'development' && (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Debug - Mermaid Code ({diagram.mermaidCode?.length || 0} chars): 
-                            Valid = {isValidMermaidCode(diagram.mermaidCode) ? 'Yes' : 'No'}
-                            {diagram.mermaidCode?.includes('Improved by LLM') && ' | LLM Enhanced'}
-                          </Typography>
-                          {diagram.mermaidCode && (
-                            <Typography variant="caption" component="pre" sx={{ 
-                              fontSize: '0.7rem', 
-                              display: 'block', 
-                              maxHeight: 100, 
-                              overflow: 'auto', 
-                              bgcolor: 'grey.100', 
-                              p: 1, 
-                              mt: 1,
-                              border: '1px solid',
-                              borderColor: 'grey.300',
-                              borderRadius: 1
-                            }}>
-                              {diagram.mermaidCode.substring(0, 300)}...
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-
                       {/* Mermaid Diagram */}
-                      {diagram.mermaidCode && diagram.mermaidCode.trim() ? (
-                        isValidMermaidCode(diagram.mermaidCode) ? (
+                      {diagram.mermaidCode && diagram.mermaidCode.trim() ? (() => {
+                        const isValid = isValidMermaidCode(cleanedCode);
+                        
+                        // ALWAYS render MermaidRenderer - let it handle errors internally
+                        return (
                           <Box sx={{ border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1, bgcolor: 'grey.50' }}>
                             <Typography variant="caption" color="primary" sx={{ mb: 1, display: 'block' }}>
                               Mermaid-Diagramm:
                             </Typography>
                             <MermaidRenderer
-                              code={diagram.mermaidCode}
+                              ref={mermaidRefs.current[index]}
+                              code={cleanedCode}
+                              diagramId={`diagram-${diagram.id}`}
                               title={cleanTitle(diagram.title)}
-                              id={`diagram-${diagram.id}`}
-                              height={400}
                               onError={(error) => {
                                 console.error(`Mermaid error for ${diagram.title}:`, error);
-                                console.log('Full mermaid code:', diagram.mermaidCode);
+                                console.log('Full (cleaned) mermaid code:', cleanedCode);
                               }}
                             />
+                            
+                            {/* Show validation warning if needed, but don't prevent rendering */}
+                            {!isValid && (
+                              <Alert severity="warning" sx={{ mt: 1 }}>
+                                <Typography variant="body2">
+                                  <strong>Hinweis:</strong> Das Diagramm könnte Darstellungsprobleme haben.
+                                </Typography>
+                              </Alert>
+                            )}
                           </Box>
-                        ) : (
-                          <Alert severity="warning" sx={{ mt: 2 }}>
-                            <strong>Mermaid-Code Format-Problem</strong>
-                            <br />
-                            Der Diagramm-Code entspricht nicht dem erwarteten Mermaid-Format.
-                            <br />
-                            <Typography variant="caption" component="pre" sx={{ mt: 1, fontSize: '0.7rem', bgcolor: 'rgba(0,0,0,0.1)', p: 1, borderRadius: 1 }}>
-                              Code Anfang: {diagram.mermaidCode.substring(0, 100)}...
-                            </Typography>
-                          </Alert>
-                        )
-                      ) : (
+                        );
+                      })() : (
                         <Alert severity="info" sx={{ mt: 2 }}>
                           <strong>Kein Mermaid-Code verfügbar</strong>
                           <br />
@@ -509,12 +599,13 @@ const ProcessesAndProcedures: React.FC = () => {
                       )}
                     </AccordionDetails>
                   </Accordion>
-                ))}
+                  );
+                })}
               </Paper>
             </Box>
           )}
 
-          {/* Process Information */}
+          {/* Process Analysis - Right Column */}
           <Box sx={{ minWidth: { lg: 400 } }}>
             <Card>
               <CardContent>
@@ -525,7 +616,7 @@ const ProcessesAndProcedures: React.FC = () => {
                 {results.textualExplanation && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle2" gutterBottom color="primary">
-                      Erklärung
+                      KI-Analyse
                     </Typography>
                     <Box sx={{ 
                       '& p': { mb: 1 },
@@ -547,7 +638,7 @@ const ProcessesAndProcedures: React.FC = () => {
                 {results.processSteps && results.processSteps.length > 0 && (
                   <Box>
                     <Typography variant="subtitle2" gutterBottom color="primary">
-                      Wichtige Prozessschritte
+                      Wichtige Erkenntnisse
                     </Typography>
                     <Box component="ul" sx={{ pl: 2, m: 0 }}>
                       {results.processSteps.map((step, index) => (

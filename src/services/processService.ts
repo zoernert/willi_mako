@@ -7,6 +7,10 @@ interface MermaidDiagram {
   content: string;
   mermaidCode: string;
   score: number;
+  structuredData?: {
+    process_steps: Array<{ id: string; label: string; shape?: string }>;
+    connections: Array<{ from: string; to: string; label?: string }>;
+  };
 }
 
 interface ProcessSearchResult {
@@ -23,6 +27,130 @@ interface ConversationMessage {
 
 export class ProcessService {
   
+  /**
+   * Generates structured process data from diagram metadata using LLM
+   * This is a fallback for cases where migration is incomplete or data is malformed
+   */
+  static async generateStructuredDataFromMetadata(metadata: {
+    id: string;
+    title: string;
+    content: string;
+    mermaid_code?: string;
+  }): Promise<{ process_steps: Array<{ id: string; label: string; shape?: string }>; connections: Array<{ from: string; to: string; label?: string }> }> {
+    try {
+      console.log(`🔄 Generating structured data for diagram: ${metadata.title} (ID: ${metadata.id})`);
+      
+      // Prepare context for the LLM
+      const contextInfo = [
+        `Titel: ${metadata.title}`,
+        `Beschreibung: ${metadata.content}`,
+        metadata.mermaid_code ? `Alter Mermaid-Code: ${metadata.mermaid_code}` : ''
+      ].filter(Boolean).join('\n');
+
+      const prompt = `Du bist ein Experte für Geschäftsprozesse in der Energiewirtschaft. Analysiere die folgenden Informationen über einen Prozess und erstelle daraus strukturierte JSON-Daten.
+
+PROZESS-INFORMATIONEN:
+${contextInfo}
+
+AUFGABE:
+Erstelle eine strukturierte JSON-Repräsentation dieses Prozesses mit folgender Struktur:
+
+{
+  "process_steps": [
+    {"id": "eindeutige_id", "label": "Beschreibung des Schritts", "shape": "rectangle|diamond|round"}
+  ],
+  "connections": [
+    {"from": "start_id", "to": "end_id", "label": "optional: Beschriftung"}
+  ]
+}
+
+REGELN:
+1. Verwende kurze, alphanumerische IDs ohne Leerzeichen (z.B. "step1", "decision_a", "end")
+2. Die Labels sollen verständlich und auf Deutsch sein
+3. Verwende "diamond" für Entscheidungen, "round" für Start/End, "rectangle" (oder weglassen) für normale Schritte
+4. Erstelle mindestens 3-5 Schritte für einen vollständigen Prozess
+5. Jeder Schritt sollte logisch mit dem nächsten verbunden sein
+6. Wenn möglich, identifiziere Entscheidungspunkte und alternative Pfade
+
+WICHTIG: Gib nur das JSON zurück, keine Erklärungen oder Markdown-Formatierung.
+
+Beispiel-Output:
+{
+  "process_steps": [
+    {"id": "start", "label": "Prozess startet", "shape": "round"},
+    {"id": "check", "label": "Prüfung erforderlich?", "shape": "diamond"},
+    {"id": "approve", "label": "Genehmigung erteilen"},
+    {"id": "reject", "label": "Antrag ablehnen"},
+    {"id": "end", "label": "Prozess beendet", "shape": "round"}
+  ],
+  "connections": [
+    {"from": "start", "to": "check"},
+    {"from": "check", "to": "approve", "label": "Ja"},
+    {"from": "check", "to": "reject", "label": "Nein"},
+    {"from": "approve", "to": "end"},
+    {"from": "reject", "to": "end"}
+  ]
+}`;
+
+      const response = await geminiService.generateText(prompt);
+      
+      if (response && response.trim()) {
+        try {
+          // Clean the response to ensure it's valid JSON
+          const cleanedResponse = response
+            .replace(/^```json\s*\n?/i, '')
+            .replace(/\n?```\s*$/i, '')
+            .trim();
+          
+          const parsedData = JSON.parse(cleanedResponse);
+          
+          // Validate the structure
+          if (parsedData.process_steps && Array.isArray(parsedData.process_steps) &&
+              parsedData.connections && Array.isArray(parsedData.connections)) {
+            
+            // Basic validation of required fields
+            const validSteps = parsedData.process_steps.every((step: any) => 
+              step.id && step.label && typeof step.id === 'string' && typeof step.label === 'string'
+            );
+            
+            const validConnections = parsedData.connections.every((conn: any) => 
+              conn.from && conn.to && typeof conn.from === 'string' && typeof conn.to === 'string'
+            );
+            
+            if (validSteps && validConnections) {
+              console.log(`✅ Successfully generated structured data for diagram: ${metadata.title}`);
+              return parsedData;
+            } else {
+              console.warn(`❌ Generated data validation failed for diagram: ${metadata.title}`);
+            }
+          } else {
+            console.warn(`❌ Generated data has invalid structure for diagram: ${metadata.title}`);
+          }
+        } catch (parseError) {
+          console.warn(`❌ Failed to parse LLM response as JSON for diagram: ${metadata.title}`, parseError);
+        }
+      } else {
+        console.warn(`❌ LLM returned empty response for diagram: ${metadata.title}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error generating structured data for diagram: ${metadata.title}`, error);
+    }
+    
+    // Fallback: Create a simple default structure
+    console.log(`🔧 Using fallback structure for diagram: ${metadata.title}`);
+    return {
+      process_steps: [
+        { id: "start", label: metadata.title || "Prozess", shape: "round" },
+        { id: "info", label: "Details siehe Beschreibung" },
+        { id: "end", label: "Prozess beendet", shape: "round" }
+      ],
+      connections: [
+        { from: "start", to: "info" },
+        { from: "info", to: "end" }
+      ]
+    };
+  }
+
   /**
    * Searches for Mermaid diagrams in the Qdrant collection based on a natural language query
    */
@@ -42,14 +170,61 @@ export class ProcessService {
         result.payload?.type === 'mermaid_diagram'
       );
 
-      // Transform results to our interface
-      const diagrams: MermaidDiagram[] = mermaidResults.map((result: any, index: number) => ({
-        id: result.id?.toString() || `diagram_${index}`,
-        title: result.payload?.context_text || `Prozessdiagramm ${index + 1}`,
-        content: result.payload?.content || 'Keine Beschreibung verfügbar',
-        mermaidCode: result.payload?.mermaid_code || '',
-        score: result.score || 0,
-      }));
+      // Transform results to our interface using the new structured data
+      const diagrams: MermaidDiagram[] = await Promise.all(
+        mermaidResults.map(async (result: any, index: number) => {
+          let mermaidCode = 'graph TD\n    error[Keine Diagrammdaten gefunden];';
+
+          // First priority: Use the new structured process_data
+          if (result.payload?.process_data && typeof result.payload.process_data === 'object') {
+            mermaidCode = this.generateMermaidFromStructuredData(result.payload.process_data);
+            return {
+              id: result.id?.toString() || `diagram_${index}`,
+              title: result.payload?.context_text || `Prozessdiagramm ${index + 1}`,
+              content: result.payload?.content || 'Keine Beschreibung verfügbar',
+              mermaidCode: mermaidCode,
+              score: result.score || 0,
+              structuredData: result.payload.process_data, // Include structured data for frontend
+            };
+          } else {
+            // Fallback: Generate structured data using LLM
+            console.warn(`Migration incomplete or data malformed: No process_data found for diagram ID: ${result.id}`);
+            console.log(`🔄 Attempting to generate structured data using LLM for diagram: ${result.payload?.context_text || result.id}`);
+            
+            try {
+              const generatedData = await this.generateStructuredDataFromMetadata({
+                id: result.id?.toString() || `diagram_${index}`,
+                title: result.payload?.context_text || `Prozessdiagramm ${index + 1}`,
+                content: result.payload?.content || 'Keine Beschreibung verfügbar',
+                mermaid_code: result.payload?.mermaid_code || undefined
+              });
+              
+              mermaidCode = this.generateMermaidFromStructuredData(generatedData);
+              console.log(`✅ Successfully generated diagram from LLM for ID: ${result.id}`);
+              
+              return {
+                id: result.id?.toString() || `diagram_${index}`,
+                title: result.payload?.context_text || `Prozessdiagramm ${index + 1}`,
+                content: result.payload?.content || 'Keine Beschreibung verfügbar',
+                mermaidCode: mermaidCode,
+                score: result.score || 0,
+                structuredData: generatedData, // Include generated structured data for frontend
+              };
+            } catch (error) {
+              console.error(`❌ Failed to generate structured data for diagram ID: ${result.id}`, error);
+              mermaidCode = 'graph TD\n    error[Fehler beim Generieren der Diagrammdaten];';
+              
+              return {
+                id: result.id?.toString() || `diagram_${index}`,
+                title: result.payload?.context_text || `Prozessdiagramm ${index + 1}`,
+                content: result.payload?.content || 'Keine Beschreibung verfügbar',
+                mermaidCode: mermaidCode,
+                score: result.score || 0,
+              };
+            }
+          }
+        })
+      );
 
       // Generate process explanation using AI
       const textualExplanation = await this.generateProcessExplanation(request.query, diagrams);
@@ -69,129 +244,59 @@ export class ProcessService {
   }
 
   /**
-   * Searches for processes with automatic Mermaid code improvement
+   * Generates a Mermaid diagram string from structured process data.
+   * @param processData - The structured data with nodes and connections.
+   * @returns A string containing the full Mermaid diagram code.
    */
-  static async searchProcessesWithImprovement(request: {
-    query: string;
-    conversationHistory: ConversationMessage[];
-  }): Promise<ProcessSearchResult> {
-    try {
-      console.log('ProcessService: Starting search with Mermaid improvement');
-      
-      // First get the basic results
-      const basicResults = await this.searchProcesses(request);
-      
-      // Improve each Mermaid code
-      const improvedDiagrams = await Promise.all(
-        basicResults.diagrams.map(async (diagram) => {
-          if (diagram.mermaidCode && diagram.mermaidCode.trim()) {
-            console.log(`ProcessService: Improving Mermaid code for diagram: ${diagram.title}`);
-            const improvedCode = await this.improveMermaidCode(diagram.mermaidCode, diagram.title);
-            return {
-              ...diagram,
-              mermaidCode: improvedCode
-            };
-          }
-          return diagram;
-        })
-      );
-
-      console.log(`ProcessService: Improved ${improvedDiagrams.length} diagrams`);
-
-      return {
-        ...basicResults,
-        diagrams: improvedDiagrams
-      };
-    } catch (error) {
-      console.error('Error in ProcessService.searchProcessesWithImprovement:', error);
-      throw new Error('Fehler bei der verbesserten Prozesssuche. Bitte versuchen Sie es erneut.');
-    }
-  }
-
-  /**
-   * Improves Mermaid code quality using LLM before rendering
-   * Fixes syntax errors, improves readability, and ensures compatibility
-   */
-  static async improveMermaidCode(originalCode: string, context?: string): Promise<string> {
-    if (!originalCode || !originalCode.trim()) {
-      return originalCode;
+  static generateMermaidFromStructuredData(processData: {
+    process_steps: Array<{ id: string; label: string; shape?: string }>;
+    connections: Array<{ from: string; to: string; label?: string }>;
+  }): string {
+    if (!processData || !processData.process_steps || !processData.connections) {
+      console.warn('generateMermaidFromStructuredData: Invalid or incomplete process data provided.');
+      return 'graph TD\n    error[Ungültige Prozessdaten];';
     }
 
-    try {
-      console.log('ProcessService: Starting Mermaid code improvement');
-      console.log('Original code length:', originalCode.length);
+    const { process_steps, connections } = processData;
+    let mermaidCode = 'graph TD\n';
 
-      // First, clean the code to remove obvious issues
-      const cleanedCode = this.cleanMermaidCode(originalCode);
-      console.log('ProcessService: Code cleaned, length:', cleanedCode.length);
-
-      // Validate the cleaned code
-      const validation = this.validateMermaidCode(cleanedCode);
-      if (validation.isValid) {
-        console.log('ProcessService: Code is valid after cleaning, skipping LLM improvement');
-        return cleanedCode;
-      } else {
-        console.log('ProcessService: Code still has issues after cleaning:', validation.errors);
+    // 1. Define all nodes (process steps)
+    if (process_steps.length === 0) {
+      return 'graph TD\n    info[Keine Prozessschritte definiert];';
+    }
+    
+    process_steps.forEach(step => {
+      // Sanitize label text for use in Mermaid string
+      const label = step.label.replace(/"/g, '#quot;');
+      let nodeDefinition;
+      switch (step.shape) {
+        case 'diamond':
+          nodeDefinition = `${step.id}{"${label}"}`;
+          break;
+        case 'round':
+          nodeDefinition = `${step.id}("${label}")`;
+          break;
+        default:
+          nodeDefinition = `${step.id}["${label}"]`;
+          break;
       }
+      mermaidCode += `    ${nodeDefinition}\n`;
+    });
 
-      const prompt = `
-Du bist ein Experte für Mermaid-Diagramm-Syntax. Analysiere den folgenden Mermaid-Code und verbessere ihn:
+    mermaidCode += '\n'; // Add a blank line for readability
 
-ORIGINAL CODE:
-\`\`\`mermaid
-${cleanedCode}
-\`\`\`
-
-KONTEXT: ${context || 'Allgemeiner Prozess'}
-
-BEKANNTE PROBLEME:
-${validation.errors.map(error => `- ${error}`).join('\n')}
-
-AUFGABEN:
-1. Korrigiere alle Syntax-Fehler
-2. Entferne HTML-Tags wie <br>, <div>, etc.
-3. Verbessere die Lesbarkeit
-4. Stelle sicher, dass der Code valid Mermaid-Syntax ist
-5. Behalte die ursprüngliche Bedeutung und Struktur bei
-6. Verwende deutsche Labels und Beschreibungen
-7. Optimiere für bessere Darstellung
-
-REGELN:
-- Verwende nur gültige Mermaid-Syntax (graph TD, flowchart, sequenceDiagram, etc.)
-- Keine HTML-Tags in Node-Labels
-- Keine broken syntax wie "---" am Ende
-- Verwende klare, deutsche Bezeichnungen
-- Strukturiere Subgraphs logisch
-- Nutze passende Pfeil-Typen und Node-Formen
-- Escape special characters in node labels properly
-
-Gib nur den verbesserten Mermaid-Code zurück, ohne zusätzliche Erklärungen oder Markdown-Blöcke:`;
-
-      const improvedCode = await geminiService.generateText(prompt);
-      
-      if (improvedCode && improvedCode.trim()) {
-        // Clean the response to ensure it's just the code
-        const finalCode = this.cleanMermaidCode(improvedCode);
-        
-        // Validate the improved code
-        const finalValidation = this.validateMermaidCode(finalCode);
-        if (finalValidation.isValid) {
-          console.log('ProcessService: Mermaid code successfully improved by LLM');
-          console.log('Original length:', originalCode.length);
-          console.log('Final length:', finalCode.length);
-          return finalCode;
-        } else {
-          console.warn('ProcessService: LLM improved code still has issues:', finalValidation.errors);
-          return cleanedCode; // Return cleaned version instead of invalid improved version
-        }
+    // 2. Define all connections
+    connections.forEach(conn => {
+      if (conn.label && conn.label.trim()) {
+        // Use the simplest Mermaid syntax for labeled arrows: node1 -- text --> node2
+        const label = conn.label.replace(/"/g, '').replace(/\|/g, '').trim();
+        mermaidCode += `    ${conn.from} -- ${label} --> ${conn.to}\n`;
       } else {
-        console.warn('ProcessService: LLM did not return improved code, using cleaned version');
-        return cleanedCode;
+        mermaidCode += `    ${conn.from} --> ${conn.to}\n`;
       }
-    } catch (error) {
-      console.error('Error improving Mermaid code with LLM:', error);
-      return this.cleanMermaidCode(originalCode); // Fallback to cleaned original
-    }
+    });
+
+    return mermaidCode.trim();
   }
 
   /**
@@ -228,7 +333,7 @@ Gib nur den verbesserten Mermaid-Code zurück, ohne zusätzliche Erklärungen od
       ).join('\n\n');
 
       const prompt = `
-Als Experte für Marktkommunikation in der Energiewirtschaft, analysiere die folgenden gefundenen Prozessdiagramme und erstelle eine verständliche Erklärung.
+Als Experten für Marktkommunikation in der Energiewirtschaft, analysiere die folgenden gefundenen Prozessdiagramme und erstelle eine verständliche Erklärung.
 
 Benutzeranfrage: "${query}"
 
@@ -302,97 +407,6 @@ Format: Einfache Liste ohne Nummerierung.`;
   }
 
   /**
-   * Validates Mermaid code syntax
-   */
-  static validateMermaidCode(code: string): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    if (!code || !code.trim()) {
-      errors.push('Leerer Mermaid-Code');
-      return { isValid: false, errors };
-    }
-
-    const cleaned = code
-      .replace(/^```mermaid\s*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
-      .trim();
-
-    // Check for valid diagram types
-    const validTypes = [
-      'graph', 'flowchart', 'sequenceDiagram', 'sequencediagram',
-      'classDiagram', 'classdiagram', 'erDiagram', 'erdiagram',
-      'journey', 'gantt', 'pie', 'gitgraph', 'mindmap', 'timeline'
-    ];
-    
-    const startsWithValidType = validTypes.some(type => 
-      cleaned.toLowerCase().startsWith(type.toLowerCase())
-    );
-    
-    if (!startsWithValidType) {
-      errors.push('Code startet nicht mit einem gültigen Mermaid-Diagramm-Typ');
-    }
-
-    // Check for problematic HTML tags that break Mermaid parsing
-    if (cleaned.includes('<br>') || cleaned.includes('<BR>')) {
-      errors.push('HTML Line-Break Tags (<br>) sind in Mermaid nicht erlaubt');
-    }
-
-    if (cleaned.includes('<div>') || cleaned.includes('<span>')) {
-      errors.push('HTML Block-Tags sind in Mermaid nicht erlaubt');
-    }
-
-    // Check for common syntax issues
-    if (cleaned.includes('---') && !cleaned.includes('sequenceDiagram')) {
-      errors.push('Ungültige "---" Syntax (außerhalb von Sequence Diagrams)');
-    }
-
-    if (cleaned.length < 10) {
-      errors.push('Code zu kurz für ein valides Mermaid-Diagramm');
-    }
-
-    // Check for unmatched brackets (including different types)
-    const openSquare = (cleaned.match(/\[/g) || []).length;
-    const closeSquare = (cleaned.match(/\]/g) || []).length;
-    const openParen = (cleaned.match(/\(/g) || []).length;
-    const closeParen = (cleaned.match(/\)/g) || []).length;
-    const openBrace = (cleaned.match(/\{/g) || []).length;
-    const closeBrace = (cleaned.match(/\}/g) || []).length;
-
-    if (openSquare !== closeSquare) {
-      errors.push('Unausgeglichene eckige Klammern [] im Code');
-    }
-    if (openParen !== closeParen) {
-      errors.push('Unausgeglichene runde Klammern () im Code');
-    }
-    if (openBrace !== closeBrace) {
-      errors.push('Unausgeglichene geschweifte Klammern {} im Code');
-    }
-
-    // Check for empty node definitions
-    if (cleaned.match(/\[\s*\]/)) {
-      errors.push('Leere Node-Definitionen [] gefunden');
-    }
-
-    // Check for invalid characters in node IDs
-    const nodeIdRegex = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
-    const lines = cleaned.split('\n');
-    lines.forEach((line, index) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine && !trimmedLine.startsWith('//') && !trimmedLine.startsWith('%')) {
-        // Check if line contains invalid syntax patterns
-        if (trimmedLine.includes('>>') && !trimmedLine.includes('-->')) {
-          errors.push(`Zeile ${index + 1}: Ungültige Pfeil-Syntax ">>" gefunden`);
-        }
-      }
-    });
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-
-  /**
    * Optimizes an existing process description based on user feedback
    */
   static async optimizeProcess(request: {
@@ -422,68 +436,52 @@ Format: Einfache Liste ohne Nummerierung.`;
       const relatedQuery = `${diagram.title} ${diagram.content}`;
       const results = await QdrantService.searchByText(relatedQuery, 5, 0.4);
       
-      const relatedDiagrams = results
-        .filter((result: any) => 
-          result.payload?.type === 'mermaid_diagram' && 
-          result.id?.toString() !== diagram.id
-        )
-        .map((result: any, index: number) => ({
-          id: result.id?.toString() || `related_${index}`,
-          title: result.payload?.context_text || `Verwandter Prozess ${index + 1}`,
-          content: result.payload?.content || 'Keine Beschreibung verfügbar',
-          mermaidCode: result.payload?.mermaid_code || '',
-          score: result.score || 0,
-        }));
+      const relatedDiagrams = await Promise.all(
+        results
+          .filter((result: any) => 
+            result.payload?.type === 'mermaid_diagram' && 
+            result.id?.toString() !== diagram.id
+          )
+          .map(async (result: any, index: number) => {
+            let mermaidCode = 'graph TD\n    error[Keine Diagrammdaten gefunden];';
+
+            // First priority: Use the new structured process_data
+            if (result.payload?.process_data && typeof result.payload.process_data === 'object') {
+              mermaidCode = this.generateMermaidFromStructuredData(result.payload.process_data);
+            } else {
+              // Fallback: Generate structured data using LLM
+              console.warn(`Migration incomplete or data malformed: No process_data found for related diagram ID: ${result.id}`);
+              
+              try {
+                const generatedData = await this.generateStructuredDataFromMetadata({
+                  id: result.id?.toString() || `related_${index}`,
+                  title: result.payload?.context_text || `Verwandter Prozess ${index + 1}`,
+                  content: result.payload?.content || 'Keine Beschreibung verfügbar',
+                  mermaid_code: result.payload?.mermaid_code || undefined
+                });
+                
+                mermaidCode = this.generateMermaidFromStructuredData(generatedData);
+              } catch (error) {
+                console.error(`❌ Failed to generate structured data for related diagram ID: ${result.id}`, error);
+                mermaidCode = 'graph TD\n    error[Fehler beim Generieren der Diagrammdaten];';
+              }
+            }
+
+            return {
+              id: result.id?.toString() || `related_${index}`,
+              title: result.payload?.context_text || `Verwandter Prozess ${index + 1}`,
+              content: result.payload?.content || 'Keine Beschreibung verfügbar',
+              mermaidCode: mermaidCode,
+              score: result.score || 0,
+            };
+          })
+      );
 
       return relatedDiagrams;
     } catch (error) {
       console.error('Error finding related processes:', error);
       return [];
     }
-  }
-
-  /**
-   * Cleans and fixes common Mermaid code issues
-   */
-  static cleanMermaidCode(code: string): string {
-    if (!code || !code.trim()) {
-      return code;
-    }
-
-    let cleaned = code
-      .replace(/^```mermaid\s*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
-      .trim();
-
-    // Remove problematic HTML tags
-    cleaned = cleaned
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<div[^>]*>/gi, ' ')
-      .replace(/<\/div>/gi, ' ')
-      .replace(/<span[^>]*>/gi, ' ')
-      .replace(/<\/span>/gi, ' ')
-      .replace(/<p[^>]*>/gi, ' ')
-      .replace(/<\/p>/gi, ' ');
-
-    // Clean up whitespace and line breaks
-    cleaned = cleaned
-      .replace(/\s+/g, ' ')
-      .replace(/\n\s*\n/g, '\n')
-      .trim();
-
-    // Fix common syntax issues
-    cleaned = cleaned
-      .replace(/\[\s+/g, '[')
-      .replace(/\s+\]/g, ']')
-      .replace(/\(\s+/g, '(')
-      .replace(/\s+\)/g, ')')
-      .replace(/\{\s+/g, '{')
-      .replace(/\s+\}/g, '}');
-
-    // Ensure proper line breaks for readability
-    const lines = cleaned.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
-    return lines.join('\n');
   }
 }
 
