@@ -224,6 +224,11 @@ EOF
     if [ -d "lib" ]; then
         cp -r lib "$TEMP_DIR/"
         echo "✅ lib Verzeichnis kopiert"
+        echo "📁 lib Verzeichnis Inhalt:"
+        ls -la "$TEMP_DIR/lib/"
+    else
+        echo "❌ lib Verzeichnis nicht gefunden - Backend-Module könnten fehlen"
+        exit 1
     fi
     
     # server.js für Production kopieren (Next.js-kompatibel)
@@ -308,6 +313,10 @@ transfer_files() {
     
     # Dateien übertragen
     rsync -avz --progress "$temp_dir/" "$PROD_SERVER:$DEPLOY_DIR/"
+    
+    # Validiere dass lib Verzeichnis korrekt übertragen wurde
+    echo "🔍 Validiere lib Verzeichnis auf Produktivserver..."
+    ssh $PROD_SERVER "ls -la $DEPLOY_DIR/lib/ && echo '✅ lib Verzeichnis gefunden' || echo '❌ lib Verzeichnis fehlt'"
     
     echo "✅ Dateien erfolgreich übertragen"
 }
