@@ -18,11 +18,15 @@ class ChatConfigurationService {
     constructor() {
         this.activeConfig = null;
         this.lastConfigLoad = 0;
-        this.configCacheTimeout = 5 * 60 * 1000;
+        this.configCacheTimeout = 5 * 60 * 1000; // 5 minutes
         this.qdrantService = new qdrant_1.QdrantService();
     }
+    /**
+     * Get the active chat configuration
+     */
     async getActiveConfiguration() {
         const now = Date.now();
+        // Cache configuration for 5 minutes
         if (this.activeConfig && (now - this.lastConfigLoad) < this.configCacheTimeout) {
             return this.activeConfig;
         }
@@ -34,6 +38,7 @@ class ChatConfigurationService {
         LIMIT 1
       `);
             if (!config) {
+                // Return default configuration if no active config found
                 return this.getDefaultConfiguration();
             }
             this.activeConfig = config;
@@ -45,19 +50,23 @@ class ChatConfigurationService {
             return this.getDefaultConfiguration();
         }
     }
+    /**
+     * Generate response using the active configuration
+     */
     async generateConfiguredResponse(query, userId, previousMessages = [], userPreferences = {}, contextSettings) {
         const config = await this.getActiveConfiguration();
         const processingSteps = [];
         let searchQueries = [query];
         let contextUsed = '';
         try {
+            // Step 1: Query Understanding (if enabled)
             if (this.isStepEnabled(config, 'query_understanding')) {
                 const step = this.getStep(config, 'query_understanding');
                 processingSteps.push({
                     name: 'Query Understanding',
                     startTime: Date.now(),
                     enabled: true,
-                    prompt: step?.prompt
+                    prompt: step === null || step === void 0 ? void 0 : step.prompt
                 });
                 if (config.config.vectorSearch.useQueryExpansion) {
                     searchQueries = await gemini_1.default.generateSearchQueries(query);
@@ -66,6 +75,7 @@ class ChatConfigurationService {
                 processingSteps[processingSteps.length - 1].endTime = Date.now();
                 processingSteps[processingSteps.length - 1].output = { searchQueries };
             }
+            // Step 2: Context Search (if enabled)
             if (this.isStepEnabled(config, 'context_search')) {
                 processingSteps.push({
                     name: 'Context Search',
@@ -74,52 +84,68 @@ class ChatConfigurationService {
                 });
                 let allResults = [];
                 let searchDetails = [];
-                let useOptimizedSearch = true;
+                // Verwende optimierte Suche wenn verfügbar
+                let useOptimizedSearch = true; // Standard aktiviert
                 if (useOptimizedSearch) {
                     try {
-                        const optimizedResults = await this.qdrantService.searchWithOptimizations(query, config.config.vectorSearch.limit * 2, config.config.vectorSearch.scoreThreshold, true);
+                        // Optimierte Suche mit Pre-Filtering
+                        const optimizedResults = await this.qdrantService.searchWithOptimizations(query, config.config.vectorSearch.limit * 2, // Mehr Ergebnisse für bessere Auswahl
+                        config.config.vectorSearch.scoreThreshold, true // HyDE aktiviert
+                        );
                         allResults = optimizedResults;
+                        // Dokumentiere die optimierte Suche
                         searchDetails.push({
                             query: query,
                             searchType: 'optimized',
                             resultsCount: optimizedResults.length,
-                            results: optimizedResults.slice(0, 5).map((r) => ({
-                                id: r.id,
-                                score: r.score,
-                                title: r.payload?.title || r.payload?.source_document || 'Unknown',
-                                source: r.payload?.document_metadata?.document_base_name || 'Unknown',
-                                chunk_type: r.payload?.chunk_type || 'paragraph',
-                                chunk_index: r.payload?.chunk_index || 0,
-                                content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
-                            }))
+                            results: optimizedResults.slice(0, 5).map((r) => {
+                                var _a, _b, _c, _d, _e, _f, _g, _h;
+                                return ({
+                                    id: r.id,
+                                    score: r.score,
+                                    title: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.title) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.source_document) || 'Unknown',
+                                    source: ((_d = (_c = r.payload) === null || _c === void 0 ? void 0 : _c.document_metadata) === null || _d === void 0 ? void 0 : _d.document_base_name) || 'Unknown',
+                                    chunk_type: ((_e = r.payload) === null || _e === void 0 ? void 0 : _e.chunk_type) || 'paragraph',
+                                    chunk_index: ((_f = r.payload) === null || _f === void 0 ? void 0 : _f.chunk_index) || 0,
+                                    content: (((_g = r.payload) === null || _g === void 0 ? void 0 : _g.text) || ((_h = r.payload) === null || _h === void 0 ? void 0 : _h.content) || '').substring(0, 300)
+                                });
+                            })
                         });
                     }
                     catch (error) {
                         console.error('Optimized search failed, falling back to standard search:', error);
+                        // Fallback zur Standard-Suche
                         useOptimizedSearch = false;
                     }
                 }
                 if (!useOptimizedSearch) {
+                    // Standard Multi-Query Suche
                     for (const q of searchQueries) {
                         const results = await this.qdrantService.searchByText(q, config.config.vectorSearch.limit, config.config.vectorSearch.scoreThreshold);
                         allResults.push(...results);
+                        // Dokumentiere jede Suchanfrage
                         searchDetails.push({
                             query: q,
                             searchType: 'standard',
                             resultsCount: results.length,
-                            results: results.slice(0, 5).map((r) => ({
-                                id: r.id,
-                                score: r.score,
-                                title: r.payload?.title || r.payload?.source_document || 'Unknown',
-                                source: r.payload?.document_metadata?.document_base_name || r.payload?.source || 'Unknown',
-                                chunk_type: r.payload?.chunk_type || 'paragraph',
-                                chunk_index: r.payload?.chunk_index || 0,
-                                content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
-                            }))
+                            results: results.slice(0, 5).map((r) => {
+                                var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+                                return ({
+                                    id: r.id,
+                                    score: r.score,
+                                    title: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.title) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.source_document) || 'Unknown',
+                                    source: ((_d = (_c = r.payload) === null || _c === void 0 ? void 0 : _c.document_metadata) === null || _d === void 0 ? void 0 : _d.document_base_name) || ((_e = r.payload) === null || _e === void 0 ? void 0 : _e.source) || 'Unknown',
+                                    chunk_type: ((_f = r.payload) === null || _f === void 0 ? void 0 : _f.chunk_type) || 'paragraph',
+                                    chunk_index: ((_g = r.payload) === null || _g === void 0 ? void 0 : _g.chunk_index) || 0,
+                                    content: (((_h = r.payload) === null || _h === void 0 ? void 0 : _h.text) || ((_j = r.payload) === null || _j === void 0 ? void 0 : _j.content) || '').substring(0, 300)
+                                });
+                            })
                         });
                     }
                 }
+                // Remove duplicates
                 const uniqueResults = this.removeDuplicates(allResults);
+                // Berechne erweiterte Metriken
                 const scores = uniqueResults.map((r) => r.score).filter(s => s !== undefined);
                 const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
                 processingSteps[processingSteps.length - 1].endTime = Date.now();
@@ -131,6 +157,7 @@ class ChatConfigurationService {
                     avgScore: avgScore,
                     searchType: useOptimizedSearch ? 'optimized' : 'standard'
                 };
+                // Step 3: Context Optimization (if enabled)
                 if (this.isStepEnabled(config, 'context_optimization')) {
                     processingSteps.push({
                         name: 'Context Optimization',
@@ -138,9 +165,12 @@ class ChatConfigurationService {
                         enabled: true
                     });
                     if (uniqueResults.length > 0) {
-                        if (useOptimizedSearch && uniqueResults.some((r) => r.payload?.chunk_type)) {
+                        // Verwende chunk-type-bewusste Synthese wenn optimierte Suche verwendet wurde
+                        if (useOptimizedSearch && uniqueResults.some((r) => { var _a; return (_a = r.payload) === null || _a === void 0 ? void 0 : _a.chunk_type; })) {
+                            // Erweitere Ergebnisse mit Kontext-Information
                             const contextualizedResults = uniqueResults.map(result => {
-                                const chunkType = result.payload?.chunk_type || 'paragraph';
+                                var _a, _b, _c;
+                                const chunkType = ((_a = result.payload) === null || _a === void 0 ? void 0 : _a.chunk_type) || 'paragraph';
                                 let contextualPrefix = '';
                                 switch (chunkType) {
                                     case 'structured_table':
@@ -161,36 +191,37 @@ class ChatConfigurationService {
                                     default:
                                         contextualPrefix = '[ABSATZ] ';
                                 }
-                                return {
-                                    ...result,
-                                    payload: {
-                                        ...result.payload,
-                                        contextual_content: contextualPrefix + (result.payload?.text || result.payload?.content || '')
-                                    }
-                                };
+                                return Object.assign(Object.assign({}, result), { payload: Object.assign(Object.assign({}, result.payload), { contextual_content: contextualPrefix + (((_b = result.payload) === null || _b === void 0 ? void 0 : _b.text) || ((_c = result.payload) === null || _c === void 0 ? void 0 : _c.content) || '') }) });
                             });
                             contextUsed = await gemini_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
                         }
                         else {
+                            // Standard-Kontext-Synthese
                             if (config.config.contextSynthesis.enabled) {
                                 contextUsed = await gemini_1.default.synthesizeContext(query, uniqueResults);
                             }
                             else {
+                                // Extract content from results, prioritizing relevant information
                                 const relevantContent = uniqueResults.map((r) => {
-                                    return r.payload?.content || r.content || r.payload?.text || '';
+                                    var _a, _b;
+                                    return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.content) || r.content || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.text) || '';
                                 }).filter(text => text.trim().length > 0);
                                 contextUsed = relevantContent.join('\n\n');
                             }
                         }
+                        // Ensure synthesis produced meaningful content
                         if (contextUsed.length < 200 && uniqueResults.length > 0) {
+                            // If synthesis failed, use raw content (truncated if necessary)
                             const relevantContent = uniqueResults.map((r) => {
-                                return r.payload?.content || r.content || r.payload?.text || '';
+                                var _a, _b;
+                                return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.content) || r.content || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.text) || '';
                             }).filter(text => text.trim().length > 0);
                             const rawContext = relevantContent.join('\n\n');
                             contextUsed = rawContext.length > config.config.contextSynthesis.maxLength
                                 ? rawContext.substring(0, config.config.contextSynthesis.maxLength) + '...'
                                 : rawContext;
                         }
+                        // Truncate if necessary
                         if (contextUsed.length > config.config.contextSynthesis.maxLength) {
                             contextUsed = contextUsed.substring(0, config.config.contextSynthesis.maxLength) + '...';
                         }
@@ -205,17 +236,20 @@ class ChatConfigurationService {
                         maxLength: config.config.contextSynthesis.maxLength,
                         wasTruncated: contextUsed.endsWith('...'),
                         uniqueResultsUsed: uniqueResults.length,
-                        chunkTypesFound: [...new Set(uniqueResults.map((r) => r.payload?.chunk_type || 'paragraph'))],
+                        chunkTypesFound: [...new Set(uniqueResults.map((r) => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.chunk_type) || 'paragraph'; }))],
                         optimizedSearchUsed: useOptimizedSearch
                     };
                 }
                 else {
+                    // Even without optimization, extract proper content
                     const relevantContent = uniqueResults.map((r) => {
-                        return r.payload?.content || r.content || r.payload?.text || '';
+                        var _a, _b;
+                        return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.content) || r.content || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.text) || '';
                     }).filter(text => text.trim().length > 0);
                     contextUsed = relevantContent.join('\n\n');
                 }
             }
+            // Step 4: Response Generation (if enabled)
             let response = '';
             if (this.isStepEnabled(config, 'response_generation')) {
                 processingSteps.push({
@@ -223,10 +257,12 @@ class ChatConfigurationService {
                     startTime: Date.now(),
                     enabled: true
                 });
+                // Prepare messages with custom system prompt
                 const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
                 messages.push({ role: 'user', content: query });
+                // Use the configured system prompt and context mode
                 let contextMode = 'standard';
-                if (contextSettings?.useWorkspaceOnly) {
+                if (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useWorkspaceOnly) {
                     contextMode = 'workspace-only';
                 }
                 else if (contextSettings && !contextSettings.includeSystemKnowledge) {
@@ -242,10 +278,12 @@ class ChatConfigurationService {
                 };
             }
             else {
+                // Fallback to standard generation
                 const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
                 messages.push({ role: 'user', content: query });
                 response = await gemini_1.default.generateResponse(messages, contextUsed, userPreferences);
             }
+            // Step 5: Response Validation (if enabled)
             if (this.isStepEnabled(config, 'response_validation')) {
                 processingSteps.push({
                     name: 'Response Validation',
@@ -258,6 +296,7 @@ class ChatConfigurationService {
                         validationIssues.push('Response too short');
                     }
                     if (config.config.qualityChecks.checkForHallucination) {
+                        // Simple hallucination check
                         if (response.includes('Ich bin mir nicht sicher') ||
                             response.includes('Das kann ich nicht beantworten')) {
                             validationIssues.push('Potential uncertainty detected');
@@ -269,6 +308,8 @@ class ChatConfigurationService {
                     validationIssues,
                     passed: validationIssues.length === 0
                 };
+                // If validation fails and we have iterations left, we could retry
+                // For now, we just log the issues
                 if (validationIssues.length > 0) {
                     console.warn('Response validation issues:', validationIssues);
                 }
@@ -283,6 +324,7 @@ class ChatConfigurationService {
         }
         catch (error) {
             console.error('Error in configured response generation:', error);
+            // Fallback to standard generation
             const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
             messages.push({ role: 'user', content: query });
             const fallbackResponse = await gemini_1.default.generateResponse(messages, '', userPreferences);
@@ -299,6 +341,9 @@ class ChatConfigurationService {
             };
         }
     }
+    /**
+     * Get the default configuration
+     */
     getDefaultConfiguration() {
         return {
             id: 'default',
@@ -354,30 +399,44 @@ class ChatConfigurationService {
             }
         };
     }
+    /**
+     * Check if a processing step is enabled
+     */
     isStepEnabled(config, stepName) {
         const step = config.config.processingSteps.find(s => s.name === stepName);
         return step ? step.enabled : false;
     }
+    /**
+     * Get a processing step
+     */
     getStep(config, stepName) {
         return config.config.processingSteps.find(s => s.name === stepName);
     }
+    /**
+     * Set a configuration as the default (active) configuration
+     * Only one configuration can be active at a time
+     */
     async setAsDefault(configId) {
         try {
+            // First, deactivate all configurations
             await database_1.DatabaseHelper.executeQuery(`
         UPDATE chat_configurations 
         SET is_active = false, updated_at = CURRENT_TIMESTAMP
       `);
+            // Then activate the selected configuration
             await database_1.DatabaseHelper.executeQuery(`
         UPDATE chat_configurations 
         SET is_active = true, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
       `, [configId]);
+            // Verify the configuration exists
             const verifyResult = await database_1.DatabaseHelper.executeQuerySingle(`
         SELECT id FROM chat_configurations WHERE id = $1
       `, [configId]);
             if (!verifyResult) {
                 throw new Error(`Configuration with ID ${configId} not found`);
             }
+            // Clear cache to force reload
             this.clearCache();
             console.log(`Configuration ${configId} set as default`);
         }
@@ -386,18 +445,24 @@ class ChatConfigurationService {
             throw error;
         }
     }
+    /**
+     * Get the currently active configuration ID
+     */
     async getActiveConfigurationId() {
         try {
             const result = await database_1.DatabaseHelper.executeQuerySingle(`
         SELECT id FROM chat_configurations WHERE is_active = true LIMIT 1
       `);
-            return result?.id || null;
+            return (result === null || result === void 0 ? void 0 : result.id) || null;
         }
         catch (error) {
             console.error('Error getting active configuration ID:', error);
             return null;
         }
     }
+    /**
+     * Remove duplicate results based on ID
+     */
     removeDuplicates(results) {
         const seen = new Set();
         return results.filter(result => {
@@ -408,6 +473,9 @@ class ChatConfigurationService {
             return true;
         });
     }
+    /**
+     * Clear cache (useful for testing)
+     */
     clearCache() {
         this.activeConfig = null;
         this.lastConfigLoad = 0;

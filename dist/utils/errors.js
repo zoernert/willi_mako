@@ -1,4 +1,7 @@
 "use strict";
+/**
+ * Error-Handling Utilities - Einheitliche Fehlerbehandlung
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ErrorUtils = exports.InternalServerError = exports.ConflictError = exports.ForbiddenError = exports.UnauthorizedError = exports.NotFoundError = exports.ValidationError = exports.AppError = void 0;
 class AppError extends Error {
@@ -48,7 +51,13 @@ class InternalServerError extends AppError {
     }
 }
 exports.InternalServerError = InternalServerError;
+/**
+ * Error-Handler-Utilities
+ */
 class ErrorUtils {
+    /**
+     * Wraps service operations with standardized error handling
+     */
     static async handleServiceError(operation, context) {
         try {
             return await operation();
@@ -62,9 +71,13 @@ class ErrorUtils {
             if (error instanceof AppError) {
                 throw error;
             }
+            // Convert unknown errors to AppError
             throw new InternalServerError(`${context} failed: ${error.message}`, { originalError: error.message, context });
         }
     }
+    /**
+     * Logs error with structured information
+     */
     static logError(error, context) {
         const errorInfo = {
             name: error.name,
@@ -74,15 +87,13 @@ class ErrorUtils {
             context
         };
         if (error instanceof AppError) {
-            errorInfo.context = {
-                ...errorInfo.context,
-                statusCode: error.statusCode,
-                isOperational: error.isOperational,
-                errorContext: error.context
-            };
+            errorInfo.context = Object.assign(Object.assign({}, errorInfo.context), { statusCode: error.statusCode, isOperational: error.isOperational, errorContext: error.context });
         }
         console.error('Error occurred:', errorInfo);
     }
+    /**
+     * Determines if error should crash the process
+     */
     static isTrustedError(error) {
         if (error instanceof AppError) {
             return error.isOperational;

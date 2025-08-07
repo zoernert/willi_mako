@@ -14,9 +14,11 @@ function createQuizRoutes(db) {
     const geminiService = new gemini_1.GeminiService();
     const gamificationService = new gamification_1.GamificationService(db);
     const quizService = new quizService_1.QuizService(db, geminiService, gamificationService);
+    // Get available quizzes
     router.get('/quizzes', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -29,17 +31,21 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Generate quiz from FAQs
     router.post('/quizzes/generate', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
             const { topicArea, difficulty = 'medium', questionCount = 5 } = req.body;
+            // Generate questions
             const questions = await quizService.generateQuestionsFromFAQs(topicArea, difficulty, questionCount);
             if (questions.length === 0) {
                 return res.status(404).json({ error: 'No questions could be generated for this topic' });
             }
+            // Create quiz
             const quiz = await quizService.createQuiz({
                 title: `${topicArea || 'Allgemein'} Quiz - ${difficulty}`,
                 description: `Automatisch generiertes Quiz für ${topicArea || 'Allgemein'}`,
@@ -50,6 +56,7 @@ function createQuizRoutes(db) {
                 is_active: true,
                 created_by: userId
             });
+            // Save questions
             await quizService.saveQuizQuestions(quiz.id, questions);
             return res.json({ quiz, questions: questions.length });
         }
@@ -58,17 +65,21 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Generate quiz from user's chats
     router.post('/quizzes/generate-from-chats', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
             const { questionCount = 5 } = req.body;
+            // Generate questions
             const questions = await quizService.generateQuestionsFromChats(userId, questionCount);
             if (questions.length === 0) {
                 return res.status(404).json({ error: 'No questions could be generated from your chats' });
             }
+            // Create quiz
             const quiz = await quizService.createQuiz({
                 title: 'Persönliches Quiz',
                 description: 'Basierend auf Ihren Chat-Verläufen',
@@ -79,6 +90,7 @@ function createQuizRoutes(db) {
                 is_active: true,
                 created_by: userId
             });
+            // Save questions
             await quizService.saveQuizQuestions(quiz.id, questions);
             return res.json({ quiz, questions: questions.length });
         }
@@ -87,6 +99,7 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get quiz details
     router.get('/quizzes/:id', auth_1.authenticateToken, async (req, res) => {
         try {
             const quizId = req.params.id;
@@ -101,9 +114,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Start quiz attempt
     router.post('/quizzes/:id/start', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -116,6 +131,7 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Submit quiz answers
     router.post('/quizzes/:id/submit', auth_1.authenticateToken, async (req, res) => {
         try {
             const { attemptId, answers } = req.body;
@@ -130,10 +146,12 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get quiz results
     router.get('/attempts/:attemptId/results', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
             const attemptId = req.params.attemptId;
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -154,9 +172,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get personalized quiz suggestions
     router.get('/suggestions', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -169,9 +189,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get user quiz statistics
     router.get('/stats', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -183,6 +205,8 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Gamification endpoints
+    // Get leaderboard
     router.get('/leaderboard', auth_1.authenticateToken, async (req, res) => {
         try {
             const limit = parseInt(req.query.limit) || 10;
@@ -195,9 +219,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get user points
     router.get('/points', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -209,9 +235,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Get user expertise
     router.get('/expertise', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }
@@ -223,9 +251,11 @@ function createQuizRoutes(db) {
             return res.status(500).json({ error: 'Internal server error' });
         }
     });
+    // Update leaderboard settings
     router.post('/leaderboard-settings', auth_1.authenticateToken, async (req, res) => {
+        var _a;
         try {
-            const userId = req.user?.id;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
             if (!userId) {
                 return res.status(401).json({ error: 'User not authenticated' });
             }

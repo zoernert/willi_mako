@@ -12,9 +12,10 @@
     "server:dev": "PORT=3009 nodemon --exec \"npx tsx src/server.ts\"",
     "server:start": "PORT=3009 npx tsx src/server.ts",
     "client:dev": "cd app-legacy && npm start",
+    "build:backend": "npx tsc --project tsconfig.backend.json",
     "build:legacy": "cd app-legacy && npm run build",
     "build:next": "next build",
-    "build": "npm run build:legacy && npm run move:legacy && npm run build:next",
+    "build": "npm run build:backend && npm run build:legacy && npm run move:legacy && npm run build:next",
     "move:legacy": "rm -rf public/app && mv app-legacy/build public/app",
     "start": "NODE_ENV=production node server.js",
     "install:all": "npm install && cd app-legacy && npm install",
@@ -73,7 +74,6 @@
     "pg": "^8.11.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-markdown": "^10.1.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

@@ -5,14 +5,16 @@ const qdrant_1 = require("./services/qdrant");
 async function initialize() {
     try {
         console.log('🚀 Initialisierung der Stromhaltig Anwendung...');
+        // Initialize database
         console.log('📁 Initialisiere Datenbank...');
         await (0, database_1.initDatabase)();
+        // Initialize Qdrant collection
         console.log('🔍 Initialisiere Qdrant Vector Store...');
         await qdrant_1.QdrantService.createCollection();
         console.log('✅ Initialisierung erfolgreich abgeschlossen!');
         console.log('');
         console.log('🌟 Die Anwendung ist bereit:');
-        console.log('   - Backend: http://localhost:3001');
+        console.log('   - Backend: http://localhost:3009');
         console.log('   - Frontend: http://localhost:3000');
         console.log('   - Admin Login: admin@willi-mako.com / admin123');
         console.log('');

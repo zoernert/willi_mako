@@ -57,6 +57,7 @@ class QuizService {
     `;
         const quiz = await database_1.DatabaseHelper.executeQuerySingle(query, [id]);
         if (quiz && quiz.questions) {
+            // Filter out null questions if no questions exist for the quiz
             quiz.questions = quiz.questions.filter((q) => q.id !== null);
         }
         return quiz;
@@ -129,6 +130,7 @@ class QuizService {
             });
         }
         const percentage = (correctCount / quiz.questions.length) * 100;
+        // Calculate time taken with error handling
         let timeTaken = 0;
         try {
             const startTime = new Date(attempt.start_time).getTime();
@@ -151,6 +153,7 @@ class QuizService {
         if (!updatedAttempt) {
             throw new errors_1.AppError('Failed to update quiz attempt', 500);
         }
+        // Ensure numeric fields are properly converted from database strings
         if (updatedAttempt.percentage && typeof updatedAttempt.percentage === 'string') {
             updatedAttempt.percentage = parseFloat(updatedAttempt.percentage);
         }
@@ -183,6 +186,7 @@ class QuizService {
         if (!attempt || !attempt.completed_at) {
             throw new errors_1.AppError('Quiz attempt not found or not completed', 404);
         }
+        // Ensure numeric fields are properly converted from database strings
         if (attempt.percentage && typeof attempt.percentage === 'string') {
             attempt.percentage = parseFloat(attempt.percentage);
         }
@@ -226,7 +230,7 @@ class QuizService {
             correct_answers: correctCount,
             total_questions: quiz.questions.length,
             feedback,
-            badge_earned: null
+            badge_earned: null // Badge info could be retrieved if needed
         };
     }
     checkAnswer(userAnswer, question) {
@@ -235,8 +239,11 @@ class QuizService {
             correctAnswers: question.correct_answers,
             correctAnswerIndex: question.correct_answer_index
         });
+        // Handle both legacy string-based answers and new index-based answers
         if (question.correct_answers && Array.isArray(question.correct_answers) && question.correct_answers.length > 0) {
+            // New index-based system
             const correctIndices = new Set(question.correct_answers.map(a => Number(a)));
+            // Handle user answers - convert to numbers and ensure it's an array
             let userAnswerArray = Array.isArray(userAnswer.answer) ? userAnswer.answer : [userAnswer.answer];
             const userIndices = new Set(userAnswerArray.map(a => {
                 if (typeof a === 'string') {
@@ -256,6 +263,7 @@ class QuizService {
             return true;
         }
         else if (question.correct_answer_index !== undefined && question.correct_answer_index !== null) {
+            // Legacy single answer system
             const userIndex = Array.isArray(userAnswer.answer) ? userAnswer.answer[0] : userAnswer.answer;
             const normalizedUserIndex = typeof userIndex === 'string' ? parseInt(userIndex) : Number(userIndex);
             return normalizedUserIndex === Number(question.correct_answer_index);
@@ -263,6 +271,7 @@ class QuizService {
         console.log('No valid answer format found');
         return false;
     }
+    // --- Admin Methods ---
     async getAllQuizzesForAdmin() {
         const query = `
       SELECT 
@@ -285,6 +294,7 @@ class QuizService {
         return database_1.DatabaseHelper.executeQuery(query, [quizId]);
     }
     async updateQuizAsAdmin(quizId, quizData) {
+        // We need to build the query dynamically based on the fields provided
         const fields = Object.keys(quizData).filter(k => k !== 'id');
         const values = fields.map(k => quizData[k]);
         if (fields.length === 0) {
@@ -304,6 +314,8 @@ class QuizService {
         return updatedQuiz;
     }
     async deleteQuizAsAdmin(quizId) {
+        // Using a transaction to delete the quiz and all its related data
+        // Note: user_quiz_attempts will be automatically deleted due to CASCADE constraint
         const operations = [
             (client) => client.query('DELETE FROM quiz_questions WHERE quiz_id = $1', [quizId]),
             (client) => client.query('DELETE FROM quizzes WHERE id = $1', [quizId]),
@@ -316,6 +328,7 @@ class QuizService {
         if (fields.length === 0) {
             throw new errors_1.AppError('No fields to update', 400);
         }
+        // Handle JSON fields
         if (questionData.answer_options) {
             const index = fields.indexOf('answer_options');
             values[index] = JSON.stringify(values[index]);
@@ -342,17 +355,20 @@ class QuizService {
         await database_1.DatabaseHelper.executeQuery(query, [questionId]);
     }
     async generateIntelligentQuiz(topic, numQuestions, difficulty, userId) {
+        // 1. Find relevant content from the knowledge base
         const searchResults = await this.qdrantService.searchByText(topic, numQuestions);
         if (searchResults.length === 0) {
             throw new errors_1.AppError(`No content found for topic: ${topic}`, 404);
         }
         const sourceContent = searchResults.map((r) => r.payload.text);
+        // 2. Generate questions using Gemini
         const generatedQuestionsRaw = await this.geminiService.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);
+        // 3. Map the raw questions to the QuizQuestion format
         const generatedQuestions = generatedQuestionsRaw.map(q => ({
             question_text: q.question,
-            question_type: 'multiple_choice',
+            question_type: 'multiple_choice', // Fix the type to match database
             answer_options: q.options,
-            correct_answers: [q.correctIndex],
+            correct_answers: [q.correctIndex], // Store as array of indices, not strings
             explanation: q.explanation,
             difficulty_level: difficulty,
             points: difficulty === 'easy' ? 5 : difficulty === 'medium' ? 10 : 15,
@@ -365,13 +381,14 @@ class QuizService {
             description: quizDescription,
             difficulty_level: difficulty,
             topic_area: topic,
-            time_limit_minutes: Math.round(numQuestions * 1.5),
+            time_limit_minutes: Math.round(numQuestions * 1.5), // 1.5 minutes per question, rounded to integer
             question_count: generatedQuestions.length,
-            is_active: true,
+            is_active: true, // Auto-generated quizzes should be active immediately
             created_by: userId,
         };
         const newQuiz = await this.createQuiz(quizData);
-        const questionsToSave = generatedQuestions.map(q => ({ ...q, quiz_id: newQuiz.id }));
+        // We need to adapt saveQuizQuestions to handle the new format without id
+        const questionsToSave = generatedQuestions.map(q => (Object.assign(Object.assign({}, q), { quiz_id: newQuiz.id })));
         await this.saveQuizQuestions(newQuiz.id, questionsToSave);
         const finalQuiz = await this.getQuizById(newQuiz.id);
         if (!finalQuiz) {
@@ -383,6 +400,7 @@ class QuizService {
         return this.getAvailableQuizzes(userId);
     }
     async getQuizSuggestions(userId) {
+        // Get user's completed quizzes and preferences to suggest relevant ones
         const query = `
       SELECT DISTINCT q.topic_area, q.difficulty_level, COUNT(*) as quiz_count
       FROM quizzes q
@@ -393,8 +411,10 @@ class QuizService {
       LIMIT 5
     `;
         const userTopics = await database_1.DatabaseHelper.executeQuery(query, [userId]);
+        // Generate suggestions based on completed topics
         const suggestions = [];
         for (const topic of userTopics) {
+            // Find similar quizzes not yet taken
             const suggestionQuery = `
         SELECT q.* FROM quizzes q
         WHERE q.topic_area = $1 
@@ -441,6 +461,7 @@ class QuizService {
         return this.generateIntelligentQuiz(topicArea, questionCount, difficulty, userId);
     }
     async generateQuizFromChats(userId, questionCount) {
+        // Get recent chat messages from the user to generate context-based quiz
         const chatQuery = `
       SELECT m.content as message, m.created_at
       FROM messages m
@@ -453,7 +474,9 @@ class QuizService {
         if (chatMessages.length === 0) {
             throw new errors_1.AppError('No chat messages found to generate quiz from', 400);
         }
+        // Extract topics from chat messages using AI
         const chatContent = chatMessages.map(msg => msg.message).join(' ');
+        // Simple topic extraction - in production this could use more sophisticated AI
         const topics = ['General Knowledge', 'Technology', 'Science', 'History'];
         const topic = topics[Math.floor(Math.random() * topics.length)];
         return this.generateIntelligentQuiz(topic, questionCount, 'medium', userId);

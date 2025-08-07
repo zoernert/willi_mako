@@ -1,3 +1,7 @@
+/**
+ * Plugin Registry Implementation
+ * Verwaltet Plugins und deren Lifecycle
+ */
 import { IPlugin, PluginRegistry, PluginContext, PluginAPI, PluginConfig, PluginMetadata } from './plugin.interface';
 export declare class PluginRegistryImpl implements PluginRegistry {
     private config;

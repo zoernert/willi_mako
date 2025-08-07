@@ -1,3 +1,7 @@
+/**
+ * Plugin API Implementation
+ * Bietet Plugins Zugriff auf System-Funktionalitäten
+ */
 import { Request, Response, NextFunction, Router } from 'express';
 import { PluginAPI, PluginWidget, PluginSettingsPage, PluginMenuItem } from './plugin.interface';
 export declare class PluginAPIImpl implements PluginAPI {

@@ -10,9 +10,13 @@ class NotesService {
     constructor() {
         this.geminiService = new gemini_1.GeminiService();
     }
+    /**
+     * Create a new note
+     */
     async createNote(userId, data) {
         const client = await database_1.default.connect();
         try {
+            // Generate tags if auto-tagging is enabled
             let tags = data.tags || [];
             if (tags.length === 0) {
                 const userSettings = await this.getUserSettings(userId);
@@ -40,9 +44,13 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Update an existing note
+     */
     async updateNote(noteId, userId, data) {
         const client = await database_1.default.connect();
         try {
+            // Build update query dynamically
             const updateFields = [];
             const values = [];
             let paramIndex = 1;
@@ -79,6 +87,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Delete a note
+     */
     async deleteNote(noteId, userId) {
         const client = await database_1.default.connect();
         try {
@@ -91,85 +102,95 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Get user notes with filters
+     */
     async getUserNotes(userId, filters) {
         const client = await database_1.default.connect();
         try {
             let query = 'SELECT * FROM user_notes WHERE user_id = $1';
             const values = [userId];
             let paramIndex = 2;
-            if (filters?.source_type) {
+            // Apply filters
+            if (filters === null || filters === void 0 ? void 0 : filters.source_type) {
                 query += ` AND source_type = $${paramIndex++}`;
                 values.push(filters.source_type);
             }
-            if (filters?.tags && filters.tags.length > 0) {
+            if ((filters === null || filters === void 0 ? void 0 : filters.tags) && filters.tags.length > 0) {
                 query += ` AND tags ?| $${paramIndex++}`;
                 values.push(filters.tags);
             }
-            if (filters?.search) {
+            if (filters === null || filters === void 0 ? void 0 : filters.search) {
                 query += ` AND (title ILIKE $${paramIndex++} OR content ILIKE $${paramIndex++})`;
                 values.push(`%${filters.search}%`, `%${filters.search}%`);
             }
             query += ' ORDER BY created_at DESC';
-            if (filters?.limit) {
+            if (filters === null || filters === void 0 ? void 0 : filters.limit) {
                 query += ` LIMIT $${paramIndex++}`;
                 values.push(filters.limit);
             }
-            if (filters?.offset) {
+            if (filters === null || filters === void 0 ? void 0 : filters.offset) {
                 query += ` OFFSET $${paramIndex++}`;
                 values.push(filters.offset);
             }
             const result = await client.query(query, values);
-            return result.rows.map(row => ({
-                ...row,
-                tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
-            }));
+            // Parse tags from JSON strings to arrays
+            return result.rows.map(row => (Object.assign(Object.assign({}, row), { tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []) })));
         }
         finally {
             client.release();
         }
     }
+    /**
+     * Get user notes with filters and total count for pagination
+     */
     async getUserNotesWithCount(userId, filters) {
         const client = await database_1.default.connect();
         try {
+            // Build the base WHERE clause and parameters for filtering
             let whereClause = 'WHERE user_id = $1';
             const baseValues = [userId];
             let paramIndex = 2;
-            if (filters?.source_type) {
+            // Apply filters
+            if (filters === null || filters === void 0 ? void 0 : filters.source_type) {
                 whereClause += ` AND source_type = $${paramIndex++}`;
                 baseValues.push(filters.source_type);
             }
-            if (filters?.tags && filters.tags.length > 0) {
+            if ((filters === null || filters === void 0 ? void 0 : filters.tags) && filters.tags.length > 0) {
                 whereClause += ` AND tags ?| $${paramIndex++}`;
                 baseValues.push(filters.tags);
             }
-            if (filters?.search) {
+            if (filters === null || filters === void 0 ? void 0 : filters.search) {
                 whereClause += ` AND (title ILIKE $${paramIndex++} OR content ILIKE $${paramIndex++})`;
                 baseValues.push(`%${filters.search}%`, `%${filters.search}%`);
             }
+            // Get total count (without pagination)
             const countQuery = `SELECT COUNT(*) as total FROM user_notes ${whereClause}`;
             const countResult = await client.query(countQuery, baseValues);
             const total = parseInt(countResult.rows[0].total);
+            // Get notes with pagination
             let notesQuery = `SELECT * FROM user_notes ${whereClause} ORDER BY created_at DESC`;
             let notesValues = [...baseValues];
-            if (filters?.limit) {
+            if (filters === null || filters === void 0 ? void 0 : filters.limit) {
                 notesQuery += ` LIMIT $${paramIndex++}`;
                 notesValues.push(filters.limit);
             }
-            if (filters?.offset) {
+            if (filters === null || filters === void 0 ? void 0 : filters.offset) {
                 notesQuery += ` OFFSET $${paramIndex++}`;
                 notesValues.push(filters.offset);
             }
             const notesResult = await client.query(notesQuery, notesValues);
-            const notes = notesResult.rows.map(row => ({
-                ...row,
-                tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
-            }));
+            // Parse tags from JSON strings to arrays
+            const notes = notesResult.rows.map(row => (Object.assign(Object.assign({}, row), { tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []) })));
             return { notes, total };
         }
         finally {
             client.release();
         }
     }
+    /**
+     * Search notes using full-text search
+     */
     async searchNotes(userId, query) {
         const client = await database_1.default.connect();
         try {
@@ -206,6 +227,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Link note to a source (chat, FAQ, document)
+     */
     async linkNoteToSource(noteId, sourceType, sourceId, sourceContext) {
         const client = await database_1.default.connect();
         try {
@@ -218,16 +242,16 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Get note by ID
+     */
     async getNoteById(noteId, userId) {
         const client = await database_1.default.connect();
         try {
             const result = await client.query('SELECT * FROM user_notes WHERE id = $1 AND user_id = $2', [noteId, userId]);
             if (result.rows.length > 0) {
                 const row = result.rows[0];
-                return {
-                    ...row,
-                    tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
-                };
+                return Object.assign(Object.assign({}, row), { tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []) });
             }
             return null;
         }
@@ -235,32 +259,37 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Get notes by source
+     */
     async getNotesBySource(userId, sourceType, sourceId) {
         const client = await database_1.default.connect();
         try {
             const result = await client.query('SELECT * FROM user_notes WHERE user_id = $1 AND source_type = $2 AND source_id = $3 ORDER BY created_at DESC', [userId, sourceType, sourceId]);
-            return result.rows.map(row => ({
-                ...row,
-                tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
-            }));
+            // Parse tags from JSON strings to arrays
+            return result.rows.map(row => (Object.assign(Object.assign({}, row), { tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []) })));
         }
         finally {
             client.release();
         }
     }
+    /**
+     * Get recent notes for dashboard
+     */
     async getRecentNotes(userId, limit = 5) {
         const client = await database_1.default.connect();
         try {
             const result = await client.query('SELECT * FROM user_notes WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2', [userId, limit]);
-            return result.rows.map(row => ({
-                ...row,
-                tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || [])
-            }));
+            // Parse tags from JSON strings to arrays
+            return result.rows.map(row => (Object.assign(Object.assign({}, row), { tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []) })));
         }
         finally {
             client.release();
         }
     }
+    /**
+     * Get notes count for user
+     */
     async getNotesCount(userId) {
         const client = await database_1.default.connect();
         try {
@@ -271,6 +300,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Get all tags used by user
+     */
     async getUserTags(userId) {
         const client = await database_1.default.connect();
         try {
@@ -286,6 +318,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Generate tags for content using AI
+     */
     async generateTags(content, title) {
         try {
             const text = title ? `${title}\n\n${content}` : content;
@@ -297,6 +332,9 @@ class NotesService {
             return [];
         }
     }
+    /**
+     * Get user workspace settings
+     */
     async getUserSettings(userId) {
         const client = await database_1.default.connect();
         try {
@@ -307,6 +345,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Update note tags
+     */
     async updateNoteTags(noteId, userId, tags) {
         const client = await database_1.default.connect();
         try {
@@ -319,6 +360,9 @@ class NotesService {
             client.release();
         }
     }
+    /**
+     * Bulk delete notes
+     */
     async deleteNotes(noteIds, userId) {
         const client = await database_1.default.connect();
         try {

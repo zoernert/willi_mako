@@ -1,4 +1,8 @@
 "use strict";
+/**
+ * Plugin Registry Implementation
+ * Verwaltet Plugins und deren Lifecycle
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,17 +22,22 @@ class PluginRegistryImpl {
     }
     async register(plugin) {
         const { name, apiVersion } = plugin.metadata;
+        // Validate API version compatibility
         if (!this.isApiVersionCompatible(apiVersion)) {
             throw new Error(`Plugin ${name} requires API version ${apiVersion}, but current version is not compatible`);
         }
+        // Check if plugin is allowed
         if (this.config.allowedPlugins && !this.config.allowedPlugins.includes(name)) {
             throw new Error(`Plugin ${name} is not in the allowed list`);
         }
         if (this.config.blockedPlugins && this.config.blockedPlugins.includes(name)) {
             throw new Error(`Plugin ${name} is blocked`);
         }
+        // Check dependencies
         await this.checkDependencies(plugin.metadata);
+        // Register plugin
         this.plugins.set(name, plugin);
+        // Initialize plugin
         await plugin.initialize(this.context, this.api);
         console.log(`Plugin ${name} registered successfully`);
     }
@@ -37,9 +46,11 @@ class PluginRegistryImpl {
         if (!plugin) {
             throw new Error(`Plugin ${pluginName} not found`);
         }
+        // Deactivate if active
         if (this.isActive(pluginName)) {
             await this.deactivate(pluginName);
         }
+        // Remove plugin
         this.plugins.delete(pluginName);
         console.log(`Plugin ${pluginName} unregistered successfully`);
     }
@@ -49,16 +60,19 @@ class PluginRegistryImpl {
             throw new Error(`Plugin ${pluginName} not found`);
         }
         if (this.isActive(pluginName)) {
-            return;
+            return; // Already active
         }
+        // Check dependencies are active
         const dependencies = this.getDependencies(pluginName);
         for (const dep of dependencies) {
             if (!this.isActive(dep)) {
                 throw new Error(`Dependency ${dep} is not active for plugin ${pluginName}`);
             }
         }
+        // Activate plugin
         await plugin.activate();
         this.activePlugins.add(pluginName);
+        // Call activation hook
         if (plugin.onActivate) {
             await plugin.onActivate(this.context);
         }
@@ -71,8 +85,9 @@ class PluginRegistryImpl {
             throw new Error(`Plugin ${pluginName} not found`);
         }
         if (!this.isActive(pluginName)) {
-            return;
+            return; // Already inactive
         }
+        // Check if other plugins depend on this one
         for (const [name, otherPlugin] of this.plugins) {
             if (name !== pluginName && this.isActive(name)) {
                 const deps = this.getDependencies(name);
@@ -81,9 +96,11 @@ class PluginRegistryImpl {
                 }
             }
         }
+        // Call deactivation hook
         if (plugin.onDeactivate) {
             await plugin.onDeactivate(this.context);
         }
+        // Deactivate plugin
         await plugin.deactivate();
         this.activePlugins.delete(pluginName);
         this.eventEmitter.emit('plugin-deactivated', { name: pluginName });
@@ -105,7 +122,7 @@ class PluginRegistryImpl {
     }
     getDependencies(pluginName) {
         const plugin = this.plugins.get(pluginName);
-        return plugin?.metadata.dependencies || [];
+        return (plugin === null || plugin === void 0 ? void 0 : plugin.metadata.dependencies) || [];
     }
     async loadFromDirectory(directory) {
         try {
@@ -124,6 +141,7 @@ class PluginRegistryImpl {
     async scanPlugins() {
         return Array.from(this.plugins.values()).map(plugin => plugin.metadata);
     }
+    // Plugin Event System
     on(event, listener) {
         this.eventEmitter.on(event, listener);
     }
@@ -133,6 +151,7 @@ class PluginRegistryImpl {
     emit(event, ...args) {
         this.eventEmitter.emit(event, ...args);
     }
+    // Hook Execution
     async executeHook(hookName, ...args) {
         const promises = [];
         for (const plugin of this.getActivePlugins()) {
@@ -143,6 +162,7 @@ class PluginRegistryImpl {
         }
         await Promise.all(promises);
     }
+    // Health Check for all plugins
     async healthCheck() {
         const healthy = [];
         const unhealthy = [];
@@ -174,8 +194,10 @@ class PluginRegistryImpl {
         try {
             const packageJsonPath = path_1.default.join(pluginPath, 'package.json');
             const indexPath = path_1.default.join(pluginPath, 'index.js');
+            // Check if plugin files exist
             await promises_1.default.access(packageJsonPath);
             await promises_1.default.access(indexPath);
+            // Load plugin
             const PluginClass = require(indexPath);
             const plugin = new PluginClass();
             await this.register(plugin);
@@ -188,6 +210,8 @@ class PluginRegistryImpl {
         }
     }
     isApiVersionCompatible(apiVersion) {
+        // Simple version compatibility check
+        // In production, you'd want more sophisticated version comparison
         return apiVersion === '1.0.0' || apiVersion.startsWith('1.');
     }
     async checkDependencies(metadata) {

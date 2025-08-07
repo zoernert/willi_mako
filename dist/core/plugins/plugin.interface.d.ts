@@ -1,3 +1,7 @@
+/**
+ * Plugin System Core Interfaces
+ * Definiert das grundlegende Plugin-System für einfache Feature-Erweiterungen
+ */
 import { Request, Response, NextFunction } from 'express';
 export interface PluginMetadata {
     name: string;

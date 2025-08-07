@@ -1,4 +1,8 @@
 "use strict";
+/**
+ * Logger Implementation
+ * Implementiert strukturiertes Logging mit mehreren Ausgabezielen
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,6 +20,7 @@ class Logger {
         this.config = config;
         this.initializeFileLogging();
     }
+    // Basic logging methods
     error(message, context, metadata) {
         this.log(logger_interface_1.LogLevel.ERROR, message, context, metadata);
     }
@@ -28,6 +33,7 @@ class Logger {
     debug(message, context, metadata) {
         this.log(logger_interface_1.LogLevel.DEBUG, message, context, metadata);
     }
+    // Context methods
     setContext(context) {
         const logger = this.clone();
         logger.context = context;
@@ -48,12 +54,10 @@ class Logger {
         logger.requestId = requestId;
         return logger;
     }
+    // Structured logging methods
     logUserAction(userId, action, details) {
-        this.log(logger_interface_1.LogLevel.INFO, `User action: ${action}`, 'user-action', {
-            userId,
-            action,
-            ...details
-        });
+        this.log(logger_interface_1.LogLevel.INFO, `User action: ${action}`, 'user-action', Object.assign({ userId,
+            action }, details));
     }
     logApiRequest(method, url, userId, duration) {
         this.log(logger_interface_1.LogLevel.INFO, `API ${method} ${url}`, 'api-request', {
@@ -67,26 +71,19 @@ class Logger {
         const level = error ? logger_interface_1.LogLevel.ERROR : logger_interface_1.LogLevel.DEBUG;
         const message = error ? `Database query failed: ${error.message}` : 'Database query executed';
         this.log(level, message, 'database', {
-            query: query.substring(0, 200),
+            query: query.substring(0, 200), // Truncate long queries
             duration,
-            error: error?.message
+            error: error === null || error === void 0 ? void 0 : error.message
         });
     }
     logPluginEvent(pluginName, event, data) {
-        this.log(logger_interface_1.LogLevel.INFO, `Plugin event: ${pluginName} - ${event}`, 'plugin', {
-            pluginName,
-            event,
-            ...data
-        });
+        this.log(logger_interface_1.LogLevel.INFO, `Plugin event: ${pluginName} - ${event}`, 'plugin', Object.assign({ pluginName,
+            event }, data));
     }
     logError(error, context, userId, metadata) {
-        this.log(logger_interface_1.LogLevel.ERROR, error.message, context || 'error', {
-            errorName: error.name,
-            stack: error.stack,
-            userId,
-            ...metadata
-        });
+        this.log(logger_interface_1.LogLevel.ERROR, error.message, context || 'error', Object.assign({ errorName: error.name, stack: error.stack, userId }, metadata));
     }
+    // Performance logging
     startTimer(label) {
         const startTime = new Date();
         this.performanceTimers.set(label, startTime);
@@ -102,6 +99,7 @@ class Logger {
             });
         };
     }
+    // Log retrieval
     async getLogs(filters) {
         if (this.config.enableDatabase) {
             return this.getLogsFromDatabase(filters);
@@ -111,6 +109,7 @@ class Logger {
         }
         return [];
     }
+    // Core logging method
     log(level, message, context, metadata) {
         if (!this.shouldLog(level)) {
             return;
@@ -205,32 +204,32 @@ class Logger {
             let query = 'SELECT * FROM application_logs WHERE 1=1';
             const params = [];
             let paramIndex = 1;
-            if (filters?.level) {
+            if (filters === null || filters === void 0 ? void 0 : filters.level) {
                 query += ` AND level = $${paramIndex++}`;
                 params.push(filters.level);
             }
-            if (filters?.context) {
+            if (filters === null || filters === void 0 ? void 0 : filters.context) {
                 query += ` AND context = $${paramIndex++}`;
                 params.push(filters.context);
             }
-            if (filters?.userId) {
+            if (filters === null || filters === void 0 ? void 0 : filters.userId) {
                 query += ` AND user_id = $${paramIndex++}`;
                 params.push(filters.userId);
             }
-            if (filters?.startDate) {
+            if (filters === null || filters === void 0 ? void 0 : filters.startDate) {
                 query += ` AND timestamp >= $${paramIndex++}`;
                 params.push(filters.startDate);
             }
-            if (filters?.endDate) {
+            if (filters === null || filters === void 0 ? void 0 : filters.endDate) {
                 query += ` AND timestamp <= $${paramIndex++}`;
                 params.push(filters.endDate);
             }
             query += ' ORDER BY timestamp DESC';
-            if (filters?.limit) {
+            if (filters === null || filters === void 0 ? void 0 : filters.limit) {
                 query += ` LIMIT $${paramIndex++}`;
                 params.push(filters.limit);
             }
-            if (filters?.offset) {
+            if (filters === null || filters === void 0 ? void 0 : filters.offset) {
                 query += ` OFFSET $${paramIndex++}`;
                 params.push(filters.offset);
             }
@@ -262,30 +261,33 @@ class Logger {
                 try {
                     return JSON.parse(line);
                 }
-                catch {
+                catch (_a) {
                     return null;
                 }
             }).filter(log => log !== null);
-            if (filters?.level) {
+            // Apply filters
+            if (filters === null || filters === void 0 ? void 0 : filters.level) {
                 logs = logs.filter(log => log.level === filters.level);
             }
-            if (filters?.context) {
+            if (filters === null || filters === void 0 ? void 0 : filters.context) {
                 logs = logs.filter(log => log.context === filters.context);
             }
-            if (filters?.userId) {
+            if (filters === null || filters === void 0 ? void 0 : filters.userId) {
                 logs = logs.filter(log => log.userId === filters.userId);
             }
-            if (filters?.startDate) {
+            if (filters === null || filters === void 0 ? void 0 : filters.startDate) {
                 logs = logs.filter(log => new Date(log.timestamp) >= filters.startDate);
             }
-            if (filters?.endDate) {
+            if (filters === null || filters === void 0 ? void 0 : filters.endDate) {
                 logs = logs.filter(log => new Date(log.timestamp) <= filters.endDate);
             }
+            // Sort by timestamp (newest first)
             logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            if (filters?.offset) {
+            // Apply pagination
+            if (filters === null || filters === void 0 ? void 0 : filters.offset) {
                 logs = logs.slice(filters.offset);
             }
-            if (filters?.limit) {
+            if (filters === null || filters === void 0 ? void 0 : filters.limit) {
                 logs = logs.slice(0, filters.limit);
             }
             return logs;
@@ -316,6 +318,7 @@ class Logger {
     }
 }
 exports.Logger = Logger;
+// Singleton instance
 let loggerInstance;
 function createLogger(config) {
     loggerInstance = new Logger(config);

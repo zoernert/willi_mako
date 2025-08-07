@@ -16,23 +16,24 @@ class QdrantService {
         this.client = new js_client_rest_1.QdrantClient({
             url: QDRANT_URL,
             apiKey: QDRANT_API_KEY,
-            checkCompatibility: false
+            checkCompatibility: false // Bypass version compatibility check
         });
         this.ensureCollection();
         this.initializeAbbreviationIndex();
     }
+    // Static method for initialization
     static async createCollection() {
         const client = new js_client_rest_1.QdrantClient({
             url: QDRANT_URL,
             apiKey: QDRANT_API_KEY,
-            checkCompatibility: false
+            checkCompatibility: false // Bypass version compatibility check
         });
         try {
             const result = await client.getCollections();
             const collectionExists = result.collections.some((collection) => collection.name === QDRANT_COLLECTION_NAME);
             if (!collectionExists) {
                 await client.createCollection(QDRANT_COLLECTION_NAME, {
-                    vectors: { size: 768, distance: 'Cosine' },
+                    vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
                 });
                 console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
             }
@@ -41,11 +42,12 @@ class QdrantService {
             console.error('Error creating Qdrant collection:', error);
         }
     }
+    // Static method for searching by text (used in faq.ts)
     static async searchByText(query, limit = 10, scoreThreshold = 0.5) {
         const client = new js_client_rest_1.QdrantClient({
             url: QDRANT_URL,
             apiKey: QDRANT_API_KEY,
-            checkCompatibility: false
+            checkCompatibility: false // Bypass version compatibility check
         });
         try {
             const queryVector = await gemini_1.default.generateEmbedding(query);
@@ -67,7 +69,7 @@ class QdrantService {
             const collectionExists = result.collections.some((collection) => collection.name === QDRANT_COLLECTION_NAME);
             if (!collectionExists) {
                 await this.client.createCollection(QDRANT_COLLECTION_NAME, {
-                    vectors: { size: 768, distance: 'Cosine' },
+                    vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
                 });
                 console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
             }
@@ -118,6 +120,7 @@ class QdrantService {
         });
         return results;
     }
+    // Instance method for searching by text (used in message-analyzer and quiz services)
     async searchByText(query, limit = 10, scoreThreshold = 0.5) {
         try {
             const queryVector = await gemini_1.default.generateEmbedding(query);
@@ -133,6 +136,7 @@ class QdrantService {
             return [];
         }
     }
+    // Method for storing user document chunks
     async storeUserDocumentChunk(vectorId, text, documentId, userId, title, chunkIndex) {
         try {
             const embedding = await gemini_1.default.generateEmbedding(text);
@@ -158,6 +162,7 @@ class QdrantService {
             throw error;
         }
     }
+    // Method for deleting a vector by ID
     async deleteVector(vectorId) {
         try {
             await this.client.delete(QDRANT_COLLECTION_NAME, {
@@ -169,6 +174,9 @@ class QdrantService {
             throw error;
         }
     }
+    /**
+     * Initialisiert den In-Memory-Index für Abkürzungen
+     */
     async initializeAbbreviationIndex() {
         try {
             const abbreviationResults = await this.client.scroll(QDRANT_COLLECTION_NAME, {
@@ -185,7 +193,9 @@ class QdrantService {
                 with_vector: false
             });
             abbreviationResults.points.forEach((point) => {
-                if (point.payload?.text) {
+                var _a;
+                if ((_a = point.payload) === null || _a === void 0 ? void 0 : _a.text) {
+                    // Extrahiere Abkürzung aus dem Text (vereinfacht)
                     const match = point.payload.text.match(/([A-Z]{2,})\s*[:\-]\s*(.+)/);
                     if (match) {
                         this.abbreviationIndex.set(match[1], match[2]);
@@ -198,10 +208,18 @@ class QdrantService {
             console.error('Error initializing abbreviation index:', error);
         }
     }
+    /**
+     * Analysiert die Nutzeranfrage und erstellt entsprechende Filter (DEPRECATED - use QueryAnalysisService)
+     */
     analyzeQueryForFilters(query) {
+        // Diese Methode ist deprecated und wird durch QueryAnalysisService ersetzt
         return null;
     }
+    /**
+     * Erweitert eine Anfrage mit gefundenen Abkürzungen (DEPRECATED - use QueryAnalysisService)
+     */
     expandQueryWithAbbreviations(query) {
+        // Fallback implementation
         let expandedQuery = query;
         for (const [abbreviation, fullTerm] of this.abbreviationIndex.entries()) {
             const regex = new RegExp(`\\b${abbreviation}\\b`, 'gi');
@@ -211,17 +229,22 @@ class QdrantService {
         }
         return expandedQuery;
     }
+    /**
+     * Ermittelt die aktuellsten Versionen aller Dokumente
+     */
     async getLatestDocumentVersions() {
         try {
+            // Aggregiere alle document_base_name Werte und finde die neuesten publication_date
             const aggregationResult = await this.client.scroll(QDRANT_COLLECTION_NAME, {
-                limit: 10000,
+                limit: 10000, // Große Anzahl um alle Dokumente zu erfassen
                 with_payload: true,
                 with_vector: false
             });
             const documentVersions = new Map();
             aggregationResult.points.forEach((point) => {
+                var _a, _b;
                 const payload = point.payload;
-                if (payload?.document_metadata?.document_base_name && payload?.document_metadata?.publication_date) {
+                if (((_a = payload === null || payload === void 0 ? void 0 : payload.document_metadata) === null || _a === void 0 ? void 0 : _a.document_base_name) && ((_b = payload === null || payload === void 0 ? void 0 : payload.document_metadata) === null || _b === void 0 ? void 0 : _b.publication_date)) {
                     const baseName = payload.document_metadata.document_base_name;
                     const pubDate = payload.document_metadata.publication_date;
                     if (!documentVersions.has(baseName) || pubDate > documentVersions.get(baseName).date) {
@@ -236,9 +259,14 @@ class QdrantService {
             return [];
         }
     }
+    /**
+     * Optimierte Suchfunktion mit Pre-Filtering und Query-Transformation
+     */
     async searchWithOptimizations(query, limit = 10, scoreThreshold = 0.5, useHyDE = true) {
         try {
+            // 1. Verwende QueryAnalysisService für intelligente Analyse
             const analysisResult = queryAnalysisService_1.QueryAnalysisService.analyzeQuery(query, this.abbreviationIndex);
+            // 2. HyDE: Generiere hypothetische Antwort
             let searchQuery = analysisResult.expandedQuery;
             if (useHyDE) {
                 try {
@@ -249,8 +277,11 @@ class QdrantService {
                     console.error('Error generating hypothetical answer, using expanded query:', error);
                 }
             }
+            // 3. Hole aktuelle Dokumentversionen für Filter
             const latestVersions = await this.getLatestDocumentVersions();
+            // 4. Erstelle Filter basierend auf Analyse
             const filter = queryAnalysisService_1.QueryAnalysisService.createQdrantFilter(analysisResult, latestVersions);
+            // 5. Embedding generieren und suchen
             const queryVector = await gemini_1.default.generateEmbedding(searchQuery);
             const searchParams = {
                 vector: queryVector,
@@ -261,11 +292,8 @@ class QdrantService {
                 searchParams.filter = filter;
             }
             const results = await this.client.search(QDRANT_COLLECTION_NAME, searchParams);
-            return results.map((result) => ({
-                ...result,
-                payload: {
-                    ...result.payload,
-                    search_metadata: {
+            // 6. Erweitere Ergebnisse mit Metadaten und Kontext-Information
+            return results.map((result) => (Object.assign(Object.assign({}, result), { payload: Object.assign(Object.assign({}, result.payload), { search_metadata: {
                         original_query: query,
                         expanded_query: analysisResult.expandedQuery,
                         search_query: searchQuery,
@@ -278,17 +306,17 @@ class QdrantService {
                         filter_applied: filter ? Object.keys(filter) : [],
                         used_hyde: useHyDE,
                         latest_versions_available: latestVersions.length
-                    }
-                }
-            }));
+                    } }) })));
         }
         catch (error) {
             console.error('Error in optimized search:', error);
             return [];
         }
     }
+    // Method for storing FAQ content in vector database
     async storeFAQContent(faqId, title, description, context, answer, additionalInfo, tags) {
         try {
+            // Combine all FAQ content for embedding
             const fullContent = `${title}\n\n${description}\n\n${context}\n\n${answer}\n\n${additionalInfo}`.trim();
             const embedding = await gemini_1.default.generateEmbedding(fullContent);
             await this.client.upsert(QDRANT_COLLECTION_NAME, {
@@ -319,8 +347,10 @@ class QdrantService {
             throw error;
         }
     }
+    // Method for updating FAQ content in vector database
     async updateFAQContent(faqId, title, description, context, answer, additionalInfo, tags) {
         try {
+            // Update is the same as store for Qdrant
             await this.storeFAQContent(faqId, title, description, context, answer, additionalInfo, tags);
             console.log(`FAQ ${faqId} updated in vector database`);
         }
@@ -329,6 +359,7 @@ class QdrantService {
             throw error;
         }
     }
+    // Method for deleting FAQ from vector database
     async deleteFAQContent(faqId) {
         try {
             await this.client.delete(QDRANT_COLLECTION_NAME, {
@@ -341,6 +372,7 @@ class QdrantService {
             throw error;
         }
     }
+    // Method for searching FAQs specifically
     async searchFAQs(query, limit = 10, scoreThreshold = 0.5) {
         try {
             const queryVector = await gemini_1.default.generateEmbedding(query);
