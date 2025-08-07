@@ -7,6 +7,12 @@ set -e
 
 echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
+# 1. Backend Build erstellen (vergessen!)
+npm run build
+
+# 2. Prüfen ob neue Routes vorhanden sind
+ls -la dist/routes/
+cat dist/routes/processes.js | grep "search"
 
 # Konfiguration
 PROD_SERVER=${1:-"root@10.0.0.2"}
