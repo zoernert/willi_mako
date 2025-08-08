@@ -9,24 +9,41 @@ const API_URL = process.env.NODE_ENV === 'production'
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Build the target URL
-    const { slug } = req.query;
+    const { slug, ...restQuery } = req.query as { [key: string]: string | string[] | undefined } & { slug?: string | string[] };
     const path = Array.isArray(slug) ? slug.join('/') : slug || '';
-    const targetUrl = `${API_URL}/api/${path}`;
+
+    // Reconstruct query string (preserve all params like q)
+    const searchParams = new URLSearchParams();
+    Object.entries(restQuery).forEach(([key, value]) => {
+      if (typeof value === 'undefined') return;
+      if (Array.isArray(value)) {
+        value.forEach(v => searchParams.append(key, v));
+      } else {
+        searchParams.append(key, value);
+      }
+    });
+    const queryString = searchParams.toString();
+    const targetUrl = `${API_URL}/api/${path}${queryString ? `?${queryString}` : ''}`;
     
     // Prepare headers
     const forwardedFor = Array.isArray(req.headers['x-forwarded-for']) 
       ? req.headers['x-forwarded-for'][0] 
       : req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     
+    const headers: Record<string, string> = {
+      // Only set Content-Type when a body is sent
+      ...(req.method !== 'GET' && req.method !== 'HEAD' && {
+        'Content-Type': (req.headers['content-type'] as string) || 'application/json'
+      }),
+      'Authorization': (req.headers.authorization as string) || '',
+      'x-forwarded-for': String(forwardedFor),
+      'x-forwarded-host': (req.headers.host as string) || '',
+    };
+    
     // Forward the request
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers: {
-        'Content-Type': req.headers['content-type'] || 'application/json',
-        'Authorization': req.headers.authorization || '',
-        'x-forwarded-for': forwardedFor,
-        'x-forwarded-host': req.headers.host || '',
-      },
+      headers,
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
 

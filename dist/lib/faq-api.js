@@ -13,7 +13,7 @@ exports.getLatestFAQs = getLatestFAQs;
 exports.getDistinctTags = getDistinctTags;
 exports.getAllFAQs = getAllFAQs;
 const database_1 = __importDefault(require("./database"));
-const qdrant_1 = require("../dist/services/qdrant");
+const qdrant_1 = require("../src/services/qdrant");
 // Generiere einen SEO-optimierten Slug aus dem FAQ-Titel
 function generateFAQSlug(title) {
     return title

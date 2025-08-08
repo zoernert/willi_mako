@@ -1,58 +1,102 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Typography,
-  CircularProgress,
-  Alert,
+  Card,
+  CardContent,
   Chip,
-  InputAdornment,
+  Button,
+  Collapse,
+  Divider,
+  Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  Alert,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
   IconButton,
-  Tabs,
-  Tab,
-  Tooltip,
-  TablePagination
+  Stack,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Link as MuiLink,
+  Table, TableHead, TableRow, TableCell, TableBody
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  Clear as ClearIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
   Business as BusinessIcon,
-  ElectricBolt as ElectricBoltIcon
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  LocationOn as LocationIcon,
+  Computer as ComputerIcon,
+  Close as CloseIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
-import codeLookupApi, { CodeSearchResult } from '../../services/codeLookupApi';
+import codeLookupApi, { UnifiedCodeSearchResult as ApiCodeSearchResult, DetailedCodeResult as ApiDetailedCodeResult, SearchFilters as ApiSearchFilters, ContactEntry } from '../../services/codeLookupApi';
 
-interface CodeSearchProps {
-  onCodeSelect?: (code: CodeSearchResult) => void;
-  initialQuery?: string;
-  compact?: boolean;
+// Local types compatible with API
+interface SoftwareSystem {
+  name: string;
+  confidence: 'High' | 'Medium' | 'Low';
+  evidence_text: string;
 }
 
-const CodeSearch: React.FC<CodeSearchProps> = ({
-  onCodeSelect,
-  initialQuery = '',
-  compact = false
-}) => {
-  const [query, setQuery] = useState(initialQuery);
+interface CodeSearchResult extends ApiCodeSearchResult {}
+interface DetailedCodeResult extends ApiDetailedCodeResult {}
+interface SearchFilters extends ApiSearchFilters {}
+
+const CodeSearch: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<CodeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState<'all' | 'bdew' | 'eic'>('all');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [detailDialog, setDetailDialog] = useState<DetailedCodeResult | null>(null);
+  
+  // Filter states
+  const [filters, setFilters] = useState<SearchFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [availableSoftwareSystems, setAvailableSoftwareSystems] = useState<string[]>([]);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [availableCodeFunctions, setAvailableCodeFunctions] = useState<string[]>([]);
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Search function
-  const performSearch = useCallback(async (searchQuery: string, mode: 'all' | 'bdew' | 'eic') => {
-    if (!searchQuery.trim()) {
+  // Load filter options
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const [systemsRes, citiesRes, functionsRes] = await Promise.all([
+          codeLookupApi.getAvailableSoftwareSystems(),
+          codeLookupApi.getAvailableCities(),
+          codeLookupApi.getAvailableCodeFunctions()
+        ]);
+
+        if (systemsRes?.softwareSystems) setAvailableSoftwareSystems(systemsRes.softwareSystems);
+        if (citiesRes?.cities) setAvailableCities(citiesRes.cities);
+        if (functionsRes?.functions) setAvailableCodeFunctions(functionsRes.functions);
+      } catch (err) {
+        console.error('Error loading filter options:', err);
+      }
+    };
+
+    loadFilterOptions();
+  }, []);
+
+  const performSearch = useCallback(async (term: string, searchFilters: SearchFilters = {}) => {
+    if (!term.trim()) {
       setResults([]);
-      setLoading(false);
       return;
     }
 
@@ -60,252 +104,589 @@ const CodeSearch: React.FC<CodeSearchProps> = ({
     setError(null);
 
     try {
-      let response;
-      switch (mode) {
-        case 'bdew':
-          response = await codeLookupApi.searchBDEWCodes(searchQuery);
-          break;
-        case 'eic':
-          response = await codeLookupApi.searchEICCodes(searchQuery);
-          break;
-        default:
-          response = await codeLookupApi.searchCodes(searchQuery);
-      }
-      
-      setResults(response.results);
-      setPage(0); // Reset pagination when new search
+      const response = await codeLookupApi.searchCodes(term, searchFilters);
+      setResults(response.results || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fehler beim Suchen');
-      setResults([]);
+      console.error('Search error:', err);
+      setError('Fehler beim Suchen');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    (searchQuery: string, mode: 'all' | 'bdew' | 'eic') => {
-      // Clear existing timeout
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+  const debouncedSearch = useCallback((term: string, searchFilters: SearchFilters) => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => performSearch(term, searchFilters), 300);
+  }, [performSearch]);
 
-      // Set new timeout
-      searchTimeoutRef.current = setTimeout(() => {
-        performSearch(searchQuery, mode);
-      }, 300);
-    },
-    [performSearch]
+  // Trigger search on term or filter changes
+  useEffect(() => {
+    if (searchTerm) {
+      debouncedSearch(searchTerm, filters);
+    } else {
+      setResults([]);
+    }
+  }, [searchTerm, filters, debouncedSearch]);
+
+  const loadCodeDetails = async (result: CodeSearchResult) => {
+    try {
+      // Determine a primary code to fetch extra details if available
+      const primaryCode = result.code || result.bdewCodes?.[0];
+      if (primaryCode) {
+        const data = await codeLookupApi.getCodeDetails(primaryCode);
+        if (data && data.result) {
+          // Merge fetched data with existing card result, preserving contacts if missing
+            const merged: DetailedCodeResult = {
+              ...result,
+              ...data.result,
+              contacts: (data.result.contacts && data.result.contacts.length > 0)
+                ? data.result.contacts
+                : result.contacts,
+              bdewCodes: (data.result.bdewCodes && data.result.bdewCodes.length > 0)
+                ? data.result.bdewCodes
+                : result.bdewCodes
+            };
+            setDetailDialog(merged);
+            return;
+        }
+      }
+      // Fallback: just show existing result without extra fetch data
+      setDetailDialog(result as DetailedCodeResult);
+    } catch (err) {
+      console.error('Detail error:', err);
+      // Still show what we have locally
+      setDetailDialog(result as DetailedCodeResult);
+    }
+  };
+
+  const getConfidenceColor = (confidence: string) => {
+    switch (confidence) {
+      case 'High': return 'success';
+      case 'Medium': return 'warning';
+      case 'Low': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setShowFilters(false);
+  };
+
+  const hasActiveFilters = Object.values(filters).some(value => 
+    Array.isArray(value) ? value.length > 0 : Boolean(value)
   );
 
-  // Handle query change
-  const handleQueryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = event.target.value;
-    setQuery(newQuery);
-    debouncedSearch(newQuery, searchMode);
-  };
-
-  // Handle search mode change
-  const handleSearchModeChange = (_event: React.SyntheticEvent, newValue: 'all' | 'bdew' | 'eic') => {
-    setSearchMode(newValue);
-    if (query.trim()) {
-      debouncedSearch(query, newValue);
-    }
-  };
-
-  // Clear search
-  const handleClear = () => {
-    setQuery('');
-    setResults([]);
-    setError(null);
-  };
-
-  // Handle row click
-  const handleRowClick = (code: CodeSearchResult) => {
-    if (onCodeSelect) {
-      onCodeSelect(code);
-    }
-  };
-
-  // Pagination
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Paginated results
-  const paginatedResults = useMemo(() => {
-    if (!results || results.length === 0) return [];
-    const startIndex = page * rowsPerPage;
-    return results.slice(startIndex, startIndex + rowsPerPage);
-  }, [results, page, rowsPerPage]);
-
-  // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('de-DE');
-    } catch {
-      return dateString;
-    }
+  const formatPostalAddress = (c: ContactEntry) => {
+    const lines: string[] = [];
+    if (c.Street) lines.push(c.Street);
+    const line2 = [c.PostCode, c.City].filter(Boolean).join(' ');
+    if (line2) lines.push(line2);
+    if (c.Country) lines.push(c.Country);
+    return lines.join('\n');
   };
 
   return (
     <Box>
-      {/* Search Header */}
-      <Box sx={{ mb: 3 }}>
-        {/* Search Tabs */}
-        <Tabs value={searchMode} onChange={handleSearchModeChange} sx={{ mb: 2 }}>
-          <Tab label="Alle Codes" value="all" />
-          <Tab label="BDEW-Codes" value="bdew" />
-          <Tab label="EIC-Codes" value="eic" />
-        </Tabs>
+      <Typography variant="h5" component="h1" gutterBottom sx={{ mb: 2 }}>
+        Marktpartner Suche
+      </Typography>
 
-        {/* Search Input */}
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Code oder Unternehmen suchen..."
-          value={query}
-          onChange={handleQueryChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-            endAdornment: query && (
-              <InputAdornment position="end">
-                <IconButton onClick={handleClear} size="small">
-                  <ClearIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Box>
+      {/* Search Box */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Code, Unternehmensname, Stadt oder PLZ suchen..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+              endAdornment: loading && <CircularProgress size={20} />
+            }}
+            sx={{ mb: 2 }}
+          />
+          
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button
+              startIcon={<FilterIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              variant={hasActiveFilters ? 'contained' : 'outlined'}
+              size="small"
+            >
+              Filter ({hasActiveFilters ? 'aktiv' : 'inaktiv'})
+            </Button>
+            
+            {hasActiveFilters && (
+              <Button
+                startIcon={<ClearIcon />}
+                onClick={clearFilters}
+                size="small"
+                color="secondary"
+              >
+                Filter zurücksetzen
+              </Button>
+            )}
+          </Box>
+
+          {/* Filter Panel */}
+          <Collapse in={showFilters}>
+            <Box sx={{ mt: 3, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: {
+                    xs: 'repeat(12, 1fr)',
+                    md: 'repeat(12, 1fr)'
+                  }
+                }}
+              >
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+                  <Autocomplete
+                    multiple
+                    options={availableSoftwareSystems}
+                    value={filters.softwareSystems || []}
+                    onChange={(_, value) => setFilters(prev => ({ ...prev, softwareSystems: value }))}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Software-Systeme" size="small" />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          variant="outlined"
+                          label={option}
+                          size="small"
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                  />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+                  <Autocomplete
+                    options={availableCities}
+                    value={filters.city || ''}
+                    onChange={(_, value) => setFilters(prev => ({ ...prev, city: value || undefined }))}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Stadt" size="small" />
+                    )}
+                  />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+                  <TextField
+                    fullWidth
+                    label="PLZ"
+                    size="small"
+                    value={filters.postCode || ''}
+                    onChange={(e) => setFilters(prev => ({ ...prev, postCode: e.target.value || undefined }))}
+                  />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+                  <Autocomplete
+                    options={availableCodeFunctions}
+                    value={filters.codeFunction || ''}
+                    onChange={(_, value) => setFilters(prev => ({ ...prev, codeFunction: value || undefined }))}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Code-Funktion" size="small" />
+                    )}
+                  />
+                </Box>
+
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Vertrauensniveau</InputLabel>
+                    <Select
+                      multiple
+                      value={filters.confidence || []}
+                      onChange={(e) => setFilters(prev => ({ 
+                        ...prev, 
+                        confidence: e.target.value as ('High' | 'Medium' | 'Low')[]
+                      }))}
+                      input={<OutlinedInput label="Vertrauensniveau" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} size="small" />
+                          ))}
+                        </Box>
+                      )}
+                    >
+                      <MenuItem value="High">Hoch</MenuItem>
+                      <MenuItem value="Medium">Mittel</MenuItem>
+                      <MenuItem value="Low">Niedrig</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              </Box>
+            </Box>
+          </Collapse>
+        </CardContent>
+      </Card>
 
       {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
       {/* Results */}
-      {(results?.length || 0) > 0 && (
-        <Paper>
-          <TableContainer>
-            <Table size={compact ? 'small' : 'medium'}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Code</TableCell>
-                  <TableCell>Unternehmen</TableCell>
-                  <TableCell>Typ</TableCell>
-                  <TableCell>Quelle</TableCell>
-                  {!compact && <TableCell>Gültig von</TableCell>}
-                  {!compact && <TableCell>Gültig bis</TableCell>}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedResults.map((result, index) => (
-                  <TableRow
-                    key={`${result.code}-${index}`}
-                    hover
-                    onClick={() => handleRowClick(result)}
-                    sx={{ 
-                      cursor: onCodeSelect ? 'pointer' : 'default',
-                      '&:hover': onCodeSelect ? { backgroundColor: 'action.hover' } : {}
-                    }}
-                  >
-                    <TableCell>
-                      <Typography variant="body2" fontFamily="monospace">
-                        {result.code}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <BusinessIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-                        <Typography variant="body2">
-                          {result.companyName}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {result.codeType}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={result.source.toUpperCase()}
-                        size="small"
-                        color={result.source === 'bdew' ? 'primary' : 'secondary'}
-                        variant="outlined"
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        {results.length > 0 ? `${results.length} Ergebnisse gefunden` : 
+         searchTerm && !loading ? 'Keine Ergebnisse gefunden' : ''}
+      </Typography>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'repeat(2, 1fr)',
+            lg: 'repeat(3, 1fr)'
+          }
+        }}
+      >
+        {results.map((result, idx) => {
+          // Determine display fields for new structure
+          const title = result.companyName || result.code || `Ergebnis ${idx + 1}`;
+          const subtitle = result.codeType || (result.bdewCodes?.length ? `${result.bdewCodes.length} BDEW-Codes` : undefined);
+          const city = result.city || result.contacts?.[0]?.City;
+          const postCode = result.postCode || result.contacts?.[0]?.PostCode;
+          const street = result.street || result.contacts?.[0]?.Street;
+          const country = result.country || result.contacts?.[0]?.Country;
+
+          // Collect unique Marktrollen (BdewCodeFunction)
+          const roles = Array.from(new Set((result.contacts || []).map(c => c.BdewCodeFunction).filter(Boolean))) as string[];
+
+          return (
+            <Box key={(result._id as any)?.$oid || (typeof result._id === 'string' ? result._id : undefined) || result.code || idx}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  '&:hover': { boxShadow: 4 }
+                }}
+              >
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <BusinessIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
+                      {title}
+                    </Typography>
+                    {/* Remove legacy source chip or keep if available */}
+                    {result.source && (
+                      <Chip 
+                        label={result.source.toUpperCase()} 
+                        size="small" 
+                        color="primary" 
+                        sx={{ ml: 'auto' }}
                       />
-                    </TableCell>
-                    {!compact && (
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(result.validFrom)}
-                        </Typography>
-                      </TableCell>
                     )}
-                    {!compact && (
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(result.validTo)}
-                        </Typography>
-                      </TableCell>
+                  </Box>
+
+                  {subtitle && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {subtitle}
+                    </Typography>
+                  )}
+
+                  {/* Marktrollen */}
+                  {!!roles.length && (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrollen:</Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {roles.map((r, i) => <Chip key={i} label={r} size="small" variant="outlined" />)}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {result.contacts && result.contacts.length > 0 && (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrollen / Codes:</Typography>
+                      <Table size="small" sx={{ '& td, & th': { borderBottom: '1px solid', borderColor: 'divider', py: 0.5 } }}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ pl: 0 }}>Marktrolle</TableCell>
+                            <TableCell>BDEW Code</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {result.contacts.map((c: ContactEntry, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell sx={{ pl: 0 }}>{c.BdewCodeFunction || '—'}</TableCell>
+                              <TableCell>{c.CompanyUID || '—'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  )}
+
+                  {/* BDEW Codes preview */}
+                  {result.bdewCodes && result.bdewCodes.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                        BDEW-Codes:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {result.bdewCodes.slice(0, 3).map((code, i) => (
+                          <Chip key={i} label={code} size="small" variant="outlined" />
+                        ))}
+                        {result.bdewCodes.length > 3 && (
+                          <Chip label={`+${result.bdewCodes.length - 3} weitere`} size="small" variant="outlined" />
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Location */}
+                  {(city || street) && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                      <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {street ? `${street}, ` : ''}{postCode ? `${postCode} ` : ''}{city}{country ? `, ${country}` : ''}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Software systems (legacy + new) */}
+                  {(result.softwareSystems && result.softwareSystems.length > 0) || (result.allSoftwareSystems && result.allSoftwareSystems.length > 0) ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                        Software-Systeme:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {(result.softwareSystems || result.allSoftwareSystems || []).slice(0, 3).map((system: any, index: number) => (
+                          <Chip
+                            key={index}
+                            label={system.name}
+                            size="small"
+                            color={getConfidenceColor(system.confidence) as any}
+                            variant="outlined"
+                          />
+                        ))}
+                        {((result.softwareSystems || result.allSoftwareSystems || []).length > 3) && (
+                          <Chip label={`+${(result.softwareSystems || result.allSoftwareSystems || []).length - 3} weitere`} size="small" variant="outlined" />
+                        )}
+                      </Box>
+                    </Box>
+                  ) : null}
+
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => loadCodeDetails(result)}
+                    >
+                      Vollansicht
+                    </Button>
+                  </Box>
+                  {/* Removed expandable inline details */}
+                </CardContent>
+              </Card>
+            </Box>
+          );
+        })}
+      </Box>
+
+      {/* Detail Dialog */}
+      <Dialog 
+        open={!!detailDialog} 
+        onClose={() => setDetailDialog(null)} 
+        maxWidth="md" 
+        fullWidth
+      >
+        {detailDialog && (
+          <>
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="h6">{detailDialog.companyName || detailDialog.code}</Typography>
+                {detailDialog.companyName && detailDialog.code && (
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Code: {detailDialog.code}
+                  </Typography>
+                )}
+              </Box>
+              <IconButton onClick={() => setDetailDialog(null)}>
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 3,
+                  gridTemplateColumns: {
+                    xs: 'repeat(12, 1fr)',
+                    md: 'repeat(12, 1fr)'
+                  }
+                }}
+              >
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+                  <Typography variant="h6" gutterBottom>
+                    Unternehmensdaten
+                  </Typography>
+                  <Stack spacing={1}>
+                    {detailDialog.companyName && (
+                      <Typography><strong>Name:</strong> {detailDialog.companyName}</Typography>
                     )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          
-          {/* Pagination */}
-          <TablePagination
-            component="div"
-            count={results?.length || 0}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage="Zeilen pro Seite:"
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} von ${count}`}
-          />
-        </Paper>
-      )}
+                    {detailDialog.bdewCodes && detailDialog.bdewCodes.length > 0 && (
+                      <Typography><strong>BDEW-Codes:</strong> {detailDialog.bdewCodes.join(', ')}</Typography>
+                    )}
+                    {detailDialog.street && (
+                      <Typography><strong>Adresse:</strong> {detailDialog.street}</Typography>
+                    )}
+                    {(detailDialog.city || detailDialog.postCode) && (
+                      <Typography><strong>Ort:</strong> {detailDialog.postCode} {detailDialog.city}</Typography>
+                    )}
+                    {detailDialog.country && (
+                      <Typography><strong>Land:</strong> {detailDialog.country}</Typography>
+                    )}
+                  </Stack>
+                </Box>
+                
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+                  <Typography variant="h6" gutterBottom>
+                    Kontaktdaten
+                  </Typography>
+                  <Stack spacing={1}>
+                    {detailDialog.contacts && detailDialog.contacts.length > 0 ? (
+                      <List>
+                        {detailDialog.contacts.map((c: ContactEntry, i: number) => (
+                          <ListItem key={i} alignItems="flex-start" disableGutters sx={{ mb: 1 }}>
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                  {c.BdewCodeFunction && <Chip size="small" label={c.BdewCodeFunction} />}
+                                  {c.BdewCodeType && <Chip size="small" variant="outlined" label={c.BdewCodeType} />}
+                                  {c.BdewCodeStatus && <Chip size="small" color="success" variant="outlined" label={c.BdewCodeStatus} />}
+                                </Box>
+                              }
+                              secondary={
+                                <Box sx={{ mt: 0.5 }}>
+                                  <Typography variant="body2"><strong>Marktrolle:</strong> {c.BdewCodeFunction || '—'}</Typography>
+                                  <Typography variant="body2"><strong>BDEW Code:</strong> {c.CompanyUID || '—'}</Typography>
+                                  {c.BdewCodeStatus && (
+                                    <Typography variant="body2"><strong>Status:</strong> {c.BdewCodeStatus}</Typography>
+                                  )}
+                                  {c.BdewCodeStatusBegin && (
+                                    <Typography variant="body2"><strong>Status seit:</strong> {new Date(c.BdewCodeStatusBegin).toLocaleDateString('de-DE')}</Typography>
+                                  )}
+                                  {c.CodeContact && (
+                                    <Typography variant="body2"><strong>Ansprechpartner:</strong> {c.CodeContact}</Typography>
+                                  )}
+                                  {c.CodeContactPhone && (
+                                    <Typography variant="body2"><strong>Telefon:</strong> {c.CodeContactPhone}</Typography>
+                                  )}
+                                  {c.CodeContactEmail && (
+                                    <Typography variant="body2"><strong>E-Mail:</strong> {c.CodeContactEmail}</Typography>
+                                  )}
+                                  {(c.Street || c.PostCode || c.City || c.Country) && (
+                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                      <strong>Anschrift:</strong>\n{formatPostalAddress(c)}
+                                    </Typography>
+                                  )}
+                                  {c.EditedOn && (
+                                    <Typography variant="caption" color="text.secondary">Bearbeitet: {new Date(c.EditedOn).toLocaleDateString('de-DE')}</Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">Keine Kontaktdaten verfügbar.</Typography>
+                    )}
+                  </Stack>
+                </Box>
 
-      {/* No results */}
-      {!loading && query && (results?.length || 0) === 0 && !error && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="body1" color="text.secondary">
-            Keine Codes gefunden für "{query}"
-          </Typography>
-        </Box>
-      )}
+                {(detailDialog.allSoftwareSystems && detailDialog.allSoftwareSystems.length > 0) && (
+                  <Box sx={{ gridColumn: 'span 12' }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <ComputerIcon sx={{ mr: 1 }} />
+                      Software-Systeme
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {detailDialog.allSoftwareSystems.map((system, index) => (
+                        <Chip
+                          key={index}
+                          label={`${system.name} (${system.confidence})`}
+                          color={getConfidenceColor(system.confidence) as any}
+                          variant="outlined"
+                          sx={{ mb: 1 }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
 
-      {/* Initial state */}
-      {!query && !loading && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="body1" color="text.secondary">
-            Geben Sie einen Code oder Unternehmensnamen ein, um zu suchen
-          </Typography>
-        </Box>
-      )}
+                {detailDialog.findings && detailDialog.findings.length > 0 && (
+                  <Box sx={{ gridColumn: 'span 12' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Datenquellen
+                    </Typography>
+                    <List>
+                      {detailDialog.findings.map((finding: any, index: number) => (
+                        <ListItem key={index} divider>
+                          <ListItemIcon>
+                            <Avatar sx={{ bgcolor: 'primary.main', width: 24, height: 24, fontSize: '0.75rem' }}>
+                              {index + 1}
+                            </Avatar>
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              finding.source_url ? (
+                                <MuiLink 
+                                  href={finding.source_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  sx={{ textDecoration: 'none' }}
+                                >
+                                  {finding.source_url}
+                                </MuiLink>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">Quelle unbekannt</Typography>
+                              )
+                            }
+                            secondary={
+                              <Box>
+                                {finding.retrieved_at && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Abgerufen am: {new Date(finding.retrieved_at).toLocaleDateString('de-DE')}
+                                  </Typography>
+                                )}
+                                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {(finding.software_systems || []).map((system: any, sysIndex: number) => (
+                                    <Chip
+                                      key={sysIndex}
+                                      label={`${system.name} (${system.confidence})`}
+                                      size="small"
+                                      color={getConfidenceColor(system.confidence) as any}
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                </Box>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+              </Box>
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 };

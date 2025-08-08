@@ -1,5 +1,5 @@
 import pool from './database';
-import { QdrantService } from '../dist/services/qdrant';
+import { QdrantService } from '../src/services/qdrant';
 
 export interface StaticFAQData {
   id: string;

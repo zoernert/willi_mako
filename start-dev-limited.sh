@@ -6,6 +6,11 @@
 echo "🚀 Starting Willi-Mako Limited File Watching Development Environment"
 echo "=================================================================="
 
+echo "🔨 Baue nur Legacy-App (Marktpartner Suche) ..."
+npm run build:legacy || { echo "❌ Legacy Build fehlgeschlagen"; exit 1; }
+# ensure moved into public/app
+npm run move:legacy || { echo "❌ Move Legacy fehlgeschlagen"; exit 1; }
+
 # Cleanup function to kill any existing processes
 cleanup_existing_processes() {
     echo "🧹 Prüfe und beende bestehende Entwicklungsserver..."

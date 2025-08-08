@@ -78,7 +78,7 @@ const Layout: React.FC = () => {
     { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
-    { text: 'Code-Lookup', icon: <SearchIcon />, path: '/code-lookup' },
+    { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
       : []

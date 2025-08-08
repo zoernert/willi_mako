@@ -9,10 +9,10 @@ const CodeLookupPage: React.FC = () => {
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
           <ElectricBoltIcon sx={{ mr: 2, fontSize: 40 }} />
-          BDEW/EIC Code-Lookup
+          Marktpartner Suche
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
-          Durchsuchen Sie deutsche Energiewirtschafts-Codes und finden Sie schnell die zugehörigen Unternehmen
+          Finden Sie Marktpartner der Energiewirtschaft: Unternehmen, Marktrollen, BDEW-Codes, Software-Systeme und Kontaktdaten.
         </Typography>
       </Box>
 
@@ -25,17 +25,17 @@ const CodeLookupPage: React.FC = () => {
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
             <InfoIcon sx={{ mr: 1, color: "primary.main" }} />
             <Typography variant="h6">
-              Über BDEW/EIC-Codes
+              Über Marktpartner & Codes
             </Typography>
           </Box>
           
           <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 3 }}>
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
-                BDEW-Codes
+                Marktrollen & BDEW-Codes
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                BDEW-Codes sind 13-stellige Identifikationsnummern für Marktpartner in der deutschen Energiewirtschaft.
+                Marktrollen (z.B. Lieferant, Netzbetreiber, Bilanzkreisverantwortlicher) und zugehörige BDEW-Codes identifizieren eindeutig die Funktionen eines Unternehmens in der Marktkommunikation.
               </Typography>
             </Box>
             
@@ -44,7 +44,7 @@ const CodeLookupPage: React.FC = () => {
                 EIC-Codes
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Energy Identification Codes (EIC) sind europäische Codes zur eindeutigen Identifikation von Objekten in der Energiewirtschaft.
+                Energy Identification Codes (EIC) sind europaweit eindeutige Kennungen für Teilnehmer und Objekte der Energiewirtschaft.
               </Typography>
             </Box>
           </Box>

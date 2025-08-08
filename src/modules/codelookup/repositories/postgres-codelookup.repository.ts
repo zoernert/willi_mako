@@ -1,11 +1,11 @@
 import { Pool } from 'pg';
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
-import { CodeSearchResult, BDEWCode, EICCode } from '../interfaces/codelookup.interface';
+import { CodeSearchResult, BDEWCode, EICCode, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
 
 export class PostgresCodeLookupRepository implements CodeLookupRepository {
   constructor(private pool: Pool) {}
 
-  async searchCodes(query: string): Promise<CodeSearchResult[]> {
+  async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
     const [bdewResults, eicResults] = await Promise.all([
       this.searchBDEWCodes(query),
       this.searchEICCodes(query)
@@ -27,7 +27,7 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
     });
   }
 
-  async searchBDEWCodes(query: string): Promise<CodeSearchResult[]> {
+  async searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
     const client = await this.pool.connect();
     
     try {
@@ -63,7 +63,7 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
     }
   }
 
-  async searchEICCodes(query: string): Promise<CodeSearchResult[]> {
+  async searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
     const client = await this.pool.connect();
     
     try {
@@ -94,6 +94,61 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
         codeType: row.eic_type,
         source: 'eic' as const
       }));
+    } finally {
+      client.release();
+    }
+  }
+
+  async getCodeDetails(code: string): Promise<DetailedCodeResult | null> {
+    // Backward compatibility: return basic result
+    const result = await this.searchCodes(code);
+    if (result.length === 0) {
+      return null;
+    }
+    
+    const baseResult = result[0];
+    return {
+      ...baseResult,
+      findings: [],
+      allSoftwareSystems: []
+    };
+  }
+
+  async getAvailableSoftwareSystems(): Promise<string[]> {
+    // PostgreSQL doesn't have software systems data
+    return [];
+  }
+
+  async getAvailableCities(): Promise<string[]> {
+    const client = await this.pool.connect();
+    
+    try {
+      const result = await client.query(`
+        SELECT DISTINCT company_name as city
+        FROM bdewcodes
+        WHERE company_name IS NOT NULL
+        ORDER BY company_name
+        LIMIT 100
+      `);
+
+      return result.rows.map(row => row.city).filter(Boolean);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getAvailableCodeFunctions(): Promise<string[]> {
+    const client = await this.pool.connect();
+    
+    try {
+      const result = await client.query(`
+        SELECT DISTINCT code_type
+        FROM bdewcodes
+        WHERE code_type IS NOT NULL
+        ORDER BY code_type
+      `);
+
+      return result.rows.map(row => row.code_type).filter(Boolean);
     } finally {
       client.release();
     }

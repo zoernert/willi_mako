@@ -333,26 +333,28 @@ export class QdrantService {
       const results = await this.client.search(QDRANT_COLLECTION_NAME, searchParams);
 
       // 6. Erweitere Ergebnisse mit Metadaten und Kontext-Information
-      return results.map((result: any) => ({
-        ...result,
-        payload: {
-          ...result.payload,
-          search_metadata: {
-            original_query: query,
-            expanded_query: analysisResult.expandedQuery,
-            search_query: searchQuery,
-            analysis_result: {
-              intent_type: analysisResult.intentType,
-              confidence: analysisResult.confidence,
-              document_reference: analysisResult.documentReference,
-              filter_summary: QueryAnalysisService.createFilterSummary(analysisResult)
+      return results.map((result: any) => {
+        return {
+          ...result,
+          payload: {
+            ...result.payload,
+            search_metadata: {
+              original_query: query,
+              expanded_query: analysisResult.expandedQuery,
+              search_query: searchQuery,
+              analysis_result: {
+                intent_type: analysisResult.intentType,
+                confidence: analysisResult.confidence,
+                document_reference: analysisResult.documentReference,
+                filter_summary: QueryAnalysisService.createFilterSummary(analysisResult),
+              },
+              filter_applied: filter ? Object.keys(filter) : [],
+              used_hyde: useHyDE,
+              latest_versions_available: latestVersions.length,
             },
-            filter_applied: filter ? Object.keys(filter) : [],
-            used_hyde: useHyDE,
-            latest_versions_available: latestVersions.length
-          }
-        }
-      }));
+          },
+        };
+      });
 
     } catch (error) {
       console.error('Error in optimized search:', error);

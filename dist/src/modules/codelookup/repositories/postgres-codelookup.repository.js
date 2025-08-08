@@ -5,7 +5,7 @@ class PostgresCodeLookupRepository {
     constructor(pool) {
         this.pool = pool;
     }
-    async searchCodes(query) {
+    async searchCodes(query, filters) {
         const [bdewResults, eicResults] = await Promise.all([
             this.searchBDEWCodes(query),
             this.searchEICCodes(query)
@@ -22,7 +22,7 @@ class PostgresCodeLookupRepository {
             return a.companyName.localeCompare(b.companyName);
         });
     }
-    async searchBDEWCodes(query) {
+    async searchBDEWCodes(query, filters) {
         const client = await this.pool.connect();
         try {
             // Bereite die Suchanfrage für PostgreSQL vor
@@ -55,7 +55,7 @@ class PostgresCodeLookupRepository {
             client.release();
         }
     }
-    async searchEICCodes(query) {
+    async searchEICCodes(query, filters) {
         const client = await this.pool.connect();
         try {
             // Bereite die Suchanfrage für PostgreSQL vor
@@ -83,6 +83,54 @@ class PostgresCodeLookupRepository {
                 codeType: row.eic_type,
                 source: 'eic'
             }));
+        }
+        finally {
+            client.release();
+        }
+    }
+    async getCodeDetails(code) {
+        // Backward compatibility: return basic result
+        const result = await this.searchCodes(code);
+        if (result.length === 0) {
+            return null;
+        }
+        const baseResult = result[0];
+        return {
+            ...baseResult,
+            findings: [],
+            allSoftwareSystems: []
+        };
+    }
+    async getAvailableSoftwareSystems() {
+        // PostgreSQL doesn't have software systems data
+        return [];
+    }
+    async getAvailableCities() {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+        SELECT DISTINCT company_name as city
+        FROM bdewcodes
+        WHERE company_name IS NOT NULL
+        ORDER BY company_name
+        LIMIT 100
+      `);
+            return result.rows.map(row => row.city).filter(Boolean);
+        }
+        finally {
+            client.release();
+        }
+    }
+    async getAvailableCodeFunctions() {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+        SELECT DISTINCT code_type
+        FROM bdewcodes
+        WHERE code_type IS NOT NULL
+        ORDER BY code_type
+      `);
+            return result.rows.map(row => row.code_type).filter(Boolean);
         }
         finally {
             client.release();
