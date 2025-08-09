@@ -401,14 +401,14 @@ const CodeSearch: React.FC = () => {
                         <TableHead>
                           <TableRow>
                             <TableCell sx={{ pl: 0 }}>Marktrolle</TableCell>
-                            <TableCell>Unternehmensnummer</TableCell>
+                            <TableCell>BDEW-Code</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {result.contacts.map((c: ContactEntry, i: number) => (
                             <TableRow key={i}>
                               <TableCell sx={{ pl: 0 }}>{c.BdewCodeFunction || '—'}</TableCell>
-                              <TableCell>{c.CompanyUID || '—'}</TableCell>
+                              <TableCell>{result.bdewCodes && result.bdewCodes.length > 0 ? result.bdewCodes[0] : (c.CompanyUID || '—')}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
