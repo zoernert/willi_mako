@@ -182,6 +182,14 @@ class CodeLookupApi {
     const payload = raw?.data || raw;
     return { functions: payload.functions || [], count: payload.count || (payload.functions ? payload.functions.length : 0) };
   }
+
+  async reportError(marketPartner: any, errorDescription: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post<{ success: boolean; message: string }>(`/v1/codes/report-error`, {
+      marketPartner,
+      errorDescription
+    });
+    return response;
+  }
 }
 
 export const codeLookupApi = new CodeLookupApi();

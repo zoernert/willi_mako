@@ -20,6 +20,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Stack,
   Avatar,
@@ -28,7 +29,8 @@ import {
   ListItemText,
   ListItemIcon,
   Link as MuiLink,
-  Table, TableHead, TableRow, TableCell, TableBody
+  Table, TableHead, TableRow, TableCell, TableBody,
+  Snackbar
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -41,7 +43,8 @@ import {
   Computer as ComputerIcon,
   Close as CloseIcon,
   FilterList as FilterIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  Report as ReportIcon
 } from '@mui/icons-material';
 import codeLookupApi, { UnifiedCodeSearchResult as ApiCodeSearchResult, DetailedCodeResult as ApiDetailedCodeResult, SearchFilters as ApiSearchFilters, ContactEntry } from '../../services/codeLookupApi';
 
@@ -63,6 +66,13 @@ const CodeSearch: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [detailDialog, setDetailDialog] = useState<DetailedCodeResult | null>(null);
+  
+  // Error reporting states
+  const [errorReportDialog, setErrorReportDialog] = useState(false);
+  const [errorDescription, setErrorDescription] = useState('');
+  const [reportingError, setReportingError] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportErrorMessage, setReportErrorMessage] = useState<string | null>(null);
   
   // Filter states
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -198,6 +208,29 @@ const CodeSearch: React.FC = () => {
         .filter((code): code is string => Boolean(code));
     }
     return [];
+  };
+
+  // Handle error reporting
+  const handleReportError = async () => {
+    if (!detailDialog || !errorDescription.trim()) {
+      return;
+    }
+
+    setReportingError(true);
+    setReportErrorMessage(null);
+
+    try {
+      await codeLookupApi.reportError(detailDialog, errorDescription);
+      setReportSuccess(true);
+      setErrorReportDialog(false);
+      setErrorDescription('');
+      setTimeout(() => setReportSuccess(false), 5000); // Hide success message after 5 seconds
+    } catch (err) {
+      console.error('Error reporting failed:', err);
+      setReportErrorMessage('Fehler beim Senden der Meldung. Bitte versuchen Sie es später erneut.');
+    } finally {
+      setReportingError(false);
+    }
   };
 
   return (
@@ -383,8 +416,10 @@ const CodeSearch: React.FC = () => {
                   height: '100%', 
                   display: 'flex', 
                   flexDirection: 'column',
+                  cursor: 'pointer',
                   '&:hover': { boxShadow: 4 }
                 }}
+                onClick={() => loadCodeDetails(result)}
               >
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -411,12 +446,11 @@ const CodeSearch: React.FC = () => {
 
                   {result.contacts && result.contacts.length > 0 && (
                     <Box sx={{ mb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrollen / Codes:</Typography>
                       <Table size="small" sx={{ '& td, & th': { borderBottom: '1px solid', borderColor: 'divider', py: 0.5 } }}>
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ pl: 0 }}>Marktrolle</TableCell>
-                            <TableCell>BDEW-Code</TableCell>
+                            <TableCell sx={{ pl: 0, fontWeight: 'bold' }}>Marktrolle</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>BDEW-Code</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -430,26 +464,6 @@ const CodeSearch: React.FC = () => {
                       </Table>
                     </Box>
                   )}
-
-                  {/* BDEW Codes preview - use new extraction function */}
-                  {(() => {
-                    const bdewCodes = getBdewCodesFromContacts(result);
-                    return bdewCodes.length > 0 && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                          BDEW-Codes:
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {bdewCodes.slice(0, 3).map((code, i) => (
-                            <Chip key={i} label={code} size="small" variant="outlined" />
-                          ))}
-                          {bdewCodes.length > 3 && (
-                            <Chip label={`+${bdewCodes.length - 3} weitere`} size="small" variant="outlined" />
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  })()}
 
                   {/* Location */}
                   {(city || street) && (
@@ -513,15 +527,27 @@ const CodeSearch: React.FC = () => {
             <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
                 <Typography variant="h6">{detailDialog.companyName || detailDialog.code}</Typography>
-                {detailDialog.companyName && detailDialog.code && (
+                {/* Show company UID instead of database ID */}
+                {detailDialog.contacts?.[0]?.CompanyUID && (
                   <Typography variant="subtitle2" color="text.secondary">
-                    Code: {detailDialog.code}
+                    Unternehmensnummer: {detailDialog.contacts[0].CompanyUID}
                   </Typography>
                 )}
               </Box>
-              <IconButton onClick={() => setDetailDialog(null)}>
-                <CloseIcon />
-              </IconButton>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<ReportIcon />}
+                  onClick={() => setErrorReportDialog(true)}
+                >
+                  Fehler melden
+                </Button>
+                <IconButton onClick={() => setDetailDialog(null)}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
             </DialogTitle>
             <DialogContent>
               <Box
@@ -534,33 +560,7 @@ const CodeSearch: React.FC = () => {
                   }
                 }}
               >
-                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-                  <Typography variant="h6" gutterBottom>
-                    Unternehmensdaten
-                  </Typography>
-                  <Stack spacing={1}>
-                    {detailDialog.companyName && (
-                      <Typography><strong>Name:</strong> {detailDialog.companyName}</Typography>
-                    )}
-                    {(() => {
-                      const bdewCodes = getBdewCodesFromContacts(detailDialog);
-                      return bdewCodes.length > 0 && (
-                        <Typography><strong>BDEW-Codes:</strong> {bdewCodes.join(', ')}</Typography>
-                      );
-                    })()}
-                    {detailDialog.street && (
-                      <Typography><strong>Adresse:</strong> {detailDialog.street}</Typography>
-                    )}
-                    {(detailDialog.city || detailDialog.postCode) && (
-                      <Typography><strong>Ort:</strong> {detailDialog.postCode} {detailDialog.city}</Typography>
-                    )}
-                    {detailDialog.country && (
-                      <Typography><strong>Land:</strong> {detailDialog.country}</Typography>
-                    )}
-                  </Stack>
-                </Box>
-                
-                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+                <Box sx={{ gridColumn: 'span 12' }}>
                   <Typography variant="h6" gutterBottom>
                     Kontaktdaten
                   </Typography>
@@ -568,15 +568,19 @@ const CodeSearch: React.FC = () => {
                     {detailDialog.contacts && detailDialog.contacts.length > 0 ? (
                       <List>
                         {detailDialog.contacts.map((c: ContactEntry, i: number) => (
-                          <ListItem key={i} alignItems="flex-start" disableGutters sx={{ mb: 1 }}>
+                          <ListItem key={i} alignItems="flex-start" disableGutters sx={{ mb: 2 }}>
                             <ListItemText
+                              primary={
+                                <Typography variant="h6" sx={{ mb: 1 }}>
+                                  {c.BdewCodeFunction || 'Marktrolle'}
+                                </Typography>
+                              }
                               secondary={
                                 <Box sx={{ mt: 0.5 }}>
-                                  <Typography variant="body2"><strong>Marktrolle:</strong> {c.BdewCodeFunction || '—'}</Typography>
-                                  <Typography variant="body2"><strong>Unternehmensnummer:</strong> {c.CompanyUID || '—'}</Typography>
-                                  {c.BdewCodeType && (
-                                    <Typography variant="body2"><strong>Code-Typ:</strong> {c.BdewCodeType}</Typography>
+                                  {c.BdewCode && (
+                                    <Typography variant="body2"><strong>BdewCode:</strong> {c.BdewCode}</Typography>
                                   )}
+                                  <Typography variant="body2"><strong>Unternehmensnummer:</strong> {c.CompanyUID || '—'}</Typography>
                                   {c.BdewCodeStatus && (
                                     <Typography variant="body2"><strong>Status:</strong> {c.BdewCodeStatus}</Typography>
                                   )}
@@ -692,6 +696,83 @@ const CodeSearch: React.FC = () => {
           </>
         )}
       </Dialog>
+
+      {/* Error Report Dialog */}
+      <Dialog 
+        open={errorReportDialog} 
+        onClose={() => setErrorReportDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <ReportIcon sx={{ mr: 1, color: 'warning.main' }} />
+            Fehler melden
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Haben Sie einen Fehler in den Marktpartner-Daten gefunden? Helfen Sie uns dabei, die Datenqualität zu verbessern.
+          </Typography>
+          
+          {detailDialog && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Betroffener Marktpartner:
+              </Typography>
+              <Typography variant="body2">
+                <strong>{detailDialog.companyName || detailDialog.code}</strong>
+                {detailDialog.contacts?.[0]?.CompanyUID && (
+                  <> • Unternehmensnummer: {detailDialog.contacts[0].CompanyUID}</>
+                )}
+              </Typography>
+            </Box>
+          )}
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Fehlerbeschreibung"
+            placeholder="Beschreiben Sie bitte den gefundenen Fehler so detailliert wie möglich..."
+            value={errorDescription}
+            onChange={(e) => setErrorDescription(e.target.value)}
+            error={!!reportErrorMessage}
+            helperText={reportErrorMessage || 'Ihre Meldung wird an unser Team weitergeleitet und schnellstmöglich bearbeitet.'}
+            sx={{ mb: 2 }}
+          />
+          
+          {reportSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Ihr Fehlerbericht wurde erfolgreich gesendet. Vielen Dank für Ihre Meldung!
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorReportDialog(false)} color="primary">
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleReportError} 
+            color="primary" 
+            disabled={reportingError || !errorDescription.trim()}
+          >
+            {reportingError ? <CircularProgress size={24} /> : 'Fehler melden'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={reportSuccess}
+        autoHideDuration={5000}
+        onClose={() => setReportSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setReportSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Fehlermeldung erfolgreich gesendet! Vielen Dank für Ihr Feedback.
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -260,4 +260,42 @@ router.get('/functions', asyncHandler(async (req: AuthenticatedRequest, res: Res
   });
 }));
 
+/**
+ * Report error for market partner data
+ */
+router.post('/report-error', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { marketPartner, errorDescription } = req.body;
+  
+  if (!marketPartner || !errorDescription) {
+    throw new AppError('Market partner data and error description are required', 400);
+  }
+
+  if (!req.user?.email) {
+    throw new AppError('User email required to send error report', 401);
+  }
+
+  // Import EmailService here to avoid circular dependencies
+  const { emailService } = await import('../services/emailService');
+  
+  try {
+    // Use email as name fallback - we could also query the database for full_name if needed
+    const userName = req.user.email; // Simple fallback
+    
+    await emailService.sendMarketPartnerErrorReport(
+      req.user.email,
+      userName,
+      marketPartner,
+      errorDescription
+    );
+
+    res.json({
+      success: true,
+      message: 'Error report sent successfully'
+    });
+  } catch (error) {
+    console.error('Failed to send error report:', error);
+    throw new AppError('Failed to send error report', 500);
+  }
+}));
+
 export default router;

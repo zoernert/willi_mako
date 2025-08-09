@@ -228,6 +228,26 @@ export class EmailService {
   }
 
   /**
+   * Sendet eine Fehlermeldung zu Marktpartner-Daten
+   */
+  async sendMarketPartnerErrorReport(
+    reporterEmail: string, 
+    reporterName: string, 
+    marketPartner: any, 
+    errorDescription: string
+  ): Promise<void> {
+    const subject = `Fehlermeldung zu Marktpartner: ${marketPartner.companyName || marketPartner.code || 'Unbekannt'}`;
+    
+    const html = this.generateErrorReportHTML(reporterEmail, reporterName, marketPartner, errorDescription);
+    
+    await this.sendEmail({
+      to: 'willi@stromhaltig.de',
+      subject,
+      html
+    });
+  }
+
+  /**
    * Generiert HTML für Team-Einladungs-E-Mail
    */
   private generateTeamInvitationHTML(data: TeamInvitationEmailData): string {
@@ -402,6 +422,138 @@ export class EmailService {
                 <p>© 2025 Willi Mako - Intelligente Wissensmanagement-Plattform</p>
                 <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.</p>
                 <p>Falls Sie Probleme haben, besuchen Sie unsere FAQ-Seite oder kontaktieren Sie den Support.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+  }
+
+  /**
+   * Generiert HTML für Marktpartner-Fehlermeldungs-E-Mail
+   */
+  private generateErrorReportHTML(
+    reporterEmail: string, 
+    reporterName: string, 
+    marketPartner: any, 
+    errorDescription: string
+  ): string {
+    const currentDate = new Date().toLocaleDateString('de-DE');
+    const currentTime = new Date().toLocaleTimeString('de-DE');
+    
+    return `
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fehlermeldung Marktpartner-Daten</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .error-info { background-color: white; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #dc3545; }
+            .market-partner-info { background-color: #e8f4f8; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .reporter-info { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+            .field { margin-bottom: 10px; }
+            .field-label { font-weight: bold; color: #555; }
+            .field-value { margin-left: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚨 Fehlermeldung Marktpartner-Daten</h1>
+                <p>Neue Fehlermeldung von einem Nutzer eingegangen</p>
+            </div>
+            
+            <div class="content">
+                <div class="error-info">
+                    <h2>📝 Fehlerbeschreibung</h2>
+                    <p>${errorDescription}</p>
+                </div>
+                
+                <div class="market-partner-info">
+                    <h2>🏢 Betroffener Marktpartner</h2>
+                    <div class="field">
+                        <span class="field-label">Unternehmensname:</span>
+                        <span class="field-value">${marketPartner.companyName || 'Nicht verfügbar'}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Code:</span>
+                        <span class="field-value">${marketPartner.code || 'Nicht verfügbar'}</span>
+                    </div>
+                    ${marketPartner.contacts && marketPartner.contacts[0] && marketPartner.contacts[0].CompanyUID ? `
+                    <div class="field">
+                        <span class="field-label">Unternehmensnummer:</span>
+                        <span class="field-value">${marketPartner.contacts[0].CompanyUID}</span>
+                    </div>
+                    ` : ''}
+                    ${marketPartner.contacts && marketPartner.contacts[0] && marketPartner.contacts[0].BdewCode ? `
+                    <div class="field">
+                        <span class="field-label">BDEW-Code:</span>
+                        <span class="field-value">${marketPartner.contacts[0].BdewCode}</span>
+                    </div>
+                    ` : ''}
+                    ${marketPartner.city || marketPartner.street ? `
+                    <div class="field">
+                        <span class="field-label">Adresse:</span>
+                        <span class="field-value">
+                            ${marketPartner.street || ''} 
+                            ${marketPartner.postCode || ''} ${marketPartner.city || ''}
+                        </span>
+                    </div>
+                    ` : ''}
+                    
+                    <h3>📋 Alle verfügbaren Kontakte:</h3>
+                    ${marketPartner.contacts && marketPartner.contacts.length > 0 ? 
+                        marketPartner.contacts.map((contact: any, index: number) => `
+                        <div style="margin-bottom: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 3px;">
+                            <strong>Kontakt ${index + 1}:</strong><br/>
+                            ${contact.BdewCodeFunction ? `Marktrolle: ${contact.BdewCodeFunction}<br/>` : ''}
+                            ${contact.BdewCode ? `BDEW-Code: ${contact.BdewCode}<br/>` : ''}
+                            ${contact.CompanyUID ? `Unternehmensnummer: ${contact.CompanyUID}<br/>` : ''}
+                            ${contact.CodeContact ? `Ansprechpartner: ${contact.CodeContact}<br/>` : ''}
+                            ${contact.CodeContactEmail ? `E-Mail: ${contact.CodeContactEmail}<br/>` : ''}
+                            ${contact.CodeContactPhone ? `Telefon: ${contact.CodeContactPhone}<br/>` : ''}
+                        </div>
+                        `).join('')
+                        : '<p>Keine Kontaktdaten verfügbar</p>'
+                    }
+                </div>
+                
+                <div class="reporter-info">
+                    <h2>👤 Melder</h2>
+                    <div class="field">
+                        <span class="field-label">Name:</span>
+                        <span class="field-value">${reporterName}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">E-Mail:</span>
+                        <span class="field-value">${reporterEmail}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Datum:</span>
+                        <span class="field-value">${currentDate} um ${currentTime}</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px;">
+                    <h3>🔧 Nächste Schritte</h3>
+                    <ul>
+                        <li>Fehlermeldung prüfen und validieren</li>
+                        <li>Bei Bedarf Rücksprache mit dem Melder halten</li>
+                        <li>Daten in der Datenbank korrigieren</li>
+                        <li>Melder über Korrektur informieren</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>© 2025 Willi Mako - Intelligente Wissensmanagement-Plattform</p>
+                <p>Diese E-Mail wurde automatisch vom Fehlermeldesystem generiert.</p>
             </div>
         </div>
     </body>
