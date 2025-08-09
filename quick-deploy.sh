@@ -210,6 +210,10 @@ EOF
     # Gebaute Dateien kopieren (prüfen ob sie existieren)
     if [ -d "dist" ]; then
         cp -r dist "$TEMP_DIR/"
+        # Build Info einbetten (Marker für neue CodeLookup Felder)
+        cat > "$TEMP_DIR/dist/BUILD_INFO.json" << EOF
+{"application":"$APP_NAME","gitCommit":"$GIT_COMMIT","buildTimestamp":"$BUILD_TIMESTAMP","marker":"BDEW_CODES_MARKER"}
+EOF
     else
         echo "❌ dist-Verzeichnis nicht gefunden. Build fehlgeschlagen?"
         exit 1
@@ -226,6 +230,7 @@ EOF
     # Public Dateien kopieren (inkl. Legacy App)
     if [ -d "public" ]; then
         cp -r public "$TEMP_DIR/"
+        cp "$TEMP_DIR/VERSION" "$TEMP_DIR/public/version.txt" || true
     else
         echo "❌ public-Verzeichnis nicht gefunden."
         exit 1
@@ -322,8 +327,8 @@ transfer_files() {
     local temp_dir=$1
     echo "📤 Übertrage Dateien auf Produktivserver..."
     
-    # Alte Anwendung stoppen
-    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 stop willi_mako_backend_4101 willi_mako_frontend_4100 2>/dev/null || true"
+    # Alte Anwendung stoppen & löschen
+    ssh $PROD_SERVER "cd $DEPLOY_DIR && pm2 delete willi_mako_backend_4101 willi_mako_frontend_4100 2>/dev/null || true"
     
     # Backup erstellen
     ssh $PROD_SERVER "cd $DEPLOY_DIR && [ -d dist ] && cp -r dist dist.backup.\$(date +%Y%m%d_%H%M%S) || true"
@@ -343,6 +348,9 @@ transfer_files() {
     # Validiere dass lib Verzeichnis korrekt übertragen wurde
     echo "🔍 Validiere lib Verzeichnis auf Produktivserver..."
     ssh $PROD_SERVER "ls -la $DEPLOY_DIR/lib/ && echo '✅ lib Verzeichnis gefunden' || echo '❌ lib Verzeichnis fehlt'"
+    
+    # Prüfe VERSION & Marker
+    ssh $PROD_SERVER "echo 'Root-Inhalt nach rsync:'; ls -1 $DEPLOY_DIR | head; [ -f $DEPLOY_DIR/VERSION ] && echo '✅ VERSION vorhanden' || echo '❌ VERSION fehlt'; [ -f $DEPLOY_DIR/dist/BUILD_INFO.json ] && echo '✅ BUILD_INFO.json vorhanden' || echo '❌ BUILD_INFO.json fehlt'"
     
     echo "✅ Dateien erfolgreich übertragen"
 }
@@ -364,6 +372,12 @@ npm prune --production || true
 EOF
     
     echo "✅ Abhängigkeiten installiert"
+}
+
+# Verifiziere dass neuer Backend-Code (bdewCodes Marker) vorhanden ist
+verify_backend_code() {
+    echo "🔍 Verifiziere neuen CodeLookup-Code (bdewCodes) auf Server..."
+    ssh $PROD_SERVER "grep -R 'bdewCodes' $DEPLOY_DIR/dist/modules/codelookup/repositories 2>/dev/null || echo '❌ bdewCodes nicht im kompilierten Backend gefunden'"
 }
 
 # Test der Datenbankverbindung
@@ -418,6 +432,7 @@ start_application() {
 cd $DEPLOY_DIR
 pm2 start ecosystem_4100.config.js
 pm2 save
+pm2 describe willi_mako_backend_4101 | grep cwd || true
 EOF
     
     echo "✅ Anwendung gestartet"
@@ -453,9 +468,14 @@ curl -s -I http://localhost:$FRONTEND_PORT/ | head -1 || echo "Homepage nicht er
 curl -s -I http://localhost:$FRONTEND_PORT/app/ | head -1 || echo "Legacy App nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/wissen/ | head -1 || echo "Wissen Page nicht erreichbar"
 echo ""
-echo "RSS/Atom Feed Test:"
-curl -s -I http://localhost:$FRONTEND_PORT/feed.xml | head -1 || echo "RSS Feed nicht erreichbar"
-curl -s -I http://localhost:$FRONTEND_PORT/atom.xml | head -1 || echo "Atom Feed nicht erreichbar"
+echo "CodeLookup API Test (/api/codes):"
+curl -s "http://localhost:$FRONTEND_PORT/api/codes?query=test&_ts=\$(date +%s)" | head -c 400; echo ""
+echo "CodeLookup API Test (/api/codes-new):"
+curl -s "http://localhost:$FRONTEND_PORT/api/codes-new?query=test&_ts=\$(date +%s)" | head -c 400; echo ""
+echo "Prüfe ob Antwort Felder bdewCodes oder contacts enthält:"
+curl -s "http://localhost:$FRONTEND_PORT/api/codes?query=test" | grep -q 'bdewCodes' && echo '✅ bdewCodes in /api/codes' || echo '❌ bdewCodes fehlen in /api/codes'
+curl -s "http://localhost:$FRONTEND_PORT/api/codes-new?query=test" | grep -q 'bdewCodes' && echo '✅ bdewCodes in /api/codes-new' || echo '❌ bdewCodes fehlen in /api/codes-new'
+
 echo ""
 echo "FAQ API Test:"
 echo "Anzahl FAQs über API:"
@@ -465,6 +485,11 @@ curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '.[0].title' 2>/dev/null |
 
 if [ -f $DEPLOY_DIR/VERSION ]; then
   echo "\nVERSION Datei:"; cat $DEPLOY_DIR/VERSION; echo "";
+else
+  echo "❌ VERSION Datei fehlt im Deploy-Verzeichnis"
+fi
+if [ -f $DEPLOY_DIR/public/version.txt ]; then
+  echo "\npublic/version.txt:"; head -n 5 $DEPLOY_DIR/public/version.txt; echo "";
 fi
 EOF
 }
@@ -500,6 +525,7 @@ main() {
     
     transfer_files "$TEMP_DIR_PATH"
     install_dependencies
+    verify_backend_code
     test_database_connection
     start_application
     check_status
