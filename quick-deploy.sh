@@ -14,7 +14,13 @@ echo "🔍 Erstelle alle lokalen Builds..."
 # 1. Backend Build (zuerst, da es am wahrscheinlichsten fehlschlägt)
 echo "📦 Baue Backend..."
 npm run build:backend
-ls -la dist/
+# Fallback: Falls tsc Struktur dist/src/server.js erzeugt, aber dist/server.js erwartet wird
+if [ -f dist/src/server.js ] && [ ! -f dist/server.js ]; then
+  echo "ℹ️  Kopiere dist/src/server.js nach dist/server.js (Kompatibilitäts-Fix)"
+  cp dist/src/server.js dist/server.js
+fi
+ls -la dist/ || true
+ls -la dist/src/ 2>/dev/null | head || true
 
 # 2. Legacy App Build
 echo "📦 Baue Legacy App..."
@@ -78,14 +84,16 @@ check_ssh_connection() {
 
 # Validiere dass alle Builds vorhanden sind
 validate_builds() {
-    echo "� Validiere vorhandene Builds..."
-    
-    # Prüfe Backend Build
-    if [ ! -f "dist/server.js" ]; then
-        echo "❌ Backend Build nicht gefunden - dist/server.js fehlt"
+    echo "🔎 Validiere vorhandene Builds..."
+    # Prüfe Backend Build (erlaube beide Pfade)
+    if [ -f "dist/server.js" ]; then
+        echo "✅ Backend Build gefunden (dist/server.js)"
+    elif [ -f "dist/src/server.js" ]; then
+        echo "✅ Backend Build gefunden (dist/src/server.js)"
+    else
+        echo "❌ Backend Build nicht gefunden - weder dist/server.js noch dist/src/server.js vorhanden"
         exit 1
     fi
-    echo "✅ Backend Build gefunden"
     
     # Prüfe Legacy App Build (wurde nach public/app verschoben)
     if [ ! -f "public/app/index.html" ]; then
@@ -209,6 +217,10 @@ EOF
     
     # Gebaute Dateien kopieren (prüfen ob sie existieren)
     if [ -d "dist" ]; then
+        # Sicherstellen dass dist/server.js existiert (für PM2 & main entry)
+        if [ -f dist/src/server.js ] && [ ! -f dist/server.js ]; then
+          cp dist/src/server.js dist/server.js
+        fi
         cp -r dist "$TEMP_DIR/"
         # Build Info einbetten (Marker für neue CodeLookup Felder)
         cat > "$TEMP_DIR/dist/BUILD_INFO.json" << EOF
@@ -276,19 +288,20 @@ EOF
     mkdir -p "$TEMP_DIR/uploads"
     
     # PM2 Ecosystem-Datei für Port 4100/4101 Architektur erstellen
+    BACKEND_ENTRY="dist/server.js"
+    if [ ! -f "$TEMP_DIR/$BACKEND_ENTRY" ] && [ -f "$TEMP_DIR/dist/src/server.js" ]; then
+      BACKEND_ENTRY="dist/src/server.js"
+    fi
     cat > "$TEMP_DIR/ecosystem_4100.config.js" << EOF
 module.exports = {
   apps: [
     {
       name: 'willi_mako_backend_4101',
-      script: 'dist/server.js',
+      script: '$BACKEND_ENTRY',
       cwd: '$DEPLOY_DIR',
       instances: 1,
       exec_mode: 'cluster',
-      env: {
-        NODE_ENV: 'production',
-        PORT: $BACKEND_PORT
-      },
+      env: { NODE_ENV: 'production', PORT: $BACKEND_PORT },
       error_file: '$DEPLOY_DIR/logs/backend_4101_err.log',
       out_file: '$DEPLOY_DIR/logs/backend_4101_out.log',
       log_file: '$DEPLOY_DIR/logs/backend_4101_combined.log',
@@ -303,10 +316,7 @@ module.exports = {
       cwd: '$DEPLOY_DIR',
       instances: 1,
       exec_mode: 'cluster',
-      env: {
-        NODE_ENV: 'production',
-        PORT: $FRONTEND_PORT
-      },
+      env: { NODE_ENV: 'production', PORT: $FRONTEND_PORT },
       error_file: '$DEPLOY_DIR/logs/frontend_4100_err.log',
       out_file: '$DEPLOY_DIR/logs/frontend_4100_out.log',
       log_file: '$DEPLOY_DIR/logs/frontend_4100_combined.log',
@@ -377,7 +387,7 @@ EOF
 # Verifiziere dass neuer Backend-Code (bdewCodes Marker) vorhanden ist
 verify_backend_code() {
     echo "🔍 Verifiziere neuen CodeLookup-Code (bdewCodes) auf Server..."
-    ssh $PROD_SERVER "grep -R 'bdewCodes' $DEPLOY_DIR/dist/modules/codelookup/repositories 2>/dev/null || echo '❌ bdewCodes nicht im kompilierten Backend gefunden'"
+    ssh $PROD_SERVER "grep -R 'bdewCodes' $DEPLOY_DIR/dist 2>/dev/null || echo '❌ bdewCodes nicht im kompilierten Backend gefunden'"
 }
 
 # Test der Datenbankverbindung

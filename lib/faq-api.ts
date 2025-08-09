@@ -1,5 +1,32 @@
 import pool from './database';
-import { QdrantService } from '../src/services/qdrant';
+import { QdrantService as ImportedQdrantService } from '../src/services/qdrant';
+
+// Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
+let QdrantServiceRef: any = ImportedQdrantService;
+try {
+  if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
+    // Versuch eines require (CommonJS) zur Laufzeit
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('../src/services/qdrant');
+    QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
+  }
+} catch (e) {
+  console.warn('QdrantService dynamic import failed, will use DB fallback only:', e?.message || e);
+  QdrantServiceRef = null;
+}
+
+// Hilfsfunktion für semantische Suche (liefert [] bei Nichtverfügbarkeit)
+async function safeQdrantSearch(query: string, limit: number, scoreThreshold: number) {
+  if (QdrantServiceRef && typeof QdrantServiceRef.searchByText === 'function') {
+    try {
+      return await QdrantServiceRef.searchByText(query, limit, scoreThreshold);
+    } catch (err) {
+      console.warn('Qdrant search error, fallback to DB:', err?.message || err);
+      return [];
+    }
+  }
+  return [];
+}
 
 export interface StaticFAQData {
   id: string;
@@ -96,30 +123,28 @@ export async function getFAQBySlug(slug: string): Promise<StaticFAQData | null> 
 // Hole verwandte FAQs über QDrant Vector Search mit Database Fallback
 export async function getRelatedFAQs(faqId: string, content: string, limit: number = 5): Promise<RelatedFAQ[]> {
   try {
-    // Versuche erst QdrantService für semantische Suche
-    const searchResults = await QdrantService.searchByText(content, limit + 1, 0.3);
-    
-    // Prüfe ob QDrant-Ergebnisse gültige Titel haben
-    const validResults = searchResults
-      .filter(result => String(result.id) !== faqId && result.payload?.title)
+    const searchResults = await safeQdrantSearch(content, limit + 1, 0.3);
+    const validResults = (searchResults || [])
+      .filter((result: any) => String(result.id) !== faqId && result.payload?.title)
       .slice(0, limit)
-      .map(result => ({
+      .map((result: any) => ({
         id: String(result.id),
         title: (result.payload?.title as string) || '',
         slug: generateFAQSlug((result.payload?.title as string) || ''),
         similarity_score: result.score
       }));
 
-    // Falls QDrant nicht ausreichend gültige Ergebnisse liefert, verwende Database-Fallback
     if (validResults.length < limit) {
-      console.log('QDrant results insufficient, using database fallback');
+      if (!searchResults || searchResults.length === 0) {
+        console.log('QDrant unavailable or empty, using database fallback');
+      } else {
+        console.log('QDrant results insufficient, using database fallback');
+      }
       return await getRelatedFAQsFromDatabase(faqId, content, limit);
     }
-
     return validResults;
   } catch (error) {
-    console.error('Error fetching related FAQs from QDrant, using database fallback:', error);
-    // Fallback zu datenbankbasierter Suche
+    console.error('Error fetching related FAQs (semantic), using database fallback:', error);
     return await getRelatedFAQsFromDatabase(faqId, content, limit);
   }
 }
