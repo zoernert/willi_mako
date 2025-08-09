@@ -288,10 +288,17 @@ EOF
     mkdir -p "$TEMP_DIR/uploads"
     
     # PM2 Ecosystem-Datei für Port 4100/4101 Architektur erstellen
-    BACKEND_ENTRY="dist/server.js"
-    if [ ! -f "$TEMP_DIR/$BACKEND_ENTRY" ] && [ -f "$TEMP_DIR/dist/src/server.js" ]; then
-      BACKEND_ENTRY="dist/src/server.js"
+    # Prüfe Backend Entry Point: Prefer dist/src/server.js (korrekte tsconfig Struktur)
+    BACKEND_ENTRY="dist/src/server.js"
+    if [ ! -f "$TEMP_DIR/$BACKEND_ENTRY" ] && [ -f "$TEMP_DIR/dist/server.js" ]; then
+      BACKEND_ENTRY="dist/server.js"
+      echo "⚠️  Verwende Fallback dist/server.js - prüfe tsconfig.backend.json"
+    else
+      echo "✅ Verwende korrekten Backend Entry: $BACKEND_ENTRY"
     fi
+    
+    # Export für spätere Funktionen
+    export BACKEND_ENTRY
     cat > "$TEMP_DIR/ecosystem_4100.config.js" << EOF
 module.exports = {
   apps: [
@@ -388,6 +395,10 @@ EOF
 verify_backend_code() {
     echo "🔍 Verifiziere neuen CodeLookup-Code (bdewCodes) auf Server..."
     ssh $PROD_SERVER "grep -R 'bdewCodes' $DEPLOY_DIR/dist 2>/dev/null || echo '❌ bdewCodes nicht im kompilierten Backend gefunden'"
+    
+    # Teste Backend Entry Point auf Module-Import Errors
+    echo "🔍 Teste Backend Entry Point ($BACKEND_ENTRY)..."
+    ssh $PROD_SERVER "cd $DEPLOY_DIR && node -e \"console.log('Testing backend entry...'); require('./$BACKEND_ENTRY');\" 2>&1 | head -5 || echo '❌ Backend Entry Point hat Import-Errors'"
 }
 
 # Test der Datenbankverbindung
