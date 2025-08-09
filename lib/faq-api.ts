@@ -4,6 +4,7 @@ import { QdrantService as ImportedQdrantService } from '../src/services/qdrant';
 // Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
 let QdrantServiceRef: any = ImportedQdrantService;
 try {
+  // Prüfe ob es eine statische Methode ist
   if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
     // Versuch eines require (CommonJS) zur Laufzeit
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -11,7 +12,7 @@ try {
     QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
   }
 } catch (e) {
-  console.warn('QdrantService dynamic import failed, will use DB fallback only:', e?.message || e);
+  console.warn('QdrantService dynamic import failed, will use DB fallback only:', (e as any)?.message || e);
   QdrantServiceRef = null;
 }
 
@@ -21,7 +22,7 @@ async function safeQdrantSearch(query: string, limit: number, scoreThreshold: nu
     try {
       return await QdrantServiceRef.searchByText(query, limit, scoreThreshold);
     } catch (err) {
-      console.warn('Qdrant search error, fallback to DB:', err?.message || err);
+      console.warn('Qdrant search error, fallback to DB:', (err as any)?.message || err);
       return [];
     }
   }

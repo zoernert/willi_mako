@@ -23,6 +23,7 @@ import {
   Menu as MenuIcon,
   Home as HomeIcon,
   Info as InfoIcon,
+  Api as ApiIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -48,6 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
   const menuItems = [
     { text: 'Startseite', icon: <HomeIcon />, path: '/' },
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
+    { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
   ];
 
   const isActivePath = (path: string) => {

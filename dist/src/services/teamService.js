@@ -667,6 +667,7 @@ class TeamService {
                 authToken = jsonwebtoken_1.default.sign({
                     id: user.id,
                     email: user.email,
+                    full_name: user.full_name,
                     role: user.role
                 }, secret, { expiresIn: '24h' });
                 isNewUser = true;

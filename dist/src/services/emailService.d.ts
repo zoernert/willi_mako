@@ -39,6 +39,10 @@ export declare class EmailService {
      */
     sendPasswordResetEmail(email: string, userName: string, resetToken: string): Promise<void>;
     /**
+     * Sendet eine Fehlermeldung zu Marktpartner-Daten
+     */
+    sendMarketPartnerErrorReport(reporterEmail: string, reporterName: string, marketPartner: any, errorDescription: string): Promise<void>;
+    /**
      * Generiert HTML für Team-Einladungs-E-Mail
      */
     private generateTeamInvitationHTML;
@@ -46,6 +50,10 @@ export declare class EmailService {
      * Generiert HTML für Passwort-Reset-E-Mail
      */
     private generatePasswordResetHTML;
+    /**
+     * Generiert HTML für Marktpartner-Fehlermeldungs-E-Mail
+     */
+    private generateErrorReportHTML;
     /**
      * Konvertiert HTML zu einfachem Text (Fallback)
      */
