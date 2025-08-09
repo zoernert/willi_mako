@@ -425,8 +425,6 @@ const CodeLookupComponent: React.FC = () => {
           const street = result.street || result.contacts?.[0]?.Street;
           const country = result.country || result.contacts?.[0]?.Country;
 
-          const roles = Array.from(new Set((result.contacts || []).map(c => c.BdewCodeFunction).filter(Boolean))) as string[];
-
           return (
             <Box key={(result._id as any)?.$oid || (typeof result._id === 'string' ? result._id : undefined) || result.code || idx}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', '&:hover': { boxShadow: 4 }, transition: 'box-shadow 0.2s' }}>
@@ -438,15 +436,6 @@ const CodeLookupComponent: React.FC = () => {
                     </Typography>
                     {result.source && <Chip label={result.source.toUpperCase()} size="small" color="primary" />}
                   </Box>
-
-                  {!!roles.length && (
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrolle:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {roles.map((r, i) => <Chip key={i} label={r} size="small" variant="outlined" />)}
-                      </Box>
-                    </Box>
-                  )}
 
                   {result.bdewCodes && result.bdewCodes.length > 0 && (
                     <Box sx={{ mb: 1 }}>
@@ -508,7 +497,7 @@ const CodeLookupComponent: React.FC = () => {
                   <Typography variant="h6" gutterBottom>Unternehmensdaten</Typography>
                   <Stack spacing={1}>
                     {detailDialog.companyName && <Typography><strong>Name:</strong> {detailDialog.companyName}</Typography>}
-                    {detailDialog.companyUID && <Typography><strong>Company UID:</strong> {detailDialog.companyUID}</Typography>}
+                    {detailDialog.companyUID && <Typography><strong>Unternehmensnummer:</strong> {detailDialog.companyUID}</Typography>}
                     {detailDialog.codeType && <Typography><strong>Code-Typ:</strong> {detailDialog.codeType}</Typography>}
                     {detailDialog.validFrom && <Typography><strong>Gültig ab:</strong> {new Date(detailDialog.validFrom).toLocaleDateString('de-DE')}</Typography>}
                     {detailDialog.validTo && <Typography><strong>Gültig bis:</strong> {new Date(detailDialog.validTo).toLocaleDateString('de-DE')}</Typography>}
@@ -523,21 +512,17 @@ const CodeLookupComponent: React.FC = () => {
                 </Box>
 
                 <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-                  <Typography variant="h6" gutterBottom>Kontakte / Marktrollen</Typography>
+                  <Typography variant="h6" gutterBottom>Kontakte</Typography>
                   {detailDialog.contacts && detailDialog.contacts.length ? (
                     <List dense>
                       {detailDialog.contacts.map((c: ContactEntry, i: number) => (
                         <ListItem key={i} alignItems="flex-start" disableGutters sx={{ mb: 1 }}>
                           <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
-                                {c.BdewCodeFunction && <Chip size="small" label={c.BdewCodeFunction} />}
-                                {c.BdewCodeType && <Chip size="small" variant="outlined" label={c.BdewCodeType} />}
-                                {c.BdewCodeStatus && <Chip size="small" color="success" variant="outlined" label={c.BdewCodeStatus} />}
-                              </Box>
-                            }
                             secondary={
                               <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                                {c.BdewCodeFunction && <Typography variant="body2"><strong>Marktrolle:</strong> {c.BdewCodeFunction}</Typography>}
+                                {c.BdewCodeType && <Typography variant="body2"><strong>Code-Typ:</strong> {c.BdewCodeType}</Typography>}
+                                {c.BdewCodeStatus && <Typography variant="body2"><strong>Status:</strong> {c.BdewCodeStatus}</Typography>}
                                 {c.CodeContact && <Typography variant="body2"><strong>Ansprechpartner:</strong> {c.CodeContact}</Typography>}
                                 {c.CodeContactPhone && <Typography variant="body2"><strong>Telefon:</strong> {c.CodeContactPhone}</Typography>}
                                 {c.CodeContactEmail && <Typography variant="body2"><strong>E-Mail:</strong> {c.CodeContactEmail}</Typography>}

@@ -361,9 +361,6 @@ const CodeSearch: React.FC = () => {
           const street = result.street || result.contacts?.[0]?.Street;
           const country = result.country || result.contacts?.[0]?.Country;
 
-          // Collect unique Marktrollen (BdewCodeFunction)
-          const roles = Array.from(new Set((result.contacts || []).map(c => c.BdewCodeFunction).filter(Boolean))) as string[];
-
           return (
             <Box key={(result._id as any)?.$oid || (typeof result._id === 'string' ? result._id : undefined) || result.code || idx}>
               <Card 
@@ -397,16 +394,6 @@ const CodeSearch: React.FC = () => {
                     </Typography>
                   )}
 
-                  {/* Marktrollen */}
-                  {!!roles.length && (
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrollen:</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {roles.map((r, i) => <Chip key={i} label={r} size="small" variant="outlined" />)}
-                      </Box>
-                    </Box>
-                  )}
-
                   {result.contacts && result.contacts.length > 0 && (
                     <Box sx={{ mb: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>Marktrollen / Codes:</Typography>
@@ -414,7 +401,7 @@ const CodeSearch: React.FC = () => {
                         <TableHead>
                           <TableRow>
                             <TableCell sx={{ pl: 0 }}>Marktrolle</TableCell>
-                            <TableCell>BDEW Code</TableCell>
+                            <TableCell>Unternehmensnummer</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -562,17 +549,13 @@ const CodeSearch: React.FC = () => {
                         {detailDialog.contacts.map((c: ContactEntry, i: number) => (
                           <ListItem key={i} alignItems="flex-start" disableGutters sx={{ mb: 1 }}>
                             <ListItemText
-                              primary={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                  {c.BdewCodeFunction && <Chip size="small" label={c.BdewCodeFunction} />}
-                                  {c.BdewCodeType && <Chip size="small" variant="outlined" label={c.BdewCodeType} />}
-                                  {c.BdewCodeStatus && <Chip size="small" color="success" variant="outlined" label={c.BdewCodeStatus} />}
-                                </Box>
-                              }
                               secondary={
                                 <Box sx={{ mt: 0.5 }}>
                                   <Typography variant="body2"><strong>Marktrolle:</strong> {c.BdewCodeFunction || '—'}</Typography>
-                                  <Typography variant="body2"><strong>BDEW Code:</strong> {c.CompanyUID || '—'}</Typography>
+                                  <Typography variant="body2"><strong>Unternehmensnummer:</strong> {c.CompanyUID || '—'}</Typography>
+                                  {c.BdewCodeType && (
+                                    <Typography variant="body2"><strong>Code-Typ:</strong> {c.BdewCodeType}</Typography>
+                                  )}
                                   {c.BdewCodeStatus && (
                                     <Typography variant="body2"><strong>Status:</strong> {c.BdewCodeStatus}</Typography>
                                   )}
@@ -590,7 +573,8 @@ const CodeSearch: React.FC = () => {
                                   )}
                                   {(c.Street || c.PostCode || c.City || c.Country) && (
                                     <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                                      <strong>Anschrift:</strong>\n{formatPostalAddress(c)}
+                                      <strong>Anschrift:</strong>
+{formatPostalAddress(c)}
                                     </Typography>
                                   )}
                                   {c.EditedOn && (
