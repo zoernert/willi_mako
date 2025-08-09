@@ -56,8 +56,41 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
       });
     }
 
+    // Kontakte sammeln (neues Schema: contacts oder abgeleitet aus partner Feldern)
+    const contacts: any[] = [];
+    if ((doc as any).contacts && Array.isArray((doc as any).contacts)) {
+      contacts.push(...(doc as any).contacts);
+    } else if (partner.CompanyUID || partner.CodeContact) {
+      contacts.push({
+        BdewCodeType: partner.BdewCodeType,
+        BdewCodeFunction: partner.BdewCodeFunction,
+        BdewCodeStatus: partner.BdewCodeStatus,
+        BdewCodeStatusBegin: partner.BdewCodeStatusBegin,
+        CompanyUID: partner.CompanyUID,
+        PostCode: partner.PostCode,
+        City: partner.City,
+        Street: partner.Street,
+        Country: partner.Country,
+        CodeContact: partner.CodeContact,
+        CodeContactPhone: partner.CodeContactPhone,
+        CodeContactEmail: partner.CodeContactEmail,
+        EditedOn: partner.EditedOn
+      });
+    }
+
+    // Alle BDEW Codes aggregieren
+    const bdewCodes: string[] = [];
+    if ((doc as any).bdewCodes && Array.isArray((doc as any).bdewCodes)) {
+      bdewCodes.push(...(doc as any).bdewCodes.filter(Boolean));
+    }
+    // Partner Code hinzufügen falls vorhanden und noch nicht enthalten
+    const rawPartnerCode = partner['\uFEFFBdewCode'] || partner['﻿BdewCode'] || partner.BdewCode;
+    if (rawPartnerCode && !bdewCodes.includes(rawPartnerCode)) {
+      bdewCodes.push(rawPartnerCode);
+    }
+
     // Fallbacks für unterschiedliche Schemata
-    const bdewCode = partner['\uFEFFBdewCode'] || partner['﻿BdewCode'] || partner.BdewCode; // handle BOM and normal key
+    const bdewCode = rawPartnerCode; // bereits oben ermittelt
     const companyName = partner.CompanyName || (doc as any).companyName || partner.Name || '';
     const codeValue = bdewCode || (partner.EICCode ? partner.EICCode : (idString ? `mp:${idString}` : companyName || 'unbekannt'));
 
@@ -78,14 +111,15 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
       },
       softwareSystems: allSoftwareSystems,
       editedOn: partner.EditedOn,
-      validFrom: partner.BdewCodeStatusBegin
+      validFrom: partner.BdewCodeStatusBegin,
+      contacts,
+      bdewCodes
     };
   }
 
   private buildSearchQuery(query: string, filters?: SearchFilters): any {
     const searchConditions: any[] = [];
 
-    // Volltext-Suche über beide Schemata
     if (query && query.trim()) {
       const searchRegex = new RegExp(query.trim(), 'i');
       searchConditions.push({
@@ -99,11 +133,25 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
           { 'partner.PostCode': searchRegex },
           { 'partner.CodeContact': searchRegex },
           { 'partner.BdewCodeFunction': searchRegex },
-          // Neues Schema (discovery_results)
+          { 'partner.CompanyUID': searchRegex },
+          { 'partner.CodeContactEmail': searchRegex },
+          { 'partner.CodeContactPhone': searchRegex },
+          // Neues Schema Felder
           { 'companyName': searchRegex },
-          { 'findings.software_systems.name': searchRegex },
-          { 'findings.software_systems.evidence_text': searchRegex },
-          { 'findings.source_url': searchRegex }
+          { 'bdewCodes': searchRegex },
+          { 'contacts.BdewCodeFunction': searchRegex },
+          { 'contacts.CompanyUID': searchRegex },
+          { 'contacts.CodeContact': searchRegex },
+          { 'contacts.CodeContactEmail': searchRegex },
+          { 'contacts.CodeContactPhone': searchRegex },
+          { 'contacts.PostCode': searchRegex },
+          { 'contacts.City': searchRegex },
+          { 'contacts.Street': searchRegex },
+          { 'contacts.Country': searchRegex },
+          // Findings / Software Systeme
+            { 'findings.software_systems.name': searchRegex },
+            { 'findings.software_systems.evidence_text': searchRegex },
+            { 'findings.source_url': searchRegex }
         ]
       });
     }
@@ -220,22 +268,15 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
         return null;
       }
 
-      const baseResult = this.transformDocumentToResult(doc);
-      
-      // Sammle alle Software-Systeme aus allen Findings
-      const allSoftwareSystems: SoftwareSystem[] = [];
-      if ((doc as any).findings) {
-        (doc as any).findings.forEach((finding: any) => {
-          if (finding.software_systems) {
-            allSoftwareSystems.push(...finding.software_systems);
-          }
-        });
-      }
-
+      const baseResult = this.transformDocumentToResult(doc as any);
+      const contacts: any[] = (doc as any).contacts || baseResult.contacts || [];
+      const bdewCodes: string[] = (doc as any).bdewCodes || baseResult.bdewCodes || [];
       return {
         ...baseResult,
         findings: (doc as any).findings || [],
-        allSoftwareSystems
+        allSoftwareSystems: baseResult.softwareSystems || [],
+        contacts,
+        bdewCodes
       };
     } catch (error) {
       console.error('Error getting code details:', error);

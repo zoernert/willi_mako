@@ -20,6 +20,8 @@ export interface CodeSearchResult {
   };
   softwareSystems?: SoftwareSystem[];
   editedOn?: string;
+  bdewCodes?: string[]; // neue Sammlung aller zugeordneten BDEW Codes
+  contacts?: ContactEntry[]; // komplette Kontaktliste / Marktrollen
 }
 
 export interface SoftwareSystem {
@@ -58,6 +60,8 @@ export interface MarketPartnerDocument {
   companyName?: string;
   findings: MarketPartnerFinding[];
   processed_at?: Date | string;
+  bdewCodes?: string[]; // Array von Codes laut Discovery
+  contacts?: ContactEntry[]; // Vollständige Kontakt-/Rolleninformationen
 }
 
 export interface SearchFilters {
@@ -92,4 +96,20 @@ export interface EICCode {
   display_name: string;
   eic_responsible_user: string;
   eic_type: string;
+}
+
+export interface ContactEntry {
+  BdewCodeType?: string;
+  BdewCodeFunction?: string;
+  BdewCodeStatus?: string;
+  BdewCodeStatusBegin?: string;
+  CompanyUID?: string;
+  PostCode?: string;
+  City?: string;
+  Street?: string;
+  Country?: string;
+  CodeContact?: string;
+  CodeContactPhone?: string;
+  CodeContactEmail?: string;
+  EditedOn?: string;
 }

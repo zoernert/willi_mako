@@ -100,8 +100,14 @@ class CodeLookupApi {
       }
     }
 
-    const response = await apiClient.get<CodeSearchResponse>(`/v1/codes/search?${params.toString()}`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/search?${params.toString()}`);
+    const payload = raw?.data || raw; // falls bereits entpackt
+    return {
+      results: payload.results || payload.data?.results || [],
+      count: payload.count || payload.data?.count || (payload.results ? payload.results.length : 0),
+      query,
+      filters
+    };
   }
 
   /**
@@ -114,8 +120,14 @@ class CodeLookupApi {
     if (filters?.city) params.append('city', filters.city);
     if (filters?.codeFunction) params.append('codeFunction', filters.codeFunction);
     if (filters?.confidence?.length) filters.confidence.forEach((c) => params.append('confidence', c));
-    const response = await apiClient.get<CodeSearchResponse>(`/v1/codes/bdew/search?${params.toString()}`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/bdew/search?${params.toString()}`);
+    const payload = raw?.data || raw;
+    return {
+      results: payload.results || payload.data?.results || [],
+      count: payload.count || payload.data?.count || (payload.results ? payload.results.length : 0),
+      query,
+      filters
+    };
   }
 
   /**
@@ -128,31 +140,45 @@ class CodeLookupApi {
     if (filters?.city) params.append('city', filters.city);
     if (filters?.codeFunction) params.append('codeFunction', filters.codeFunction);
     if (filters?.confidence?.length) filters.confidence.forEach((c) => params.append('confidence', c));
-    const response = await apiClient.get<CodeSearchResponse>(`/v1/codes/eic/search?${params.toString()}`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/eic/search?${params.toString()}`);
+    const payload = raw?.data || raw;
+    return {
+      results: payload.results || payload.data?.results || [],
+      count: payload.count || payload.data?.count || (payload.results ? payload.results.length : 0),
+      query,
+      filters
+    };
   }
 
   /**
    * Detaillierte Informationen zu einem Code
    */
   async getCodeDetails(code: string): Promise<CodeLookupResponse> {
-    const response = await apiClient.get<CodeLookupResponse>(`/v1/codes/details/${encodeURIComponent(code)}`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/details/${encodeURIComponent(code)}`);
+    const payload = raw?.data || raw;
+    return {
+      result: payload.result || payload.data?.result || null,
+      found: payload.found ?? payload.data?.found ?? !!(payload.result || payload.data?.result),
+      code
+    };
   }
 
   async getAvailableSoftwareSystems(): Promise<{ softwareSystems: string[]; count: number }> {
-    const response = await apiClient.get<{ softwareSystems: string[]; count: number }>(`/v1/codes/software-systems`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/software-systems`);
+    const payload = raw?.data || raw;
+    return { softwareSystems: payload.softwareSystems || [], count: payload.count || (payload.softwareSystems ? payload.softwareSystems.length : 0) };
   }
 
   async getAvailableCities(): Promise<{ cities: string[]; count: number }> {
-    const response = await apiClient.get<{ cities: string[]; count: number }>(`/v1/codes/cities`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/cities`);
+    const payload = raw?.data || raw;
+    return { cities: payload.cities || [], count: payload.count || (payload.cities ? payload.cities.length : 0) };
   }
 
   async getAvailableCodeFunctions(): Promise<{ functions: string[]; count: number }> {
-    const response = await apiClient.get<{ functions: string[]; count: number }>(`/v1/codes/functions`);
-    return response;
+    const raw = await apiClient.get<any>(`/v1/codes/functions`);
+    const payload = raw?.data || raw;
+    return { functions: payload.functions || [], count: payload.count || (payload.functions ? payload.functions.length : 0) };
   }
 }
 

@@ -18,6 +18,8 @@ export interface CodeSearchResult {
     };
     softwareSystems?: SoftwareSystem[];
     editedOn?: string;
+    bdewCodes?: string[];
+    contacts?: ContactEntry[];
 }
 export interface SoftwareSystem {
     name: string;
@@ -51,6 +53,8 @@ export interface MarketPartnerDocument {
     companyName?: string;
     findings: MarketPartnerFinding[];
     processed_at?: Date | string;
+    bdewCodes?: string[];
+    contacts?: ContactEntry[];
 }
 export interface SearchFilters {
     softwareSystems?: string[];
@@ -80,5 +84,20 @@ export interface EICCode {
     display_name: string;
     eic_responsible_user: string;
     eic_type: string;
+}
+export interface ContactEntry {
+    BdewCodeType?: string;
+    BdewCodeFunction?: string;
+    BdewCodeStatus?: string;
+    BdewCodeStatusBegin?: string;
+    CompanyUID?: string;
+    PostCode?: string;
+    City?: string;
+    Street?: string;
+    Country?: string;
+    CodeContact?: string;
+    CodeContactPhone?: string;
+    CodeContactEmail?: string;
+    EditedOn?: string;
 }
 //# sourceMappingURL=codelookup.interface.d.ts.map
