@@ -38,7 +38,13 @@ export interface MarketPartnerFinding {
 
 export interface MarketPartnerDocument {
   _id: ObjectId | string;
-  // Optionaler Partner-Block (BDEW-Daten)
+  // Neue Hauptfelder für die erweiterte Struktur
+  companyName?: string;
+  contacts?: ContactEntry[]; // Array von Kontaktdaten mit BDEW-Codes  
+  findings?: MarketPartnerFinding[];
+  processed_at?: Date | string;
+  bdewCodes?: string[]; // Array von Codes laut Discovery (fallback)
+  // Optionaler Partner-Block (BDEW-Daten) - Legacy-Support
   partner?: {
     "﻿BdewCode": string;
     BdewCodeType: string;
@@ -56,12 +62,6 @@ export interface MarketPartnerDocument {
     CodeContactEmail: string;
     EditedOn: string;
   };
-  // Falls nur Discovery-Daten vorhanden sind
-  companyName?: string;
-  findings: MarketPartnerFinding[];
-  processed_at?: Date | string;
-  bdewCodes?: string[]; // Array von Codes laut Discovery
-  contacts?: ContactEntry[]; // Vollständige Kontakt-/Rolleninformationen
 }
 
 export interface SearchFilters {
@@ -99,11 +99,13 @@ export interface EICCode {
 }
 
 export interface ContactEntry {
+  BdewCode?: string;
   BdewCodeType?: string;
   BdewCodeFunction?: string;
   BdewCodeStatus?: string;
   BdewCodeStatusBegin?: string;
   CompanyUID?: string;
+  CompanyName?: string;
   PostCode?: string;
   City?: string;
   Street?: string;

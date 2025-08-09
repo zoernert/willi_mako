@@ -131,7 +131,8 @@ const CodeSearch: React.FC = () => {
   const loadCodeDetails = async (result: CodeSearchResult) => {
     try {
       // Determine a primary code to fetch extra details if available
-      const primaryCode = result.code || result.bdewCodes?.[0];
+      const bdewCodes = getBdewCodesFromContacts(result);
+      const primaryCode = result.code || bdewCodes[0];
       if (primaryCode) {
         const data = await codeLookupApi.getCodeDetails(primaryCode);
         if (data && data.result) {
@@ -184,6 +185,19 @@ const CodeSearch: React.FC = () => {
     if (line2) lines.push(line2);
     if (c.Country) lines.push(c.Country);
     return lines.join('\n');
+  };
+
+  // Extract BDEW codes from contacts array
+  const getBdewCodesFromContacts = (result: CodeSearchResult): string[] => {
+    if (result.bdewCodes && result.bdewCodes.length > 0) {
+      return result.bdewCodes; // Fallback to legacy field
+    }
+    if (result.contacts && result.contacts.length > 0) {
+      return result.contacts
+        .map(c => c.BdewCode)
+        .filter((code): code is string => Boolean(code));
+    }
+    return [];
   };
 
   return (
@@ -355,7 +369,8 @@ const CodeSearch: React.FC = () => {
         {results.map((result, idx) => {
           // Determine display fields for new structure
           const title = result.companyName || result.code || `Ergebnis ${idx + 1}`;
-          const subtitle = result.codeType || (result.bdewCodes?.length ? `${result.bdewCodes.length} BDEW-Codes` : undefined);
+          const bdewCodesCount = getBdewCodesFromContacts(result).length;
+          const subtitle = result.codeType || (bdewCodesCount > 0 ? `${bdewCodesCount} BDEW-Codes` : undefined);
           const city = result.city || result.contacts?.[0]?.City;
           const postCode = result.postCode || result.contacts?.[0]?.PostCode;
           const street = result.street || result.contacts?.[0]?.Street;
@@ -408,7 +423,7 @@ const CodeSearch: React.FC = () => {
                           {result.contacts.map((c: ContactEntry, i: number) => (
                             <TableRow key={i}>
                               <TableCell sx={{ pl: 0 }}>{c.BdewCodeFunction || '—'}</TableCell>
-                              <TableCell>{result.bdewCodes && result.bdewCodes.length > 0 ? result.bdewCodes[0] : (c.CompanyUID || '—')}</TableCell>
+                              <TableCell>{c.BdewCode || (c.CompanyUID || '—')}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -416,22 +431,25 @@ const CodeSearch: React.FC = () => {
                     </Box>
                   )}
 
-                  {/* BDEW Codes preview */}
-                  {result.bdewCodes && result.bdewCodes.length > 0 && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
-                        BDEW-Codes:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {result.bdewCodes.slice(0, 3).map((code, i) => (
-                          <Chip key={i} label={code} size="small" variant="outlined" />
-                        ))}
-                        {result.bdewCodes.length > 3 && (
-                          <Chip label={`+${result.bdewCodes.length - 3} weitere`} size="small" variant="outlined" />
-                        )}
+                  {/* BDEW Codes preview - use new extraction function */}
+                  {(() => {
+                    const bdewCodes = getBdewCodesFromContacts(result);
+                    return bdewCodes.length > 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.5 }}>
+                          BDEW-Codes:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {bdewCodes.slice(0, 3).map((code, i) => (
+                            <Chip key={i} label={code} size="small" variant="outlined" />
+                          ))}
+                          {bdewCodes.length > 3 && (
+                            <Chip label={`+${bdewCodes.length - 3} weitere`} size="small" variant="outlined" />
+                          )}
+                        </Box>
                       </Box>
-                    </Box>
-                  )}
+                    );
+                  })()}
 
                   {/* Location */}
                   {(city || street) && (
@@ -524,9 +542,12 @@ const CodeSearch: React.FC = () => {
                     {detailDialog.companyName && (
                       <Typography><strong>Name:</strong> {detailDialog.companyName}</Typography>
                     )}
-                    {detailDialog.bdewCodes && detailDialog.bdewCodes.length > 0 && (
-                      <Typography><strong>BDEW-Codes:</strong> {detailDialog.bdewCodes.join(', ')}</Typography>
-                    )}
+                    {(() => {
+                      const bdewCodes = getBdewCodesFromContacts(detailDialog);
+                      return bdewCodes.length > 0 && (
+                        <Typography><strong>BDEW-Codes:</strong> {bdewCodes.join(', ')}</Typography>
+                      );
+                    })()}
                     {detailDialog.street && (
                       <Typography><strong>Adresse:</strong> {detailDialog.street}</Typography>
                     )}

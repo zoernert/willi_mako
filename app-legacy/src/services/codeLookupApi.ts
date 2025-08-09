@@ -2,10 +2,12 @@ import apiClient from './apiClient';
 
 // New contact entry structure from backend
 export interface ContactEntry {
+  BdewCode?: string;
   BdewCodeType?: string;
   BdewCodeFunction?: string;
   BdewCodeStatus?: string;
   BdewCodeStatusBegin?: string;
+  CompanyName?: string;
   CompanyUID?: string;
   PostCode?: string;
   City?: string;

@@ -24,7 +24,16 @@ ls -la dist/src/ 2>/dev/null | head || true
 
 # 2. Legacy App Build
 echo "📦 Baue Legacy App..."
-cd app-legacy && npm run build && cd ..
+echo "🔧 Erstelle .env.production für Legacy App..."
+cd app-legacy
+# Stelle sicher, dass die richtige API-URL verwendet wird
+cat > .env.production << 'LEGACYENVEOF'
+REACT_APP_API_URL=/api
+REACT_APP_APP_NAME=Willi Mako
+REACT_APP_VERSION=1.0.0
+GENERATE_SOURCEMAP=false
+LEGACYENVEOF
+npm run build && cd ..
 ls -la app-legacy/build/
 
 # 3. Next.js Pipeline  

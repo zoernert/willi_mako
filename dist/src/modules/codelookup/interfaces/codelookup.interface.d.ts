@@ -33,6 +33,11 @@ export interface MarketPartnerFinding {
 }
 export interface MarketPartnerDocument {
     _id: ObjectId | string;
+    companyName?: string;
+    contacts?: ContactEntry[];
+    findings?: MarketPartnerFinding[];
+    processed_at?: Date | string;
+    bdewCodes?: string[];
     partner?: {
         "﻿BdewCode": string;
         BdewCodeType: string;
@@ -50,11 +55,6 @@ export interface MarketPartnerDocument {
         CodeContactEmail: string;
         EditedOn: string;
     };
-    companyName?: string;
-    findings: MarketPartnerFinding[];
-    processed_at?: Date | string;
-    bdewCodes?: string[];
-    contacts?: ContactEntry[];
 }
 export interface SearchFilters {
     softwareSystems?: string[];
@@ -86,11 +86,13 @@ export interface EICCode {
     eic_type: string;
 }
 export interface ContactEntry {
+    BdewCode?: string;
     BdewCodeType?: string;
     BdewCodeFunction?: string;
     BdewCodeStatus?: string;
     BdewCodeStatusBegin?: string;
     CompanyUID?: string;
+    CompanyName?: string;
     PostCode?: string;
     City?: string;
     Street?: string;

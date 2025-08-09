@@ -70,7 +70,15 @@ class MongoCodeLookupRepository {
         if (doc.bdewCodes && Array.isArray(doc.bdewCodes)) {
             bdewCodes.push(...doc.bdewCodes.filter(Boolean));
         }
-        // Partner Code hinzufügen falls vorhanden und noch nicht enthalten
+        // BDEW-Codes aus dem neuen contacts Array extrahieren
+        if (contacts && Array.isArray(contacts)) {
+            contacts.forEach(contact => {
+                if (contact.BdewCode && !bdewCodes.includes(contact.BdewCode)) {
+                    bdewCodes.push(contact.BdewCode);
+                }
+            });
+        }
+        // Partner Code hinzufügen falls vorhanden und noch nicht enthalten (Legacy-Support)
         const rawPartnerCode = partner['\uFEFFBdewCode'] || partner['﻿BdewCode'] || partner.BdewCode;
         if (rawPartnerCode && !bdewCodes.includes(rawPartnerCode)) {
             bdewCodes.push(rawPartnerCode);
@@ -122,6 +130,7 @@ class MongoCodeLookupRepository {
                     // Neues Schema Felder
                     { 'companyName': searchRegex },
                     { 'bdewCodes': searchRegex },
+                    { 'contacts.BdewCode': searchRegex },
                     { 'contacts.BdewCodeFunction': searchRegex },
                     { 'contacts.CompanyUID': searchRegex },
                     { 'contacts.CodeContact': searchRegex },
