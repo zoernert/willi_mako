@@ -39,6 +39,11 @@ ls -la .next/
 echo "✅ Alle Builds erfolgreich"
 
 
+# Git Commit Hash für Versionierung erfassen
+GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+GIT_COMMIT_SHORT=${GIT_COMMIT:0:7}
+BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
 # Konfiguration
 PROD_SERVER=${1:-"root@10.0.0.2"}
 FRONTEND_PORT=${2:-"4100"}  # Next.js Frontend (extern)
@@ -50,6 +55,7 @@ POSTGRES_CONTAINER="willi_mako_postgres"
 POSTGRES_DB="willi_mako"
 POSTGRES_USER="willi_user"
 POSTGRES_PASSWORD="willi_password"
+ADDITIONAL_EXCLUDES="--exclude node_modules --exclude .git --exclude .cache"
 
 # Extrahiere Server-IP für API-URL
 SERVER_IP=$(echo $PROD_SERVER | cut -d'@' -f2)
@@ -131,11 +137,23 @@ prepare_deployment() {
         JWT_SECRET=$(generate_jwt_secret)
     fi
     
-    # Produktions-.env erstellen (mit remote PostgreSQL)
+    # VERSION Datei erzeugen
+    cat > "$TEMP_DIR/VERSION" << EOF
+Application: $APP_NAME
+GitCommit: $GIT_COMMIT
+GitCommitShort: $GIT_COMMIT_SHORT
+BuildTimestamp: $BUILD_TIMESTAMP
+LocalHost: $(hostname 2>/dev/null || echo unknown)
+EOF
+    
+    # Produktions-.env erstellen (mit remote PostgreSQL + Versionsinfo)
     cat > "$TEMP_DIR/.env" << EOF
 # Environment Configuration
 NODE_ENV=production
 PORT=$BACKEND_PORT
+GIT_COMMIT=$GIT_COMMIT
+GIT_COMMIT_SHORT=$GIT_COMMIT_SHORT
+BUILD_TIMESTAMP=$BUILD_TIMESTAMP
 
 # Database Configuration (Remote PostgreSQL)
 DB_HOST=10.0.0.2
@@ -183,8 +201,11 @@ WORKSPACE_ALLOWED_EXTENSIONS=pdf,doc,docx,txt,md
 WORKSPACE_VECTOR_CHUNK_SIZE=1000
 EOF
 
-    # package.json kopieren
+    # package.json & package-lock.json kopieren
     cp package.json "$TEMP_DIR/"
+    if [ -f package-lock.json ]; then
+        cp package-lock.json "$TEMP_DIR/"
+    fi
     
     # Gebaute Dateien kopieren (prüfen ob sie existieren)
     if [ -d "dist" ]; then
@@ -311,8 +332,13 @@ transfer_files() {
     # Deployment-Verzeichnis auf Server erstellen
     ssh $PROD_SERVER "mkdir -p $DEPLOY_DIR/logs"
     
-    # Dateien übertragen
-    rsync -avz --progress "$temp_dir/" "$PROD_SERVER:$DEPLOY_DIR/"
+    # Dateien übertragen (vollständige Spiegelung, alte entfernen außer uploads & logs)
+    rsync -avz --delete $ADDITIONAL_EXCLUDES \
+      --exclude 'logs' --exclude 'uploads' --exclude '.env' \
+      "$temp_dir/" "$PROD_SERVER:$DEPLOY_DIR/"
+    
+    # Ensure uploads & logs exist
+    ssh $PROD_SERVER "mkdir -p $DEPLOY_DIR/uploads $DEPLOY_DIR/logs"
     
     # Validiere dass lib Verzeichnis korrekt übertragen wurde
     echo "🔍 Validiere lib Verzeichnis auf Produktivserver..."
@@ -327,7 +353,14 @@ install_dependencies() {
     
     ssh $PROD_SERVER << EOF
 cd $DEPLOY_DIR
-npm install --production
+if [ -f package-lock.json ]; then
+  echo "Nutze npm ci (deterministisch)";
+  npm ci --omit=dev;
+else
+  echo "Nutze npm install --production";
+  npm install --production;
+fi
+npm prune --production || true
 EOF
     
     echo "✅ Abhängigkeiten installiert"
@@ -429,6 +462,10 @@ echo "Anzahl FAQs über API:"
 curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '. | length' 2>/dev/null || echo "FAQ API nicht erreichbar oder jq nicht verfügbar"
 echo "Erste FAQ über API:"
 curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '.[0].title' 2>/dev/null || echo "Keine FAQs über API verfügbar"
+
+if [ -f $DEPLOY_DIR/VERSION ]; then
+  echo "\nVERSION Datei:"; cat $DEPLOY_DIR/VERSION; echo "";
+fi
 EOF
 }
 
