@@ -47,6 +47,7 @@ import {
   Add as AddIcon,
   Visibility as ViewIcon,
   Link as LinkIcon,
+  Forum as ForumIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
@@ -54,6 +55,7 @@ import apiClient from '../services/apiClient';
 import AdminQuizManager from '../components/AdminQuizManager';
 import AdminChatConfiguration from '../components/admin/ChatConfigurationManager';
 import FAQLinkManager from '../components/admin/FAQLinkManager';
+import CommunityAdminManager from '../components/admin/CommunityAdminManager';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -1756,6 +1758,7 @@ const Admin: React.FC = () => {
     { label: 'Benutzer', icon: <UsersIcon />, component: <AdminUsers /> },
     { label: 'Dokumente', icon: <DocumentsIcon />, component: <AdminDocuments /> },
     { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
+    { label: 'Community', icon: <ForumIcon />, component: <CommunityAdminManager /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
     { label: 'Chat-Config', icon: <SettingsIcon />, component: <AdminChatConfiguration /> },
     { label: 'Statistiken', icon: <StatsIcon />, component: <AdminStats /> },

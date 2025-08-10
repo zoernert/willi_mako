@@ -162,19 +162,24 @@ router.get('/stats', async (req, res) => {
     const reviewThreads = await communityService.listThreads(1, 1000, { status: 'review' });
     const finalThreads = await communityService.listThreads(1, 1000, { status: 'final' });
 
+    // Get initiatives count
+    const initiatives = await communityService.listInitiatives(1, 1000);
+
+    // TODO: Get FAQ count from FAQs with source='community' or source_thread_id IS NOT NULL
+    // For now, we'll use a placeholder value
+    const totalFAQsFromCommunity = 0;
+
+    // Recent activity placeholder - in a real implementation, you'd query an activity log
+    const recentActivity: any[] = [];
+
     const stats = {
-      threads: {
-        total: discussingThreads.total + reviewThreads.total + finalThreads.total,
-        discussing: discussingThreads.total,
-        review: reviewThreads.total,
-        final: finalThreads.total
-      },
-      // These could be expanded with more detailed analytics
-      metrics: {
-        avgTimeToFinal: null, // Would require more complex queries
-        conversionRate: finalThreads.total > 0 ? 
-          (finalThreads.total / (discussingThreads.total + reviewThreads.total + finalThreads.total)) * 100 : 0
-      }
+      totalThreads: discussingThreads.total + reviewThreads.total + finalThreads.total,
+      discussingThreads: discussingThreads.total,
+      reviewThreads: reviewThreads.total,
+      finalThreads: finalThreads.total,
+      totalInitiatives: initiatives.total,
+      totalFAQsFromCommunity,
+      recentActivity
     };
 
     res.json({
