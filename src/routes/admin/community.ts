@@ -124,23 +124,30 @@ router.post('/create-faq-from-thread', async (req: AuthenticatedRequest, res) =>
  * DELETE /api/admin/community/threads/:id
  * Delete a community thread (admin only)
  */
-router.delete('/threads/:id', async (req: AuthenticatedRequest, res) => {
+router.delete('/threads/:id', async (req, res) => {
   try {
-    const adminUserId = req.user!.id;
     const threadId = req.params.id;
-
-    const deleted = await communityService.deleteThread(threadId, adminUserId);
-
-    if (!deleted) {
+    const adminUserId = (req as any).user.id;
+    
+    // First check if thread exists
+    const thread = await communityService.getThread(threadId);
+    if (!thread) {
       return res.status(404).json({
         success: false,
         message: 'Thread not found'
       });
     }
-
+    
+    // Delete the thread (this will cascade delete comments, initiatives, etc.)
+    await communityService.deleteThread(threadId, adminUserId);
+    
+    // TODO: Remove from Qdrant vector store
+    // const qdrantService = new QdrantService();
+    // await qdrantService.deleteThreadVectors(threadId);
+    
     res.json({
       success: true,
-      message: 'Thread deleted successfully'
+      message: 'Thread successfully deleted'
     });
   } catch (error) {
     console.error('Error deleting thread:', error);
@@ -272,6 +279,36 @@ router.put('/threads/:id/force-status', async (req: AuthenticatedRequest, res) =
         message: 'Internal server error'
       });
     }
+  }
+});
+
+/**
+ * GET /api/admin/community/initiatives
+ * Get all community initiatives for admin management
+ */
+router.get('/initiatives', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    
+    const result = await communityService.listInitiatives(page, limit);
+    
+    res.json({
+      success: true,
+      data: result.initiatives,
+      meta: {
+        total: result.total,
+        page,
+        limit,
+        totalPages: Math.ceil(result.total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting initiatives:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 });
 

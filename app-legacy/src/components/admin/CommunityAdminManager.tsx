@@ -104,7 +104,9 @@ const CommunityAdminManager: React.FC = () => {
   const [selectedThread, setSelectedThread] = useState<CommunityThread | null>(null);
   const [showThreadDialog, setShowThreadDialog] = useState(false);
   const [showFAQDialog, setShowFAQDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [faqCreationLoading, setFaqCreationLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [currentView, setCurrentView] = useState<'dashboard' | 'threads' | 'initiatives'>('dashboard');
   
@@ -123,7 +125,9 @@ const CommunityAdminManager: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/admin/community/stats') as any;
-      setStats(response.data || {
+      
+      // The apiClient already unwraps the response.data, so we should get the stats directly
+      const statsData = response || {
         totalThreads: 0,
         discussingThreads: 0,
         reviewThreads: 0,
@@ -131,7 +135,10 @@ const CommunityAdminManager: React.FC = () => {
         totalInitiatives: 0,
         totalFAQsFromCommunity: 0,
         recentActivity: [],
-      });
+      };
+      
+      console.log('Community Stats Response:', statsData); // Debug log
+      setStats(statsData);
     } catch (error) {
       console.error('Error fetching community stats:', error);
       showSnackbar('Fehler beim Laden der Community-Statistiken', 'error');
@@ -155,7 +162,8 @@ const CommunityAdminManager: React.FC = () => {
       setLoading(true);
       const params = filterStatus !== 'all' ? { status: filterStatus } : {};
       const response = await apiClient.get('/community/threads', { params }) as any;
-      setThreads(response.data || []);
+      console.log('Threads Response:', response); // Debug log
+      setThreads(response || []);
     } catch (error) {
       console.error('Error fetching threads:', error);
       showSnackbar('Fehler beim Laden der Threads', 'error');
@@ -169,7 +177,8 @@ const CommunityAdminManager: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/admin/community/initiatives') as any;
-      setInitiatives(response.data || []);
+      console.log('Initiatives Response:', response); // Debug log
+      setInitiatives(response || []);
     } catch (error) {
       console.error('Error fetching initiatives:', error);
       showSnackbar('Fehler beim Laden der Initiativen', 'error');
@@ -196,6 +205,25 @@ const CommunityAdminManager: React.FC = () => {
       showSnackbar(message, 'error');
     } finally {
       setFaqCreationLoading(false);
+    }
+  };
+
+  const handleDeleteThread = async (threadId: string) => {
+    try {
+      setDeleteLoading(true);
+      await apiClient.delete(`/admin/community/threads/${threadId}`) as any;
+      
+      showSnackbar('Thread erfolgreich gelöscht!', 'success');
+      setShowDeleteDialog(false);
+      setSelectedThread(null);
+      fetchThreads();
+      fetchCommunityStats();
+    } catch (error: any) {
+      console.error('Error deleting thread:', error);
+      const message = error.response?.data?.message || 'Fehler beim Löschen des Threads';
+      showSnackbar(message, 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -524,6 +552,19 @@ const CommunityAdminManager: React.FC = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+                      
+                      <Tooltip title="Thread löschen">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => {
+                            setSelectedThread(thread);
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -747,6 +788,45 @@ const CommunityAdminManager: React.FC = () => {
             disabled={faqCreationLoading}
           >
             {faqCreationLoading ? <CircularProgress size={20} /> : 'FAQ erstellen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={showDeleteDialog} 
+        onClose={() => setShowDeleteDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Thread löschen
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden!
+          </Alert>
+          <Typography variant="body1" gutterBottom>
+            Sind Sie sicher, dass Sie den folgenden Thread löschen möchten?
+          </Typography>
+          <Typography variant="body2" fontWeight="medium" sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            {selectedThread?.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Dies wird auch alle zugehörigen Kommentare und Initiativen löschen.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>
+            Abbrechen
+          </Button>
+          <Button 
+            variant="contained"
+            color="error"
+            onClick={() => selectedThread && handleDeleteThread(selectedThread.id)}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? <CircularProgress size={20} /> : 'Löschen'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,0 +1,268 @@
+/* Community Hub Theme Styles */
+/* CR-COMMUNITY-HUB-001 - Visual Context Marking */
+/* Autor: AI Assistant */
+/* Datum: 2025-08-09 */
+
+/* CSS Custom Properties für Theme Swapping */
+:root {
+  --color-primary: #147a50;
+  --color-secondary: #ee7f4b;
+  --color-primary-rgb: 20 122 80;
+  --color-secondary-rgb: 238 127 75;
+  --color-accent-gold: #d4af37;
+}
+
+/* Community Context Theme - Swap Orange and Green */
+[data-context="community"] {
+  --color-primary: #ee7f4b;
+  --color-secondary: #147a50;
+  --color-primary-rgb: 238 127 75;
+  --color-secondary-rgb: 20 122 80;
+}
+
+/* Apply theme colors */
+.bg-primary {
+  background-color: rgb(var(--color-primary-rgb));
+}
+
+.text-primary {
+  color: rgb(var(--color-primary-rgb));
+}
+
+.border-primary {
+  border-color: rgb(var(--color-primary-rgb));
+}
+
+.bg-primary-dark {
+  background-color: rgb(var(--color-primary-rgb) / 0.8);
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: rgb(var(--color-primary-rgb) / 0.8);
+}
+
+.hover\:text-primary-dark:hover {
+  color: rgb(var(--color-primary-rgb) / 0.8);
+}
+
+.focus\:ring-primary:focus {
+  --tw-ring-color: rgb(var(--color-primary-rgb) / 0.5);
+}
+
+/* Community-specific UI elements */
+[data-context="community"] .community-header {
+  background: linear-gradient(135deg, #ee7f4b 0%, #d86a34 100%);
+  color: white;
+}
+
+[data-context="community"] .status-badge {
+  transition: all 150ms ease-in-out;
+}
+
+/* Living Document Styling */
+.living-document-section {
+  position: relative;
+  transition: all 200ms ease-in-out;
+}
+
+.living-document-section:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.living-document-section .edit-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+}
+
+.living-document-section:hover .edit-overlay {
+  opacity: 1;
+}
+
+/* Solution Proposal Cards */
+.solution-proposal {
+  border-left: 4px solid rgb(var(--color-primary-rgb));
+  background: rgb(var(--color-primary-rgb) / 0.05);
+  transition: all 200ms ease-in-out;
+}
+
+.solution-proposal:hover {
+  border-left-color: rgb(var(--color-primary-rgb) / 0.8);
+  background: rgb(var(--color-primary-rgb) / 0.1);
+}
+
+/* Final Solution Styling */
+.final-solution {
+  background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.final-solution::before {
+  content: '✓';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 3rem;
+  opacity: 0.1;
+  font-weight: bold;
+}
+
+/* Thread Status Indicators */
+.status-discussing {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.status-review {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.status-final {
+  background-color: #10b981;
+  color: white;
+}
+
+/* Comment Threads */
+.comment-thread {
+  border-left: 2px solid #e5e7eb;
+  padding-left: 16px;
+  margin-left: 8px;
+}
+
+.comment {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.comment::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 50%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  [data-context="community"] .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .living-document-section {
+    margin-bottom: 16px;
+  }
+  
+  .solution-proposal {
+    margin-bottom: 12px;
+  }
+}
+
+/* Dark Mode Support (for future implementation) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1f2937;
+    --text-primary: #f9fafb;
+  }
+  
+  [data-context="community"] {
+    --bg-primary: #374151;
+  }
+}
+
+/* Accessibility Enhancements */
+.focus-visible\:ring-primary:focus-visible {
+  --tw-ring-color: rgb(var(--color-primary-rgb) / 0.5);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--tw-ring-color);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  [data-context="community"] {
+    --color-primary: #000000;
+    --color-secondary: #ffffff;
+  }
+  
+  .living-document-section {
+    border: 2px solid #000000;
+  }
+  
+  .solution-proposal {
+    border-left-width: 6px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  [data-context="community"] {
+    --color-primary: #000000;
+    --color-secondary: #000000;
+  }
+  
+  .edit-overlay,
+  .comment-form,
+  .action-buttons {
+    display: none !important;
+  }
+  
+  .living-document-section {
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+}
+
+/* Animation for status transitions */
+.status-transition {
+  animation: statusPulse 0.5s ease-in-out;
+}
+
+@keyframes statusPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Community icon styling */
+.community-icon {
+  filter: hue-rotate(45deg);
+  transition: filter 200ms ease-in-out;
+}
+
+[data-context="community"] .community-icon {
+  filter: hue-rotate(0deg);
+}
