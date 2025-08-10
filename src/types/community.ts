@@ -141,3 +141,43 @@ export interface CommunityAuditEntry {
   user_agent?: string;
   created_at: string;
 }
+
+// Community Initiatives (Meilenstein 3)
+export interface CommunityInitiative {
+  id: string;
+  thread_id: string;
+  title: string;
+  draft_content: string;
+  status: InitiativeStatus;
+  target_audience?: string;
+  submission_details: Record<string, any>;
+  created_by_user_id: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at?: string;
+}
+
+export type InitiativeStatus = 'draft' | 'refining' | 'submitted';
+
+export interface CreateInitiativeRequest {
+  title: string;
+  targetAudience?: string;
+  customPrompt?: string; // Optional custom instructions for LLM
+}
+
+export interface UpdateInitiativeRequest {
+  title?: string;
+  draft_content?: string;
+  target_audience?: string;
+  submission_details?: Record<string, any>;
+}
+
+export interface SubmitInitiativeRequest {
+  submission_details: {
+    contact_email?: string;
+    submission_method?: string;
+    submission_date?: string;
+    submission_reference?: string;
+    notes?: string;
+  };
+}

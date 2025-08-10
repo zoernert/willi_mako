@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { CommunityQdrantService } from './CommunityQdrantService';
-import { CommunityThread, DocumentComment, ThreadSummary, CreateThreadRequest, UpdateDocumentRequest, ThreadStatus } from '../types/community';
+import { CommunityThread, DocumentComment, ThreadSummary, CreateThreadRequest, UpdateDocumentRequest, ThreadStatus, CommunityInitiative, CreateInitiativeRequest, UpdateInitiativeRequest, InitiativeStatus } from '../types/community';
 export declare class CommunityService {
     private db;
     private repository;
@@ -99,5 +99,55 @@ export declare class CommunityService {
      * Emit domain events (in-memory for now, could be message bus later)
      */
     private emitEvent;
+    /**
+     * Create a new community initiative from a finalized thread
+     */
+    createInitiative(threadId: string, request: CreateInitiativeRequest, userId: string): Promise<CommunityInitiative>;
+    /**
+     * Get initiative by ID
+     */
+    getInitiative(id: string): Promise<CommunityInitiative | null>;
+    /**
+     * Get initiative by thread ID
+     */
+    getInitiativeByThread(threadId: string): Promise<CommunityInitiative | null>;
+    /**
+     * Update initiative content
+     */
+    updateInitiative(id: string, updates: UpdateInitiativeRequest, userId: string): Promise<CommunityInitiative | null>;
+    /**
+     * Change initiative status
+     */
+    updateInitiativeStatus(id: string, status: InitiativeStatus, userId: string, submissionDetails?: Record<string, any>): Promise<CommunityInitiative | null>;
+    /**
+     * List initiatives with filtering
+     */
+    listInitiatives(page?: number, limit?: number, filters?: {
+        status?: InitiativeStatus;
+        userId?: string;
+    }): Promise<{
+        initiatives: CommunityInitiative[];
+        total: number;
+    }>;
+    /**
+     * Delete initiative (only draft status)
+     */
+    deleteInitiative(id: string, userId: string): Promise<boolean>;
+    /**
+     * Generate initiative draft content using LLM
+     */
+    private generateInitiativeDraft;
+    /**
+     * Build LLM prompt for initiative generation
+     */
+    private buildInitiativePrompt;
+    /**
+     * Generate fallback draft when LLM is unavailable
+     */
+    private generateFallbackDraft;
+    /**
+     * Validate initiative status transitions
+     */
+    private isValidInitiativeStatusTransition;
 }
 //# sourceMappingURL=CommunityService.d.ts.map

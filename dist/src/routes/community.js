@@ -12,6 +12,7 @@ const express_1 = __importDefault(require("express"));
 const CommunityService_1 = require("../services/CommunityService");
 const auth_1 = require("../middleware/auth");
 const featureFlags_1 = require("../utils/featureFlags");
+const communityValidation_1 = require("../utils/communityValidation");
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const router = express_1.default.Router();
 // Rate limiting configurations
@@ -49,7 +50,7 @@ router.use(featureFlags_1.requireCommunityFeature);
  * GET /api/community/threads
  * List community threads with filtering and pagination
  */
-router.get('/threads', async (req, res) => {
+router.get('/threads', auth_1.authenticateToken, async (req, res) => {
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -126,7 +127,7 @@ router.post('/threads', auth_1.authenticateToken, threadCreationLimit, async (re
  * GET /api/community/threads/:id
  * Get a specific thread with full document
  */
-router.get('/threads/:id', async (req, res) => {
+router.get('/threads/:id', auth_1.authenticateToken, async (req, res) => {
     var _a;
     try {
         const threadId = req.params.id;
@@ -159,7 +160,10 @@ router.patch('/threads/:id/document', auth_1.authenticateToken, documentUpdateLi
     try {
         const threadId = req.params.id;
         const userId = req.user.id;
-        const { operations, version } = req.body;
+        // Validate and normalize the request data
+        const operations = (0, communityValidation_1.validateUpdateDocumentRequest)(req.body);
+        // Get version from headers or body (if it was an object format)
+        const version = (!Array.isArray(req.body) && req.body.version) || req.headers['if-version'];
         const result = await communityService.updateDocument(threadId, { operations, version }, userId);
         res.json({
             success: true,
@@ -275,7 +279,7 @@ router.post('/threads/:id/comments', auth_1.authenticateToken, commentLimit, asy
  * GET /api/community/threads/:id/comments
  * Get comments for a thread
  */
-router.get('/threads/:id/comments', async (req, res) => {
+router.get('/threads/:id/comments', auth_1.authenticateToken, async (req, res) => {
     var _a;
     try {
         const threadId = req.params.id;
@@ -306,7 +310,7 @@ router.get('/threads/:id/comments', async (req, res) => {
  * GET /api/community/search
  * Search threads by semantic similarity
  */
-router.get('/search', async (req, res) => {
+router.get('/search', auth_1.authenticateToken, async (req, res) => {
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -337,6 +341,288 @@ router.get('/search', async (req, res) => {
             success: false,
             message: 'Internal server error'
         });
+    }
+});
+// =====================================
+// COMMUNITY INITIATIVES (Meilenstein 3)
+// =====================================
+/**
+ * POST /api/community/threads/:threadId/initiatives
+ * Create a new initiative from a finalized thread
+ */
+router.post('/threads/:threadId/initiatives', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const threadId = req.params.threadId;
+        const userId = req.user.id;
+        const { title, targetAudience, customPrompt } = req.body;
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Title is required'
+            });
+        }
+        const initiative = await communityService.createInitiative(threadId, { title, targetAudience, customPrompt }, userId);
+        res.status(201).json({
+            success: true,
+            data: initiative
+        });
+    }
+    catch (error) {
+        console.error('Error creating initiative:', error);
+        if (error.message.includes('not found') || error.message.includes('finalized') ||
+            error.message.includes('final solution') || error.message.includes('already exists')) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else {
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    }
+});
+/**
+ * GET /api/community/threads/:threadId/initiatives
+ * Get initiative for a specific thread
+ */
+router.get('/threads/:threadId/initiatives', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const threadId = req.params.threadId;
+        const initiative = await communityService.getInitiativeByThread(threadId);
+        if (!initiative) {
+            return res.status(404).json({
+                success: false,
+                message: 'No initiative found for this thread'
+            });
+        }
+        res.json({
+            success: true,
+            data: initiative
+        });
+    }
+    catch (error) {
+        console.error('Error getting initiative by thread:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+/**
+ * GET /api/community/initiatives
+ * List all initiatives with filtering and pagination
+ */
+router.get('/initiatives', auth_1.authenticateToken, async (req, res) => {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        // Check read permissions
+        if (!(0, featureFlags_1.canReadCommunity)(!!userId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied'
+            });
+        }
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const filters = {};
+        if (req.query.status) {
+            filters.status = req.query.status;
+        }
+        if (req.query.userId) {
+            filters.userId = req.query.userId;
+        }
+        const result = await communityService.listInitiatives(page, limit, filters);
+        res.json({
+            success: true,
+            data: result.initiatives,
+            pagination: {
+                page,
+                limit,
+                total: result.total,
+                totalPages: Math.ceil(result.total / limit)
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error listing initiatives:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+/**
+ * GET /api/community/initiatives/:id
+ * Get a specific initiative by ID
+ */
+router.get('/initiatives/:id', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const initiativeId = req.params.id;
+        const initiative = await communityService.getInitiative(initiativeId);
+        if (!initiative) {
+            return res.status(404).json({
+                success: false,
+                message: 'Initiative not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: initiative
+        });
+    }
+    catch (error) {
+        console.error('Error getting initiative:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+/**
+ * PATCH /api/community/initiatives/:id
+ * Update initiative content
+ */
+router.patch('/initiatives/:id', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const initiativeId = req.params.id;
+        const userId = req.user.id;
+        const { title, draft_content, target_audience, submission_details } = req.body;
+        const updates = {};
+        if (title !== undefined)
+            updates.title = title;
+        if (draft_content !== undefined)
+            updates.draft_content = draft_content;
+        if (target_audience !== undefined)
+            updates.target_audience = target_audience;
+        if (submission_details !== undefined)
+            updates.submission_details = submission_details;
+        const initiative = await communityService.updateInitiative(initiativeId, updates, userId);
+        if (!initiative) {
+            return res.status(404).json({
+                success: false,
+                message: 'Initiative not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: initiative
+        });
+    }
+    catch (error) {
+        console.error('Error updating initiative:', error);
+        if (error.message.includes('Permission denied') || error.message.includes('not found')) {
+            res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else if (error.message.includes('submitted')) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else {
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    }
+});
+/**
+ * PUT /api/community/initiatives/:id/status
+ * Update initiative status (draft -> refining -> submitted)
+ */
+router.put('/initiatives/:id/status', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const initiativeId = req.params.id;
+        const userId = req.user.id;
+        const { status, submission_details } = req.body;
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Status is required'
+            });
+        }
+        const initiative = await communityService.updateInitiativeStatus(initiativeId, status, userId, submission_details);
+        if (!initiative) {
+            return res.status(404).json({
+                success: false,
+                message: 'Initiative not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: { status: initiative.status, updated_at: initiative.updated_at }
+        });
+    }
+    catch (error) {
+        console.error('Error updating initiative status:', error);
+        if (error.message.includes('Permission denied') || error.message.includes('not found')) {
+            res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else if (error.message.includes('Invalid status transition')) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else {
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    }
+});
+/**
+ * DELETE /api/community/initiatives/:id
+ * Delete a draft initiative
+ */
+router.delete('/initiatives/:id', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const initiativeId = req.params.id;
+        const userId = req.user.id;
+        const deleted = await communityService.deleteInitiative(initiativeId, userId);
+        if (!deleted) {
+            return res.status(404).json({
+                success: false,
+                message: 'Initiative not found or cannot be deleted'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Initiative deleted successfully'
+        });
+    }
+    catch (error) {
+        console.error('Error deleting initiative:', error);
+        if (error.message.includes('Permission denied') || error.message.includes('not found')) {
+            res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else if (error.message.includes('draft')) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+        else {
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
     }
 });
 exports.default = router;

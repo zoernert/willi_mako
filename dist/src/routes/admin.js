@@ -62,6 +62,8 @@ router.use(auth_1.authenticateToken);
 router.use(requireAdmin);
 // Mount chat configuration routes
 router.use('/chat-config', chatConfig_1.default);
+// Initialize and mount community admin routes (needs to be done in server.ts with db pool)
+// router.use('/community', initializeCommunityAdminRoutes(db)); // This will be done in server.ts
 // Configure multer for admin document uploads
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {

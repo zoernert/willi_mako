@@ -123,12 +123,20 @@ exports.validateCreateThreadRequest = validateCreateThreadRequest;
 // Update document validation
 const validateUpdateDocumentRequest = (data) => {
     const errors = [];
-    if (!data.operations) {
-        errors.push('operations is required');
+    // Handle both direct array format and object with operations property
+    let operations;
+    if (Array.isArray(data)) {
+        operations = data;
+    }
+    else if (data.operations) {
+        operations = data.operations;
     }
     else {
+        errors.push('operations is required (either as direct array or object with operations property)');
+    }
+    if (operations) {
         try {
-            (0, exports.validateArray)(data.operations, 'operations', {
+            (0, exports.validateArray)(operations, 'operations', {
                 required: true,
                 maxLength: 10,
                 itemValidator: exports.validatePatchOperation
@@ -141,6 +149,7 @@ const validateUpdateDocumentRequest = (data) => {
     if (errors.length > 0) {
         throw new Error(errors.join('; '));
     }
+    return operations;
 };
 exports.validateUpdateDocumentRequest = validateUpdateDocumentRequest;
 // Comment validation

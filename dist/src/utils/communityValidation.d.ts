@@ -14,7 +14,7 @@ export declare const validateArray: (value: any, fieldName: string, options?: {
 }) => any[];
 export declare const validatePatchOperation: (op: any) => PatchOperation;
 export declare const validateCreateThreadRequest: (data: any) => void;
-export declare const validateUpdateDocumentRequest: (data: any) => void;
+export declare const validateUpdateDocumentRequest: (data: any) => any;
 export declare const validateCreateCommentRequest: (data: any) => void;
 export declare const validateStatusTransition: (currentStatus: string, newStatus: string) => boolean;
 export declare const validateCommunityEnv: () => {

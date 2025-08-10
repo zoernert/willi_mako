@@ -35,5 +35,21 @@ export declare class CommunityQdrantService {
      * Get collection info
      */
     getCollectionInfo(): Promise<any>;
+    /**
+     * Batch update multiple sections of a thread
+     */
+    batchUpsertSections(threadId: string, sections: Array<{
+        section_key: string;
+        content: string;
+        proposal_id?: string;
+    }>): Promise<void>;
+    /**
+     * Delete specific proposal vector
+     */
+    deleteProposalVector(threadId: string, proposalId: string): Promise<void>;
+    /**
+     * Get collection stats for monitoring
+     */
+    getCollectionStats(): Promise<any>;
 }
 //# sourceMappingURL=CommunityQdrantService.d.ts.map

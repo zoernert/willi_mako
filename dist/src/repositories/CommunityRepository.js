@@ -251,6 +251,184 @@ class CommunityRepository {
         const result = await this.db.query(query, [threadId]);
         return (result.rowCount || 0) > 0;
     }
+    // ===================================
+    // COMMUNITY INITIATIVES (Meilenstein 3)
+    // ===================================
+    /**
+     * Create a new community initiative from a finalized thread
+     */
+    async createInitiative(threadId, request, draftContent, userId) {
+        const query = `
+      INSERT INTO community_initiatives (
+        thread_id, title, draft_content, target_audience, created_by_user_id
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `;
+        const values = [
+            threadId,
+            request.title,
+            draftContent,
+            request.targetAudience || null,
+            userId
+        ];
+        const result = await this.db.query(query, values);
+        return this.mapRowToInitiative(result.rows[0]);
+    }
+    /**
+     * Get initiative by ID
+     */
+    async getInitiativeById(id) {
+        const query = `
+      SELECT * FROM community_initiatives 
+      WHERE id = $1
+    `;
+        const result = await this.db.query(query, [id]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return this.mapRowToInitiative(result.rows[0]);
+    }
+    /**
+     * Get initiative by thread ID
+     */
+    async getInitiativeByThreadId(threadId) {
+        const query = `
+      SELECT * FROM community_initiatives 
+      WHERE thread_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+        const result = await this.db.query(query, [threadId]);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return this.mapRowToInitiative(result.rows[0]);
+    }
+    /**
+     * Update initiative
+     */
+    async updateInitiative(id, updates) {
+        const setClauses = [];
+        const values = [];
+        let paramIndex = 1;
+        if (updates.title !== undefined) {
+            setClauses.push(`title = $${paramIndex}`);
+            values.push(updates.title);
+            paramIndex++;
+        }
+        if (updates.draft_content !== undefined) {
+            setClauses.push(`draft_content = $${paramIndex}`);
+            values.push(updates.draft_content);
+            paramIndex++;
+        }
+        if (updates.target_audience !== undefined) {
+            setClauses.push(`target_audience = $${paramIndex}`);
+            values.push(updates.target_audience);
+            paramIndex++;
+        }
+        if (updates.submission_details !== undefined) {
+            setClauses.push(`submission_details = $${paramIndex}`);
+            values.push(JSON.stringify(updates.submission_details));
+            paramIndex++;
+        }
+        if (setClauses.length === 0) {
+            // No updates to make, return current initiative
+            return this.getInitiativeById(id);
+        }
+        setClauses.push(`updated_at = NOW()`);
+        values.push(id); // Add ID for WHERE clause
+        const query = `
+      UPDATE community_initiatives 
+      SET ${setClauses.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+        const result = await this.db.query(query, values);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return this.mapRowToInitiative(result.rows[0]);
+    }
+    /**
+     * Update initiative status
+     */
+    async updateInitiativeStatus(id, status, submissionDetails) {
+        let query;
+        let values;
+        if (status === 'submitted') {
+            query = `
+        UPDATE community_initiatives 
+        SET status = $1, submitted_at = NOW(), submission_details = $2, updated_at = NOW()
+        WHERE id = $3
+        RETURNING *
+      `;
+            values = [status, JSON.stringify(submissionDetails || {}), id];
+        }
+        else {
+            query = `
+        UPDATE community_initiatives 
+        SET status = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `;
+            values = [status, id];
+        }
+        const result = await this.db.query(query, values);
+        if (result.rows.length === 0) {
+            return null;
+        }
+        return this.mapRowToInitiative(result.rows[0]);
+    }
+    /**
+     * List initiatives with filtering
+     */
+    async listInitiatives(page = 1, limit = 20, filters = {}) {
+        let whereClause = 'WHERE 1=1';
+        const values = [];
+        let valueIndex = 1;
+        if (filters.status) {
+            whereClause += ` AND status = $${valueIndex}`;
+            values.push(filters.status);
+            valueIndex++;
+        }
+        if (filters.userId) {
+            whereClause += ` AND created_by_user_id = $${valueIndex}`;
+            values.push(filters.userId);
+            valueIndex++;
+        }
+        // Count total
+        const countQuery = `
+      SELECT COUNT(*) as total 
+      FROM community_initiatives 
+      ${whereClause}
+    `;
+        const countResult = await this.db.query(countQuery, values);
+        const total = parseInt(countResult.rows[0].total);
+        // Get paginated results
+        const offset = (page - 1) * limit;
+        const listQuery = `
+      SELECT * FROM community_initiatives 
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${valueIndex} OFFSET $${valueIndex + 1}
+    `;
+        values.push(limit, offset);
+        const listResult = await this.db.query(listQuery, values);
+        const initiatives = listResult.rows.map(row => this.mapRowToInitiative(row));
+        return { initiatives, total };
+    }
+    /**
+     * Delete initiative
+     */
+    async deleteInitiative(id) {
+        const query = `
+      DELETE FROM community_initiatives 
+      WHERE id = $1
+    `;
+        const result = await this.db.query(query, [id]);
+        return (result.rowCount || 0) > 0;
+    }
     /**
      * Log audit entry
      */
@@ -302,6 +480,25 @@ class CommunityRepository {
             content: row.content,
             created_by_user_id: row.created_by_user_id,
             created_at: row.created_at.toISOString()
+        };
+    }
+    /**
+     * Map database row to CommunityInitiative
+     */
+    mapRowToInitiative(row) {
+        var _a;
+        return {
+            id: row.id,
+            thread_id: row.thread_id,
+            title: row.title,
+            draft_content: row.draft_content,
+            status: row.status,
+            target_audience: row.target_audience,
+            submission_details: row.submission_details || {},
+            created_by_user_id: row.created_by_user_id,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+            submitted_at: (_a = row.submitted_at) === null || _a === void 0 ? void 0 : _a.toISOString()
         };
     }
 }

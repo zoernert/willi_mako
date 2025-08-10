@@ -51,8 +51,19 @@ export class CommunityQdrantService {
     try {
       const embedding = await geminiService.generateEmbedding(content);
       
-      // Create a unique ID for this vector point
-      const pointId = `${payload.thread_id}_${payload.section_key}_${payload.proposal_id || 'main'}`;
+      // Create a deterministic UUID for this vector point using crypto
+      const crypto = require('crypto');
+      const uniqueString = `${payload.thread_id}_${payload.section_key}_${payload.proposal_id || 'main'}`;
+      const hash = crypto.createHash('sha256').update(uniqueString).digest('hex');
+      
+      // Convert hash to UUID format (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+      const pointId = [
+        hash.substring(0, 8),
+        hash.substring(8, 12),
+        '4' + hash.substring(13, 16), // Version 4 UUID
+        ((parseInt(hash.substring(16, 17), 16) & 0x3) | 0x8).toString(16) + hash.substring(17, 20), // Variant bits
+        hash.substring(20, 32)
+      ].join('-');
 
       await this.client.upsert(this.collectionName, {
         wait: true,
@@ -63,6 +74,7 @@ export class CommunityQdrantService {
             payload: {
               ...payload,
               text_content_sample: content.substring(0, 200),
+              vector_id_source: uniqueString, // Store original ID for debugging
             },
           },
         ],

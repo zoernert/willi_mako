@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { CommunityThread, DocumentComment, ThreadSummary, CreateThreadRequest, PatchOperation } from '../types/community';
+import { CommunityThread, DocumentComment, ThreadSummary, CreateThreadRequest, PatchOperation, CommunityInitiative, CreateInitiativeRequest, UpdateInitiativeRequest, InitiativeStatus } from '../types/community';
 export declare class CommunityRepository {
     private db;
     constructor(db: Pool);
@@ -46,6 +46,40 @@ export declare class CommunityRepository {
      */
     deleteThread(threadId: string): Promise<boolean>;
     /**
+     * Create a new community initiative from a finalized thread
+     */
+    createInitiative(threadId: string, request: CreateInitiativeRequest, draftContent: string, userId: string): Promise<CommunityInitiative>;
+    /**
+     * Get initiative by ID
+     */
+    getInitiativeById(id: string): Promise<CommunityInitiative | null>;
+    /**
+     * Get initiative by thread ID
+     */
+    getInitiativeByThreadId(threadId: string): Promise<CommunityInitiative | null>;
+    /**
+     * Update initiative
+     */
+    updateInitiative(id: string, updates: Partial<UpdateInitiativeRequest>): Promise<CommunityInitiative | null>;
+    /**
+     * Update initiative status
+     */
+    updateInitiativeStatus(id: string, status: InitiativeStatus, submissionDetails?: Record<string, any>): Promise<CommunityInitiative | null>;
+    /**
+     * List initiatives with filtering
+     */
+    listInitiatives(page?: number, limit?: number, filters?: {
+        status?: InitiativeStatus;
+        userId?: string;
+    }): Promise<{
+        initiatives: CommunityInitiative[];
+        total: number;
+    }>;
+    /**
+     * Delete initiative
+     */
+    deleteInitiative(id: string): Promise<boolean>;
+    /**
      * Log audit entry
      */
     private logAuditEntry;
@@ -61,5 +95,9 @@ export declare class CommunityRepository {
      * Map database row to DocumentComment
      */
     private mapRowToComment;
+    /**
+     * Map database row to CommunityInitiative
+     */
+    private mapRowToInitiative;
 }
 //# sourceMappingURL=CommunityRepository.d.ts.map

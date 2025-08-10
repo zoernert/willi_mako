@@ -14,7 +14,11 @@ import {
   PatchOperation,
   UpdateDocumentRequest,
   ThreadStatus,
-  CommunityVectorPoint
+  CommunityVectorPoint,
+  CommunityInitiative,
+  CreateInitiativeRequest,
+  UpdateInitiativeRequest,
+  InitiativeStatus
 } from '../types/community';
 import { 
   validateStatusTransition,
@@ -531,5 +535,325 @@ export class CommunityService {
 
     // In production, this would publish to message bus
     // For now, just log
+  }
+
+  // ===================================
+  // COMMUNITY INITIATIVES (Meilenstein 3)
+  // ===================================
+
+  /**
+   * Create a new community initiative from a finalized thread
+   */
+  async createInitiative(
+    threadId: string,
+    request: CreateInitiativeRequest,
+    userId: string
+  ): Promise<CommunityInitiative> {
+    if (!isFeatureEnabled('FEATURE_COMMUNITY_HUB')) {
+      throw new Error('Community Hub feature is disabled');
+    }
+
+    // Verify thread exists and is finalized
+    const thread = await this.repository.getThreadById(threadId);
+    if (!thread) {
+      throw new Error('Thread not found');
+    }
+
+    if (thread.status !== 'final') {
+      throw new Error('Can only create initiatives from finalized threads');
+    }
+
+    if (!thread.document_content.final_solution?.content) {
+      throw new Error('Thread must have a final solution to create an initiative');
+    }
+
+    // Check if initiative already exists for this thread
+    const existingInitiative = await this.repository.getInitiativeByThreadId(threadId);
+    if (existingInitiative) {
+      throw new Error('Initiative already exists for this thread');
+    }
+
+    // Generate initiative draft content using LLM
+    const draftContent = await this.generateInitiativeDraft(thread, request);
+
+    // Create initiative
+    const initiative = await this.repository.createInitiative(
+      threadId,
+      request,
+      draftContent,
+      userId
+    );
+
+    // Emit event
+    this.emitEvent('community.initiative.created', {
+      initiative_id: initiative.id,
+      thread_id: threadId,
+      created_by: userId
+    });
+
+    return initiative;
+  }
+
+  /**
+   * Get initiative by ID
+   */
+  async getInitiative(id: string): Promise<CommunityInitiative | null> {
+    return this.repository.getInitiativeById(id);
+  }
+
+  /**
+   * Get initiative by thread ID
+   */
+  async getInitiativeByThread(threadId: string): Promise<CommunityInitiative | null> {
+    return this.repository.getInitiativeByThreadId(threadId);
+  }
+
+  /**
+   * Update initiative content
+   */
+  async updateInitiative(
+    id: string,
+    updates: UpdateInitiativeRequest,
+    userId: string
+  ): Promise<CommunityInitiative | null> {
+    const initiative = await this.repository.getInitiativeById(id);
+    if (!initiative) {
+      throw new Error('Initiative not found');
+    }
+
+    // Check permissions (only creator or admin can update)
+    if (initiative.created_by_user_id !== userId) {
+      throw new Error('Permission denied: Only creator can update initiative');
+    }
+
+    if (initiative.status === 'submitted') {
+      throw new Error('Cannot update submitted initiative');
+    }
+
+    const updatedInitiative = await this.repository.updateInitiative(id, updates);
+
+    if (updatedInitiative) {
+      this.emitEvent('community.initiative.updated', {
+        initiative_id: id,
+        updated_by: userId,
+        changes: Object.keys(updates)
+      });
+    }
+
+    return updatedInitiative;
+  }
+
+  /**
+   * Change initiative status
+   */
+  async updateInitiativeStatus(
+    id: string,
+    status: InitiativeStatus,
+    userId: string,
+    submissionDetails?: Record<string, any>
+  ): Promise<CommunityInitiative | null> {
+    const initiative = await this.repository.getInitiativeById(id);
+    if (!initiative) {
+      throw new Error('Initiative not found');
+    }
+
+    // Check permissions
+    if (initiative.created_by_user_id !== userId) {
+      throw new Error('Permission denied: Only creator can change status');
+    }
+
+    // Validate status transition
+    if (!this.isValidInitiativeStatusTransition(initiative.status, status)) {
+      throw new Error(`Invalid status transition from ${initiative.status} to ${status}`);
+    }
+
+    const updatedInitiative = await this.repository.updateInitiativeStatus(
+      id,
+      status,
+      submissionDetails
+    );
+
+    if (updatedInitiative) {
+      this.emitEvent('community.initiative.status_changed', {
+        initiative_id: id,
+        old_status: initiative.status,
+        new_status: status,
+        updated_by: userId
+      });
+    }
+
+    return updatedInitiative;
+  }
+
+  /**
+   * List initiatives with filtering
+   */
+  async listInitiatives(
+    page: number = 1,
+    limit: number = 20,
+    filters: {
+      status?: InitiativeStatus;
+      userId?: string;
+    } = {}
+  ): Promise<{ initiatives: CommunityInitiative[]; total: number }> {
+    return this.repository.listInitiatives(page, limit, filters);
+  }
+
+  /**
+   * Delete initiative (only draft status)
+   */
+  async deleteInitiative(id: string, userId: string): Promise<boolean> {
+    const initiative = await this.repository.getInitiativeById(id);
+    if (!initiative) {
+      throw new Error('Initiative not found');
+    }
+
+    // Check permissions
+    if (initiative.created_by_user_id !== userId) {
+      throw new Error('Permission denied: Only creator can delete initiative');
+    }
+
+    if (initiative.status !== 'draft') {
+      throw new Error('Can only delete draft initiatives');
+    }
+
+    const deleted = await this.repository.deleteInitiative(id);
+
+    if (deleted) {
+      this.emitEvent('community.initiative.deleted', {
+        initiative_id: id,
+        deleted_by: userId
+      });
+    }
+
+    return deleted;
+  }
+
+  /**
+   * Generate initiative draft content using LLM
+   */
+  private async generateInitiativeDraft(
+    thread: CommunityThread,
+    request: CreateInitiativeRequest
+  ): Promise<string> {
+    try {
+      // Import Gemini service dynamically to avoid circular dependencies
+      const geminiService = (await import('./gemini')).default;
+      
+      const promptText = this.buildInitiativePrompt(thread, request);
+      // Convert prompt to message format
+      const messages = [{ role: 'user' as const, content: promptText }];
+      const response = await geminiService.generateResponse(messages);
+      
+      return response.trim();
+    } catch (error) {
+      console.error('Failed to generate initiative draft:', error);
+      
+      // Fallback: Simple template-based draft
+      return this.generateFallbackDraft(thread, request);
+    }
+  }
+
+  /**
+   * Build LLM prompt for initiative generation
+   */
+  private buildInitiativePrompt(
+    thread: CommunityThread,
+    request: CreateInitiativeRequest
+  ): string {
+    const { document_content } = thread;
+    const targetAudience = request.targetAudience || 'relevante Stakeholder';
+    
+    return `
+Du bist ein Experte für Marktkommunikation in der Energiewirtschaft. Erstelle einen professionellen, formellen Entwurf für eine Gemeinschaftsinitiative basierend auf einem finalisierten Community-Lösungsdokument.
+
+**Kontext:**
+- Thread-Titel: ${thread.title}
+- Zielgruppe: ${targetAudience}
+- Finalisierte Lösung aus der Community
+
+**Problemstellung:**
+${document_content.problem_description || 'Nicht spezifiziert'}
+
+**Kontext:**
+${document_content.context || 'Nicht spezifiziert'}
+
+**Analyse:**
+${document_content.analysis || 'Nicht spezifiziert'}
+
+**Finale Community-Lösung:**
+${document_content.final_solution?.content || 'Nicht verfügbar'}
+
+${request.customPrompt ? `**Zusätzliche Anweisungen:** ${request.customPrompt}` : ''}
+
+**Aufgabe:**
+Erstelle einen strukturierten, professionellen Entwurf für eine formelle Anfrage/Initiative an ${targetAudience}. Der Entwurf soll:
+
+1. Das Problem klar definieren
+2. Die Auswirkungen auf die Branche beschreiben
+3. Die von der Community erarbeitete Lösung präsentieren
+4. Konkrete Handlungsempfehlungen geben
+5. Professional und respektvoll formuliert sein
+
+**Format:**
+- Betreff/Titel
+- Anrede
+- Problemdarstellung
+- Lösungsvorschlag
+- Begründung/Nutzen
+- Konkrete Bitte/Forderung
+- Höflicher Abschluss
+
+Schreibe direkt den Entwurf, ohne Meta-Kommentare.
+    `.trim();
+  }
+
+  /**
+   * Generate fallback draft when LLM is unavailable
+   */
+  private generateFallbackDraft(
+    thread: CommunityThread,
+    request: CreateInitiativeRequest
+  ): string {
+    const { document_content } = thread;
+    const targetAudience = request.targetAudience || 'Sehr geehrte Damen und Herren';
+    
+    return `
+Betreff: ${request.title}
+
+${targetAudience},
+
+im Rahmen unserer Community-Initiative zur Verbesserung der Marktkommunikation in der Energiewirtschaft möchten wir folgendes Thema zur Diskussion stellen:
+
+**Problemstellung:**
+${document_content.problem_description || 'Ein relevantes Problem wurde identifiziert.'}
+
+**Hintergrund:**
+${document_content.context || 'Der Kontext wurde von der Community analysiert.'}
+
+**Lösungsvorschlag:**
+${document_content.final_solution?.content || 'Eine Lösung wurde gemeinschaftlich erarbeitet.'}
+
+Wir würden uns über eine Stellungnahme und mögliche nächste Schritte freuen.
+
+Mit freundlichen Grüßen,
+Die Community-Initiative
+    `.trim();
+  }
+
+  /**
+   * Validate initiative status transitions
+   */
+  private isValidInitiativeStatusTransition(
+    currentStatus: InitiativeStatus,
+    newStatus: InitiativeStatus
+  ): boolean {
+    const validTransitions: Record<InitiativeStatus, InitiativeStatus[]> = {
+      'draft': ['refining', 'submitted'],
+      'refining': ['draft', 'submitted'],
+      'submitted': [] // Final state, no transitions allowed
+    };
+
+    return validTransitions[currentStatus].includes(newStatus);
   }
 }

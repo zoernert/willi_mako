@@ -12,6 +12,7 @@ const express_1 = __importDefault(require("express"));
 const CommunityService_1 = require("../../services/CommunityService");
 const auth_1 = require("../../middleware/auth");
 const featureFlags_1 = require("../../utils/featureFlags");
+const database_1 = __importDefault(require("../../config/database"));
 const router = express_1.default.Router();
 // Initialize service (will be set by factory function)
 let communityService;
@@ -44,7 +45,7 @@ router.use(requireAdmin);
 router.post('/create-faq-from-thread', async (req, res) => {
     try {
         const adminUserId = req.user.id;
-        const { threadId } = req.body;
+        const { threadId, customTitle, customTags } = req.body;
         if (!threadId) {
             return res.status(400).json({
                 success: false,
@@ -53,17 +54,42 @@ router.post('/create-faq-from-thread', async (req, res) => {
         }
         // Get prepared FAQ data from community service
         const faqData = await communityService.createFaqFromThread(threadId, adminUserId);
-        // Here we would call the existing FAQ service to actually create the FAQ
-        // For now, we'll simulate it by preparing the data structure
-        // TODO: Integrate with existing FAQ service
-        // const createdFaq = await faqService.createFaq(faqData);
-        // For now, return the prepared data
+        // Override with custom data if provided
+        if (customTitle) {
+            faqData.title = customTitle;
+        }
+        if (customTags && Array.isArray(customTags)) {
+            faqData.tags = customTags;
+        }
+        // Create the FAQ in the database using the same pattern as faq.ts
+        const faqResult = await database_1.default.query(`
+      INSERT INTO faqs (
+        title, description, context, answer, additional_info, tags,
+        created_by, created_at, updated_at, is_active, is_public,
+        source_thread_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), true, true, $8)
+      RETURNING *
+    `, [
+            faqData.title,
+            faqData.description,
+            faqData.context,
+            faqData.answer,
+            faqData.additionalInfo || '',
+            JSON.stringify(faqData.tags),
+            adminUserId,
+            threadId
+        ]);
+        const createdFaq = faqResult.rows[0];
+        // TODO: Add FAQ to vector store for semantic search
+        // const qdrantService = new QdrantService();
+        // await qdrantService.addFaqToCollection(createdFaq);
+        // Update thread status to final since it's now converted to FAQ
+        await communityService.updateStatus(threadId, 'final', adminUserId, true);
         res.status(201).json({
             success: true,
             data: {
-                message: 'FAQ creation prepared successfully',
-                preparedData: faqData,
-                // In real implementation: createdFaq
+                faq: createdFaq,
+                message: 'FAQ created successfully from community thread'
             }
         });
     }

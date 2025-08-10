@@ -21,6 +21,7 @@ import {
   Person as PersonIcon,
   SmartToy as BotIcon,
   Add as AddIcon,
+  Groups as CommunityIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -31,6 +32,7 @@ import { useTextSelection } from '../hooks/useTextSelection';
 import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
 import ContextControlPanel from '../components/Chat/ContextControlPanel';
+import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
 
 interface Message {
   id: string;
@@ -86,6 +88,9 @@ const Chat: React.FC = () => {
     includeSystemKnowledge: true,
   });
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
+  
+  // Community escalation state
+  const [escalationModalOpen, setEscalationModalOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -710,6 +715,28 @@ const Chat: React.FC = () => {
               onSubmit={sendMessage}
               sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}
             >
+              {/* Community Escalation Button */}
+              {messages.length > 0 && (
+                <Box sx={{ mb: 1, textAlign: 'center' }}>
+                  <Button
+                    size="small"
+                    startIcon={<CommunityIcon />}
+                    onClick={() => setEscalationModalOpen(true)}
+                    sx={{
+                      color: 'text.secondary',
+                      textTransform: 'none',
+                      fontSize: '0.8rem',
+                      '&:hover': {
+                        backgroundColor: '#ee7f4b', // Community theme orange
+                        color: 'white',
+                      }
+                    }}
+                  >
+                    In Community analysieren
+                  </Button>
+                </Box>
+              )}
+              
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                   fullWidth
@@ -747,6 +774,14 @@ const Chat: React.FC = () => {
           sourceId={textSelection.sourceId}
           sourceContext={textSelection.sourceContext}
           onClose={textSelection.onClose}
+        />
+
+        {/* Community Escalation Modal */}
+        <CommunityEscalationModal
+          open={escalationModalOpen}
+          onClose={() => setEscalationModalOpen(false)}
+          messages={messages}
+          chatId={chatId}
         />
       </Paper>
     </Box>

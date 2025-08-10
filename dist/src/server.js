@@ -33,6 +33,9 @@ const errorHandler_1 = require("./middleware/errorHandler");
 const auth_2 = require("./middleware/auth");
 // Import database
 const database_1 = __importDefault(require("./config/database"));
+// Import services
+const qdrant_1 = require("./services/qdrant");
+const CommunityQdrantService_1 = require("./services/CommunityQdrantService");
 // Initialize environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -147,11 +150,27 @@ app.get('*', (req, res) => {
 });
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
+// Initialize Qdrant collections
+const initializeQdrantCollections = async () => {
+    try {
+        // Initialize the main Qdrant collection for FAQ/Chat
+        await qdrant_1.QdrantService.createCollection();
+        console.log('✅ Main Qdrant collection initialized');
+        // Initialize Community collection
+        const communityQdrant = new CommunityQdrantService_1.CommunityQdrantService();
+        console.log('✅ Community Qdrant collection initialized');
+    }
+    catch (error) {
+        console.error('❌ Error initializing Qdrant collections:', error);
+    }
+};
 // Start server - auf allen Interfaces für internen Gebrauch
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`🔗 Environment: ${process.env.NODE_ENV}`);
     console.log(`⚠️  Server is bound to all interfaces for internal access`);
+    // Initialize Qdrant collections after server starts
+    await initializeQdrantCollections();
 });
 exports.default = app;
 //# sourceMappingURL=server.js.map

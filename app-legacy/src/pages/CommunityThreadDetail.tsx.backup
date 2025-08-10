@@ -40,7 +40,7 @@ import {
   RocketLaunch as InitiativeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { useSnackbar } from '../contexts/SnackbarContext';
+import { useSnackbar } f        )}exts/SnackbarContext';
 import { InitiativeView } from '../components/Community/InitiativeView';
 import { communityService } from '../services/communityService';
 import { CommunityInitiative } from '../types/community';
@@ -855,6 +855,33 @@ const CommunityThreadDetail: React.FC = () => {
             </Card>
           </Grid>
         )}
+
+        {/* Initiatives Section - New */}
+        <Grid size={{ xs: 12 }}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" color="primary.main">
+                  Initiativen
+                </Typography>
+                <Button
+                  startIcon={<InitiativeIcon />}
+                  onClick={() => navigate(`/community/threads/${id}/initiatives`)}
+                  variant="contained"
+                  size="small"
+                >
+                  Alle ansehen
+                </Button>
+              </Box>
+              
+              <InitiativeView 
+                threadId={id}
+                initiatives={thread.document_content?.initiatives}
+                onUpdate={() => fetchThread()} // Refresh on update
+              />
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       {/* Add Proposal Dialog */}
