@@ -114,18 +114,25 @@ router.get('/profile', auth_1.authenticateToken, (0, errorHandler_1.asyncHandler
     const userId = req.user.id;
     const client = await database_1.default.connect();
     try {
-        const userResult = await client.query('SELECT id, email, name, full_name, company, role FROM users WHERE id = $1', [userId]);
+        const userResult = await client.query('SELECT id, email, name, full_name, company, role, selected_m2c_role_ids FROM users WHERE id = $1', [userId]);
         if (userResult.rows.length === 0) {
             throw new errors_1.AppError('Benutzer nicht gefunden', 404);
         }
         const user = userResult.rows[0];
+        // Fetch selected M2C roles if feature is enabled and user has roles selected
+        let selectedM2cRoles = [];
+        if (process.env.ENABLE_M2C_ROLES === 'true' && user.selected_m2c_role_ids && user.selected_m2c_role_ids.length > 0) {
+            const rolesResult = await client.query('SELECT id, name, description FROM m2c_roles WHERE id = ANY($1) ORDER BY name', [user.selected_m2c_role_ids]);
+            selectedM2cRoles = rolesResult.rows;
+        }
         response_1.ResponseUtils.success(res, {
             id: user.id,
             email: user.email,
             name: user.name,
             full_name: user.full_name,
             company: user.company,
-            role: user.role
+            role: user.role,
+            selectedM2cRoles: selectedM2cRoles
         }, 'Profil erfolgreich abgerufen');
     }
     finally {

@@ -20,6 +20,7 @@ import { teamRoutes } from './routes/teams';
 import processRoutes from './routes/processes';
 import { initializeCommunityRoutes } from './routes/community';
 import { initializeCommunityAdminRoutes } from './routes/admin/community';
+import m2cRolesRoutes from './routes/m2cRoles';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -161,15 +162,7 @@ app.use('/api/notes', notesRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/message-analyzer', authenticateToken, messageAnalyzerRoutes);
 app.use('/api/v1/codes', authenticateToken, codesRoutes);
-
-// Serve React app
-const clientBuildPath = path.join(__dirname, '../client/build');
-app.use(express.static(clientBuildPath));
-
-// Serve React app for all other routes (SPA routing)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+app.use('/api', m2cRolesRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

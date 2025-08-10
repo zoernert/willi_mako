@@ -1,0 +1,47 @@
+[
+  {
+    "role_name": "M2C-Prozessmanager",
+    "short_description": "Strategische Steuerung des gesamten Meter-to-Cash-Prozesses",
+    "detailed_description": "Der M2C-Prozessmanager ist eine strategische Rolle, die den gesamten Prozess ganzheitlich betrachtet. Seine primäre Aufgabe ist die Sicherstellung des reibungslosen, effizienten und transparenten Ablaufs der gesamten M2C-Kette. Er analysiert den Ist-Zustand des Prozesses, identifiziert Schwachstellen, Engpässe und Fehlerquellen und entwickelt konkrete Maßnahmen zur Behebung. Er koordiniert die verschiedenen Abteilungen und überwacht Kennzahlensysteme (KPIs) für die Leistung des Gesamtprozesses."
+  },
+  {
+    "role_name": "Wechselprozessmanager",
+    "short_description": "End-to-End Steuerung von Lieferanten- und Gerätewechseln",
+    "detailed_description": "Der Wechselprozessmanager ist ein operativer Fachexperte, dessen Fokus auf der end-to-end-Bearbeitung aller Geschäftsprozesse im Zusammenhang mit einem Kunden- oder Messstellenwechsel liegt. Er verantwortet die gesamte Abwicklung von Lieferantenwechselprozessen, Gerätewechseln und Sachbearbeiterentscheidungen gemäß den regulatorischen Vorgaben von GPKE, GeLi Gas und WiM. Die fallabschließende Bearbeitung von Klärfällen aus den Marktprozessen ist eine zentrale Aufgabe."
+  },
+  {
+    "role_name": "Datenaustauschmanager",
+    "short_description": "Technische Integrität & Monitoring der EDIFACT-Kommunikation",
+    "detailed_description": "Diese Rolle ist auf die technische Ebene der Marktkommunikation spezialisiert. Der Datenaustauschmanager ist verantwortlich für die technische Integrität, das Monitoring und die regelkonforme Übertragung der Daten zwischen den Marktpartnern. Die Überwachung des Versands und der Eingangsprüfung von EDIFACT-Formaten wie UTILMD (Stammdaten), MSCONS (Zählerstände) und APERAK/CONTRL gehört zu seinen primären Aufgaben. Er ist der Fachexperte für die elektronischen Datenformate."
+  },
+  {
+    "role_name": "Messstellen- und Gerätewechselmanager",
+    "short_description": "Physische Messinfrastruktur und Gerätewechsel-Prozesse",
+    "detailed_description": "Diese Rolle ist für die physische Messinfrastruktur und die damit verbundenen Prozesse verantwortlich. Er verantwortet den Einbau, Ausbau, Betrieb und die Wartung von Zählern und Kommunikations- und Steuereinrichtungen. Der Manager plant, organisiert und führt den Austausch von Messgeräten durch und koordiniert hierbei die Termine. Störungsmanagement und die Annahme und Behebung von Gerätestörungen sind zentrale Aufgaben."
+  },
+  {
+    "role_name": "Messwertmanagement-Manager",
+    "short_description": "Strukturierte Erfassung, Analyse und Weitergabe von Messwerten",
+    "detailed_description": "Der Messwertmanagement-Manager ist für die strukturierte Erfassung, Analyse und Weitergabe von Messwerten zuständig. Er koordiniert die Ablesung der Zählerstände und leitet die erfassten Werte an den Netzbetreiber und andere berechtigte Empfänger weiter. Die Plausibilisierung der Messdaten und die Korrektur von Datenfehlern sind zentrale Aufgaben, ebenso wie die Bildung von Ersatzwerten bei fehlenden Messdaten."
+  },
+  {
+    "role_name": "Abrechnungsmanager",
+    "short_description": "Korrekte Abrechnung für Endkunden und Marktpartner",
+    "detailed_description": "Der Abrechnungsmanager ist eine wirtschaftlich entscheidende Rolle, die für die korrekte und pünktliche Abrechnung der Kunden sowie die Abrechnung zwischen den Marktpartnern verantwortlich ist. Er erstellt eine Vielzahl von Abrechnungen, darunter Turnus-, Zwischen- und Schlussabrechnungen. Zu seinen Aufgaben gehört die Abrechnung von Netznutzungsentgelten und die Durchführung der komplexen Mehr-/Mindermengenabrechnung gegenüber dem Lieferanten."
+  },
+  {
+    "role_name": "Bilanzierungs- und Handelsmanager",
+    "short_description": "Bilanzkreismanagement und Schnittstelle zum Energiehandel",
+    "detailed_description": "Diese Rolle agiert an der Schnittstelle zwischen den operativen M2C-Prozessen und dem Strom- oder Gashandel. Der Manager ist für die ausgeglichene Bewirtschaftung der Bilanzkreise verantwortlich und sorgt dafür, dass Einspeisungen und Entnahmen in jeder Viertelstunde im Gleichgewicht sind. Er bearbeitet die Abrechnungspreise für Bilanzabweichungen und koordiniert den Informationsfluss zwischen verschiedenen Marktpartnern."
+  },
+  {
+    "role_name": "Kundenservice-Manager",
+    "short_description": "Bindeglied zum Endkunden und proaktive Kundenbetreuung",
+    "detailed_description": "Der Kundenservice ist das entscheidende Bindeglied zwischen dem Energieversorger und dem Kunden. Er beantwortet und klärt alle Fragen von Endkunden zu energiewirtschaftlichen Geschäftsprozessen. Seine Rolle hat sich von einer rein reaktiven Funktion zu einer proaktiven, strategischen Rolle gewandelt. Er nutzt intelligente Software, um die Customer Journey zu optimieren und personalisierte Tipps zur Energieeinsparung zu geben."
+  },
+  {
+    "role_name": "Forderungsmanager",
+    "short_description": "Debitorenmanagement und Liquiditätssicherung",
+    "detailed_description": "Diese Rolle ist für das Debitorenmanagement und die Liquiditätssicherung des Unternehmens verantwortlich. Er ist zuständig für die Bearbeitung von Zahlungseingängen und -ausgängen sowie für das vorgerichtliche Mahnwesen. Zur Reduzierung operativer Kosten werden zunehmend KI-basierte Tools eingesetzt, die die Zahlungswahrscheinlichkeit prognostizieren und die Kundenkommunikation optimieren."
+  }
+]

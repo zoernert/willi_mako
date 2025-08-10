@@ -243,22 +243,35 @@ class CommunityService {
      * Delete thread (admin only)
      */
     async deleteThread(threadId, adminUserId) {
-        // Remove from Qdrant
+        const client = await this.db.connect();
         try {
-            await this.qdrantService.deleteThreadVectors(threadId);
-        }
-        catch (error) {
-            console.error('Failed to delete thread vectors:', error);
-        }
-        // Delete from database
-        const deleted = await this.repository.deleteThread(threadId);
-        if (deleted) {
+            await client.query('BEGIN');
+            // Verify thread exists
+            const threadResult = await client.query('SELECT id FROM community_threads WHERE id = $1', [threadId]);
+            if (threadResult.rows.length === 0) {
+                throw new Error('Thread not found');
+            }
+            // Delete initiatives first (foreign key constraint)
+            await client.query('DELETE FROM community_initiatives WHERE thread_id = $1', [threadId]);
+            // Delete comments (will be cascade deleted, but explicit for clarity)
+            await client.query('DELETE FROM document_comments WHERE thread_id = $1', [threadId]);
+            // Delete the thread itself
+            await client.query('DELETE FROM community_threads WHERE id = $1', [threadId]);
+            await client.query('COMMIT');
+            // Emit event for cleanup (Qdrant, etc.)
             this.emitEvent('community.thread.deleted', {
-                thread_id: threadId,
-                deleted_by: adminUserId
+                threadId,
+                deletedBy: adminUserId,
+                timestamp: new Date().toISOString()
             });
         }
-        return deleted;
+        catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        }
+        finally {
+            client.release();
+        }
     }
     /**
      * Search threads by semantic similarity

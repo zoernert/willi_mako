@@ -28,7 +28,11 @@
     "test:e2e:debug": "playwright test --debug",
     "test:all": "npm run test:coverage && npm run test:integration && npm run test:e2e",
     "test:seo": "lighthouse --output json --output html",
-    "lint": "next lint",
+    "lint": "eslint src/ --ext .ts,.js",
+    "lint:fix": "eslint src/ --ext .ts,.js --fix",
+    "db:migrate": "psql -f db/migrations/$(ls db/migrations/ | tail -1)",
+    "seed:m2c-roles": "npx tsx scripts/seed-m2c-roles.ts",
+    "setup:m2c": "npm run db:migrate && npm run seed:m2c-roles",
     "type-check": "tsc --noEmit"
   },
   "repository": {

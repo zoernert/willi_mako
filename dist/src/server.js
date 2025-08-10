@@ -24,6 +24,7 @@ const teams_1 = require("./routes/teams");
 const processes_1 = __importDefault(require("./routes/processes"));
 const community_1 = require("./routes/community");
 const community_2 = require("./routes/admin/community");
+const m2cRoles_1 = __importDefault(require("./routes/m2cRoles"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -141,6 +142,7 @@ app.use('/api/notes', notes_1.default);
 app.use('/api/documents', documents_1.default);
 app.use('/api/message-analyzer', auth_2.authenticateToken, message_analyzer_1.messageAnalyzerRoutes);
 app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
+app.use('/api/m2c-roles', auth_2.authenticateToken, m2cRoles_1.default);
 // Serve React app
 const clientBuildPath = path_1.default.join(__dirname, '../client/build');
 app.use(express_1.default.static(clientBuildPath));

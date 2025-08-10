@@ -1,6 +1,7 @@
 import { DatabaseHelper } from '../utils/database';
 import geminiService from './gemini';
 import { QdrantService } from './qdrant';
+import m2cRoleService from './m2cRoleService';
 
 export enum SearchType {
   SEMANTIC = 'semantic',
@@ -321,6 +322,32 @@ export class ChatConfigurationService {
         }
       }
 
+      // Step 3.5: M2C Role Context (if enabled)
+      let roleContext = '';
+      if (this.isStepEnabled(config, 'response_generation')) {
+        processingSteps.push({
+          name: 'M2C Role Context',
+          startTime: Date.now(),
+          enabled: true
+        });
+
+        try {
+          roleContext = await m2cRoleService.buildUserRoleContext(userId);
+          if (roleContext) {
+            console.log(`M2C Role context added for user ${userId}: ${roleContext.length} characters`);
+          }
+        } catch (error) {
+          console.warn('Failed to load M2C role context:', error);
+          roleContext = '';
+        }
+
+        processingSteps[processingSteps.length - 1].endTime = Date.now();
+        processingSteps[processingSteps.length - 1].output = { 
+          contextLength: roleContext.length,
+          hasRoleContext: roleContext.length > 0
+        };
+      }
+
       // Step 4: Response Generation (if enabled)
       let response = '';
       if (this.isStepEnabled(config, 'response_generation')) {
@@ -344,9 +371,21 @@ export class ChatConfigurationService {
           contextMode = 'system-only';
         }
 
+        // Enhanced system prompt with role context
+        let enhancedSystemPrompt = config.config.systemPrompt;
+        if (roleContext) {
+          enhancedSystemPrompt += '\n\n[Benutzer-Rollenkontext]\n' + roleContext;
+        }
+
+        // Create enhanced context with role information
+        let enhancedContext = contextUsed;
+        if (roleContext && !contextUsed.includes('[Benutzer-Rollenkontext]')) {
+          enhancedContext = roleContext + '\n\n' + contextUsed;
+        }
+
         response = await geminiService.generateResponse(
           messages,
-          contextUsed,
+          enhancedContext,
           userPreferences,
           false,
           contextMode

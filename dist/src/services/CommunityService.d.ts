@@ -54,7 +54,7 @@ export declare class CommunityService {
     /**
      * Delete thread (admin only)
      */
-    deleteThread(threadId: string, adminUserId: string): Promise<boolean>;
+    deleteThread(threadId: string, adminUserId: string): Promise<void>;
     /**
      * Search threads by semantic similarity
      */

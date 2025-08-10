@@ -28,6 +28,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { userApi } from '../services/userApi';
 import { UserPreferences, UserProfile, FlipModePreferences } from '../types/user';
+import { M2CRoleSelector } from '../components/Profile';
+import '../components/Profile/M2CRoleSelector.css';
 
 const Profile: React.FC = () => {
   const { state, dispatch } = useAuth();
@@ -329,6 +331,17 @@ const Profile: React.FC = () => {
           </Paper>
         </Box>
       </Box>
+
+      {/* M2C Roles Section - only show if feature is enabled */}
+      {process.env.REACT_APP_ENABLE_M2C_ROLES === 'true' && (
+        <Box sx={{ mt: 3 }}>
+          <Paper sx={{ p: 3 }}>
+            <M2CRoleSelector 
+              onSuccess={() => showSnackbar('M2C-Rollen erfolgreich gespeichert!', 'success')}
+            />
+          </Paper>
+        </Box>
+      )}
     </Container>
   );
 };

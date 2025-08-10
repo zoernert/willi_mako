@@ -152,7 +152,7 @@ router.get('/profile', authenticateToken, asyncHandler(async (req: Authenticated
   
   try {
     const userResult = await client.query(
-      'SELECT id, email, name, full_name, company, role FROM users WHERE id = $1',
+      'SELECT id, email, name, full_name, company, role, selected_m2c_role_ids FROM users WHERE id = $1',
       [userId]
     );
 
@@ -162,13 +162,24 @@ router.get('/profile', authenticateToken, asyncHandler(async (req: Authenticated
 
     const user = userResult.rows[0];
 
+    // Fetch selected M2C roles if feature is enabled and user has roles selected
+    let selectedM2cRoles: any[] = [];
+    if (process.env.ENABLE_M2C_ROLES === 'true' && user.selected_m2c_role_ids && user.selected_m2c_role_ids.length > 0) {
+      const rolesResult = await client.query(
+        'SELECT id, name, description FROM m2c_roles WHERE id = ANY($1) ORDER BY name',
+        [user.selected_m2c_role_ids]
+      );
+      selectedM2cRoles = rolesResult.rows;
+    }
+
     ResponseUtils.success(res, {
       id: user.id,
       email: user.email,
       name: user.name,
       full_name: user.full_name,
       company: user.company,
-      role: user.role
+      role: user.role,
+      selectedM2cRoles: selectedM2cRoles
     }, 'Profil erfolgreich abgerufen');
 
   } finally {

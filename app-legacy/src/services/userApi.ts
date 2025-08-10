@@ -2,6 +2,19 @@ import apiClient from './apiClient';
 import { API_ENDPOINTS } from './apiEndpoints';
 import { User, UserProfile, UserPreferences, FlipModePreferences } from '../types/user';
 
+// M2C Role interfaces
+export interface M2CRole {
+  id: string;
+  role_name: string;
+  short_description: string;
+  detailed_description?: string;
+}
+
+export interface UserM2CRoleSelection {
+  roleIds: string[];
+  roles: M2CRole[];
+}
+
 export const userApi = {
   getUserProfile: (): Promise<User> => {
     return apiClient.get(API_ENDPOINTS.user.profile);
@@ -20,5 +33,18 @@ export const userApi = {
   },
   updateFlipModePreferences: (preferencesData: Partial<FlipModePreferences>): Promise<FlipModePreferences> => {
     return apiClient.put(API_ENDPOINTS.user.flipModePreferences, preferencesData);
+  },
+  
+  // M2C Roles methods
+  getAllM2CRoles: (): Promise<M2CRole[]> => {
+    return apiClient.get('/api/m2c-roles');
+  },
+  
+  getUserM2CRoles: (): Promise<UserM2CRoleSelection> => {
+    return apiClient.get('/api/users/me/m2c-roles');
+  },
+  
+  updateUserM2CRoles: (roleIds: string[]): Promise<{ roleIds: string[] }> => {
+    return apiClient.put('/api/users/me/m2c-roles', { roleIds });
   },
 };

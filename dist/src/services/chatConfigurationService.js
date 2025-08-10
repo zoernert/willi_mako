@@ -7,6 +7,7 @@ exports.ChatConfigurationService = exports.SearchType = void 0;
 const database_1 = require("../utils/database");
 const gemini_1 = __importDefault(require("./gemini"));
 const qdrant_1 = require("./qdrant");
+const m2cRoleService_1 = __importDefault(require("./m2cRoleService"));
 var SearchType;
 (function (SearchType) {
     SearchType["SEMANTIC"] = "semantic";
@@ -255,6 +256,30 @@ class ChatConfigurationService {
                     contextUsed = relevantContent.join('\n\n');
                 }
             }
+            // Step 3.5: M2C Role Context (if enabled)
+            let roleContext = '';
+            if (this.isStepEnabled(config, 'response_generation')) {
+                processingSteps.push({
+                    name: 'M2C Role Context',
+                    startTime: Date.now(),
+                    enabled: true
+                });
+                try {
+                    roleContext = await m2cRoleService_1.default.buildUserRoleContext(userId);
+                    if (roleContext) {
+                        console.log(`M2C Role context added for user ${userId}: ${roleContext.length} characters`);
+                    }
+                }
+                catch (error) {
+                    console.warn('Failed to load M2C role context:', error);
+                    roleContext = '';
+                }
+                processingSteps[processingSteps.length - 1].endTime = Date.now();
+                processingSteps[processingSteps.length - 1].output = {
+                    contextLength: roleContext.length,
+                    hasRoleContext: roleContext.length > 0
+                };
+            }
             // Step 4: Response Generation (if enabled)
             let response = '';
             if (this.isStepEnabled(config, 'response_generation')) {
@@ -277,7 +302,17 @@ class ChatConfigurationService {
                 else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
                     contextMode = 'system-only';
                 }
-                response = await gemini_1.default.generateResponse(messages, contextUsed, userPreferences, false, contextMode);
+                // Enhanced system prompt with role context
+                let enhancedSystemPrompt = config.config.systemPrompt;
+                if (roleContext) {
+                    enhancedSystemPrompt += '\n\n[Benutzer-Rollenkontext]\n' + roleContext;
+                }
+                // Create enhanced context with role information
+                let enhancedContext = contextUsed;
+                if (roleContext && !contextUsed.includes('[Benutzer-Rollenkontext]')) {
+                    enhancedContext = roleContext + '\n\n' + contextUsed;
+                }
+                response = await gemini_1.default.generateResponse(messages, enhancedContext, userPreferences, false, contextMode);
                 processingSteps[processingSteps.length - 1].endTime = Date.now();
                 processingSteps[processingSteps.length - 1].output = {
                     responseLength: response.length
