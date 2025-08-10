@@ -30,7 +30,7 @@ export default function MCPService() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Willi MaKo MCP Service",
-    "description": "Spezialisierte REST-API für RAG-Anwendungen in der deutschen Energie-Marktkommunikation (MaKo) mit Model Context Protocol (MCP) v1.0 Support.",
+    "description": "MCP Tool-Server für RAG-Anwendungen in der deutschen Energie-Marktkommunikation (MaKo) mit JSON-RPC 2.0 Protokoll und dynamischer Tool-Erkennung.",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Any",
     "offers": {
@@ -47,7 +47,7 @@ export default function MCPService() {
     "url": "https://stromhaltig.de/mcp-service",
     "potentialAction": {
       "@type": "UseAction",
-      "target": "https://mcp.stromhaltig.de/search"
+      "target": "https://mcp.stromhaltig.de"
     }
   };
 
@@ -57,14 +57,14 @@ export default function MCPService() {
         <title>MCP Service | Willi MaKo - REST-API für Energie-Marktkommunikation</title>
         <meta 
           name="description" 
-          content="Professionelle REST-API für RAG-Anwendungen in der Energie-Marktkommunikation. Model Context Protocol (MCP) v1.0 Support, Qdrant Vector-Datenbank, optimiert für BDEW, GPKE und MaKo-Prozesse."
+          content="MCP Tool-Server für RAG-Anwendungen in der Energie-Marktkommunikation. JSON-RPC 2.0 Protokoll, dynamische Tool-Erkennung, optimiert für n8n, Claude.ai und LangChain Integration."
         />
-        <meta name="keywords" content="MCP Service, REST API, Energie-Marktkommunikation, RAG, Vector Database, BDEW, GPKE, Model Context Protocol, Qdrant, Energiewirtschaft" />
+        <meta name="keywords" content="MCP Tool-Server, JSON-RPC 2.0, Energie-Marktkommunikation, RAG, n8n, Claude.ai, LangChain, Model Context Protocol, Qdrant, Energiewirtschaft" />
         <link rel="canonical" href="https://stromhaltig.de/mcp-service" />
         
         {/* Open Graph */}
         <meta property="og:title" content="MCP Service | Professionelle API für Energie-Marktkommunikation" />
-        <meta property="og:description" content="REST-API für RAG-Anwendungen mit MCP v1.0 Support. Optimiert für deutsche Energie-Marktkommunikation (MaKo)." />
+        <meta property="og:description" content="MCP Tool-Server für RAG-Anwendungen mit JSON-RPC 2.0 Protokoll. Optimiert für n8n, Claude.ai und LangChain Integration." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://stromhaltig.de/mcp-service" />
         <meta property="og:image" content="https://stromhaltig.de/api-preview.jpg" />
@@ -72,7 +72,7 @@ export default function MCPService() {
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="MCP Service | REST-API für Energie-Marktkommunikation" />
-        <meta name="twitter:description" content="Professionelle API für RAG-Anwendungen in der Energiewirtschaft mit MCP v1.0 Support." />
+        <meta name="twitter:description" content="MCP Tool-Server für RAG-Anwendungen in der Energiewirtschaft mit JSON-RPC 2.0 Protokoll." />
         
         {/* Structured Data */}
         <script
@@ -104,7 +104,7 @@ export default function MCPService() {
             color="text.secondary" 
             sx={{ mb: 3, lineHeight: 1.4 }}
           >
-            Professionelle REST-API für RAG-Anwendungen in der deutschen Energie-Marktkommunikation
+            MCP Tool-Server für RAG-Anwendungen in der deutschen Energie-Marktkommunikation
           </Typography>
           
           <Alert severity="info" sx={{ mb: 3 }}>
@@ -117,11 +117,11 @@ export default function MCPService() {
               variant="contained" 
               size="large"
               startIcon={<ApiIcon />}
-              href="https://mcp.stromhaltig.de/search"
+              href="https://mcp.stromhaltig.de"
               target="_blank"
               rel="noopener noreferrer"
             >
-              API Endpoint
+              MCP Server
             </Button>
             <Button 
               variant="outlined" 
@@ -163,11 +163,11 @@ export default function MCPService() {
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <IntegrationIcon color="primary" sx={{ mr: 1, fontSize: 28 }} />
                     <Typography variant="h6" component="h3">
-                      MCP v1.0 Standard
+                      JSON-RPC 2.0 Protokoll
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">
-                    Nahtlose Integration in moderne LLM-Frameworks wie n8n, LangChain oder LlamaIndex durch standardisierte Antwortformate.
+                    Vollständige MCP Tool-Server Implementation mit dynamischer Tool-Erkennung über /initialize, /tools/list und /tools/call Endpunkte.
                   </Typography>
                 </CardContent>
               </Card>
@@ -200,62 +200,64 @@ export default function MCPService() {
           <Grid container spacing={4}>
             <Grid item xs={12} md={6}>
               <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
-                API Endpoint
+                MCP Tool-Server Endpunkte
               </Typography>
               <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
                 <Typography variant="body2">
-                  POST https://mcp.stromhaltig.de/search
+                  POST https://mcp.stromhaltig.de/<br/>
+                  POST https://mcp.stromhaltig.de/initialize<br/>
+                  POST https://mcp.stromhaltig.de/tools/list<br/>
+                  POST https://mcp.stromhaltig.de/tools/call
                 </Typography>
               </Paper>
+              
+              <Typography variant="h6" gutterBottom>
+                Protokoll
+              </Typography>
+              <Typography paragraph>
+                JSON-RPC 2.0 Standard. Alle Anfragen folgen dem dreistufigen MCP-Protokoll: Initialize → Tools List → Tools Call.
+              </Typography>
               
               <Typography variant="h6" gutterBottom>
                 Authentifizierung
               </Typography>
               <Typography paragraph>
-                Bearer Token im Authorization-Header. Während der Beta-Phase wird jeder Token akzeptiert.
+                Während der Beta-Phase ist keine Authentifizierung erforderlich. Der Server akzeptiert alle Anfragen.
               </Typography>
-              
-              <Typography variant="h6" gutterBottom>
-                Request Format
-              </Typography>
-              <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace' }}>
-                <Typography variant="body2" component="pre">
-{`{
-  "query": "Ihre Frage in natürlicher Sprache",
-  "top_k": 5
-}`}
-                </Typography>
-              </Paper>
             </Grid>
             
             <Grid item xs={12} md={6}>
               <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
-                Response Format (MCP v1.0)
+                Tool-Server Fähigkeiten
               </Typography>
               <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
                 <Typography variant="body2" component="pre">
 {`{
-  "version": "1.0",
-  "items": [
-    {
-      "source": "knowledge/gpke.md",
-      "metadata": {
-        "type": "mermaid_diagram",
-        "score": 0.6470231,
-        "page": 15
-      },
-      "content": "Detaillierte Beschreibung..."
-    }
-  ]
+  "capabilities": {
+    "tools": {},
+    "prompts": {},
+    "resources": {}
+  },
+  "serverInfo": {
+    "name": "willi-mako-mcp-server",
+    "version": "1.0.0"
+  }
 }`}
                 </Typography>
               </Paper>
               
               <Typography variant="h6" gutterBottom>
-                Qualitätsfilter
+                Verfügbare Tools
               </Typography>
               <Typography paragraph>
-                Automatische Filterung von Ergebnissen unter 50 Zeichen zur Vermeidung irrelevanter Text-Splitter.
+                <strong>search</strong>: Intelligente Suche in der MaKo-Wissensdatenbank mit konfigurierbaren Parametern (query, top_k).
+              </Typography>
+              
+              <Typography variant="h6" gutterBottom>
+                Dynamische Schema-Erkennung
+              </Typography>
+              <Typography paragraph>
+                Clients können zur Laufzeit die verfügbaren Tools und deren Input-Schemas automatisch ermitteln.
               </Typography>
             </Grid>
           </Grid>
@@ -339,39 +341,108 @@ export default function MCPService() {
           </Typography>
           
           <Typography variant="h5" gutterBottom sx={{ mt: 4, color: 'primary.main' }}>
-            cURL Beispiel
+            1. Protokoll-Handshake (Initialize)
           </Typography>
           <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
             <Typography variant="body2" component="pre">
-{`curl -X POST https://mcp.stromhaltig.de/search \\
+{`curl -X POST https://mcp.stromhaltig.de/initialize \\
 -H "Content-Type: application/json" \\
--H "Authorization: Bearer your-api-key" \\
 -d '{
-  "query": "Wie funktioniert der Lieferantenwechsel?",
-  "top_k": 3
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {}
 }'`}
             </Typography>
           </Paper>
           
           <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
-            JavaScript/Node.js
+            2. Tools auflisten
           </Typography>
           <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
             <Typography variant="body2" component="pre">
-{`const response = await fetch('https://mcp.stromhaltig.de/search', {
+{`curl -X POST https://mcp.stromhaltig.de/tools/list \\
+-H "Content-Type: application/json" \\
+-d '{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}'`}
+            </Typography>
+          </Paper>
+          
+          <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
+            3. Tool ausführen (Suche)
+          </Typography>
+          <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
+            <Typography variant="body2" component="pre">
+{`curl -X POST https://mcp.stromhaltig.de/tools/call \\
+-H "Content-Type: application/json" \\
+-d '{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "search",
+    "arguments": {
+      "query": "Wie funktioniert der Lieferantenwechsel?",
+      "top_k": 2
+    }
+  }
+}'`}
+            </Typography>
+          </Paper>
+          
+          <Typography variant="h5" gutterBottom sx={{ color: 'primary.main' }}>
+            JavaScript/Node.js Beispiel
+          </Typography>
+          <Paper sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace', mb: 3 }}>
+            <Typography variant="body2" component="pre">
+{`// 1. Initialize
+const initResponse = await fetch('https://mcp.stromhaltig.de/initialize', {
   method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer your-api-key'
-  },
+  headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    query: 'Was bedeutet der Fehlercode Z08 in einer APERAK?',
-    top_k: 2
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {}
   })
 });
 
-const data = await response.json();
-console.log(data.items);`}
+// 2. List tools
+const toolsResponse = await fetch('https://mcp.stromhaltig.de/tools/list', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/list',
+    params: {}
+  })
+});
+
+// 3. Call search tool
+const searchResponse = await fetch('https://mcp.stromhaltig.de/tools/call', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 3,
+    method: 'tools/call',
+    params: {
+      name: 'search',
+      arguments: {
+        query: 'Was bedeutet der Fehlercode Z08?',
+        top_k: 3
+      }
+    }
+  })
+});
+
+const data = await searchResponse.json();
+console.log(data.result);`}
             </Typography>
           </Paper>
           
@@ -379,21 +450,41 @@ console.log(data.items);`}
             n8n Integration
           </Typography>
           <Typography paragraph>
-            Verwenden Sie den <strong>HTTP Request Node</strong> in n8n:
+            Verwenden Sie den <strong>MCP Client Tool Node</strong> in n8n:
           </Typography>
           <Box sx={{ ml: 2 }}>
-            <Typography component="div">
-              • <strong>URL:</strong> <code>https://mcp.stromhaltig.de/search</code>
+            <Typography component="div" paragraph>
+              1. <strong>Credential erstellen:</strong>
             </Typography>
-            <Typography component="div">
-              • <strong>Method:</strong> <code>POST</code>
+            <Box sx={{ ml: 2, mb: 2 }}>
+              <Typography component="div">
+                • Gehen Sie zu "Credentials" und erstellen Sie eine neue "MCP Client"-Credential
+              </Typography>
+              <Typography component="div">
+                • <strong>Base URL:</strong> <code>https://mcp.stromhaltig.de</code>
+              </Typography>
+            </Box>
+            
+            <Typography component="div" paragraph>
+              2. <strong>MCP Client Tool Node konfigurieren:</strong>
             </Typography>
-            <Typography component="div">
-              • <strong>Authentication:</strong> <code>Header Auth</code> mit <code>Authorization: Bearer &lt;TOKEN&gt;</code>
-            </Typography>
-            <Typography component="div">
-              • <strong>Body:</strong> <code>{'{{ { "query": $json["question"], "top_k": 3 } }}'}</code>
-            </Typography>
+            <Box sx={{ ml: 2 }}>
+              <Typography component="div">
+                • Fügen Sie den "MCP Client Tool"-Node hinzu
+              </Typography>
+              <Typography component="div">
+                • Wählen Sie die erstellte Credential aus
+              </Typography>
+              <Typography component="div">
+                • Der Node führt automatisch den Discovery-Prozess aus
+              </Typography>
+              <Typography component="div">
+                • Wählen Sie das <code>search</code>-Tool aus der Dropdown-Liste
+              </Typography>
+              <Typography component="div">
+                • Konfigurieren Sie die Parameter <code>query</code> und <code>top_k</code>
+              </Typography>
+            </Box>
           </Box>
         </Paper>
 
@@ -403,8 +494,8 @@ console.log(data.items);`}
             Jetzt testen!
           </Typography>
           <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-            Nutzen Sie die Beta-Phase und integrieren Sie die MCP Service API in Ihre RAG-Anwendung.
-            Kostenloser Zugang während der Testphase.
+            Nutzen Sie die Beta-Phase und integrieren Sie den MCP Tool-Server in Ihre RAG-Anwendung.
+            Kostenloser Zugang während der Testphase mit vollständiger JSON-RPC 2.0 Unterstützung.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
             <Button 
@@ -412,11 +503,11 @@ console.log(data.items);`}
               size="large"
               sx={{ bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: 'grey.100' } }}
               startIcon={<ApiIcon />}
-              href="https://mcp.stromhaltig.de/search"
+              href="https://mcp.stromhaltig.de"
               target="_blank"
               rel="noopener noreferrer"
             >
-              API testen
+              MCP Server testen
             </Button>
             <Button 
               variant="outlined" 

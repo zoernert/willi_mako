@@ -24,6 +24,7 @@ import {
   Home as HomeIcon,
   Info as InfoIcon,
   Api as ApiIcon,
+  Groups as CommunityIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -49,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
   const menuItems = [
     { text: 'Startseite', icon: <HomeIcon />, path: '/' },
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
+    { text: 'Community Hub', icon: <CommunityIcon />, path: '/community' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
   ];
 

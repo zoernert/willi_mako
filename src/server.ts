@@ -18,6 +18,8 @@ import { messageAnalyzerRoutes } from './routes/message-analyzer';
 import codesRoutes from './routes/codes';
 import { teamRoutes } from './routes/teams';
 import processRoutes from './routes/processes';
+import { initializeCommunityRoutes } from './routes/community';
+import { initializeCommunityAdminRoutes } from './routes/admin/community';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -30,6 +32,10 @@ import { authenticateToken } from './middleware/auth';
 
 // Import database
 import db from './config/database';
+
+// Import services
+import { QdrantService } from './services/qdrant';
+import { CommunityQdrantService } from './services/CommunityQdrantService';
 
 // Initialize environment variables
 dotenv.config();
@@ -143,6 +149,10 @@ app.use('/api/teams', teamRoutes);
 // Process routes
 app.use('/api/processes', processRoutes);
 
+// Community routes (with feature flag protection)
+app.use('/api/community', initializeCommunityRoutes(db));
+app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
+
 // Legacy routes (still active)
 app.use('/api/chat', authenticateToken, chatRoutes);
 app.use('/api', faqRoutes); // Some FAQ routes are public
@@ -164,11 +174,29 @@ app.get('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
+// Initialize Qdrant collections
+const initializeQdrantCollections = async () => {
+  try {
+    // Initialize the main Qdrant collection for FAQ/Chat
+    await QdrantService.createCollection();
+    console.log('✅ Main Qdrant collection initialized');
+
+    // Initialize Community collection
+    const communityQdrant = new CommunityQdrantService();
+    console.log('✅ Community Qdrant collection initialized');
+  } catch (error) {
+    console.error('❌ Error initializing Qdrant collections:', error);
+  }
+};
+
 // Start server - auf allen Interfaces für internen Gebrauch
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🔗 Environment: ${process.env.NODE_ENV}`);
   console.log(`⚠️  Server is bound to all interfaces for internal access`);
+  
+  // Initialize Qdrant collections after server starts
+  await initializeQdrantCollections();
 });
 
 export default app;

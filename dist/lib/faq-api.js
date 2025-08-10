@@ -17,6 +17,7 @@ const qdrant_1 = require("../src/services/qdrant");
 // Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
 let QdrantServiceRef = qdrant_1.QdrantService;
 try {
+    // Prüfe ob es eine statische Methode ist
     if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
         // Versuch eines require (CommonJS) zur Laufzeit
         // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -22,6 +22,8 @@ const message_analyzer_1 = require("./routes/message-analyzer");
 const codes_1 = __importDefault(require("./routes/codes"));
 const teams_1 = require("./routes/teams");
 const processes_1 = __importDefault(require("./routes/processes"));
+const community_1 = require("./routes/community");
+const community_2 = require("./routes/admin/community");
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -29,6 +31,8 @@ const quiz_routes_2 = __importDefault(require("./presentation/http/routes/admin/
 // Import middleware
 const errorHandler_1 = require("./middleware/errorHandler");
 const auth_2 = require("./middleware/auth");
+// Import database
+const database_1 = __importDefault(require("./config/database"));
 // Initialize environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -123,6 +127,9 @@ app.use('/api/admin', admin_1.default);
 app.use('/api/teams', teams_1.teamRoutes);
 // Process routes
 app.use('/api/processes', processes_1.default);
+// Community routes (with feature flag protection)
+app.use('/api/community', (0, community_1.initializeCommunityRoutes)(database_1.default));
+app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 // Legacy routes (still active)
 app.use('/api/chat', auth_2.authenticateToken, chat_1.default);
 app.use('/api', faq_1.default); // Some FAQ routes are public

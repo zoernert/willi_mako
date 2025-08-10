@@ -1,0 +1,114 @@
+/* Community Hub Theme Styles */
+/* Aktiviert kontextuelles Theming für den Community Bereich */
+
+:root {
+  --color-primary: #147a50;
+  --color-secondary: #ee7f4b;
+  --color-primary-rgb: 20, 122, 80;
+  --color-secondary-rgb: 238, 127, 75;
+}
+
+/* Community Context Theme Swap */
+[data-context="community"] {
+  --color-primary: #ee7f4b;
+  --color-secondary: #147a50;
+  --color-primary-rgb: 238, 127, 75;
+  --color-secondary-rgb: 20, 122, 80;
+}
+
+/* Apply theme colors to components in community context */
+[data-context="community"] .MuiButton-containedPrimary {
+  background-color: var(--color-primary) !important;
+}
+
+[data-context="community"] .MuiChip-colorPrimary {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+[data-context="community"] .MuiIconButton-colorPrimary {
+  color: var(--color-primary) !important;
+}
+
+/* Smooth color transitions */
+[data-context="community"] * {
+  transition: background-color 150ms ease-in-out, color 150ms ease-in-out;
+}
+
+/* Community-specific visual indicators */
+[data-context="community"] .community-section-header {
+  border-left: 4px solid var(--color-primary);
+  padding-left: 12px;
+}
+
+[data-context="community"] .community-status-badge {
+  background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+  color: white;
+}
+
+/* Enhanced community cards */
+[data-context="community"] .MuiCard-root {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+}
+
+[data-context="community"] .MuiCard-root:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: 0 4px 20px rgba(var(--color-primary-rgb), 0.15);
+}
+
+/* Community thread status indicators */
+.community-status-discussing {
+  background-color: #2196f3;
+  color: white;
+}
+
+.community-status-review {
+  background-color: #ff9800;
+  color: white;
+}
+
+.community-status-final {
+  background-color: #4caf50;
+  color: white;
+}
+
+/* Section-specific styling */
+.community-section-problem {
+  border-left: 4px solid #f44336;
+}
+
+.community-section-context {
+  border-left: 4px solid #2196f3;
+}
+
+.community-section-solutions {
+  border-left: 4px solid #4caf50;
+}
+
+.community-section-final {
+  border-left: 4px solid #ff9800;
+  background: linear-gradient(90deg, rgba(255, 152, 0, 0.05) 0%, transparent 100%);
+}
+
+/* Accessibility enhancements */
+@media (prefers-reduced-motion: reduce) {
+  [data-context="community"] * {
+    transition: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  [data-context="community"] {
+    --color-primary: #000000;
+    --color-secondary: #ffffff;
+  }
+}
+
+/* Print styles - revert to standard colors */
+@media print {
+  [data-context="community"] {
+    --color-primary: #000000;
+    --color-secondary: #666666;
+  }
+}

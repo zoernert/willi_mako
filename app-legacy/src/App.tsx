@@ -26,6 +26,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Teams from './pages/Teams';
 import InvitationAcceptance from './pages/InvitationAcceptance';
 import TeamInvitationPage from './pages/TeamInvitationPage';
+import Community from './pages/Community';
+import CommunityThreadDetail from './pages/CommunityThreadDetail';
+import './styles/community-theme.css';
 
 const theme = createTheme({
   palette: {
@@ -123,6 +126,8 @@ function App() {
                 <Route path="quiz/:quizId" element={<ProtectedRoute><QuizPlayer /></ProtectedRoute>} />
                 <Route path="processes" element={<ProtectedRoute><ProcessesAndProcedures /></ProtectedRoute>} />
                 <Route path="teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
+                <Route path="community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
+                <Route path="community/:id" element={<ProtectedRoute><CommunityThreadDetail /></ProtectedRoute>} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
                 <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />

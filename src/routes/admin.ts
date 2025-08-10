@@ -10,6 +10,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import chatConfigRouter from './admin/chatConfig';
+import { initializeCommunityAdminRoutes } from './admin/community';
 
 const router = Router();
 
@@ -27,6 +28,9 @@ router.use(requireAdmin);
 
 // Mount chat configuration routes
 router.use('/chat-config', chatConfigRouter);
+
+// Initialize and mount community admin routes (needs to be done in server.ts with db pool)
+// router.use('/community', initializeCommunityAdminRoutes(db)); // This will be done in server.ts
 
 // Configure multer for admin document uploads
 const storage = multer.diskStorage({

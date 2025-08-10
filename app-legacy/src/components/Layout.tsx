@@ -35,6 +35,7 @@ import {
   Search as SearchIcon,
   Group as GroupIcon,
   AccountTree as ProcessIcon,
+  Groups as CommunityIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -85,6 +86,8 @@ const Layout: React.FC = () => {
     ),
   ];
 
+  const communityItem = { text: 'Community Hub', icon: <CommunityIcon />, path: '/community' };
+
   const drawer = (
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -117,6 +120,39 @@ const Layout: React.FC = () => {
           </ListItem>
         ))}
       </List>
+      
+      {/* Öffentlicher Bereich - Community Hub */}
+      <Divider sx={{ mt: 2, mb: 2 }} />
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, display: 'block', mb: 1 }}>
+          Öffentlicher Bereich
+        </Typography>
+        <Button
+          variant={location.pathname === communityItem.path ? "contained" : "outlined"}
+          fullWidth
+          startIcon={communityItem.icon}
+          onClick={() => {
+            navigate(communityItem.path);
+            if (isMobile) {
+              setMobileOpen(false);
+            }
+          }}
+          sx={{
+            backgroundColor: location.pathname === communityItem.path ? '#ee7f4b' : 'transparent',
+            borderColor: '#ee7f4b',
+            color: location.pathname === communityItem.path ? 'white' : '#ee7f4b',
+            '&:hover': {
+              backgroundColor: location.pathname === communityItem.path ? '#d6722e' : 'rgba(238, 127, 75, 0.08)',
+              borderColor: '#ee7f4b',
+            },
+            textTransform: 'none',
+            justifyContent: 'flex-start',
+            py: 1.5,
+          }}
+        >
+          {communityItem.text}
+        </Button>
+      </Box>
     </Box>
   );
 
