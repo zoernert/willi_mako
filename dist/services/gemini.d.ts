@@ -4,9 +4,16 @@ export interface ChatMessage {
     timestamp?: Date;
 }
 export declare class GeminiService {
-    private model;
+    private models;
+    private currentModelIndex;
+    private codeLookupService;
+    private modelUsageCount;
     constructor();
-    generateResponse(messages: ChatMessage[], context?: string, userPreferences?: any, isEnhancedQuery?: boolean): Promise<string>;
+    private getRpmLimit;
+    private getNextAvailableModel;
+    private resetUsageCounters;
+    generateResponse(messages: ChatMessage[], context?: string, userPreferences?: any, isEnhancedQuery?: boolean, contextMode?: 'workspace-only' | 'standard' | 'system-only'): Promise<string>;
+    private handleFunctionCall;
     private buildSystemPrompt;
     generateEmbedding(text: string): Promise<number[]>;
     private textToVector;
@@ -57,6 +64,48 @@ export declare class GeminiService {
     generateText(prompt: string): Promise<string>;
     private generateWithRetry;
     private sleep;
+    /**
+     * Generate tags for note content using AI
+     */
+    generateTagsForNote(content: string): Promise<string[]>;
+    /**
+     * Generate tags for document content using AI
+     */
+    generateTagsForDocument(content: string, title: string): Promise<string[]>;
+    /**
+     * Generate response with user context (documents and notes)
+     */
+    generateResponseWithUserContext(messages: ChatMessage[], publicContext: string, userDocuments: string[], userNotes: string[], userPreferences?: any, contextMode?: 'workspace-only' | 'standard' | 'system-only'): Promise<string>;
+    /**
+     * Suggest related content based on query
+     */
+    suggestRelatedContent(userId: string, query: string): Promise<any[]>;
+    /**
+     * Generate embedding for text (for vector search)
+     */
+    /**
+     * Generiert eine hypothetische Antwort für HyDE (Hypothetical Document Embeddings)
+     */
+    generateHypotheticalAnswer(query: string): Promise<string>;
+    generateSearchQueries(query: string): Promise<string[]>;
+    synthesizeContext(query: string, searchResults: any[]): Promise<string>;
+    /**
+     * Erweiterte Kontext-Synthese mit chunk_type-bewusster Verarbeitung
+     */
+    synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string>;
+    /**
+     * Re-Ranking von Suchergebnissen basierend auf semantischer Ähnlichkeit
+     * (Vereinfachte Implementierung ohne externes Cross-Encoder Modell)
+     */
+    reRankResults(originalQuery: string, searchResults: any[], topK?: number): Promise<any[]>;
+    /**
+     * Generiert finale Antwort mit transparenten Quellenangaben
+     */
+    generateResponseWithSources(query: string, context: string, contextSources?: any[], previousMessages?: any[], userPreferences?: any): Promise<{
+        response: string;
+        sources: any[];
+    }>;
+    logModelUsage(): void;
 }
 declare const _default: GeminiService;
 export default _default;

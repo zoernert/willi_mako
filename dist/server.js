@@ -22,6 +22,9 @@ const message_analyzer_1 = require("./routes/message-analyzer");
 const codes_1 = __importDefault(require("./routes/codes"));
 const teams_1 = require("./routes/teams");
 const processes_1 = __importDefault(require("./routes/processes"));
+const community_1 = require("./routes/community");
+const community_2 = require("./routes/admin/community");
+const m2cRoles_1 = __importDefault(require("./routes/m2cRoles"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -29,6 +32,11 @@ const quiz_routes_2 = __importDefault(require("./presentation/http/routes/admin/
 // Import middleware
 const errorHandler_1 = require("./middleware/errorHandler");
 const auth_2 = require("./middleware/auth");
+// Import database
+const database_1 = __importDefault(require("./config/database"));
+// Import services
+const qdrant_1 = require("./services/qdrant");
+const CommunityQdrantService_1 = require("./services/CommunityQdrantService");
 // Initialize environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -123,6 +131,9 @@ app.use('/api/admin', admin_1.default);
 app.use('/api/teams', teams_1.teamRoutes);
 // Process routes
 app.use('/api/processes', processes_1.default);
+// Community routes (with feature flag protection)
+app.use('/api/community', (0, community_1.initializeCommunityRoutes)(database_1.default));
+app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 // Legacy routes (still active)
 app.use('/api/chat', auth_2.authenticateToken, chat_1.default);
 app.use('/api', faq_1.default); // Some FAQ routes are public
@@ -131,20 +142,30 @@ app.use('/api/notes', notes_1.default);
 app.use('/api/documents', documents_1.default);
 app.use('/api/message-analyzer', auth_2.authenticateToken, message_analyzer_1.messageAnalyzerRoutes);
 app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
-// Serve React app
-const clientBuildPath = path_1.default.join(__dirname, '../client/build');
-app.use(express_1.default.static(clientBuildPath));
-// Serve React app for all other routes (SPA routing)
-app.get('*', (req, res) => {
-    res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
-});
+app.use('/api', m2cRoles_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
+// Initialize Qdrant collections
+const initializeQdrantCollections = async () => {
+    try {
+        // Initialize the main Qdrant collection for FAQ/Chat
+        await qdrant_1.QdrantService.createCollection();
+        console.log('✅ Main Qdrant collection initialized');
+        // Initialize Community collection
+        const communityQdrant = new CommunityQdrantService_1.CommunityQdrantService();
+        console.log('✅ Community Qdrant collection initialized');
+    }
+    catch (error) {
+        console.error('❌ Error initializing Qdrant collections:', error);
+    }
+};
 // Start server - auf allen Interfaces für internen Gebrauch
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`🔗 Environment: ${process.env.NODE_ENV}`);
     console.log(`⚠️  Server is bound to all interfaces for internal access`);
+    // Initialize Qdrant collections after server starts
+    await initializeQdrantCollections();
 });
 exports.default = app;
 //# sourceMappingURL=server.js.map

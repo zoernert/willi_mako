@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { UserPoints, UserExpertise, LeaderboardEntry, Achievement, ExpertiseUpdate } from '../types/quiz';
+import { UserPoints, UserExpertise, LeaderboardEntry, Achievement, ExpertiseUpdate } from '../modules/quiz/quiz.interface';
 export declare class GamificationService {
     private db;
     constructor(db: Pool);

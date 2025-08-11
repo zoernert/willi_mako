@@ -24,8 +24,7 @@ export interface FlipSession {
 }
 export interface ClarificationResponse {
     questionId: string;
-    response: string;
-    timestamp: Date;
+    answer: string;
 }
 export declare class FlipModeService {
     private readonly AMBIGUITY_THRESHOLD;
@@ -44,12 +43,11 @@ export declare class FlipModeService {
     private generateClarificationQuestions;
     private explainReasoning;
     private generateSessionId;
-    private getMinimalContext;
-    recordClarificationResponse(sessionId: string, questionId: string, response: string): Promise<FlipSession | null>;
+    saveClarificationResponses(userId: string, responses: ClarificationResponse[]): Promise<void>;
+    buildEnhancedQuery(originalQuery: string, userId: string, liveResponses?: ClarificationResponse[]): Promise<string>;
+    recordClarificationResponse(sessionId: string, questionId: string, answer: string): Promise<FlipSession | null>;
     getSession(sessionId: string): Promise<FlipSession | null>;
-    isSessionComplete(sessionId: string): Promise<boolean>;
     completeSession(sessionId: string): Promise<void>;
-    buildEnhancedQuery(sessionId: string): Promise<string>;
 }
 declare const _default: FlipModeService;
 export default _default;

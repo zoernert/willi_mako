@@ -9,6 +9,7 @@ class GamificationService {
         const client = await this.db.connect();
         try {
             await client.query('BEGIN');
+            // Insert points record
             const pointsQuery = `
         INSERT INTO user_points (user_id, points, source_type, source_id, description)
         VALUES ($1, $2, $3, $4, $5)
@@ -16,6 +17,7 @@ class GamificationService {
       `;
             const description = this.getPointsDescription(sourceType, points);
             await client.query(pointsQuery, [userId, points, sourceType, sourceId, description]);
+            // Update leaderboard
             await this.updateLeaderboard(userId, client);
             await client.query('COMMIT');
             return points;
@@ -32,11 +34,13 @@ class GamificationService {
         const client = await this.db.connect();
         try {
             await client.query('BEGIN');
+            // Get current expertise
             const currentQuery = `
         SELECT * FROM user_expertise
         WHERE user_id = $1 AND topic_area = $2
       `;
             const currentResult = await client.query(currentQuery, [userId, topicArea]);
+            // Get total points in topic
             const pointsQuery = `
         SELECT COALESCE(SUM(up.points), 0) as total_points
         FROM user_points up
@@ -49,6 +53,7 @@ class GamificationService {
             const newLevel = this.calculateExpertiseLevel(totalPoints);
             const updates = [];
             if (currentResult.rows.length === 0) {
+                // Create new expertise record
                 const insertQuery = `
           INSERT INTO user_expertise (user_id, topic_area, expertise_level, points_in_topic)
           VALUES ($1, $2, $3, $4)
@@ -58,13 +63,14 @@ class GamificationService {
                     topic_area: topicArea,
                     old_level: 'beginner',
                     new_level: newLevel,
-                    points_gained: totalPoints
+                    points_earned: totalPoints
                 });
             }
             else {
                 const currentExpertise = currentResult.rows[0];
                 const oldLevel = currentExpertise.expertise_level;
                 if (oldLevel !== newLevel) {
+                    // Update expertise level
                     const updateQuery = `
             UPDATE user_expertise
             SET expertise_level = $1, points_in_topic = $2, achieved_at = CURRENT_TIMESTAMP
@@ -75,7 +81,7 @@ class GamificationService {
                         topic_area: topicArea,
                         old_level: oldLevel,
                         new_level: newLevel,
-                        points_gained: totalPoints - currentExpertise.points_in_topic
+                        points_earned: totalPoints - currentExpertise.points_in_topic
                     });
                 }
             }
@@ -92,12 +98,14 @@ class GamificationService {
     }
     async updateLeaderboard(userId, client) {
         const dbClient = client || this.db;
+        // Get user's display name
         const userQuery = `
       SELECT full_name FROM users WHERE id = $1
     `;
         const userResult = await dbClient.query(userQuery, [userId]);
         const user = userResult.rows[0];
         const displayName = user ? user.full_name : 'Anonymer Benutzer';
+        // Calculate totals
         const statsQuery = `
       SELECT 
         COALESCE(SUM(up.points), 0) as total_points,
@@ -109,6 +117,7 @@ class GamificationService {
     `;
         const statsResult = await dbClient.query(statsQuery, [userId]);
         const stats = statsResult.rows[0];
+        // Upsert leaderboard entry
         const upsertQuery = `
       INSERT INTO leaderboard (user_id, display_name, total_points, quiz_count, average_score, last_activity)
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
@@ -129,6 +138,7 @@ class GamificationService {
     }
     async checkAchievements(userId) {
         const achievements = [];
+        // Get user stats
         const statsQuery = `
       SELECT 
         COUNT(DISTINCT uqa.id) as total_quizzes,
@@ -141,13 +151,16 @@ class GamificationService {
     `;
         const statsResult = await this.db.query(statsQuery, [userId]);
         const stats = statsResult.rows[0];
+        // Check for achievements
         if (stats.total_quizzes >= 10) {
             achievements.push({
                 id: 'quiz_master_10',
                 title: 'Quiz-Meister',
                 description: '10 Quizzes erfolgreich abgeschlossen',
                 type: 'quiz_master',
-                earned_at: new Date()
+                user_id: userId,
+                earned_at: new Date(),
+                is_visible: true
             });
         }
         if (stats.perfect_scores >= 5) {
@@ -156,7 +169,9 @@ class GamificationService {
                 title: 'Perfektionist',
                 description: '5 Quizzes mit 100% Punktzahl',
                 type: 'streak',
-                earned_at: new Date()
+                user_id: userId,
+                earned_at: new Date(),
+                is_visible: true
             });
         }
         if (stats.total_points >= 1000) {
@@ -165,7 +180,9 @@ class GamificationService {
                 title: 'Punkte-Sammler',
                 description: '1000 Punkte gesammelt',
                 type: 'points_milestone',
-                earned_at: new Date()
+                user_id: userId,
+                earned_at: new Date(),
+                is_visible: true
             });
         }
         return achievements;

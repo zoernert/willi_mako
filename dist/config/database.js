@@ -18,22 +18,26 @@ const pool = new pg_1.Pool({
     connectionTimeoutMillis: 2000,
 });
 exports.default = pool;
+// Database initialization
 const initDatabase = async () => {
     const client = new pg_1.Client({
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432'),
-        database: 'postgres',
+        database: 'postgres', // Connect to default database first
         user: process.env.DB_USER || 'willi_user',
         password: process.env.DB_PASSWORD || 'willi_password',
     });
     try {
         await client.connect();
+        // Create database if it doesn't exist
         const dbName = process.env.DB_NAME || 'willi_mako';
         await client.query(`CREATE DATABASE ${dbName}`).catch(() => {
             console.log(`Database ${dbName} already exists`);
         });
         await client.end();
+        // Now connect to the actual database and create tables
         const dbClient = await pool.connect();
+        // Create users table
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,6 +50,7 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Create chats table
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS chats (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,6 +60,7 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Create messages table
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -65,6 +71,7 @@ const initDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Create documents table for PDFs
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS documents (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,10 +86,11 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Create user_preferences table
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         companies_of_interest JSONB DEFAULT '[]',
         preferred_topics JSONB DEFAULT '[]',
         notification_settings JSONB DEFAULT '{}',
@@ -90,6 +98,21 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Create user_flip_mode_preferences table
+        await dbClient.query(`
+      CREATE TABLE IF NOT EXISTS user_flip_mode_preferences (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        energy_type VARCHAR(100),
+        stakeholder_perspective VARCHAR(100),
+        context_specificity VARCHAR(100),
+        detail_level VARCHAR(100),
+        topic_focus VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+        // Create FAQ table
         await dbClient.query(`
       CREATE TABLE IF NOT EXISTS faqs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -108,12 +131,14 @@ const initDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+        // Drop old category tables if they exist
         await dbClient.query(`DROP TABLE IF EXISTS faq_category_relations CASCADE`);
         await dbClient.query(`DROP TABLE IF EXISTS faq_categories CASCADE`);
+        // Create admin user if not exists
         const adminEmail = 'admin@willi-mako.com';
-        const adminPassword = 'admin123';
-        const bcrypt = require('bcryptjs');
-        const hashedPassword = await bcrypt.hash(adminPassword, 12);
+        const adminPassword = 'admin123'; // Change this in production
+        const bcryptjs = require('bcryptjs');
+        const hashedPassword = await bcryptjs.hash(adminPassword, 12);
         await dbClient.query(`
       INSERT INTO users (email, password_hash, role, full_name)
       VALUES ($1, $2, 'admin', 'System Administrator')

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FlipModeService = void 0;
-const qdrant_1 = __importDefault(require("./qdrant"));
+const user_service_1 = __importDefault(require("../modules/user/user.service"));
 class FlipModeService {
     constructor() {
         this.AMBIGUITY_THRESHOLD = 0.5;
@@ -31,13 +31,13 @@ class FlipModeService {
     }
     async analyzeClarificationNeed(query, userId) {
         try {
-            const minimalContext = await this.getMinimalContext(query, 2);
+            const userPreferences = await user_service_1.default.getFlipModePreferences(userId);
             const analysis = {
                 topicBreadth: this.analyzeTopicBreadth(query),
                 specificityLevel: this.analyzeSpecificity(query),
-                contextClarity: this.analyzeContextClarity(query),
-                stakeholderAmbiguity: this.analyzeStakeholderAmbiguity(query),
-                energyTypeAmbiguity: this.analyzeEnergyTypeAmbiguity(query)
+                contextClarity: this.analyzeContextClarity(query, userPreferences),
+                stakeholderAmbiguity: this.analyzeStakeholderAmbiguity(query, userPreferences),
+                energyTypeAmbiguity: this.analyzeEnergyTypeAmbiguity(query, userPreferences)
             };
             const ambiguityScore = this.calculateAmbiguityScore(analysis);
             const needsClarification = ambiguityScore > this.AMBIGUITY_THRESHOLD;
@@ -47,12 +47,20 @@ class FlipModeService {
                 ambiguityScore,
                 needsClarification,
                 threshold: this.AMBIGUITY_THRESHOLD,
-                contextLength: minimalContext.length
             });
             if (needsClarification) {
                 const sessionId = this.generateSessionId();
                 const detectedTopics = this.extractTopics(query);
-                const suggestedQuestions = await this.generateClarificationQuestions(query, analysis);
+                const suggestedQuestions = await this.generateClarificationQuestions(query, analysis, userPreferences);
+                if (suggestedQuestions.length === 0) {
+                    return {
+                        needsClarification: false,
+                        ambiguityScore,
+                        detectedTopics,
+                        suggestedQuestions: [],
+                        reasoning: 'Die Frage wurde durch gespeicherte Voreinstellungen ausreichend präzisiert.'
+                    };
+                }
                 const result = {
                     needsClarification: true,
                     ambiguityScore,
@@ -95,7 +103,6 @@ class FlipModeService {
         }
     }
     analyzeTopicBreadth(query) {
-        const words = query.toLowerCase().split(/\s+/);
         const energyTermCount = this.energyTerms.filter(term => query.toLowerCase().includes(term.toLowerCase())).length;
         if (energyTermCount > 3)
             return 0.9;
@@ -107,60 +114,40 @@ class FlipModeService {
     }
     analyzeSpecificity(query) {
         const hasGenericTerms = this.genericTerms.some(term => query.toLowerCase().includes(term));
-        const questionWords = ['wie', 'was', 'wer', 'wo', 'wann', 'warum', 'welche'];
-        const hasQuestionWords = questionWords.some(word => query.toLowerCase().includes(word));
-        const hasSpecificNumbers = /\d+/.test(query);
-        const hasSpecificDates = /\d{1,2}\.\d{1,2}\.\d{4}|\d{4}/.test(query);
-        const hasSpecificCompany = /GmbH|AG|KG|OHG|mbH/.test(query);
-        let score = 0;
         if (hasGenericTerms)
-            score += 0.6;
-        if (hasQuestionWords && !hasSpecificNumbers && !hasSpecificDates)
-            score += 0.3;
-        if (!hasSpecificCompany && !hasSpecificNumbers && !hasSpecificDates)
-            score += 0.2;
-        return Math.min(score, 1.0);
+            return 0.8;
+        return 0.3;
     }
-    analyzeContextClarity(query) {
+    analyzeContextClarity(query, prefs) {
+        if (prefs === null || prefs === void 0 ? void 0 : prefs.context_specificity)
+            return 0.1;
         const hasContextIndicators = this.contextKeywords.some(indicator => query.toLowerCase().includes(indicator));
-        const hasTimeframe = /\d{4}|jahr|monat|quartal|seit|ab|bis/.test(query.toLowerCase());
-        const hasLocation = /deutschland|europa|nrw|bayern|hamburg|berlin/.test(query.toLowerCase());
-        const hasRegulation = /gesetz|verordnung|richtlinie|norm|standard/.test(query.toLowerCase());
-        let score = hasContextIndicators ? 0.1 : 0.7;
-        if (hasTimeframe)
-            score -= 0.2;
-        if (hasLocation)
-            score -= 0.1;
-        if (hasRegulation)
-            score -= 0.1;
-        return Math.max(score, 0.0);
+        return hasContextIndicators ? 0.2 : 0.7;
     }
-    analyzeStakeholderAmbiguity(query) {
+    analyzeStakeholderAmbiguity(query, prefs) {
+        if (prefs === null || prefs === void 0 ? void 0 : prefs.stakeholder_perspective)
+            return 0.1;
         const stakeholders = [
             'Lieferant', 'Netzbetreiber', 'Messstellenbetreiber',
-            'Kunde', 'Regulierer', 'Bilanzkreisverantwortlicher',
-            'Stadtwerke', 'Energieversorgungsunternehmen', 'Verteilnetzbetreiber',
-            'Übertragungsnetzbetreiber', 'Marktpartner', 'Endkunde'
+            'Kunde', 'Regulierer', 'Bilanzkreisverantwortlicher'
         ];
-        const mentionedStakeholders = stakeholders.filter(stakeholder => query.toLowerCase().includes(stakeholder.toLowerCase()));
+        const mentionedStakeholders = stakeholders.filter(s => query.toLowerCase().includes(s.toLowerCase()));
         if (mentionedStakeholders.length === 0)
             return 0.8;
         if (mentionedStakeholders.length === 1)
             return 0.2;
-        if (mentionedStakeholders.length > 2)
-            return 0.6;
-        return 0.4;
+        return 0.6;
     }
-    analyzeEnergyTypeAmbiguity(query) {
-        const stromKeywords = ['strom', 'elektr', 'kwh', 'mwh', 'spannung', 'netz'];
-        const gasKeywords = ['gas', 'erdgas', 'biogas', 'wasserstoff', 'cubic', 'm³'];
-        const hasStromKeywords = stromKeywords.some(keyword => query.toLowerCase().includes(keyword));
-        const hasGasKeywords = gasKeywords.some(keyword => query.toLowerCase().includes(keyword));
-        if (hasStromKeywords && !hasGasKeywords)
+    analyzeEnergyTypeAmbiguity(query, prefs) {
+        if (prefs === null || prefs === void 0 ? void 0 : prefs.energy_type)
+            return 0.0;
+        const hasStrom = query.toLowerCase().includes('strom');
+        const hasGas = query.toLowerCase().includes('gas');
+        if (hasStrom && !hasGas)
             return 0.1;
-        if (hasGasKeywords && !hasStromKeywords)
+        if (hasGas && !hasStrom)
             return 0.1;
-        if (hasStromKeywords && hasGasKeywords)
+        if (hasStrom && hasGas)
             return 0.3;
         return 0.7;
     }
@@ -172,17 +159,11 @@ class FlipModeService {
             analysis.energyTypeAmbiguity * 0.15);
     }
     extractTopics(query) {
-        const topics = [];
-        this.energyTerms.forEach(term => {
-            if (query.toLowerCase().includes(term.toLowerCase())) {
-                topics.push(term);
-            }
-        });
-        return topics.slice(0, 5);
+        return this.energyTerms.filter(term => query.toLowerCase().includes(term.toLowerCase())).slice(0, 5);
     }
-    async generateClarificationQuestions(query, analysis) {
+    async generateClarificationQuestions(query, analysis, prefs) {
         const questions = [];
-        if (analysis.energyTypeAmbiguity > 0.5) {
+        if (analysis.energyTypeAmbiguity > 0.5 && !(prefs === null || prefs === void 0 ? void 0 : prefs.energy_type)) {
             questions.push({
                 id: 'energy_type',
                 question: 'Auf welchen Energieträger bezieht sich Ihre Frage?',
@@ -191,146 +172,127 @@ class FlipModeService {
                 priority: 1
             });
         }
-        if (analysis.stakeholderAmbiguity > 0.5) {
+        if (analysis.stakeholderAmbiguity > 0.5 && !(prefs === null || prefs === void 0 ? void 0 : prefs.stakeholder_perspective)) {
             questions.push({
                 id: 'stakeholder_perspective',
                 question: 'Aus welcher Sicht möchten Sie die Information?',
                 category: 'stakeholder',
-                options: [
-                    'Energielieferant',
-                    'Netzbetreiber',
-                    'Messstellenbetreiber',
-                    'Stadtwerke',
-                    'Endkunde',
-                    'Regulierungsbehörde'
-                ],
+                options: ['Energielieferant', 'Netzbetreiber', 'Messstellenbetreiber', 'Stadtwerke', 'Endkunde'],
                 priority: 2
             });
         }
-        if (analysis.contextClarity > 0.5) {
+        if (analysis.contextClarity > 0.5 && !(prefs === null || prefs === void 0 ? void 0 : prefs.context_specificity)) {
             questions.push({
                 id: 'context_specificity',
                 question: 'Für welchen Anwendungsbereich benötigen Sie die Information?',
                 category: 'context',
-                options: [
-                    'Geschäftsprozesse',
-                    'Technische Umsetzung',
-                    'Rechtliche Anforderungen',
-                    'Kundenbetreuung',
-                    'Abrechnung'
-                ],
+                options: ['Geschäftsprozesse', 'Technische Umsetzung', 'Rechtliche Anforderungen', 'Kundenbetreuung'],
                 priority: 3
             });
         }
-        if (analysis.specificityLevel > 0.6) {
+        if (analysis.specificityLevel > 0.6 && !(prefs === null || prefs === void 0 ? void 0 : prefs.detail_level)) {
             questions.push({
                 id: 'detail_level',
                 question: 'Welchen Detailgrad benötigen Sie?',
                 category: 'detail_level',
-                options: [
-                    'Kurzer Überblick',
-                    'Detaillierte Erklärung',
-                    'Schritt-für-Schritt Anleitung',
-                    'Rechtliche Grundlagen',
-                    'Technische Spezifikationen'
-                ],
+                options: ['Kurzer Überblick', 'Detaillierte Erklärung', 'Schritt-für-Schritt Anleitung'],
                 priority: 4
             });
         }
-        if (analysis.topicBreadth > 0.6) {
+        if (analysis.topicBreadth > 0.6 && !(prefs === null || prefs === void 0 ? void 0 : prefs.topic_focus)) {
             questions.push({
                 id: 'topic_focus',
-                question: 'Welcher Aspekt interessiert Sie am meisten?',
+                question: 'Welcher Aspekt des Themas interessiert Sie am meisten?',
                 category: 'scope',
-                options: [
-                    'Grundlagen und Definitionen',
-                    'Prozesse und Abläufe',
-                    'Fristen und Termine',
-                    'Verantwortlichkeiten',
-                    'Praktische Beispiele'
-                ],
+                options: ['Grundlagen', 'Prozesse & Abläufe', 'Fristen & Termine', 'Praktische Beispiele'],
                 priority: 5
             });
         }
-        return questions
-            .sort((a, b) => a.priority - b.priority)
-            .slice(0, 3);
+        return questions.sort((a, b) => a.priority - b.priority).slice(0, 3);
     }
     explainReasoning(analysis) {
         const reasons = [];
-        if (analysis.topicBreadth > 0.6) {
-            reasons.push('Die Frage umfasst mehrere Themenbereiche');
-        }
-        if (analysis.specificityLevel > 0.6) {
-            reasons.push('Die Frage ist sehr allgemein formuliert');
-        }
-        if (analysis.contextClarity > 0.5) {
-            reasons.push('Der Anwendungskontext ist nicht klar');
-        }
-        if (analysis.stakeholderAmbiguity > 0.5) {
-            reasons.push('Die Perspektive/Rolle ist nicht eindeutig');
-        }
-        if (analysis.energyTypeAmbiguity > 0.5) {
-            reasons.push('Der Energieträger (Strom/Gas) ist nicht spezifiziert');
-        }
-        return reasons.length > 0
-            ? `Präzisierung gewünscht: ${reasons.join(', ')}`
-            : 'Frage ist ausreichend spezifisch';
+        if (analysis.topicBreadth > 0.6)
+            reasons.push('breites Thema');
+        if (analysis.specificityLevel > 0.6)
+            reasons.push('allgemein formuliert');
+        if (analysis.contextClarity > 0.5)
+            reasons.push('unklarer Kontext');
+        if (analysis.stakeholderAmbiguity > 0.5)
+            reasons.push('unklare Perspektive');
+        if (analysis.energyTypeAmbiguity > 0.5)
+            reasons.push('unklarer Energieträger');
+        return reasons.length > 0 ? `Präzisierung wegen: ${reasons.join(', ')}` : 'Spezifisch genug';
     }
     generateSessionId() {
         return `flip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
-    async getMinimalContext(query, limit = 2) {
-        try {
-            const results = await qdrant_1.default.searchByText(query, limit);
-            return results.map(r => r.payload.text).join('\n').substring(0, 500);
+    async saveClarificationResponses(userId, responses) {
+        const preferences = {};
+        const validKeys = [
+            'energy_type',
+            'stakeholder_perspective',
+            'context_specificity',
+            'detail_level',
+            'topic_focus'
+        ];
+        for (const response of responses) {
+            if (validKeys.includes(response.questionId)) {
+                preferences[response.questionId] = response.answer;
+            }
         }
-        catch (error) {
-            console.error('Error getting minimal context:', error);
-            return '';
+        if (Object.keys(preferences).length > 0) {
+            await user_service_1.default.saveFlipModePreferences(userId, preferences);
         }
     }
-    async recordClarificationResponse(sessionId, questionId, response) {
+    async buildEnhancedQuery(originalQuery, userId, liveResponses = []) {
+        var _a, _b, _c, _d, _e;
+        const sessionResponses = new Map(liveResponses.map(r => [r.questionId, r.answer]));
+        const userPreferences = await user_service_1.default.getFlipModePreferences(userId);
+        const finalAnswers = {
+            energy_type: (_a = sessionResponses.get('energy_type')) !== null && _a !== void 0 ? _a : userPreferences === null || userPreferences === void 0 ? void 0 : userPreferences.energy_type,
+            stakeholder_perspective: (_b = sessionResponses.get('stakeholder_perspective')) !== null && _b !== void 0 ? _b : userPreferences === null || userPreferences === void 0 ? void 0 : userPreferences.stakeholder_perspective,
+            context_specificity: (_c = sessionResponses.get('context_specificity')) !== null && _c !== void 0 ? _c : userPreferences === null || userPreferences === void 0 ? void 0 : userPreferences.context_specificity,
+            detail_level: (_d = sessionResponses.get('detail_level')) !== null && _d !== void 0 ? _d : userPreferences === null || userPreferences === void 0 ? void 0 : userPreferences.detail_level,
+            topic_focus: (_e = sessionResponses.get('topic_focus')) !== null && _e !== void 0 ? _e : userPreferences === null || userPreferences === void 0 ? void 0 : userPreferences.topic_focus,
+        };
+        let enhancedQuery = `Ursprüngliche Frage: "${originalQuery}"\n\nBitte beantworte die Frage unter Berücksichtigung der folgenden Präzisierungen:\n`;
+        if (finalAnswers.energy_type)
+            enhancedQuery += `- Energieträger: ${finalAnswers.energy_type}\n`;
+        if (finalAnswers.stakeholder_perspective)
+            enhancedQuery += `- Perspektive: ${finalAnswers.stakeholder_perspective}\n`;
+        if (finalAnswers.context_specificity)
+            enhancedQuery += `- Anwendungsbereich: ${finalAnswers.context_specificity}\n`;
+        if (finalAnswers.detail_level)
+            enhancedQuery += `- Detailgrad: ${finalAnswers.detail_level}\n`;
+        if (finalAnswers.topic_focus)
+            enhancedQuery += `- Fokus: ${finalAnswers.topic_focus}\n`;
+        return enhancedQuery;
+    }
+    // Session Management
+    async recordClarificationResponse(sessionId, questionId, answer) {
         const session = this.activeSessions.get(sessionId);
         if (!session)
             return null;
-        session.responses.push({
-            questionId,
-            response,
-            timestamp: new Date()
-        });
+        const existingResponse = session.responses.find(r => r.questionId === questionId);
+        if (existingResponse) {
+            existingResponse.answer = answer;
+        }
+        else {
+            session.responses.push({ questionId, answer });
+        }
         return session;
     }
     async getSession(sessionId) {
         return this.activeSessions.get(sessionId) || null;
     }
-    async isSessionComplete(sessionId) {
-        const session = this.activeSessions.get(sessionId);
-        if (!session)
-            return false;
-        const requiredQuestions = session.clarificationResult.suggestedQuestions.length;
-        const answeredQuestions = session.responses.length;
-        return answeredQuestions >= Math.min(requiredQuestions, 2);
-    }
     async completeSession(sessionId) {
         const session = this.activeSessions.get(sessionId);
         if (session) {
             session.status = 'completed';
+            await this.saveClarificationResponses(session.userId, session.responses);
+            this.activeSessions.delete(sessionId);
         }
-    }
-    async buildEnhancedQuery(sessionId) {
-        const session = this.activeSessions.get(sessionId);
-        if (!session)
-            return '';
-        let enhancedQuery = `Ursprüngliche Frage: ${session.originalQuery}\n\nPräzisierungen:\n`;
-        session.responses.forEach(response => {
-            const question = session.clarificationResult.suggestedQuestions.find(q => q.id === response.questionId);
-            if (question) {
-                enhancedQuery += `- ${question.question}\n  Antwort: ${response.response}\n`;
-            }
-        });
-        enhancedQuery += `\nBitte beantworte die ursprüngliche Frage mit den gegebenen Präzisierungen.`;
-        return enhancedQuery;
     }
 }
 exports.FlipModeService = FlipModeService;
