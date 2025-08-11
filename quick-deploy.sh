@@ -199,6 +199,7 @@ FRONTEND_URL=https://stromhaltig.de
 # Feature Flags
 FEATURE_COMMUNITY_HUB=true
 ENABLE_M2C_ROLES=true
+COMMUNITY_ENABLE_PUBLIC_READ=true
 
 # Upload Configuration
 UPLOAD_PATH=./uploads
@@ -306,7 +307,8 @@ module.exports = {
         NODE_ENV: 'production', 
         PORT: $BACKEND_PORT,
         FEATURE_COMMUNITY_HUB: 'true',
-        ENABLE_M2C_ROLES: 'true'
+        ENABLE_M2C_ROLES: 'true',
+        COMMUNITY_ENABLE_PUBLIC_READ: 'true'
       },
       env_file: '$DEPLOY_DIR/.env',
       error_file: '$DEPLOY_DIR/logs/backend_4101_err.log',
