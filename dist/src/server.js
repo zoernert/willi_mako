@@ -142,14 +142,7 @@ app.use('/api/notes', notes_1.default);
 app.use('/api/documents', documents_1.default);
 app.use('/api/message-analyzer', auth_2.authenticateToken, message_analyzer_1.messageAnalyzerRoutes);
 app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
-app.use('/api/m2c-roles', auth_2.authenticateToken, m2cRoles_1.default);
-// Serve React app
-const clientBuildPath = path_1.default.join(__dirname, '../client/build');
-app.use(express_1.default.static(clientBuildPath));
-// Serve React app for all other routes (SPA routing)
-app.get('*', (req, res) => {
-    res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
-});
+app.use('/api', m2cRoles_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Initialize Qdrant collections

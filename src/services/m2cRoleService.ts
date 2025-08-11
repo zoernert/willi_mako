@@ -68,8 +68,8 @@ export class M2CRoleService {
 
     // Validate role existence
     if (uniqueRoleIds.length > 0) {
-      const isValid = await this.roleRepository.validateRoleIds(uniqueRoleIds);
-      if (!isValid) {
+      const existingRoles = await this.roleRepository.findByIds(uniqueRoleIds);
+      if (existingRoles.length !== uniqueRoleIds.length) {
         throw new Error('Einer oder mehrere der ausgewählten Rollen existieren nicht');
       }
     }
@@ -185,6 +185,55 @@ export class M2CRoleService {
         size: this.userSelectionCache.size
       },
       featureEnabled: this.isFeatureEnabled()
+    };
+  }
+
+  /**
+   * Get detailed role context information for analytics/debugging
+   */
+  async getUserRoleContextDetails(userId: string): Promise<{
+    featureEnabled: boolean;
+    userHasRoles: boolean;
+    selectedRoleIds: string[];
+    selectedRoles: M2CRole[];
+    contextGenerated: string;
+    contextLength: number;
+    contextTruncated: boolean;
+    cacheHit: boolean;
+    processingTime: number;
+  }> {
+    const startTime = Date.now();
+    const featureEnabled = this.isFeatureEnabled();
+    
+    if (!featureEnabled) {
+      return {
+        featureEnabled: false,
+        userHasRoles: false,
+        selectedRoleIds: [],
+        selectedRoles: [],
+        contextGenerated: '',
+        contextLength: 0,
+        contextTruncated: false,
+        cacheHit: false,
+        processingTime: Date.now() - startTime
+      };
+    }
+
+    const cacheHit = this.userSelectionCache.has(userId);
+    const roleIds = await this.getUserSelectedRoleIds(userId);
+    const roles = roleIds.length > 0 ? await this.roleRepository.findByIds(roleIds) : [];
+    const context = await this.buildUserRoleContext(userId);
+    
+    return {
+      featureEnabled: true,
+      userHasRoles: roleIds.length > 0,
+      selectedRoleIds: roleIds,
+      selectedRoles: roles,
+      contextGenerated: context,
+      contextLength: context.length,
+      contextTruncated: context.endsWith('...'),
+      cacheHit,
+      processingTime: Date.now() - startTime
     };
   }
 }

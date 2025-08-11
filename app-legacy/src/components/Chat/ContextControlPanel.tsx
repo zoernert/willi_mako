@@ -21,6 +21,7 @@ import {
   Description as DocumentIcon,
   StickyNote2 as NoteIcon,
   Public as SystemIcon,
+  Business as M2CIcon,
 } from '@mui/icons-material';
 import { ContextSettings } from '../../services/chatApi';
 
@@ -69,6 +70,22 @@ const ContextControlPanel: React.FC<ContextControlPanelProps> = ({
     }
   };
 
+  const getContextSummary = () => {
+    if (tempSettings.useWorkspaceOnly) {
+      return 'Nur Workspace';
+    }
+    
+    const activeFeatures = [];
+    if (tempSettings.includeSystemKnowledge) activeFeatures.push('System');
+    if (tempSettings.includeM2CRoles) activeFeatures.push('M2C');
+    
+    if (activeFeatures.length === 0) {
+      return 'Minimal';
+    }
+    
+    return activeFeatures.join(' + ');
+  };
+
   const priorityOptions = [
     { value: 'disabled', label: 'Aus' },
     { value: 'low', label: 'Niedrig' },
@@ -96,7 +113,7 @@ const ContextControlPanel: React.FC<ContextControlPanelProps> = ({
           Context-Einstellungen
         </Typography>
         <Chip 
-          label={tempSettings.useWorkspaceOnly ? 'Nur Workspace' : 'Standard'} 
+          label={getContextSummary()} 
           size="small" 
           color={tempSettings.useWorkspaceOnly ? 'primary' : 'default'}
           sx={{ mr: 1 }}
@@ -233,6 +250,25 @@ const ContextControlPanel: React.FC<ContextControlPanelProps> = ({
                 </Box>
               }
             />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={tempSettings.includeM2CRoles}
+                  onChange={(e) => handleSettingChange({ includeM2CRoles: e.target.checked })}
+                  size="small"
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <M2CIcon sx={{ mr: 1, fontSize: 18 }} />
+                  <Typography variant="body2">M2C-Rollen</Typography>
+                  <Tooltip title="Verwendet Ihre konfigurierten M2C-Rollen als zusätzlichen Kontext für präzisere Antworten">
+                    <InfoIcon sx={{ ml: 1, fontSize: 14, opacity: 0.7 }} />
+                  </Tooltip>
+                </Box>
+              }
+            />
           </Stack>
 
           {/* Context Summary */}
@@ -242,7 +278,11 @@ const ContextControlPanel: React.FC<ContextControlPanelProps> = ({
               {tempSettings.useWorkspaceOnly ? (
                 'Workspace-Only Modus aktiv'
               ) : (
-                `Priorität: ${getPriorityLabel(tempSettings.workspacePriority)}, System: ${tempSettings.includeSystemKnowledge ? 'Ein' : 'Aus'}`
+                <>
+                  Priorität: {getPriorityLabel(tempSettings.workspacePriority)}, 
+                  System: {tempSettings.includeSystemKnowledge ? 'Ein' : 'Aus'}
+                  {tempSettings.includeM2CRoles && ', M2C-Rollen: Ein'}
+                </>
               )}
             </Typography>
           </Box>

@@ -37,14 +37,14 @@ export const userApi = {
   
   // M2C Roles methods
   getAllM2CRoles: (): Promise<M2CRole[]> => {
-    return apiClient.get('/api/m2c-roles');
+    return apiClient.get('/m2c-roles');
   },
   
   getUserM2CRoles: (): Promise<UserM2CRoleSelection> => {
-    return apiClient.get('/api/users/me/m2c-roles');
+    return apiClient.get('/users/me/m2c-roles');
   },
   
   updateUserM2CRoles: (roleIds: string[]): Promise<{ roleIds: string[] }> => {
-    return apiClient.put('/api/users/me/m2c-roles', { roleIds });
+    return apiClient.put('/users/me/m2c-roles', { roleIds });
   },
 };

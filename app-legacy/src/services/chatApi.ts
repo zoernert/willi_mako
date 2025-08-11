@@ -39,6 +39,7 @@ export interface ContextSettings {
   includeUserDocuments: boolean;
   includeUserNotes: boolean;
   includeSystemKnowledge: boolean;
+  includeM2CRoles: boolean;
 }
 
 export interface SendMessageRequest {

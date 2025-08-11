@@ -45,19 +45,4 @@ export class M2CRoleRepository {
       WHERE role_name = $1
     `, [roleName]);
   }
-
-  /**
-   * Check if role IDs exist
-   */
-  async validateRoleIds(roleIds: string[]): Promise<boolean> {
-    if (roleIds.length === 0) return true;
-    
-    const result = await DatabaseHelper.executeQuerySingle<{ count: number }>(`
-      SELECT COUNT(*) as count
-      FROM m2c_roles
-      WHERE id = ANY($1)
-    `, [roleIds]);
-    
-    return result?.count === roleIds.length;
-  }
 }

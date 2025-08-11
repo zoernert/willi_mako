@@ -86,6 +86,7 @@ const Chat: React.FC = () => {
     includeUserDocuments: true,
     includeUserNotes: true,
     includeSystemKnowledge: true,
+    includeM2CRoles: true,
   });
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   

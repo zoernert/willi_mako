@@ -25,6 +25,7 @@ export interface ContextSettings {
   includeUserDocuments: boolean;
   includeUserNotes: boolean;
   includeSystemKnowledge: boolean;
+  includeM2CRoles: boolean;
 }
 
 export class ContextManager {
@@ -60,6 +61,7 @@ export class ContextManager {
         includeUserDocuments: settings.ai_context_enabled,
         includeUserNotes: settings.ai_context_enabled,
         includeSystemKnowledge: true,
+        includeM2CRoles: false,
       };
       
       // If AI context is disabled, return empty user context
@@ -372,7 +374,7 @@ Consider:
     noteCount: number,
     contextDecision: ContextDecision
   ): string {
-    const parts = [];
+    const parts: string[] = [];
     
     if (documentCount > 0) {
       parts.push(`${documentCount} personal document${documentCount > 1 ? 's' : ''}`);

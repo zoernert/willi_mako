@@ -136,7 +136,7 @@ export class ChatConfigurationService {
           enabled: true
         });
 
-        let allResults = [];
+        let allResults: any[] = [];
         let searchDetails: any[] = [];
 
         // Verwende optimierte Suche wenn verfügbar
@@ -324,6 +324,7 @@ export class ChatConfigurationService {
 
       // Step 3.5: M2C Role Context (if enabled)
       let roleContext = '';
+      let roleDetails: any = null;
       if (this.isStepEnabled(config, 'response_generation')) {
         processingSteps.push({
           name: 'M2C Role Context',
@@ -332,19 +333,57 @@ export class ChatConfigurationService {
         });
 
         try {
-          roleContext = await m2cRoleService.buildUserRoleContext(userId);
+          // Get comprehensive role details for analytics
+          roleDetails = await m2cRoleService.getUserRoleContextDetails(userId);
+          
+          // Only apply role context if enabled in settings (default: true if not specified)
+          const shouldIncludeM2CRoles = contextSettings?.includeM2CRoles !== false;
+          
+          if (shouldIncludeM2CRoles) {
+            roleContext = roleDetails.contextGenerated;
+          }
+          
           if (roleContext) {
-            console.log(`M2C Role context added for user ${userId}: ${roleContext.length} characters`);
+            console.log(`M2C Role context added for user ${userId}: ${roleContext.length} characters from ${roleDetails.selectedRoles.length} roles`);
           }
         } catch (error) {
           console.warn('Failed to load M2C role context:', error);
           roleContext = '';
+          roleDetails = {
+            featureEnabled: process.env.ENABLE_M2C_ROLES === 'true',
+            userHasRoles: false,
+            selectedRoleIds: [],
+            selectedRoles: [],
+            contextGenerated: '',
+            contextLength: 0,
+            contextTruncated: false,
+            cacheHit: false,
+            processingTime: 0
+          };
         }
 
         processingSteps[processingSteps.length - 1].endTime = Date.now();
         processingSteps[processingSteps.length - 1].output = { 
-          contextLength: roleContext.length,
-          hasRoleContext: roleContext.length > 0
+          featureEnabled: roleDetails.featureEnabled,
+          userHasRoles: roleDetails.userHasRoles,
+          settingEnabled: contextSettings?.includeM2CRoles !== false,
+          contextApplied: roleContext.length > 0,
+          selectedRoleCount: roleDetails.selectedRoles.length,
+          selectedRoles: roleDetails.selectedRoles.map((role: any) => ({
+            id: role.id,
+            name: role.role_name,
+            shortDescription: role.short_description
+          })),
+          contextLength: roleDetails.contextLength,
+          contextGenerated: roleDetails.contextLength > 0,
+          contextTruncated: roleDetails.contextTruncated,
+          contextPreview: roleDetails.contextLength > 0 ? 
+            roleDetails.contextGenerated.substring(0, 200) + (roleDetails.contextLength > 200 ? '...' : '') : null,
+          cacheHit: roleDetails.cacheHit,
+          processingTimeMs: roleDetails.processingTime,
+          appliedToPrompt: false, // Will be updated later if actually applied
+          appliedToContext: false, // Will be updated later if actually applied
+          errorOccurred: !roleDetails.featureEnabled && process.env.ENABLE_M2C_ROLES === 'true'
         };
       }
 
@@ -373,14 +412,18 @@ export class ChatConfigurationService {
 
         // Enhanced system prompt with role context
         let enhancedSystemPrompt = config.config.systemPrompt;
+        let roleContextAppliedToPrompt = false;
         if (roleContext) {
           enhancedSystemPrompt += '\n\n[Benutzer-Rollenkontext]\n' + roleContext;
+          roleContextAppliedToPrompt = true;
         }
 
         // Create enhanced context with role information
         let enhancedContext = contextUsed;
+        let roleContextAppliedToContext = false;
         if (roleContext && !contextUsed.includes('[Benutzer-Rollenkontext]')) {
           enhancedContext = roleContext + '\n\n' + contextUsed;
+          roleContextAppliedToContext = true;
         }
 
         response = await geminiService.generateResponse(
@@ -393,8 +436,22 @@ export class ChatConfigurationService {
 
         processingSteps[processingSteps.length - 1].endTime = Date.now();
         processingSteps[processingSteps.length - 1].output = { 
-          responseLength: response.length
+          responseLength: response.length,
+          systemPromptLength: enhancedSystemPrompt.length,
+          systemPromptEnhanced: roleContextAppliedToPrompt,
+          contextLength: enhancedContext.length,
+          contextEnhanced: roleContextAppliedToContext,
+          roleContextUsed: roleContext.length > 0,
+          roleContextLength: roleContext.length,
+          contextMode
         };
+
+        // Update the M2C Role Context step to reflect actual application
+        const m2cRoleStep = processingSteps.find(step => step.name === 'M2C Role Context');
+        if (m2cRoleStep && m2cRoleStep.output) {
+          m2cRoleStep.output.appliedToPrompt = roleContextAppliedToPrompt;
+          m2cRoleStep.output.appliedToContext = roleContextAppliedToContext;
+        }
       } else {
         // Fallback to standard generation
         const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
@@ -410,7 +467,7 @@ export class ChatConfigurationService {
           enabled: true
         });
 
-        let validationIssues = [];
+        let validationIssues: string[] = [];
         if (config.config.qualityChecks.enabled) {
           if (response.length < config.config.qualityChecks.minResponseLength) {
             validationIssues.push('Response too short');
