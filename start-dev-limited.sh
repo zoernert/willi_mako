@@ -6,37 +6,56 @@
 echo "🚀 Starting Willi-Mako Limited File Watching Development Environment"
 echo "=================================================================="
 
-echo "🔨 Baue nur Legacy-App (Marktpartner Suche) ..."
-npm run build:legacy || { echo "❌ Legacy Build fehlgeschlagen"; exit 1; }
-# ensure moved into public/app
-npm run move:legacy || { echo "❌ Move Legacy fehlgeschlagen"; exit 1; }
+# Check if legacy app needs building
+echo "� Prüfe Legacy-App Status..."
+if [ ! -f "public/app/index.html" ] || [ ! -d "public/app/static" ]; then
+    echo "🔨 Baue Legacy-App (Marktpartner Suche) ..."
+    npm run build:legacy || { echo "❌ Legacy Build fehlgeschlagen"; exit 1; }
+    # ensure moved into public/app
+    npm run move:legacy || { echo "❌ Move Legacy fehlgeschlagen"; exit 1; }
+else
+    echo "✅ Legacy-App bereits gebaut, überspringe Build"
+fi
 
 # Cleanup function to kill any existing processes
 cleanup_existing_processes() {
     echo "🧹 Prüfe und beende bestehende Entwicklungsserver..."
     
-    # Kill processes on our ports
-    if ss -tlnp | grep -q :3003; then
-        echo "⚠️  Port 3003 ist bereits belegt - beende bestehende Prozesse..."
-        ss -tlnp | grep :3003 | grep -o 'pid=[0-9]*' | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null || true
-        sleep 1
-    fi
+    # Kill processes on our ports more reliably
+    for port in 3003 3009; do
+        if ss -tlnp | grep -q ":$port "; then
+            echo "⚠️  Port $port ist bereits belegt - beende bestehende Prozesse..."
+            # Try multiple methods to kill processes
+            ss -tlnp | grep ":$port " | grep -o 'pid=[0-9]*' | cut -d'=' -f2 | while read pid; do
+                if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                    echo "Beende Prozess mit PID: $pid"
+                    kill -TERM "$pid" 2>/dev/null || true
+                    sleep 1
+                    kill -KILL "$pid" 2>/dev/null || true
+                fi
+            done
+            sleep 1
+        fi
+    done
     
-    if ss -tlnp | grep -q :3009; then
-        echo "⚠️  Port 3009 ist bereits belegt - beende bestehende Prozesse..."
-        ss -tlnp | grep :3009 | grep -o 'pid=[0-9]*' | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null || true
-        sleep 1
-    fi
-    
-    # Fallback: use lsof if ss didn't work
+    # Fallback: use lsof if available
     if command -v lsof >/dev/null 2>&1; then
-        lsof -ti:3003 | xargs -r kill -9 2>/dev/null || true
-        lsof -ti:3009 | xargs -r kill -9 2>/dev/null || true
+        for port in 3003 3009; do
+            lsof -ti:$port 2>/dev/null | while read pid; do
+                if [ -n "$pid" ]; then
+                    echo "Beende Prozess mit PID: $pid (via lsof)"
+                    kill -TERM "$pid" 2>/dev/null || true
+                    sleep 1
+                    kill -KILL "$pid" 2>/dev/null || true
+                fi
+            done
+        done
     fi
     
-    # Kill any remaining processes
+    # Kill any remaining development processes by name
     pkill -f "next-server" 2>/dev/null || true
     pkill -f "tsx.*server" 2>/dev/null || true
+    pkill -f "node.*next.*dev" 2>/dev/null || true
     
     sleep 2
     echo "✅ Cleanup abgeschlossen"
@@ -44,6 +63,22 @@ cleanup_existing_processes() {
 
 # Run cleanup before starting
 cleanup_existing_processes
+
+# Ensure development environment
+echo "🔧 Prüfe Entwicklungsumgebung..."
+if [ -f ".env" ]; then
+    if grep -q "NODE_ENV=production" .env; then
+        echo "⚠️  .env enthält NODE_ENV=production. Für Entwicklung sollte NODE_ENV=development sein."
+        echo "   Falls Sie gerade deployed haben, stellen Sie sicher, dass Ihre lokale .env korrekt ist."
+    fi
+    if grep -q "FEATURE_COMMUNITY_HUB=true" .env; then
+        echo "✅ Community Hub Feature ist aktiviert"
+    else
+        echo "⚠️  FEATURE_COMMUNITY_HUB nicht in .env gefunden - Community APIs sind eventuell nicht verfügbar"
+    fi
+else
+    echo "⚠️  .env Datei nicht gefunden"
+fi
 
 echo "🔧 Starting Express.js backend ohne file watching..."
 echo "🌐 Starting Next.js frontend mit reduziertem file watching..."

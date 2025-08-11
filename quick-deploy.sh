@@ -179,6 +179,7 @@ JWT_EXPIRES_IN=24h
 QDRANT_URL=http://10.0.0.2:6333
 QDRANT_API_KEY=str0mda0
 QDRANT_COLLECTION=willi_mako
+QDRANT_COMMUNITY_COLLECTION=community_content
 
 # Google Gemini Configuration
 GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
@@ -194,6 +195,10 @@ FROM_NAME=Willi Mako
 
 # Frontend Configuration
 FRONTEND_URL=https://stromhaltig.de
+
+# Feature Flags
+FEATURE_COMMUNITY_HUB=true
+ENABLE_M2C_ROLES=true
 
 # Upload Configuration
 UPLOAD_PATH=./uploads
