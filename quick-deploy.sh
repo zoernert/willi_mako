@@ -255,10 +255,13 @@ EOF
         cp next.config.js "$TEMP_DIR/"
     fi
     
-    # .env.production kopieren (für Next.js Runtime)
-    if [ -f ".env.production" ]; then
-        cp .env.production "$TEMP_DIR/"
-    fi
+    # .env.production kopieren (für Next.js Runtime) mit Feature Flags ergänzen
+    cat > "$TEMP_DIR/.env.production" << EOF
+NODE_ENV=production
+API_URL=http://127.0.0.1:$BACKEND_PORT
+FEATURE_COMMUNITY_HUB=true
+ENABLE_M2C_ROLES=true
+EOF
     
     # HINWEIS: lib Verzeichnis ist jetzt in src/lib und wird automatisch mit dist/ kopiert
     
@@ -299,7 +302,13 @@ module.exports = {
       cwd: '$DEPLOY_DIR',
       instances: 1,
       exec_mode: 'cluster',
-      env: { NODE_ENV: 'production', PORT: $BACKEND_PORT },
+      env: { 
+        NODE_ENV: 'production', 
+        PORT: $BACKEND_PORT,
+        FEATURE_COMMUNITY_HUB: 'true',
+        ENABLE_M2C_ROLES: 'true'
+      },
+      env_file: '$DEPLOY_DIR/.env',
       error_file: '$DEPLOY_DIR/logs/backend_4101_err.log',
       out_file: '$DEPLOY_DIR/logs/backend_4101_out.log',
       log_file: '$DEPLOY_DIR/logs/backend_4101_combined.log',
