@@ -14,13 +14,7 @@ echo "🔍 Erstelle alle lokalen Builds..."
 # 1. Backend Build (zuerst, da es am wahrscheinlichsten fehlschlägt)
 echo "📦 Baue Backend..."
 npm run build:backend
-# Fallback: Falls tsc Struktur dist/src/server.js erzeugt, aber dist/server.js erwartet wird
-if [ -f dist/src/server.js ] && [ ! -f dist/server.js ]; then
-  echo "ℹ️  Kopiere dist/src/server.js nach dist/server.js (Kompatibilitäts-Fix)"
-  cp dist/src/server.js dist/server.js
-fi
 ls -la dist/ || true
-ls -la dist/src/ 2>/dev/null | head || true
 
 # 2. Legacy App Build
 echo "📦 Baue Legacy App..."
@@ -94,13 +88,11 @@ check_ssh_connection() {
 # Validiere dass alle Builds vorhanden sind
 validate_builds() {
     echo "🔎 Validiere vorhandene Builds..."
-    # Prüfe Backend Build (erlaube beide Pfade)
+    # Prüfe Backend Build
     if [ -f "dist/server.js" ]; then
         echo "✅ Backend Build gefunden (dist/server.js)"
-    elif [ -f "dist/src/server.js" ]; then
-        echo "✅ Backend Build gefunden (dist/src/server.js)"
     else
-        echo "❌ Backend Build nicht gefunden - weder dist/server.js noch dist/src/server.js vorhanden"
+        echo "❌ Backend Build nicht gefunden - dist/server.js fehlt"
         exit 1
     fi
     
@@ -226,10 +218,6 @@ EOF
     
     # Gebaute Dateien kopieren (prüfen ob sie existieren)
     if [ -d "dist" ]; then
-        # Sicherstellen dass dist/server.js existiert (für PM2 & main entry)
-        if [ -f dist/src/server.js ] && [ ! -f dist/server.js ]; then
-          cp dist/src/server.js dist/server.js
-        fi
         cp -r dist "$TEMP_DIR/"
         # Build Info einbetten (Marker für neue CodeLookup Felder)
         cat > "$TEMP_DIR/dist/BUILD_INFO.json" << EOF
@@ -297,14 +285,12 @@ EOF
     mkdir -p "$TEMP_DIR/uploads"
     
     # PM2 Ecosystem-Datei für Port 4100/4101 Architektur erstellen
-    # Prüfe Backend Entry Point: Prefer dist/src/server.js (korrekte tsconfig Struktur)
-    BACKEND_ENTRY="dist/src/server.js"
-    if [ ! -f "$TEMP_DIR/$BACKEND_ENTRY" ] && [ -f "$TEMP_DIR/dist/server.js" ]; then
-      BACKEND_ENTRY="dist/server.js"
-      echo "⚠️  Verwende Fallback dist/server.js - prüfe tsconfig.backend.json"
-    else
-      echo "✅ Verwende korrekten Backend Entry: $BACKEND_ENTRY"
+    BACKEND_ENTRY="dist/server.js"
+    if [ ! -f "$TEMP_DIR/$BACKEND_ENTRY" ]; then
+      echo "❌ Backend Entry Point nicht gefunden: $BACKEND_ENTRY"
+      exit 1
     fi
+    echo "✅ Verwende korrekten Backend Entry: $BACKEND_ENTRY"
     
     # Export für spätere Funktionen
     export BACKEND_ENTRY
@@ -512,6 +498,10 @@ echo "Anzahl FAQs über API:"
 curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '. | length' 2>/dev/null || echo "FAQ API nicht erreichbar oder jq nicht verfügbar"
 echo "Erste FAQ über API:"
 curl -s http://localhost:$FRONTEND_PORT/api/faqs | jq '.[0].title' 2>/dev/null || echo "Keine FAQs über API verfügbar"
+
+echo ""
+echo "Community API Test:"
+curl -s -I http://localhost:$FRONTEND_PORT/api/community/threads | head -1 || echo "Community API nicht erreichbar"
 
 if [ -f $DEPLOY_DIR/VERSION ]; then
   echo "\nVERSION Datei:"; cat $DEPLOY_DIR/VERSION; echo "";

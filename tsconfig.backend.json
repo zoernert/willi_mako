@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2018"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -22,22 +22,23 @@
     }
   },
   "include": [
-    "src/server.ts",
-    "src/config/**/*",
-    "src/middleware/**/*",
-    "src/routes/**/*",
-    "src/services/**/*",
-    "src/types/**/*",
-    "src/utils/**/*",
-    "src/modules/**/*",
-    "src/presentation/**/*",
-    "lib/**/*"
+    "server.ts",
+    "config/**/*",
+    "middleware/**/*",
+    "routes/**/*",
+    "services/**/*",
+    "types/**/*",
+    "utils/**/*",
+    "modules/**/*",
+    "presentation/**/*",
+    "repositories/**/*",
+    "../lib/**/*"
   ],
   "exclude": [
-    "src/pages/**/*",
-    "src/components/**/*",
-    "src/routes/archived/**/*",
-    "src/services/processService_old.ts",
+    "pages/**/*",
+    "components/**/*",
+    "routes/archived/**/*",
+    "services/processService_old.ts",
     "node_modules",
     "dist"
   ]
