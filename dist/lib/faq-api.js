@@ -13,7 +13,7 @@ exports.getLatestFAQs = getLatestFAQs;
 exports.getDistinctTags = getDistinctTags;
 exports.getAllFAQs = getAllFAQs;
 const database_1 = __importDefault(require("./database"));
-const qdrant_1 = require("../src/services/qdrant");
+const qdrant_1 = require("../services/qdrant");
 // Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
 let QdrantServiceRef = qdrant_1.QdrantService;
 try {
@@ -21,7 +21,7 @@ try {
     if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
         // Versuch eines require (CommonJS) zur Laufzeit
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const mod = require('../src/services/qdrant');
+        const mod = require('../services/qdrant');
         QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
     }
 }

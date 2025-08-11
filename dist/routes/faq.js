@@ -104,7 +104,7 @@ router.get('/faqs', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const faqsWithLinks = await Promise.all(result.rows.map(async (faq) => {
         const linkedTerms = await faqLinkingService_1.faqLinkingService.getLinksForFAQ(faq.id);
         // Import and get related FAQs
-        const { getRelatedFAQs } = await Promise.resolve().then(() => __importStar(require('../../lib/faq-api')));
+        const { getRelatedFAQs } = await Promise.resolve().then(() => __importStar(require('../lib/faq-api')));
         const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
         // Parse tags from JSON string to array
         let parsedTags;
@@ -631,7 +631,7 @@ router.get('/public/faqs', (0, errorHandler_1.asyncHandler)(async (req, res) => 
     const faqsWithLinks = await Promise.all(result.rows.map(async (faq) => {
         const linkedTerms = await faqLinkingService_1.faqLinkingService.getLinksForFAQ(faq.id);
         // Import and get related FAQs
-        const { getRelatedFAQs } = await Promise.resolve().then(() => __importStar(require('../../lib/faq-api')));
+        const { getRelatedFAQs } = await Promise.resolve().then(() => __importStar(require('../lib/faq-api')));
         const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
         // Parse tags from JSON string to array
         let parsedTags;

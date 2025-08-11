@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2018"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -33,8 +33,8 @@
     "src/presentation/**/*",
     "src/repositories/**/*",
     "src/core/**/*",
-    "src/init.ts",
-    "../lib/**/*"
+    "src/lib/**/*",
+    "src/init.ts"
   ],
   "exclude": [
     "src/pages/**/*",

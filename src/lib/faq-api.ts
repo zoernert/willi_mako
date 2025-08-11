@@ -1,5 +1,5 @@
 import pool from './database';
-import { QdrantService as ImportedQdrantService } from '../src/services/qdrant';
+import { QdrantService as ImportedQdrantService } from '../services/qdrant';
 
 // Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
 let QdrantServiceRef: any = ImportedQdrantService;
@@ -8,7 +8,7 @@ try {
   if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
     // Versuch eines require (CommonJS) zur Laufzeit
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('../src/services/qdrant');
+    const mod = require('../services/qdrant');
     QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
   }
 } catch (e) {

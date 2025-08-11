@@ -85,7 +85,7 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
       const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
       
       // Import and get related FAQs
-      const { getRelatedFAQs } = await import('../../lib/faq-api');
+      const { getRelatedFAQs } = await import('../lib/faq-api');
       const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
       
       // Parse tags from JSON string to array
@@ -728,7 +728,7 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
       const linkedTerms = await faqLinkingService.getLinksForFAQ(faq.id);
       
       // Import and get related FAQs
-      const { getRelatedFAQs } = await import('../../lib/faq-api');
+      const { getRelatedFAQs } = await import('../lib/faq-api');
       const relatedFAQs = await getRelatedFAQs(faq.id, faq.context + ' ' + faq.answer, 5);
       
       // Parse tags from JSON string to array

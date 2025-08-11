@@ -260,16 +260,7 @@ EOF
         cp .env.production "$TEMP_DIR/"
     fi
     
-    # lib Verzeichnis kopieren (für Backend-Abhängigkeiten)
-    if [ -d "lib" ]; then
-        cp -r lib "$TEMP_DIR/"
-        echo "✅ lib Verzeichnis kopiert"
-        echo "📁 lib Verzeichnis Inhalt:"
-        ls -la "$TEMP_DIR/lib/"
-    else
-        echo "❌ lib Verzeichnis nicht gefunden - Backend-Module könnten fehlen"
-        exit 1
-    fi
+    # HINWEIS: lib Verzeichnis ist jetzt in src/lib und wird automatisch mit dist/ kopiert
     
     # server.js für Production kopieren (Next.js-kompatibel)
     if [ -f "server_fixed.js" ]; then
@@ -362,9 +353,10 @@ transfer_files() {
     # Ensure uploads & logs exist
     ssh $PROD_SERVER "mkdir -p $DEPLOY_DIR/uploads $DEPLOY_DIR/logs"
     
-    # Validiere dass lib Verzeichnis korrekt übertragen wurde
-    echo "🔍 Validiere lib Verzeichnis auf Produktivserver..."
-    ssh $PROD_SERVER "ls -la $DEPLOY_DIR/lib/ && echo '✅ lib Verzeichnis gefunden' || echo '❌ lib Verzeichnis fehlt'"
+    # Validiere dass dist Verzeichnis korrekt übertragen wurde (lib ist jetzt in dist/lib)
+    echo "🔍 Validiere dist Verzeichnis auf Produktivserver..."
+    ssh $PROD_SERVER "ls -la $DEPLOY_DIR/dist/ && echo '✅ dist Verzeichnis gefunden' || echo '❌ dist Verzeichnis fehlt'"
+    ssh $PROD_SERVER "ls -la $DEPLOY_DIR/dist/lib/ && echo '✅ dist/lib Verzeichnis gefunden' || echo '❌ dist/lib Verzeichnis fehlt'"
     
     # Prüfe VERSION & Marker
     ssh $PROD_SERVER "echo 'Root-Inhalt nach rsync:'; ls -1 $DEPLOY_DIR | head; [ -f $DEPLOY_DIR/VERSION ] && echo '✅ VERSION vorhanden' || echo '❌ VERSION fehlt'; [ -f $DEPLOY_DIR/dist/BUILD_INFO.json ] && echo '✅ BUILD_INFO.json vorhanden' || echo '❌ BUILD_INFO.json fehlt'"
