@@ -64,8 +64,33 @@ export const workspaceApi = {
     return apiClient.get(API_ENDPOINTS.workspace.teamDocuments);
   },
 
+  // Get team documents with filters and pagination
+  getTeamDocumentsFiltered: (params?: {
+    scope?: 'own' | 'team' | 'all';
+    tags?: string[];
+    mime_types?: string[];
+    page?: number;
+    limit?: number;
+    sort_by?: 'created_at' | 'title' | 'file_size';
+    sort_order?: 'asc' | 'desc';
+  }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.workspace.teamDocuments, { params });
+  },
+
   // Team-wide search
   searchTeamWorkspace: (searchRequest: SearchRequest): Promise<SearchResult[]> => {
     return apiClient.post(API_ENDPOINTS.workspace.teamSearch, searchRequest);
+  },
+
+  // Enhanced team search with filters
+  searchTeamWorkspaceAdvanced: (params: {
+    query: string;
+    type?: 'document' | 'note' | 'all';
+    scope?: 'own' | 'team' | 'all';
+    tags?: string[];
+    limit?: number;
+    offset?: number;
+  }): Promise<SearchResult[]> => {
+    return apiClient.get(API_ENDPOINTS.workspace.teamSearch, { params });
   },
 };

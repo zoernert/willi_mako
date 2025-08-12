@@ -42,8 +42,8 @@ const HeaderQuickNoteButton: React.FC = () => {
       const faqId = path.split('/faq/')[1];
       return { sourceType: 'faq' as const, sourceId: faqId };
     }
-    // Default to general note
-    return { sourceType: 'general' as const, sourceId: 'header' };
+    // Default to manual note with no source_id
+    return { sourceType: 'manual' as const, sourceId: undefined };
   };
 
   const handleCreateNote = async () => {

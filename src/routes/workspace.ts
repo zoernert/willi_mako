@@ -51,6 +51,26 @@ router.get('/dashboard', async (req: AuthenticatedRequest, res) => {
 });
 
 /**
+ * GET /api/workspace/team-dashboard
+ * Get team workspace dashboard data
+ */
+router.get('/team-dashboard', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const teamDashboard = await workspaceService.getTeamWorkspaceDashboard(userId);
+    return res.json(teamDashboard);
+    
+  } catch (error) {
+    console.error('Error getting team workspace dashboard:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/workspace/settings
  * Get user workspace settings
  */
@@ -200,6 +220,121 @@ router.get('/search', async (req: AuthenticatedRequest, res) => {
     
   } catch (error) {
     console.error('Error searching workspace:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workspace/team-documents
+ * Get team workspace documents including team members' documents
+ */
+router.get('/team-documents', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const { 
+      scope = 'all', 
+      tags, 
+      mime_types, 
+      page = '1', 
+      limit = '20', 
+      sort_by = 'created_at', 
+      sort_order = 'desc' 
+    } = req.query;
+    
+    // Parse query parameters
+    const filters = {
+      scope: scope as 'own' | 'team' | 'all',
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined,
+      mime_types: mime_types ? (Array.isArray(mime_types) ? mime_types : [mime_types]) : undefined,
+      page: parseInt(page as string, 10),
+      limit: parseInt(limit as string, 10),
+      sort_by: sort_by as 'created_at' | 'title' | 'file_size',
+      sort_order: sort_order as 'asc' | 'desc'
+    };
+    
+    const documents = await workspaceService.getTeamWorkspaceDocuments(userId);
+    
+    // TODO: Apply filters, sorting, and pagination
+    // For now, return all documents with the expected structure
+    const response = {
+      documents,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: documents.length,
+        hasMore: false
+      },
+      filters: {
+        scope: filters.scope,
+        tags: filters.tags,
+        mime_types: filters.mime_types
+      }
+    };
+    
+    return res.json(response);
+    
+  } catch (error) {
+    console.error('Error getting team workspace documents:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/workspace/team-search
+ * Search workspace content across team documents
+ */
+router.get('/team-search', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const { 
+      q, 
+      type = 'all', 
+      scope = 'all', 
+      tags,
+      limit = '20',
+      offset = '0'
+    } = req.query;
+    
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      return res.status(400).json({ 
+        error: 'Query parameter "q" is required and must be at least 2 characters' 
+      });
+    }
+    
+    const filters = {
+      scope: scope as 'own' | 'team' | 'all',
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : undefined
+    };
+    
+    const results = await workspaceService.searchTeamWorkspaceContent(
+      userId, 
+      q.trim(), 
+      type as 'all' | 'documents' | 'notes',
+      filters,
+      parseInt(limit as string, 10)
+    );
+    
+    return res.json({ 
+      results,
+      query: q.trim(),
+      filters,
+      pagination: {
+        offset: parseInt(offset as string, 10),
+        limit: parseInt(limit as string, 10),
+        total: results.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error searching team workspace:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

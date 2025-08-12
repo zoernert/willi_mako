@@ -1,0 +1,71 @@
+/* Team Documents Manager Styles */
+.team-documents-manager {
+  /* Base container styles */
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Loading animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Hover effects */
+.team-documents-manager .document-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Tag styles */
+.team-documents-manager .tag-chip {
+  transition: all 0.2s ease;
+}
+
+.team-documents-manager .tag-chip:hover {
+  transform: scale(1.05);
+}
+
+/* Filter panel */
+.team-documents-manager .filter-panel {
+  backdrop-filter: blur(10px);
+  background-color: rgba(249, 250, 251, 0.95);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .team-documents-manager .document-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .team-documents-manager .filter-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}

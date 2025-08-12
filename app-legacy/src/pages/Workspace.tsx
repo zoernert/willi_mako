@@ -18,20 +18,19 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import {
-  Notes as NotesIcon,
-  Description as DocumentsIcon,
   Settings as SettingsIcon,
   Dashboard as DashboardIcon,
   Storage as StorageIcon,
   AutoAwesome as AIIcon,
   Search as SearchIcon,
   Group as TeamIcon,
+  Article as UnifiedIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import { workspaceApi } from '../services/workspaceApi';
 import TeamService from '../services/teamService';
-import NotesManager from '../components/Workspace/NotesManager';
-import DocumentsManager from '../components/Workspace/DocumentsManager';
+// New unified component
+import UnifiedDocumentManager from '../components/Workspace/UnifiedDocumentManager';
 import WorkspaceSettings from '../components/Workspace/WorkspaceSettings';
 import GlobalSearch from '../components/Workspace/GlobalSearch';
 import SmartSearch from '../components/Workspace/SmartSearch';
@@ -411,44 +410,28 @@ const Workspace: React.FC = () => {
           aria-label="Workspace navigation tabs"
         >
           <Tab
-            label="Meine Notizen"
-            icon={<NotesIcon />}
+            label="Meine Dokumente"
+            icon={<UnifiedIcon />}
             iconPosition="start"
             id="workspace-tab-0"
             aria-controls="workspace-tabpanel-0"
-            aria-label="Navigate to my notes"
-          />
-          <Tab
-            label={userTeam && showTeamDocuments ? "Alle Dokumente" : "Meine Dokumente"}
-            icon={<DocumentsIcon />}
-            iconPosition="start"
-            id="workspace-tab-1"
-            aria-controls="workspace-tabpanel-1"
-            aria-label="Navigate to my documents"
+            aria-label="Navigate to unified documents and notes"
           />
           <Tab
             label="Einstellungen"
             icon={<SettingsIcon />}
             iconPosition="start"
-            id="workspace-tab-2"
-            aria-controls="workspace-tabpanel-2"
+            id="workspace-tab-1"
+            aria-controls="workspace-tabpanel-1"
             aria-label="Navigate to workspace settings"
           />
         </Tabs>
 
         <TabPanel value={activeTab} index={0}>
-          <NotesManager onStatsUpdate={fetchWorkspaceStats} />
+          <UnifiedDocumentManager onStatsUpdate={fetchWorkspaceStats} />
         </TabPanel>
 
         <TabPanel value={activeTab} index={1}>
-          <DocumentsManager 
-            onStatsUpdate={fetchWorkspaceStats} 
-            showTeamDocuments={userTeam && showTeamDocuments}
-            teamName={userTeam?.name}
-          />
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={2}>
           <WorkspaceSettings onStatsUpdate={fetchWorkspaceStats} />
         </TabPanel>
       </Paper>

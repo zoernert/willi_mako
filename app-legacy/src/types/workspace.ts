@@ -54,6 +54,10 @@ export interface SearchResult {
   relevance_score: number;
   score?: number; // For backward compatibility
   created_at: string;
+  // Team-specific fields
+  is_own_document?: boolean;
+  uploader_name?: string;
+  uploader_email?: string;
   metadata?: {
     created_at?: string;
     tags?: string[];
@@ -80,4 +84,34 @@ export interface ContextResponse {
   relevant_notes: Note[];
   suggestions: string[];
   context_summary: string;
+}
+
+export interface TeamDocument extends Document {
+  is_own_document: boolean;
+  uploader_name: string;
+  uploader_email: string;
+  uploaded_by_user_id: string;
+  team_id?: string;
+  can_edit?: boolean;
+  can_delete?: boolean;
+  can_share?: boolean;
+}
+
+export interface TeamWorkspaceResponse {
+  documents: TeamDocument[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
+  filters?: {
+    scope: 'own' | 'team' | 'all';
+    tags?: string[];
+    mime_types?: string[];
+    date_range?: {
+      from: string;
+      to: string;
+    };
+  };
 }
