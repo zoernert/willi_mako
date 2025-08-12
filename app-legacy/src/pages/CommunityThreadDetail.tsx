@@ -178,13 +178,21 @@ const CommunityThreadDetail: React.FC = () => {
     if (!id) return;
     
     try {
+      setLoadingInitiative(true);
       const response = await communityService.initiative.getThreadInitiatives(id);
       if (response.success && response.data) {
         setThreadInitiative(response.data);
+      } else {
+        // No initiative exists yet - this is expected for many threads
+        setThreadInitiative(null);
+        console.log('No initiative found for thread (this is normal):', response.message);
       }
     } catch (error) {
-      // No initiative exists yet - this is expected for many threads
-      console.log('No initiative found for thread (this is normal)');
+      // Handle any actual network/server errors
+      console.error('Error fetching thread initiative:', error);
+      setThreadInitiative(null);
+    } finally {
+      setLoadingInitiative(false);
     }
   };
 
@@ -836,7 +844,14 @@ const CommunityThreadDetail: React.FC = () => {
                   )}
                 </Box>
 
-                {threadInitiative ? (
+                {loadingInitiative ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" sx={{ ml: 1 }}>
+                      Lade Initiative...
+                    </Typography>
+                  </Box>
+                ) : threadInitiative ? (
                   <InitiativeView
                     initiative={threadInitiative}
                     onUpdate={handleUpdateInitiative}

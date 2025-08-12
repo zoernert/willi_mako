@@ -6,16 +6,15 @@
 echo "🚀 Starting Willi-Mako Limited File Watching Development Environment"
 echo "=================================================================="
 
-# Check if legacy app needs building
-echo "� Prüfe Legacy-App Status..."
-if [ ! -f "public/app/index.html" ] || [ ! -d "public/app/static" ]; then
-    echo "🔨 Baue Legacy-App (Marktpartner Suche) ..."
-    npm run build:legacy || { echo "❌ Legacy Build fehlgeschlagen"; exit 1; }
-    # ensure moved into public/app
-    npm run move:legacy || { echo "❌ Move Legacy fehlgeschlagen"; exit 1; }
-else
-    echo "✅ Legacy-App bereits gebaut, überspringe Build"
-fi
+# Always build legacy app to ensure changes are included
+echo "🔨 Baue Legacy-App (Marktpartner Suche) neu..."
+echo "   (Build wird immer ausgeführt um Änderungen zu übernehmen)"
+npm run build:legacy || { echo "❌ Legacy Build fehlgeschlagen"; exit 1; }
+
+echo "📁 Verschiebe Legacy-App nach public/app..."
+npm run move:legacy || { echo "❌ Move Legacy fehlgeschlagen"; exit 1; }
+
+echo "✅ Legacy-App Build und Move erfolgreich abgeschlossen"
 
 # Cleanup function to kill any existing processes
 cleanup_existing_processes() {
@@ -127,6 +126,7 @@ echo "⚠️  HINWEIS:"
 echo "   - Backend File watching ist deaktiviert (manueller Neustart erforderlich)"
 echo "   - Frontend verwendet Polling alle 3 Sekunden (reduziert File Watcher Usage)"
 echo "   - Bei Backend-Änderungen: Strg+C und './start-dev-limited.sh' erneut ausführen"
+echo "   - Legacy-App wird bei jedem Start neu gebaut (für Navigation-Änderungen)"
 echo ""
 echo "🔗 Available URLs:"
 echo "   - Frontend: http://localhost:3003/"

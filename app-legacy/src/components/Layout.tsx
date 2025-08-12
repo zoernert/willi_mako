@@ -36,6 +36,7 @@ import {
   Group as GroupIcon,
   AccountTree as ProcessIcon,
   Groups as CommunityIcon,
+  Work as WorkspaceIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -72,12 +73,10 @@ const Layout: React.FC = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
-    { text: 'Mein Workspace', icon: <DocumentsIcon />, path: '/workspace' },
-    { text: 'Teams', icon: <GroupIcon />, path: '/teams' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
-    { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' },
+    // { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' }, // Ausgeblendet - keine Dokumente im Augenblick
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
     { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
@@ -200,6 +199,18 @@ const Layout: React.FC = () => {
                 <ProfileIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText>Profil</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/workspace')}>
+              <ListItemIcon>
+                <WorkspaceIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Mein Workspace</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/teams')}>
+              <ListItemIcon>
+                <GroupIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Teams</ListItemText>
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
