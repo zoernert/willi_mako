@@ -163,6 +163,6 @@ export const documentsApi = {
 
   // Toggle AI context for document
   toggleAIContext: (documentId: string, enabled: boolean): Promise<Document> => {
-    return apiClient.post(`/api/workspace/documents/${documentId}/ai-context`, { enabled });
+    return apiClient.post(API_ENDPOINTS.documents.aiContext(documentId), { enabled });
   },
 };
