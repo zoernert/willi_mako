@@ -77,6 +77,7 @@ const Layout: React.FC = () => {
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     // { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' }, // Ausgeblendet - keine Dokumente im Augenblick
+    { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
     { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
