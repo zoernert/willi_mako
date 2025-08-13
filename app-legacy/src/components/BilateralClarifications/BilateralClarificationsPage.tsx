@@ -239,7 +239,7 @@ export const BilateralClarificationsPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      await bilateralClarificationService.exportClarifications(filters, 'xlsx');
+      await bilateralClarificationService.exportClarifications(filters, 'excel');
       setSuccess('Export erfolgreich heruntergeladen');
     } catch (err) {
       setError('Fehler beim Exportieren');

@@ -21,6 +21,7 @@ import processRoutes from './routes/processes';
 import { initializeCommunityRoutes } from './routes/community';
 import { initializeCommunityAdminRoutes } from './routes/admin/community';
 import m2cRolesRoutes from './routes/m2cRoles';
+import bilateralClarificationsRoutes from './routes/bilateral-clarifications-simple';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -163,6 +164,7 @@ app.use('/api/documents', documentsRoutes);
 app.use('/api/message-analyzer', authenticateToken, messageAnalyzerRoutes);
 app.use('/api/v1/codes', authenticateToken, codesRoutes);
 app.use('/api', m2cRolesRoutes);
+app.use('/api/bilateral-clarifications', bilateralClarificationsRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

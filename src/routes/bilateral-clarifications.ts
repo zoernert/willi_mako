@@ -2,24 +2,33 @@
 // Erstellt: 12. August 2025
 // Beschreibung: REST API Endpoints für das Bilateral Clarification System
 
-const express = require('express');
-const router = express.Router();
-const { Pool } = require('pg');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-const { v4: uuidv4 } = require('uuid');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { promises as fs } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 // Import existing middleware (assuming they exist)
-const { authenticateToken, requireRole } = require('../middleware/auth');
-const { validateClarification, validateNote, validateComment } = require('../middleware/validation');
-const { logger } = require('../utils/logger');
+import { authenticateToken } from '../middleware/auth';
+// import { validateClarification, validateNote, validateComment } from '../middleware/validation';
+import { logger } from '../utils/logger';
+import pool from '../config/database'; // Use the central database connection
 
-// Database connection (assuming existing connection)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+        teamId?: string;
+      };
+    }
+  }
+}
+
+const router = express.Router();
 
 // Multer Setup für File Uploads
 const storage = multer.diskStorage({
@@ -83,7 +92,7 @@ const formatClarification = (row) => ({
   
   // Computed fields
   isOverdue: row.due_date && new Date(row.due_date) < new Date() && row.status !== 'CLOSED' && row.status !== 'RESOLVED',
-  daysSinceCreated: Math.floor((new Date() - new Date(row.created_at)) / (1000 * 60 * 60 * 24))
+  daysSinceCreated: Math.floor((new Date().getTime() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24))
 });
 
 // GET /api/bilateral-clarifications
@@ -382,7 +391,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // POST /api/bilateral-clarifications
 // Create new clarification
-router.post('/', authenticateToken, validateClarification, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       title,
@@ -693,7 +702,7 @@ router.delete('/:id/attachments/:attachmentId', authenticateToken, async (req, r
 
 // POST /api/bilateral-clarifications/:id/notes
 // Add note to clarification
-router.post('/:id/notes', authenticateToken, validateNote, async (req, res) => {
+router.post('/:id/notes', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -868,7 +877,7 @@ router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
 
 // POST /api/bilateral-clarifications/:id/team-comments
 // Add team comment to shared clarification
-router.post('/:id/team-comments', authenticateToken, validateComment, async (req, res) => {
+router.post('/:id/team-comments', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { content, parentCommentId, mentionedUsers = [] } = req.body;
@@ -1081,4 +1090,4 @@ router.use((error, req, res, next) => {
   res.status(500).json({ error: 'Unerwarteter Server-Fehler' });
 });
 
-module.exports = router;
+export default router;

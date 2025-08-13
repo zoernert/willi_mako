@@ -129,7 +129,15 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 
   const handleDownload = async (attachmentId: string, filename: string) => {
     try {
-      await bilateralClarificationService.downloadAttachment(attachmentId);
+      const blob = await bilateralClarificationService.downloadAttachment(attachmentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       setError('Fehler beim Download');
       console.error('Error downloading file:', err);
