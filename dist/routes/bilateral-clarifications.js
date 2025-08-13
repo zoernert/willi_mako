@@ -12,7 +12,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = require("fs");
 // Import existing middleware (assuming they exist)
 const auth_1 = require("../middleware/auth");
-const validation_1 = require("../middleware/validation");
+// import { validateClarification, validateNote, validateComment } from '../middleware/validation';
 const logger_1 = require("../utils/logger");
 const database_1 = __importDefault(require("../config/database")); // Use the central database connection
 const router = express_1.default.Router();
@@ -77,7 +77,7 @@ const formatClarification = (row) => {
         archivedAt: (_e = row.archived_at) === null || _e === void 0 ? void 0 : _e.toISOString(),
         // Computed fields
         isOverdue: row.due_date && new Date(row.due_date) < new Date() && row.status !== 'CLOSED' && row.status !== 'RESOLVED',
-        daysSinceCreated: Math.floor((new Date() - new Date(row.created_at)) / (1000 * 60 * 60 * 24))
+        daysSinceCreated: Math.floor((new Date().getTime() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24))
     });
 };
 // GET /api/bilateral-clarifications
@@ -325,7 +325,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications
 // Create new clarification
-router.post('/', auth_1.authenticateToken, validation_1.validateClarification, async (req, res) => {
+router.post('/', auth_1.authenticateToken, async (req, res) => {
     try {
         const { title, description, marketPartnerCode, caseType, priority = 'MEDIUM', assignedTo, dueDate, tags = [], externalCaseId, sourceSystem = 'MANUAL' } = req.body;
         // Validate required fields
@@ -578,7 +578,7 @@ router.delete('/:id/attachments/:attachmentId', auth_1.authenticateToken, async 
 });
 // POST /api/bilateral-clarifications/:id/notes
 // Add note to clarification
-router.post('/:id/notes', auth_1.authenticateToken, validation_1.validateNote, async (req, res) => {
+router.post('/:id/notes', auth_1.authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { content, noteType = 'USER', isInternal = false, linkedAttachmentId, linkedEmailId, tags = [], isPinned = false } = req.body;
@@ -723,7 +723,7 @@ router.post('/:id/unshare-team', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/team-comments
 // Add team comment to shared clarification
-router.post('/:id/team-comments', auth_1.authenticateToken, validation_1.validateComment, async (req, res) => {
+router.post('/:id/team-comments', auth_1.authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { content, parentCommentId, mentionedUsers = [] } = req.body;

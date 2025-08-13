@@ -12,10 +12,23 @@ router.get('/', async (req, res) => {
     // Simple query to test database connection
     const result = await pool.query('SELECT NOW() as current_time');
     
+    // Return the structure the frontend expects
     res.json({
-      message: 'Bilateral clarifications API is working',
-      server_time: result.rows[0].current_time,
-      clarifications: []
+      clarifications: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0
+      },
+      summary: {
+        totalOpen: 0,
+        totalInProgress: 0,
+        totalResolved: 0,
+        totalClosed: 0,
+        overdueCases: 0,
+        highPriorityCases: 0
+      }
     });
   } catch (error) {
     console.error('Database connection error:', error);

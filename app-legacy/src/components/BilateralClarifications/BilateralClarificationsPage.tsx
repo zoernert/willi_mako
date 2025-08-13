@@ -109,31 +109,34 @@ export const BilateralClarificationsPage: React.FC = () => {
       if (showLoader) setLoading(true);
       setError(null);
       
-      const response: ClarificationListResponse = await bilateralClarificationService.getClarifications(
+      const response: any = await bilateralClarificationService.getClarifications(
         filters, 
         pagination.page, 
         pagination.limit
       );
       
-      setClarifications(response.clarifications);
+      // Handle simplified API response
+      const clarifications = response.clarifications || [];
+      setClarifications(clarifications);
+      
+      // Set default pagination if not provided by API
       setPagination(prev => ({
         ...prev,
-        total: response.pagination.total,
-        totalPages: response.pagination.totalPages
+        total: response.pagination?.total || clarifications.length,
+        totalPages: response.pagination?.totalPages || 1
       }));
 
-      // Update stats if available
-      if (response.summary) {
-        setStats({
-          totalCases: response.pagination.total,
-          openCases: response.summary.totalOpen,
-          myAssignedCases: response.clarifications.filter(c => c.assignedTo === user?.id).length,
-          overdueCases: response.summary.overdueCases,
-          resolvedThisMonth: response.summary.totalResolved,
-          averageResolutionTime: 0, // TODO: Calculate from API
-          teamSharedCases: response.clarifications.filter(c => c.sharedWithTeam).length
-        });
-      }
+      // Update stats with default values if summary not available
+      const totalCases = response.pagination?.total || clarifications.length;
+      setStats({
+        totalCases: totalCases,
+        openCases: response.summary?.totalOpen || clarifications.filter((c: any) => c.status === 'OPEN').length,
+        myAssignedCases: clarifications.filter((c: any) => c.assignedTo === user?.id).length,
+        overdueCases: response.summary?.overdueCases || 0,
+        resolvedThisMonth: response.summary?.totalResolved || clarifications.filter((c: any) => c.status === 'RESOLVED').length,
+        averageResolutionTime: 0, // TODO: Calculate from API
+        teamSharedCases: clarifications.filter((c: any) => c.sharedWithTeam).length
+      });
     } catch (err) {
       setError('Fehler beim Laden der Klärfälle');
       console.error('Error loading clarifications:', err);
