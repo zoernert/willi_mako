@@ -67,6 +67,7 @@ import {
 
 interface UnifiedDocumentManagerProps {
   onStatsUpdate: () => void;
+  initialFilter?: string | null;
 }
 
 interface TabPanelProps {
@@ -81,7 +82,10 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   </div>
 );
 
-const UnifiedDocumentManager: React.FC<UnifiedDocumentManagerProps> = ({ onStatsUpdate }) => {
+const UnifiedDocumentManager: React.FC<UnifiedDocumentManagerProps> = ({ 
+  onStatsUpdate, 
+  initialFilter 
+}) => {
   const [documents, setDocuments] = useState<UnifiedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<UnifiedDocumentStats | null>(null);
@@ -168,6 +172,26 @@ const UnifiedDocumentManager: React.FC<UnifiedDocumentManagerProps> = ({ onStats
     fetchStats();
     fetchAvailableTags();
   }, [fetchStats, fetchAvailableTags]);
+
+  // Handle initial filter from URL
+  useEffect(() => {
+    if (initialFilter) {
+      // If the filter looks like a tag (e.g., "clarification-1"), add it to the tags filter
+      if (initialFilter.startsWith('clarification-')) {
+        setFilters(prev => ({
+          ...prev,
+          tags: [initialFilter],
+          type: 'note' // Focus on notes when filtering by clarification
+        }));
+      } else {
+        // If it's a general search term, use it as search filter
+        setFilters(prev => ({
+          ...prev,
+          search: initialFilter
+        }));
+      }
+    }
+  }, [initialFilter]);
 
   const handleCreateNote = () => {
     setEditingDocument(null);

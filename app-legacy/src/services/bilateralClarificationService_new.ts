@@ -14,12 +14,8 @@ import {
   AddNoteRequest,
   AddTeamCommentRequest,
   ClarificationStatus,
-  AttachmentType,
-  ChatContext,
-  MessageAnalyzerContext,
-  ClarificationContext
+  AttachmentType
 } from '../types/bilateral';
-import { EmailData } from '../components/BilateralClarifications/EmailComposerDialog';
 import apiClient from './apiClient';
 
 // API Base Configuration
@@ -134,18 +130,6 @@ export class BilateralClarificationService {
     } catch (error) {
       console.error('Error uploading attachment:', error);
       throw new Error('Fehler beim Hochladen des Anhangs');
-    }
-  }
-
-  async downloadAttachment(attachmentId: string): Promise<Blob> {
-    try {
-      const response = await apiClient.get<Blob>(`${BILATERAL_BASE}/attachments/${attachmentId}/download`, {
-        responseType: 'blob'
-      });
-      return response;
-    } catch (error) {
-      console.error('Error downloading attachment:', error);
-      throw new Error('Fehler beim Download des Anhangs');
     }
   }
 
@@ -279,173 +263,6 @@ export class BilateralClarificationService {
     } catch (error) {
       console.error('Error fetching statistics:', error);
       throw new Error('Fehler beim Laden der Statistiken');
-    }
-  }
-
-  // Context Transfer Methods für Integration mit Chat und MessageAnalyzer
-  async createFromChatContext(
-    chatContext: ChatContext,
-    clarificationData: Partial<BilateralClarification>
-  ): Promise<BilateralClarification> {
-    try {
-      const response = await apiClient.post(`${BILATERAL_BASE}/from-chat-context`, {
-        context: {
-          source: 'chat',
-          chatContext,
-          ...this.extractContextData(chatContext.content, 'chat')
-        },
-        clarification: clarificationData
-      });
-      return response as BilateralClarification;
-    } catch (error) {
-      console.error('Error creating clarification from chat context:', error);
-      throw error;
-    }
-  }
-
-  async createFromMessageAnalyzerContext(
-    messageAnalyzerContext: MessageAnalyzerContext,
-    clarificationData: Partial<BilateralClarification>
-  ): Promise<BilateralClarification> {
-    try {
-      const response = await apiClient.post(`${BILATERAL_BASE}/from-analyzer-context`, {
-        context: {
-          source: 'message_analyzer',
-          messageAnalyzerContext,
-          ...this.extractContextData(messageAnalyzerContext.originalMessage, 'analyzer', messageAnalyzerContext.analysisResult)
-        },
-        clarification: clarificationData
-      });
-      return response as BilateralClarification;
-    } catch (error) {
-      console.error('Error creating clarification from message analyzer context:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Extract context data for auto-filling clarification form
-   */
-  private extractContextData(
-    content: string, 
-    source: 'chat' | 'analyzer',
-    analysisResult?: any
-  ): Partial<ClarificationContext> {
-    const extracted: Partial<ClarificationContext> = {};
-
-    // Extract market partner codes (BDEW/EIC pattern)
-    const marketPartnerRegex = /\b([0-9]{13}|[0-9]{16})\b/g;
-    const marketPartnerMatches = content.match(marketPartnerRegex);
-    if (marketPartnerMatches) {
-      extracted.suggestedMarketPartner = {
-        code: marketPartnerMatches[0],
-        name: 'Auto-erkannt' // Will be resolved via CodeLookup
-      };
-    }
-
-    // Extract EDIFACT message types
-    const edifactRegex = /\b(APERAK|UTILMD|MSCONS|ORDERS|INVOIC|PRICAT|ORDRSP)\b/i;
-    const edifactMatch = content.match(edifactRegex);
-    if (edifactMatch) {
-      extracted.edifactMessageType = edifactMatch[0].toUpperCase() as any;
-    }
-
-    // Extract problem types based on keywords
-    if (content.toLowerCase().includes('stammdaten') || content.toLowerCase().includes('maloid')) {
-      extracted.problemType = 'stammdaten';
-      extracted.suggestedCaseType = 'TECHNICAL';
-    } else if (content.toLowerCase().includes('messwert') || content.toLowerCase().includes('zählerstand')) {
-      extracted.problemType = 'messwerte';
-      extracted.suggestedCaseType = 'TECHNICAL';
-    } else if (content.toLowerCase().includes('prozess') || content.toLowerCase().includes('anmeldung')) {
-      extracted.problemType = 'prozess';
-      extracted.suggestedCaseType = 'B2B';
-    }
-
-    // Priority based on urgency keywords
-    if (content.toLowerCase().includes('dringend') || content.toLowerCase().includes('kritisch')) {
-      extracted.suggestedPriority = 'HIGH';
-    } else if (content.toLowerCase().includes('eilig')) {
-      extracted.suggestedPriority = 'MEDIUM';
-    } else {
-      extracted.suggestedPriority = 'MEDIUM';
-    }
-
-    // Generate suggested title and description
-    if (source === 'analyzer' && analysisResult) {
-      extracted.suggestedTitle = `${extracted.edifactMessageType || 'EDIFACT'}-Klärung: ${analysisResult.summary?.substring(0, 50) || 'Nachrichtenanalyse'}`;
-      extracted.suggestedDescription = `Automatisch erstellt aus Nachrichten-Analyse:\n\n${analysisResult.summary || ''}\n\nOriginal-Nachricht:\n${content.substring(0, 500)}${content.length > 500 ? '...' : ''}`;
-    } else {
-      // Chat context
-      extracted.suggestedTitle = `Chat-basierte Klärung: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`;
-      extracted.suggestedDescription = `Automatisch erstellt aus Chat-Konversation:\n\n${content}`;
-    }
-
-    return extracted;
-  }
-
-  /**
-   * Email-Funktionalität für bilaterale Klärungen
-   */
-  async sendClarificationEmail(
-    clarificationId: number, 
-    emailData: EmailData
-  ): Promise<{ success: boolean; messageId?: string; sentAt: string }> {
-    try {
-      const response = await apiClient.post<{ success: boolean; messageId?: string; sentAt: string }>(
-        `${BILATERAL_BASE}/${clarificationId}/send-email`,
-        emailData
-      );
-      return response;
-    } catch (error) {
-      console.error('Error sending clarification email:', error);
-      throw error;
-    }
-  }
-
-  async validateMarketPartnerEmail(
-    marketPartnerCode: string,
-    role: string
-  ): Promise<{ isValid: boolean; email?: string; contactName?: string }> {
-    try {
-      const response = await apiClient.get<{ isValid: boolean; email?: string; contactName?: string }>(
-        `${BILATERAL_BASE}/validate-email`,
-        { params: { marketPartnerCode, role } }
-      );
-      return response;
-    } catch (error) {
-      console.error('Error validating market partner email:', error);
-      throw error;
-    }
-  }
-
-  async updateClarificationStatus(
-    clarificationId: number,
-    status: ClarificationStatus,
-    internalStatus?: string,
-    reason?: string
-  ): Promise<BilateralClarification> {
-    try {
-      const response = await apiClient.patch<BilateralClarification>(
-        `${BILATERAL_BASE}/${clarificationId}/status`,
-        { status, internalStatus, reason }
-      );
-      return response;
-    } catch (error) {
-      console.error('Error updating clarification status:', error);
-      throw error;
-    }
-  }
-
-  async getEmailHistory(clarificationId: number): Promise<any[]> {
-    try {
-      const response = await apiClient.get<any[]>(
-        `${BILATERAL_BASE}/${clarificationId}/emails`
-      );
-      return response;
-    } catch (error) {
-      console.error('Error fetching email history:', error);
-      throw error;
     }
   }
 }

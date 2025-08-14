@@ -25,6 +25,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { messageAnalyzerApi, AnalysisResult, AIExplanationResult } from '../services/messageAnalyzerApi';
 import { useSnackbar } from '../contexts/SnackbarContext';
+import CreateFromContextButton from '../components/BilateralClarifications/CreateFromContextButton';
+import { MessageAnalyzerContext } from '../types/bilateral';
 
 const MessageAnalyzerPage: React.FC = () => {
   const [message, setMessage] = useState('');
@@ -129,6 +131,25 @@ const MessageAnalyzerPage: React.FC = () => {
           >
             {aiExplanationLoading ? 'KI arbeitet...' : 'KI-Erklärung'}
           </Button>
+          
+          {/* Bilaterale Klärung Button */}
+          {message.trim() && (
+            <CreateFromContextButton
+              variant="button"
+              size="medium"
+              context={{
+                source: 'message_analyzer',
+                messageAnalyzerContext: {
+                  originalMessage: message,
+                  analysisResult: result || undefined,
+                  aiExplanation: aiExplanation || undefined
+                }
+              }}
+              onSuccess={(clarification) => {
+                console.log('Bilaterale Klärung erstellt:', clarification);
+              }}
+            />
+          )}
         </Box>
         {(loading || aiExplanationLoading) && (
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>

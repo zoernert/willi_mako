@@ -2,8 +2,34 @@
 // Erstellt: 12. August 2025
 // Beschreibung: Type-Definitionen für das Bilateral Clarification System
 
+// Deutsche Marktrollen für den Energiemarkt
+export type MarketRole = 
+  | 'LF'    // Lieferant
+  | 'VNB'   // Verteilnetzbetreiber
+  | 'MSB'   // Messstellenbetreiber
+  | 'MST'   // Messstellenbetreiber (alt)
+  | 'UNB'   // Übertragungsnetzbetreiber
+  | 'NB'    // Netzbetreiber (allgemein)
+  | 'RLM'   // Reallastmessung
+  | 'SLP'   // Standardlastprofil
+  | 'BK'    // Bilanzkreis
+  | 'BKV'   // Bilanzkreisverantwortlicher
+  | 'BIKO'  // Bilanzkoordinator
+  | 'MA'    // Marktakteur
+  | 'OTHER'; // Sonstige
+
 // Basis-Enums für bessere Type-Safety
-export type ClarificationStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type ClarificationStatus = 
+  | 'DRAFT'        // Entwurf - interne Bearbeitung
+  | 'INTERNAL'     // Interne Klärung
+  | 'READY_TO_SEND' // Bereit zum Versenden
+  | 'SENT'         // An Marktpartner gesendet
+  | 'PENDING'      // Antwort ausstehend
+  | 'IN_PROGRESS'  // In Bearbeitung mit Marktpartner
+  | 'RESOLVED'     // Geklärt
+  | 'CLOSED'       // Abgeschlossen
+  | 'ESCALATED';   // Eskaliert
+
 export type ClarificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ClarificationCaseType = 'B2B' | 'GENERAL' | 'TECHNICAL' | 'BILLING';
 export type AttachmentType = 'DOCUMENT' | 'EDIFACT' | 'EMAIL' | 'IMAGE' | 'OTHER';
@@ -13,13 +39,64 @@ export type EmailDirection = 'INCOMING' | 'OUTGOING';
 export type EmailType = 'CLARIFICATION_REQUEST' | 'RESPONSE' | 'ESCALATION' | 'NOTIFICATION' | 'INTERNAL' | 'OTHER';
 export type ActivityType = 'SHARED' | 'UNSHARED' | 'COMMENTED' | 'VIEWED' | 'HELPED' | 'STATUS_CHANGED' | 'ASSIGNED';
 
+// Marktpartner mit Rollen und Kontakten
+export interface MarketPartnerContact {
+  role: MarketRole;
+  roleName: string; // Deutsche Bezeichnung der Rolle
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  isDefault: boolean; // Haupt-Ansprechpartner für diese Rolle
+}
+
+export interface MarketPartnerInfo {
+  code: string; // BDEW/EIC Code
+  codeType: 'bdew' | 'eic';
+  companyName: string;
+  companyUID?: string;
+  
+  // Adressdaten
+  street?: string;
+  postCode?: string;
+  city?: string;
+  country?: string;
+  
+  // Rollen und Kontakte
+  contacts: MarketPartnerContact[];
+  
+  // Metadaten
+  validFrom?: string;
+  validTo?: string;
+  lastUpdated?: string;
+}
+
+// Datenaustauschreferenz (DAR) - zentrales Element für Geschäftsvorfall-Zuordnung
+export interface DataExchangeReference {
+  dar: string; // Die eigentliche DAR-Nummer
+  originalMessageType?: string; // z.B. 'UTILMD', 'MSCONS', 'APERAK'
+  originalMessageDate?: string;
+  originalSender?: string;
+  originalReceiver?: string;
+  businessCase?: string; // Kurzbeschreibung des Geschäftsvorfalls
+  isValid: boolean;
+  validationMessage?: string;
+}
+
 // Hauptinterface für bilaterale Klärfälle
 export interface BilateralClarification {
   id: number;
   title: string;
   description?: string;
-  marketPartnerCode: string;
-  marketPartnerName?: string;
+  
+  // Marktpartner-Integration (erweitert)
+  marketPartner: MarketPartnerInfo;
+  selectedRole: MarketRole; // Für welche Rolle des Marktpartners ist die Klärung
+  selectedContact?: MarketPartnerContact; // Ausgewählter Ansprechpartner
+  
+  // Datenaustauschreferenz (DAR) - Pflichtfeld für bilaterale Klärungen
+  dataExchangeReference: DataExchangeReference;
+  
+  // Standard-Felder
   caseType: ClarificationCaseType;
   status: ClarificationStatus;
   priority: ClarificationPriority;
@@ -35,6 +112,11 @@ export interface BilateralClarification {
   teamId?: string; // UUID
   externalCaseId?: string;
   sourceSystem: string;
+  
+  // Workflow-Status für interne vs. externe Bearbeitung
+  internalStatus: 'DRAFT' | 'COLLECTING' | 'REVIEW' | 'READY_TO_SEND' | 'SENT';
+  lastSentAt?: string; // Wann wurde die letzte Mail versendet
+  sentToEmail?: string; // An welche Email wurde gesendet
   
   // Audit fields
   version: number;
@@ -303,8 +385,8 @@ export interface ClarificationStats {
   teamSharedCases: number;
 }
 
-// Market Partner Integration Types (from existing CodeLookup)
-export interface MarketPartnerInfo {
+// Legacy Market Partner Interface (für Kompatibilität mit CodeLookup)
+export interface LegacyMarketPartnerInfo {
   code: string;
   name: string;
   role: string;
@@ -395,4 +477,55 @@ export interface ImportResult {
     row: number;
     error: string;
   }>;
+}
+
+// Context-Transfer-Interfaces für Integration mit Chat und MessageAnalyzer
+export interface ChatContext {
+  chatId: string;
+  messageId?: string;
+  content: string;
+  timestamp: string;
+  role: 'user' | 'assistant';
+  metadata?: any;
+}
+
+export interface MessageAnalyzerContext {
+  originalMessage: string;
+  analysisResult?: {
+    summary: string;
+    plausibilityChecks: string[];
+    format: 'EDIFACT' | 'XML' | 'TEXT' | 'UNKNOWN';
+    segments?: Array<{
+      tag: string;
+      elements: string[];
+      description?: string;
+      resolvedCodes?: { [key: string]: string };
+    }>;
+  };
+  aiExplanation?: {
+    explanation: string;
+  };
+}
+
+export interface ClarificationContext {
+  source: 'chat' | 'message_analyzer' | 'manual';
+  chatContext?: ChatContext;
+  messageAnalyzerContext?: MessageAnalyzerContext;
+  
+  // Auto-extracted data for pre-filling
+  suggestedTitle?: string;
+  suggestedDescription?: string;
+  suggestedMarketPartner?: {
+    code: string;
+    name: string;
+  };
+  suggestedCaseType?: ClarificationCaseType;
+  suggestedPriority?: ClarificationPriority;
+  problemType?: 'stammdaten' | 'messwerte' | 'prozess' | 'sonstiges';
+  edifactMessageType?: 'APERAK' | 'UTILMD' | 'MSCONS' | 'ORDERS' | 'INVOIC' | 'OTHER';
+}
+
+export interface CreateClarificationFromContextRequest {
+  context: ClarificationContext;
+  clarification: Partial<BilateralClarification>;
 }

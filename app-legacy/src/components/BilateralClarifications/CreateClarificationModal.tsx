@@ -13,9 +13,13 @@ import {
   Box,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Typography,
+  Divider
 } from '@mui/material';
-import { BilateralClarification } from '../../types/bilateral';
+import { BilateralClarification, MarketPartnerInfo, MarketPartnerContact, MarketRole, DataExchangeReference } from '../../types/bilateral';
+import { MarketPartnerSelector } from './MarketPartnerSelector';
+import { DARInput } from './DARInput';
 
 interface CreateClarificationModalProps {
   open: boolean;
@@ -31,12 +35,15 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    caseType: '' as any,
     priority: 'MEDIUM' as any,
-    status: 'OPEN' as any,
+    status: 'DRAFT' as any, // Neue bilaterale Klärungen starten immer als DRAFT
     assignedTo: '',
-    dueDate: '',
-    tags: [] as string[]
+    tags: [] as string[],
+    // Neue Pflichtfelder
+    marketPartner: null as MarketPartnerInfo | null,
+    selectedRole: null as MarketRole | null,
+    selectedContact: null as MarketPartnerContact | null,
+    dataExchangeReference: null as DataExchangeReference | null
   });
   
   const [loading, setLoading] = useState(false);
@@ -63,28 +70,65 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
       setLoading(true);
       setError(null);
       
+      // Validierung
       if (!formData.title.trim()) {
         setError('Titel ist erforderlich');
         return;
       }
       
-      if (!formData.caseType) {
-        setError('Typ ist erforderlich');
+
+
+      // Neue Validierungen für bilaterale Klärungen
+      if (!formData.marketPartner) {
+        setError('Marktpartner ist erforderlich');
         return;
       }
 
-      await onSubmit(formData);
+      if (!formData.selectedRole) {
+        setError('Marktrolle ist erforderlich');
+        return;
+      }
+
+      if (!formData.dataExchangeReference || !formData.dataExchangeReference.isValid) {
+        setError('Gültige Datenaustauschreferenz (DAR) ist erforderlich');
+        return;
+      }
+
+      // Daten für Backend vorbereiten - sicherstellen dass alle Pflichtfelder gesetzt sind
+      if (!formData.marketPartner || !formData.selectedRole || !formData.dataExchangeReference) {
+        throw new Error('Pflichtfelder sind nicht vollständig ausgefüllt');
+      }
+
+      const clarificationData: Partial<BilateralClarification> = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        status: formData.status,
+        assignedTo: formData.assignedTo,
+        tags: formData.tags,
+        marketPartner: formData.marketPartner,
+        selectedRole: formData.selectedRole,
+        selectedContact: formData.selectedContact || undefined,
+        dataExchangeReference: formData.dataExchangeReference,
+        // Interne Bearbeitung beginnt als DRAFT
+        internalStatus: 'DRAFT'
+      };
+
+      await onSubmit(clarificationData);
       onClose();
       
+      // Form zurücksetzen
       setFormData({
         title: '',
         description: '',
-        caseType: '' as any,
         priority: 'MEDIUM' as any,
-        status: 'OPEN' as any,
+        status: 'DRAFT' as any,
         assignedTo: '',
-        dueDate: '',
-        tags: []
+        tags: [],
+        marketPartner: null,
+        selectedRole: null,
+        selectedContact: null,
+        dataExchangeReference: null
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Erstellen des Klärfalls');
@@ -118,53 +162,59 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
             rows={3}
           />
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl fullWidth required>
-              <InputLabel>Typ</InputLabel>
-              <Select
-                value={formData.caseType}
-                onChange={(e) => handleInputChange('caseType', e.target.value)}
-                label="Typ"
-              >
-                <MenuItem value="B2B">B2B</MenuItem>
-                <MenuItem value="GENERAL">Allgemein</MenuItem>
-                <MenuItem value="TECHNICAL">Technisch</MenuItem>
-                <MenuItem value="BILLING">Abrechnung</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth>
-              <InputLabel>Priorität</InputLabel>
-              <Select
-                value={formData.priority}
-                onChange={(e) => handleInputChange('priority', e.target.value)}
-                label="Priorität"
-              >
-                <MenuItem value="LOW">Niedrig</MenuItem>
-                <MenuItem value="MEDIUM">Mittel</MenuItem>
-                <MenuItem value="HIGH">Hoch</MenuItem>
-                <MenuItem value="CRITICAL">Kritisch</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              label="Zugewiesen an"
-              value={formData.assignedTo}
-              onChange={(e) => handleInputChange('assignedTo', e.target.value)}
-              fullWidth
+          {/* Marktpartner-Sektion */}
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Marktpartner und Datenaustauschreferenz
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <MarketPartnerSelector
+              value={formData.marketPartner || undefined}
+              selectedRole={formData.selectedRole || undefined}
+              selectedContact={formData.selectedContact || undefined}
+              onPartnerChange={(partner) => handleInputChange('marketPartner', partner)}
+              onRoleChange={(role) => handleInputChange('selectedRole', role)}
+              onContactChange={(contact) => handleInputChange('selectedContact', contact)}
+              required
+              error={!formData.marketPartner}
+              helperText={!formData.marketPartner ? 'Marktpartner ist erforderlich' : ''}
             />
 
-            <TextField
-              label="Fälligkeitsdatum"
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => handleInputChange('dueDate', e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
+            <Box sx={{ mt: 2 }}>
+              <DARInput
+                value={formData.dataExchangeReference || undefined}
+                onChange={(dar: DataExchangeReference | null) => handleInputChange('dataExchangeReference', dar)}
+                required
+                error={!formData.dataExchangeReference || !formData.dataExchangeReference.isValid}
+                helperText={!formData.dataExchangeReference ? 'DAR ist erforderlich' : 
+                  (!formData.dataExchangeReference.isValid ? 'DAR ist ungültig' : '')}
+              />
+            </Box>
           </Box>
+
+          <Divider />
+
+          <FormControl fullWidth>
+            <InputLabel>Priorität</InputLabel>
+            <Select
+              value={formData.priority}
+              onChange={(e) => handleInputChange('priority', e.target.value)}
+              label="Priorität"
+            >
+              <MenuItem value="LOW">Niedrig</MenuItem>
+              <MenuItem value="MEDIUM">Mittel</MenuItem>
+              <MenuItem value="HIGH">Hoch</MenuItem>
+              <MenuItem value="CRITICAL">Kritisch</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="Zugewiesen an"
+            value={formData.assignedTo}
+            onChange={(e) => handleInputChange('assignedTo', e.target.value)}
+            fullWidth
+          />
 
           <Box>
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>

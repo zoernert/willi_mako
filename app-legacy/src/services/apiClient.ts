@@ -157,6 +157,15 @@ class ApiClient {
     return response.data as T;
   }
 
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.patch<T | ApiResponse<T>>(url, data, config);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
+  }
+
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T | ApiResponse<T>>(url, config);
     // Handle both wrapped and unwrapped responses

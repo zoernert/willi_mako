@@ -33,6 +33,8 @@ import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
 import ContextControlPanel from '../components/Chat/ContextControlPanel';
 import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
+import CreateFromContextButton from '../components/BilateralClarifications/CreateFromContextButton';
+import { ChatContext } from '../types/bilateral';
 
 interface Message {
   id: string;
@@ -622,6 +624,31 @@ const Chat: React.FC = () => {
                                     contextAnalysis: message.metadata.contextAnalysis || {}
                                   }}
                                 />
+                              )}
+                              
+                              {/* Bilaterale Klärung Button für längere Assistant-Nachrichten */}
+                              {message.role === 'assistant' && message.content.length > 100 && (
+                                <Box sx={{ mt: 2 }}>
+                                  <CreateFromContextButton
+                                    variant="chip"
+                                    size="small"
+                                    context={{
+                                      source: 'chat',
+                                      chatContext: {
+                                        chatId: currentChat?.id || '',
+                                        messageId: message.id,
+                                        content: message.content,
+                                        timestamp: message.created_at,
+                                        role: message.role,
+                                        metadata: message.metadata
+                                      }
+                                    }}
+                                    onSuccess={(clarification) => {
+                                      console.log('Bilaterale Klärung aus Chat erstellt:', clarification);
+                                      showSnackbar('Bilaterale Klärung erfolgreich erstellt!', 'success');
+                                    }}
+                                  />
+                                </Box>
                               )}
                             </Box>
                           </Box>

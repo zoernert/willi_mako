@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -71,6 +72,7 @@ interface WorkspaceStats {
 }
 
 const Workspace: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(0);
   const [stats, setStats] = useState<WorkspaceStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,6 +89,10 @@ const Workspace: React.FC = () => {
   // Touch navigation for mobile
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
+
+  // Parse URL parameters
+  const urlTab = searchParams.get('tab');
+  const urlFilter = searchParams.get('filter');
 
   const fetchWorkspaceStats = async () => {
     try {
@@ -119,6 +125,16 @@ const Workspace: React.FC = () => {
     fetchWorkspaceStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // No dependencies needed for one-time fetch
+
+  // Handle URL parameters
+  useEffect(() => {
+    // Set tab based on URL parameter
+    if (urlTab === 'notes' || urlTab === 'documents') {
+      setActiveTab(0); // Both notes and documents are in the unified manager (tab 0)
+    } else if (urlTab === 'settings') {
+      setActiveTab(1);
+    }
+  }, [urlTab]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -428,7 +444,10 @@ const Workspace: React.FC = () => {
         </Tabs>
 
         <TabPanel value={activeTab} index={0}>
-          <UnifiedDocumentManager onStatsUpdate={fetchWorkspaceStats} />
+          <UnifiedDocumentManager 
+            onStatsUpdate={fetchWorkspaceStats} 
+            initialFilter={urlFilter}
+          />
         </TabPanel>
 
         <TabPanel value={activeTab} index={1}>
