@@ -1,34 +1,163 @@
 "use strict";
 // Simplified Express Router für Bilaterale Klärfälle API
-// Temporary fix to get the server running
+// Temporary implementation to get the bilateral clarifications working
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../config/database"));
+const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-// Simple GET endpoint that should work
+// First, let's create the table if it doesn't exist
+const initializeTable = async () => {
+    try {
+        const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS bilateral_clarifications (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          market_partner_code VARCHAR(20) NOT NULL,
+          market_partner_name VARCHAR(255),
+          case_type VARCHAR(50) NOT NULL DEFAULT 'B2B',
+          status VARCHAR(50) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'INTERNAL', 'READY_TO_SEND', 'SENT', 'PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ESCALATED')),
+          priority VARCHAR(20) CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')) DEFAULT 'MEDIUM',
+          created_by UUID NOT NULL,
+          assigned_to UUID,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          due_date TIMESTAMP,
+          resolution_date TIMESTAMP,
+          resolution_notes TEXT,
+          tags TEXT[] DEFAULT '{}',
+          shared_with_team BOOLEAN DEFAULT FALSE,
+          team_id UUID,
+          external_case_id VARCHAR(100),
+          source_system VARCHAR(50) DEFAULT 'MANUAL',
+          
+          -- New fields for bilateral clarifications
+          market_partner_data JSONB,
+          selected_role JSONB,
+          selected_contact JSONB,
+          data_exchange_reference JSONB,
+          internal_status VARCHAR(50) DEFAULT 'DRAFT',
+          
+          -- Audit fields
+          version INTEGER DEFAULT 1,
+          last_modified_by UUID,
+          archived BOOLEAN DEFAULT FALSE,
+          archived_at TIMESTAMP
+      );
+
+      -- Update trigger for updated_at
+      CREATE OR REPLACE FUNCTION update_bilateral_clarifications_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+
+      DROP TRIGGER IF EXISTS update_bilateral_clarifications_updated_at ON bilateral_clarifications;
+      
+      CREATE TRIGGER update_bilateral_clarifications_updated_at
+          BEFORE UPDATE ON bilateral_clarifications
+          FOR EACH ROW
+          EXECUTE FUNCTION update_bilateral_clarifications_updated_at();
+    `;
+        await database_1.default.query(createTableQuery);
+        console.log('✅ bilateral_clarifications table initialized');
+    }
+    catch (error) {
+        console.error('Error initializing bilateral_clarifications table:', error);
+    }
+};
+// Initialize table on startup
+initializeTable();
+// Format clarification for API response
+const formatClarification = (row) => {
+    var _a, _b, _c, _d, _e;
+    return ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        caseType: row.case_type,
+        status: row.status,
+        priority: row.priority,
+        createdBy: row.created_by,
+        assignedTo: row.assigned_to,
+        createdAt: (_a = row.created_at) === null || _a === void 0 ? void 0 : _a.toISOString(),
+        updatedAt: (_b = row.updated_at) === null || _b === void 0 ? void 0 : _b.toISOString(),
+        dueDate: (_c = row.due_date) === null || _c === void 0 ? void 0 : _c.toISOString(),
+        resolutionDate: (_d = row.resolution_date) === null || _d === void 0 ? void 0 : _d.toISOString(),
+        resolutionNotes: row.resolution_notes,
+        tags: row.tags || [],
+        sharedWithTeam: row.shared_with_team,
+        teamId: row.team_id,
+        externalCaseId: row.external_case_id,
+        sourceSystem: row.source_system,
+        version: row.version,
+        lastModifiedBy: row.last_modified_by,
+        archived: row.archived,
+        archivedAt: (_e = row.archived_at) === null || _e === void 0 ? void 0 : _e.toISOString(),
+        // New bilateral clarification fields
+        marketPartner: row.market_partner_data,
+        selectedRole: row.selected_role,
+        selectedContact: row.selected_contact,
+        dataExchangeReference: row.data_exchange_reference,
+        internalStatus: row.internal_status,
+        // Computed fields
+        isOverdue: row.due_date && new Date(row.due_date) < new Date() && row.status !== 'CLOSED' && row.status !== 'RESOLVED',
+        daysSinceCreated: Math.floor((new Date().getTime() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24))
+    });
+};
+// GET /api/bilateral-clarifications
 router.get('/', async (req, res) => {
     try {
-        // Simple query to test database connection
-        const result = await database_1.default.query('SELECT NOW() as current_time');
-        // Return the structure the frontend expects
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 20;
+        const offset = (page - 1) * pageSize;
+        // Get total count
+        const countResult = await database_1.default.query('SELECT COUNT(*) as total FROM bilateral_clarifications WHERE archived = FALSE');
+        const total = parseInt(countResult.rows[0].total);
+        // Get clarifications
+        const query = `
+      SELECT * FROM bilateral_clarifications 
+      WHERE archived = FALSE 
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+    `;
+        const result = await database_1.default.query(query, [pageSize, offset]);
+        const clarifications = result.rows.map(formatClarification);
+        // Get summary stats
+        const summaryQuery = `
+      SELECT 
+        COUNT(CASE WHEN status IN ('DRAFT', 'INTERNAL', 'READY_TO_SEND') THEN 1 END) as total_open,
+        COUNT(CASE WHEN status IN ('SENT', 'PENDING', 'IN_PROGRESS') THEN 1 END) as total_in_progress,
+        COUNT(CASE WHEN status = 'RESOLVED' THEN 1 END) as total_resolved,
+        COUNT(CASE WHEN status = 'CLOSED' THEN 1 END) as total_closed,
+        COUNT(CASE WHEN due_date < NOW() AND status NOT IN ('RESOLVED', 'CLOSED') THEN 1 END) as overdue_cases,
+        COUNT(CASE WHEN priority = 'HIGH' OR priority = 'CRITICAL' THEN 1 END) as high_priority_cases
+      FROM bilateral_clarifications 
+      WHERE archived = FALSE
+    `;
+        const summaryResult = await database_1.default.query(summaryQuery);
+        const summary = summaryResult.rows[0];
         res.json({
-            clarifications: [],
+            clarifications,
             pagination: {
-                page: 1,
-                limit: 20,
-                total: 0,
-                totalPages: 0
+                page,
+                limit: pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
             },
             summary: {
-                totalOpen: 0,
-                totalInProgress: 0,
-                totalResolved: 0,
-                totalClosed: 0,
-                overdueCases: 0,
-                highPriorityCases: 0
+                totalOpen: parseInt(summary.total_open) || 0,
+                totalInProgress: parseInt(summary.total_in_progress) || 0,
+                totalResolved: parseInt(summary.total_resolved) || 0,
+                totalClosed: parseInt(summary.total_closed) || 0,
+                overdueCases: parseInt(summary.overdue_cases) || 0,
+                highPriorityCases: parseInt(summary.high_priority_cases) || 0
             }
         });
     }
@@ -40,17 +169,294 @@ router.get('/', async (req, res) => {
         });
     }
 });
-// Simple POST endpoint
-router.post('/', async (req, res) => {
+// POST /api/bilateral-clarifications
+router.post('/', auth_1.authenticateToken, async (req, res) => {
+    var _a, _b, _c, _d;
     try {
-        res.json({
-            message: 'POST endpoint working',
-            received: req.body
+        const { title, description, marketPartner, selectedRole, selectedContact, dataExchangeReference, priority = 'MEDIUM', assignedTo, tags = [] } = req.body;
+        // Validate required fields
+        if (!title) {
+            return res.status(400).json({ error: 'Titel ist erforderlich' });
+        }
+        if (!marketPartner) {
+            return res.status(400).json({ error: 'Marktpartner ist erforderlich' });
+        }
+        if (!selectedRole) {
+            return res.status(400).json({ error: 'Marktrolle ist erforderlich' });
+        }
+        if (!dataExchangeReference || !dataExchangeReference.dar) {
+            return res.status(400).json({ error: 'Datenaustauschreferenz (DAR) ist erforderlich' });
+        }
+        const insertQuery = `
+      INSERT INTO bilateral_clarifications 
+      (title, description, market_partner_code, market_partner_name, case_type, 
+       priority, created_by, assigned_to, tags, source_system, team_id, 
+       last_modified_by, market_partner_data, selected_role, selected_contact, 
+       data_exchange_reference, internal_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING *
+    `;
+        const values = [
+            title,
+            description,
+            marketPartner.code,
+            marketPartner.companyName,
+            'B2B', // Default for bilateral clarifications
+            priority,
+            ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'system',
+            assignedTo || null,
+            tags,
+            'MANUAL',
+            ((_b = req.user) === null || _b === void 0 ? void 0 : _b.teamId) || null,
+            ((_c = req.user) === null || _c === void 0 ? void 0 : _c.id) || 'system',
+            JSON.stringify(marketPartner),
+            JSON.stringify(selectedRole),
+            JSON.stringify(selectedContact),
+            JSON.stringify(dataExchangeReference),
+            'DRAFT'
+        ];
+        const result = await database_1.default.query(insertQuery, values);
+        const newClarification = formatClarification(result.rows[0]);
+        console.log(`✅ Bilateral clarification created: ${newClarification.id} by user ${(_d = req.user) === null || _d === void 0 ? void 0 : _d.id}`);
+        res.status(201).json({
+            message: 'Klärfall erfolgreich erstellt',
+            clarification: newClarification
         });
     }
     catch (error) {
+        console.error('Error creating clarification:', error);
         res.status(500).json({
-            error: 'Fehler beim Erstellen',
+            error: 'Fehler beim Erstellen der Klärfälle',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// GET /api/bilateral-clarifications/:id
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = 'SELECT * FROM bilateral_clarifications WHERE id = $1 AND archived = FALSE';
+        const result = await database_1.default.query(query, [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Klärfall nicht gefunden' });
+        }
+        const clarification = formatClarification(result.rows[0]);
+        // Add timeline data for the frontend
+        const responseData = {
+            ...clarification,
+            notes: [], // Mock notes data - replace with real database queries
+            emails: [], // Mock emails data - replace with real database queries
+            attachments: [] // Mock attachments data - replace with real database queries
+        };
+        res.json(responseData);
+    }
+    catch (error) {
+        console.error('Error fetching clarification:', error);
+        res.status(500).json({
+            error: 'Fehler beim Laden des Klärfalls',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// Context Transfer Endpoints
+router.post('/from-chat-context', async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    try {
+        const { context, clarification } = req.body;
+        console.log('Creating clarification from chat context:', {
+            source: context.source,
+            chatId: (_a = context.chatContext) === null || _a === void 0 ? void 0 : _a.chatId,
+            messageId: (_b = context.chatContext) === null || _b === void 0 ? void 0 : _b.messageId,
+            contentLength: (_d = (_c = context.chatContext) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d.length,
+            suggested: {
+                title: context.suggestedTitle,
+                marketPartner: context.suggestedMarketPartner,
+                caseType: context.suggestedCaseType,
+                priority: context.suggestedPriority
+            }
+        });
+        // For now, return a mock response
+        const mockClarification = {
+            id: Date.now(),
+            title: context.suggestedTitle || clarification.title || 'Chat-basierte Klärung',
+            description: context.suggestedDescription || clarification.description || '',
+            marketPartnerCode: ((_e = context.suggestedMarketPartner) === null || _e === void 0 ? void 0 : _e.code) || clarification.marketPartnerCode || '',
+            marketPartnerName: ((_f = context.suggestedMarketPartner) === null || _f === void 0 ? void 0 : _f.name) || clarification.marketPartnerName || '',
+            caseType: context.suggestedCaseType || clarification.caseType || 'GENERAL',
+            status: 'OPEN',
+            priority: context.suggestedPriority || clarification.priority || 'MEDIUM',
+            createdBy: ((_g = req.user) === null || _g === void 0 ? void 0 : _g.id) || 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: clarification.tags || [],
+            sharedWithTeam: false,
+            sourceSystem: 'CHAT',
+            version: 1,
+            archived: false
+        };
+        res.json(mockClarification);
+    }
+    catch (error) {
+        console.error('Error creating clarification from chat context:', error);
+        res.status(500).json({
+            error: 'Fehler beim Erstellen der Klärung aus Chat-Kontext',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+router.post('/from-analyzer-context', async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    try {
+        const { context, clarification } = req.body;
+        console.log('Creating clarification from analyzer context:', {
+            source: context.source,
+            messageLength: (_b = (_a = context.messageAnalyzerContext) === null || _a === void 0 ? void 0 : _a.originalMessage) === null || _b === void 0 ? void 0 : _b.length,
+            analysisFormat: (_d = (_c = context.messageAnalyzerContext) === null || _c === void 0 ? void 0 : _c.analysisResult) === null || _d === void 0 ? void 0 : _d.format,
+            segmentsCount: (_g = (_f = (_e = context.messageAnalyzerContext) === null || _e === void 0 ? void 0 : _e.analysisResult) === null || _f === void 0 ? void 0 : _f.segments) === null || _g === void 0 ? void 0 : _g.length,
+            suggested: {
+                title: context.suggestedTitle,
+                marketPartner: context.suggestedMarketPartner,
+                caseType: context.suggestedCaseType,
+                priority: context.suggestedPriority,
+                edifactType: context.edifactMessageType
+            }
+        });
+        // For now, return a mock response
+        const mockClarification = {
+            id: Date.now(),
+            title: context.suggestedTitle || clarification.title || 'Analyzer-basierte Klärung',
+            description: context.suggestedDescription || clarification.description || '',
+            marketPartnerCode: ((_h = context.suggestedMarketPartner) === null || _h === void 0 ? void 0 : _h.code) || clarification.marketPartnerCode || '',
+            marketPartnerName: ((_j = context.suggestedMarketPartner) === null || _j === void 0 ? void 0 : _j.name) || clarification.marketPartnerName || '',
+            caseType: context.suggestedCaseType || clarification.caseType || 'TECHNICAL',
+            status: 'OPEN',
+            priority: context.suggestedPriority || clarification.priority || 'MEDIUM',
+            createdBy: ((_k = req.user) === null || _k === void 0 ? void 0 : _k.id) || 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: [
+                ...(clarification.tags || []),
+                'nachrichtenanalyse',
+                ...(context.edifactMessageType ? [context.edifactMessageType.toLowerCase()] : []),
+                ...(context.problemType ? [context.problemType] : [])
+            ],
+            sharedWithTeam: false,
+            sourceSystem: 'MESSAGE_ANALYZER',
+            version: 1,
+            archived: false
+        };
+        res.json(mockClarification);
+    }
+    catch (error) {
+        console.error('Error creating clarification from analyzer context:', error);
+        res.status(500).json({
+            error: 'Fehler beim Erstellen der Klärung aus Analyzer-Kontext',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// PATCH /api/bilateral-clarifications/:id/status
+router.patch('/:id/status', auth_1.authenticateToken, async (req, res) => {
+    var _a, _b;
+    try {
+        const { id } = req.params;
+        const { status, internalStatus, reason } = req.body;
+        // Validate required fields
+        if (!status) {
+            return res.status(400).json({ error: 'Status ist erforderlich' });
+        }
+        // Check if clarification exists
+        const checkQuery = 'SELECT * FROM bilateral_clarifications WHERE id = $1 AND archived = FALSE';
+        const checkResult = await database_1.default.query(checkQuery, [id]);
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Klärfall nicht gefunden' });
+        }
+        const updateQuery = `
+      UPDATE bilateral_clarifications 
+      SET status = $1, internal_status = $2, last_modified_by = $3, version = version + 1
+      WHERE id = $4 AND archived = FALSE
+      RETURNING *
+    `;
+        const values = [
+            status,
+            internalStatus || status,
+            ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'system',
+            id
+        ];
+        const result = await database_1.default.query(updateQuery, values);
+        const updatedClarification = formatClarification(result.rows[0]);
+        console.log(`✅ Bilateral clarification status updated: ${id} to ${status} by user ${(_b = req.user) === null || _b === void 0 ? void 0 : _b.id}`);
+        res.json({
+            message: 'Status erfolgreich aktualisiert',
+            clarification: updatedClarification
+        });
+    }
+    catch (error) {
+        console.error('Error updating clarification status:', error);
+        res.status(500).json({
+            error: 'Fehler beim Aktualisieren des Status',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// PUT /api/bilateral-clarifications/:id
+router.put('/:id', auth_1.authenticateToken, async (req, res) => {
+    var _a, _b;
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        // Check if clarification exists
+        const checkQuery = 'SELECT * FROM bilateral_clarifications WHERE id = $1 AND archived = FALSE';
+        const checkResult = await database_1.default.query(checkQuery, [id]);
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Klärfall nicht gefunden' });
+        }
+        // Build dynamic update query
+        const allowedFields = [
+            'title', 'description', 'priority', 'assigned_to',
+            'tags', 'shared_with_team'
+        ];
+        const updateFields = [];
+        const updateValues = [];
+        let paramCounter = 1;
+        Object.keys(updates).forEach(key => {
+            const dbField = key === 'assignedTo' ? 'assigned_to' :
+                key === 'sharedWithTeam' ? 'shared_with_team' : key;
+            if (allowedFields.includes(dbField)) {
+                updateFields.push(`${dbField} = $${paramCounter}`);
+                updateValues.push(updates[key]);
+                paramCounter++;
+            }
+        });
+        if (updateFields.length === 0) {
+            return res.status(400).json({ error: 'Keine gültigen Felder zum Aktualisieren gefunden' });
+        }
+        // Add audit fields
+        updateFields.push(`last_modified_by = $${paramCounter}`);
+        updateValues.push(((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || 'system');
+        paramCounter++;
+        updateFields.push(`version = version + 1`);
+        // Add WHERE clause
+        updateValues.push(id);
+        const whereClause = `WHERE id = $${paramCounter} AND archived = FALSE`;
+        const updateQuery = `
+      UPDATE bilateral_clarifications 
+      SET ${updateFields.join(', ')}
+      ${whereClause}
+      RETURNING *
+    `;
+        const result = await database_1.default.query(updateQuery, updateValues);
+        const updatedClarification = formatClarification(result.rows[0]);
+        console.log(`✅ Bilateral clarification updated: ${id} by user ${(_b = req.user) === null || _b === void 0 ? void 0 : _b.id}`);
+        res.json({
+            message: 'Klärfall erfolgreich aktualisiert',
+            clarification: updatedClarification
+        });
+    }
+    catch (error) {
+        console.error('Error updating clarification:', error);
+        res.status(500).json({
+            error: 'Fehler beim Aktualisieren des Klärfalls',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }

@@ -83,7 +83,7 @@ const formatClarification = (row) => ({
   
   // Computed fields
   isOverdue: row.due_date && new Date(row.due_date) < new Date() && row.status !== 'CLOSED' && row.status !== 'RESOLVED',
-  daysSinceCreated: Math.floor((new Date() - new Date(row.created_at)) / (1000 * 60 * 60 * 24))
+  daysSinceCreated: Math.floor((new Date().getTime() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24))
 });
 
 // GET /api/bilateral-clarifications
@@ -130,7 +130,7 @@ router.get('/', authenticateToken, async (req, res) => {
              (bc.shared_with_team = true AND bc.team_id = $2))
     `;
     
-    const queryParams = [req.user.id, req.user.teamId];
+    const queryParams = [req.user?.id, req.user?.teamId];
     let paramCounter = 3;
 
     // Add filters
@@ -226,9 +226,11 @@ router.get('/', authenticateToken, async (req, res) => {
     query += ` ORDER BY ${sortColumn} ${direction}`;
 
     // Add pagination
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const offset = (pageNum - 1) * limitNum;
     query += ` LIMIT $${paramCounter} OFFSET $${paramCounter + 1}`;
-    queryParams.push(limit, offset);
+    queryParams.push(limitNum, offset);
 
     const result = await pool.query(query, queryParams);
 
@@ -242,7 +244,7 @@ router.get('/', authenticateToken, async (req, res) => {
              (bc.shared_with_team = true AND bc.team_id = $2))
     `;
     // Apply same filters for count (simplified version)
-    const countResult = await pool.query(countQuery, [req.user.id, req.user.teamId]);
+    const countResult = await pool.query(countQuery, [req.user?.id, req.user?.teamId]);
     const total = parseInt(countResult.rows[0].total);
 
     // Get summary stats
@@ -259,7 +261,7 @@ router.get('/', authenticateToken, async (req, res) => {
         AND (created_by = $1 OR assigned_to = $1 OR 
              (shared_with_team = true AND team_id = $2))
     `;
-    const summaryResult = await pool.query(summaryQuery, [req.user.id, req.user.teamId]);
+    const summaryResult = await pool.query(summaryQuery, [req.user?.id, req.user?.teamId]);
 
     const clarifications = result.rows.map(row => ({
       ...formatClarification(row),
@@ -274,10 +276,10 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json({
       clarifications,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limitNum)
       },
       summary: {
         totalOpen: parseInt(summaryResult.rows[0].total_open) || 0,
@@ -382,56 +384,71 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // POST /api/bilateral-clarifications
 // Create new clarification
-router.post('/', authenticateToken, validateClarification, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       title,
       description,
-      marketPartnerCode,
-      caseType,
+      marketPartner,
+      selectedRole,
+      selectedContact,
+      dataExchangeReference,
       priority = 'MEDIUM',
       assignedTo,
-      dueDate,
       tags = [],
       externalCaseId,
-      sourceSystem = 'MANUAL'
+      sourceSystem = 'MANUAL',
+      // Legacy support
+      marketPartnerCode,
+      caseType
     } = req.body;
 
-    // Validate required fields
-    if (!title || !marketPartnerCode || !caseType) {
+    // Handle both new and legacy format
+    const partnerCode = marketPartner?.code || marketPartnerCode;
+    const partnerName = marketPartner?.companyName || `Partner ${partnerCode}`;
+    const casetype = caseType || 'B2B'; // Default to B2B for bilateral clarifications
+
+    // Validate required fields for bilateral clarifications
+    if (!title || !partnerCode || !dataExchangeReference?.dar) {
       return res.status(400).json({ 
-        error: 'Titel, Marktpartner-Code und Fall-Typ sind erforderlich' 
+        error: 'Titel, Marktpartner und Datenaustauschreferenz (DAR) sind erforderlich' 
       });
     }
 
-    // TODO: Get market partner name from CodeLookup service
-    // For now, we'll use a placeholder
-    const marketPartnerName = `Partner ${marketPartnerCode}`;
+    if (!selectedRole) {
+      return res.status(400).json({ 
+        error: 'Marktrolle ist erforderlich' 
+      });
+    }
 
     const insertQuery = `
       INSERT INTO bilateral_clarifications 
       (title, description, market_partner_code, market_partner_name, case_type, 
-       priority, created_by, assigned_to, due_date, tags, external_case_id, 
-       source_system, team_id, last_modified_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       priority, created_by, assigned_to, tags, external_case_id, 
+       source_system, team_id, last_modified_by, market_partner_data, selected_role, 
+       selected_contact, data_exchange_reference)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
 
     const values = [
       title,
       description,
-      marketPartnerCode,
-      marketPartnerName,
-      caseType,
+      partnerCode,
+      partnerName,
+      casetype,
       priority,
       req.user.id,
       assignedTo || null,
-      dueDate || null,
       tags,
       externalCaseId || null,
       sourceSystem,
       req.user.teamId,
-      req.user.id
+      req.user.id,
+      JSON.stringify(marketPartner),
+      JSON.stringify(selectedRole),
+      JSON.stringify(selectedContact),
+      JSON.stringify(dataExchangeReference)
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -693,7 +710,7 @@ router.delete('/:id/attachments/:attachmentId', authenticateToken, async (req, r
 
 // POST /api/bilateral-clarifications/:id/notes
 // Add note to clarification
-router.post('/:id/notes', authenticateToken, validateNote, async (req, res) => {
+router.post('/:id/notes', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -868,7 +885,7 @@ router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
 
 // POST /api/bilateral-clarifications/:id/team-comments
 // Add team comment to shared clarification
-router.post('/:id/team-comments', authenticateToken, validateComment, async (req, res) => {
+router.post('/:id/team-comments', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { content, parentCommentId, mentionedUsers = [] } = req.body;
@@ -1066,110 +1083,226 @@ router.post('/:id/emails', authenticateToken, async (req, res) => {
   }
 });
 
-// PATCH /api/bilateral-clarifications/:id/status
-// Update clarification status
+// Email-Versand-Endpunkt für bilaterale Klärungen
+router.post('/:id/send-email', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { to, cc, subject, body, includeAttachments, attachmentIds } = req.body;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Benutzer nicht authentifiziert' });
+    }
+
+    // Klärfall abrufen und Berechtigung prüfen
+    const clarificationQuery = `
+      SELECT c.*, 
+             mp.code as market_partner_code,
+             mp.company_name as market_partner_name,
+             dar.dar_number
+      FROM bilateral_clarifications c
+      LEFT JOIN market_partners mp ON c.market_partner_id = mp.id
+      LEFT JOIN data_exchange_references dar ON c.dar_id = dar.id
+      WHERE c.id = $1 AND (c.created_by = $2 OR c.assigned_to = $2)
+    `;
+    
+    const clarificationResult = await pool.query(clarificationQuery, [id, req.user.id]);
+    
+    if (clarificationResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
+    }
+
+    const clarification = clarificationResult.rows[0];
+
+    // Email-Transport konfigurieren (sollte aus Umgebungsvariablen kommen)
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'localhost',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    // Email-Optionen
+    const mailOptions = {
+      from: process.env.FROM_EMAIL || 'noreply@marktkommunikation.de',
+      to: to,
+      subject: subject,
+      text: body,
+      html: body.replace(/\n/g, '<br>'), // Einfache Text-zu-HTML-Konvertierung
+    };
+
+    if (cc) {
+      mailOptions.cc = cc;
+    }
+
+    // Anhänge hinzufügen falls gewünscht
+    if (includeAttachments && attachmentIds?.length > 0) {
+      const attachmentsQuery = `
+        SELECT filename, file_path, original_filename, mime_type
+        FROM clarification_attachments 
+        WHERE id = ANY($1) AND clarification_id = $2
+      `;
+      
+      const attachmentsResult = await pool.query(attachmentsQuery, [attachmentIds, id]);
+      
+      mailOptions.attachments = attachmentsResult.rows.map(att => ({
+        filename: att.original_filename,
+        path: att.file_path,
+        contentType: att.mime_type
+      }));
+    }
+
+    // Email versenden
+    const info = await transporter.sendMail(mailOptions);
+
+    // Status und Email-Record aktualisieren
+    const updateStatusQuery = `
+      UPDATE bilateral_clarifications 
+      SET status = 'SENT', 
+          internal_status = 'SENT',
+          last_sent_at = CURRENT_TIMESTAMP,
+          sent_to_email = $1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `;
+    
+    await pool.query(updateStatusQuery, [to, id]);
+
+    // Email-Record hinzufügen
+    const emailRecordQuery = `
+      INSERT INTO clarification_emails (
+        clarification_id, direction, subject, from_address, to_addresses, 
+        content, content_type, added_by, source, email_type, message_id
+      ) VALUES ($1, 'OUTGOING', $2, $3, $4, $5, 'text', $6, 'system', 'CLARIFICATION_REQUEST', $7)
+      RETURNING id
+    `;
+    
+    await pool.query(emailRecordQuery, [
+      id, subject, mailOptions.from, [to], body, req.user.id, info.messageId
+    ]);
+
+    logger.info(`Clarification email sent for case ${id} to ${to} by user ${req.user.id}`);
+
+    res.json({
+      success: true,
+      messageId: info.messageId,
+      sentAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Error sending clarification email:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Versenden der E-Mail',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Status-Update-Endpunkt
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, internalNotes, statusMessage } = req.body;
+    const { status, internalStatus, reason } = req.body;
 
-    // Validate status
-    const validStatuses = ['DRAFT', 'INTERNAL', 'READY_TO_SEND', 'SENT', 'PENDING', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ESCALATED'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Ungültiger Status' });
+    if (!req.user) {
+      return res.status(401).json({ error: 'Benutzer nicht authentifiziert' });
     }
 
-    // Check permissions
-    const permissionQuery = `
-      SELECT * FROM bilateral_clarifications 
+    // Berechtigung prüfen
+    const checkQuery = `
+      SELECT id FROM bilateral_clarifications 
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)
     `;
-    const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
-
-    if (permissionResult.rows.length === 0) {
-      return res.status(403).json({ error: 'Keine Berechtigung zum Bearbeiten dieses Klärfalls' });
+    
+    const checkResult = await pool.query(checkQuery, [id, req.user.id]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
     }
 
-    const oldStatus = permissionResult.rows[0].status;
-
-    // Update status with timestamp tracking
+    // Status aktualisieren
     const updateQuery = `
       UPDATE bilateral_clarifications 
-      SET status = $1, last_modified_by = $2, updated_at = NOW(),
-          last_sent_at = CASE WHEN $1 = 'SENT' THEN NOW() ELSE last_sent_at END,
-          resolved_at = CASE WHEN $1 = 'RESOLVED' THEN NOW() ELSE resolved_at END,
-          closed_at = CASE WHEN $1 = 'CLOSED' THEN NOW() ELSE closed_at END
-      WHERE id = $3
+      SET status = $1, 
+          internal_status = COALESCE($2, internal_status),
+          updated_at = CURRENT_TIMESTAMP,
+          last_modified_by = $3
+      WHERE id = $4
       RETURNING *
     `;
-    const result = await pool.query(updateQuery, [status, req.user.id, id]);
+    
+    const result = await pool.query(updateQuery, [status, internalStatus, req.user.id, id]);
 
-    // Create detailed status change note with context
-    let noteContent = statusMessage || `Status geändert von "${oldStatus}" zu "${status}"`;
-    
-    // Add additional context based on status transition
-    if (oldStatus === 'SENT' && status === 'RESOLVED') {
-      noteContent = 'Klärfall abgeschlossen nach Erhalt der Marktpartner-Antwort';
-      if (internalNotes) {
-        noteContent += `\n\nDetails zur Antwort: ${internalNotes}`;
-      }
-      noteContent += '\n\nDer Klärfall wurde erfolgreich abgeschlossen. Alle Fragen wurden geklärt.';
-    } else if (oldStatus === 'SENT' && status === 'INTERNAL') {
-      noteContent = 'Interne Klärung nach Marktpartner-Antwort fortgesetzt';
-      if (internalNotes) {
-        noteContent += `\n\nDetails zur Antwort: ${internalNotes}`;
-      }
-      noteContent += '\n\nDie Antwort des Marktpartners erfordert weitere interne Bearbeitung oder Nachfragen.';
-    } else if ((oldStatus === 'RESOLVED' || oldStatus === 'CLOSED') && status === 'INTERNAL') {
-      noteContent = 'Klärfall wiedereröffnet';
-      if (internalNotes) {
-        noteContent += `\n\nGrund für Wiedereröffnung: ${internalNotes}`;
-      }
-      noteContent += '\n\nNeue Informationen oder Probleme erfordern eine erneute Bearbeitung des Falls.';
-    } else if (oldStatus === 'READY_TO_SEND' && status === 'SENT') {
-      noteContent = 'Anfrage erfolgreich an Marktpartner versendet';
-      if (internalNotes) {
-        noteContent += `\n\nVersandnotizen: ${internalNotes}`;
-      }
-      noteContent += '\n\nDie qualifizierte Anfrage wurde an den Marktpartner übermittelt. Warten auf Antwort.';
-    } else if (oldStatus === 'INTERNAL' && status === 'READY_TO_SEND') {
-      noteContent = 'Interne Klärung abgeschlossen - Bereit zum Versenden';
-      if (internalNotes) {
-        noteContent += `\n\nZusammenfassung: ${internalNotes}`;
-      }
-      noteContent += '\n\nAlle internen Recherchen sind abgeschlossen. Die Anfrage kann nun an den Marktpartner gesendet werden.';
-    } else if (oldStatus === 'DRAFT' && status === 'INTERNAL') {
-      noteContent = 'Interne Klärung begonnen';
-      if (internalNotes) {
-        noteContent += `\n\nStartnotizen: ${internalNotes}`;
-      }
-      noteContent += '\n\nDer Klärfall wird nun intern bearbeitet. Sammlung aller relevanten Informationen gestartet.';
-    }
-    
-    if (internalNotes && !noteContent.includes(internalNotes)) {
-      noteContent += `\n\nZusätzliche Notizen: ${internalNotes}`;
+    // Status-History-Eintrag hinzufügen
+    if (reason) {
+      const historyQuery = `
+        INSERT INTO clarification_status_history (
+          clarification_id, old_status, new_status, changed_by, reason
+        ) VALUES ($1, (
+          SELECT status FROM bilateral_clarifications WHERE id = $1
+        ), $2, $3, $4)
+      `;
+      
+      await pool.query(historyQuery, [id, status, req.user.id, reason]);
     }
 
-    const noteQuery = `
-      INSERT INTO clarification_notes 
-      (clarification_id, content, note_type, created_by, is_internal, title)
-      VALUES ($1, $2, 'STATUS_CHANGE', $3, true, $4)
-    `;
-    
-    const noteTitle = `Status-Änderung: ${oldStatus} → ${status}`;
-    await pool.query(noteQuery, [id, noteContent, req.user.id, noteTitle]);
+    logger.info(`Status updated for clarification ${id} to ${status} by user ${req.user.id}`);
 
-    logger.info(`Clarification ${id} status changed from ${oldStatus} to ${status} by user ${req.user.id}`);
-
-    res.json({
-      message: 'Status erfolgreich aktualisiert',
-      clarification: formatClarification(result.rows[0])
-    });
+    res.json(result.rows[0]);
 
   } catch (error) {
     logger.error('Error updating clarification status:', error);
     res.status(500).json({ 
       error: 'Fehler beim Aktualisieren des Status',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Email-Validierung für Marktpartner
+router.get('/validate-email', authenticateToken, async (req, res) => {
+  try {
+    const { marketPartnerCode, role } = req.query;
+
+    if (!marketPartnerCode || !role) {
+      return res.status(400).json({ error: 'Marktpartner-Code und Rolle sind erforderlich' });
+    }
+
+    // Marktpartner und Kontakt suchen
+    const contactQuery = `
+      SELECT mp.company_name, c.contact_name, c.contact_email, c.role
+      FROM market_partners mp
+      LEFT JOIN market_partner_contacts c ON mp.id = c.market_partner_id
+      WHERE mp.code = $1 AND c.role = $2 AND c.contact_email IS NOT NULL
+      ORDER BY c.is_default DESC, c.id ASC
+      LIMIT 1
+    `;
+    
+    const result = await pool.query(contactQuery, [marketPartnerCode, role]);
+
+    if (result.rows.length === 0) {
+      return res.json({
+        isValid: false,
+        error: 'Kein E-Mail-Kontakt für diesen Marktpartner und Rolle gefunden'
+      });
+    }
+
+    const contact = result.rows[0];
+
+    res.json({
+      isValid: true,
+      email: contact.contact_email,
+      contactName: contact.contact_name,
+      companyName: contact.company_name
+    });
+
+  } catch (error) {
+    logger.error('Error validating market partner email:', error);
+    res.status(500).json({ 
+      error: 'Fehler bei der Email-Validierung',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -1190,4 +1323,4 @@ router.use((error, req, res, next) => {
   res.status(500).json({ error: 'Unerwarteter Server-Fehler' });
 });
 
-module.exports = router;
+export default router;

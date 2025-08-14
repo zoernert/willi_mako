@@ -2,34 +2,37 @@
 // Express Router für Bilaterale Klärfälle API
 // Erstellt: 12. August 2025
 // Beschreibung: REST API Endpoints für das Bilateral Clarification System
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = require("fs");
+const express = require('express');
+const router = express.Router();
+const { Pool } = require('pg');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
 // Import existing middleware (assuming they exist)
-const auth_1 = require("../middleware/auth");
-// import { validateClarification, validateNote, validateComment } from '../middleware/validation';
-const logger_1 = require("../utils/logger");
-const database_1 = __importDefault(require("../config/database")); // Use the central database connection
-const router = express_1.default.Router();
+const { authenticateToken, requireRole } = require('../middleware/auth');
+const { validateClarification, validateNote, validateComment } = require('../middleware/validation');
+const { logger } = require('../utils/logger');
+// Database connection (assuming existing connection)
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 // Multer Setup für File Uploads
-const storage = multer_1.default.diskStorage({
+const storage = multer.diskStorage({
     destination: async (req, file, cb) => {
-        const uploadDir = path_1.default.join(__dirname, '../../uploads/clarifications');
-        await fs_1.promises.mkdir(uploadDir, { recursive: true });
+        const uploadDir = path.join(__dirname, '../../uploads/clarifications');
+        await fs.mkdir(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const extension = path_1.default.extname(file.originalname);
+        const extension = path.extname(file.originalname);
         cb(null, `clarification-${uniqueSuffix}${extension}`);
     }
 });
-const upload = (0, multer_1.default)({
+const upload = multer({
     storage: storage,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB limit
@@ -37,7 +40,7 @@ const upload = (0, multer_1.default)({
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|xml|eml/;
-        const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
         if (mimetype && extname) {
             return cb(null, true);
@@ -82,7 +85,8 @@ const formatClarification = (row) => {
 };
 // GET /api/bilateral-clarifications
 // Retrieve clarifications with filtering, sorting, and pagination
-router.get('/', auth_1.authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
+    var _a, _b, _c, _d, _e, _f;
     try {
         const { status, caseType, priority, assignedTo, createdBy, marketPartner, tags, sharedWithTeam, search, isOverdue, hasAttachments, dateRangeStart, dateRangeEnd, sortField = 'createdAt', sortDirection = 'desc', page = 1, limit = 20 } = req.query;
         let query = `
@@ -104,7 +108,7 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
         AND (bc.created_by = $1 OR bc.assigned_to = $1 OR 
              (bc.shared_with_team = true AND bc.team_id = $2))
     `;
-        const queryParams = [req.user.id, req.user.teamId];
+        const queryParams = [(_a = req.user) === null || _a === void 0 ? void 0 : _a.id, (_b = req.user) === null || _b === void 0 ? void 0 : _b.teamId];
         let paramCounter = 3;
         // Add filters
         if (status && Array.isArray(status)) {
@@ -184,10 +188,12 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
         const direction = sortDirection === 'asc' ? 'ASC' : 'DESC';
         query += ` ORDER BY ${sortColumn} ${direction}`;
         // Add pagination
-        const offset = (page - 1) * limit;
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 20;
+        const offset = (pageNum - 1) * limitNum;
         query += ` LIMIT $${paramCounter} OFFSET $${paramCounter + 1}`;
-        queryParams.push(limit, offset);
-        const result = await database_1.default.query(query, queryParams);
+        queryParams.push(limitNum, offset);
+        const result = await pool.query(query, queryParams);
         // Get total count for pagination
         let countQuery = `
       SELECT COUNT(DISTINCT bc.id) as total
@@ -198,7 +204,7 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
              (bc.shared_with_team = true AND bc.team_id = $2))
     `;
         // Apply same filters for count (simplified version)
-        const countResult = await database_1.default.query(countQuery, [req.user.id, req.user.teamId]);
+        const countResult = await pool.query(countQuery, [(_c = req.user) === null || _c === void 0 ? void 0 : _c.id, (_d = req.user) === null || _d === void 0 ? void 0 : _d.teamId]);
         const total = parseInt(countResult.rows[0].total);
         // Get summary stats
         const summaryQuery = `
@@ -214,7 +220,7 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
         AND (created_by = $1 OR assigned_to = $1 OR 
              (shared_with_team = true AND team_id = $2))
     `;
-        const summaryResult = await database_1.default.query(summaryQuery, [req.user.id, req.user.teamId]);
+        const summaryResult = await pool.query(summaryQuery, [(_e = req.user) === null || _e === void 0 ? void 0 : _e.id, (_f = req.user) === null || _f === void 0 ? void 0 : _f.teamId]);
         const clarifications = result.rows.map(row => ({
             ...formatClarification(row),
             attachmentCount: parseInt(row.attachment_count) || 0,
@@ -227,10 +233,10 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
         res.json({
             clarifications,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: pageNum,
+                limit: limitNum,
                 total,
-                totalPages: Math.ceil(total / limit)
+                totalPages: Math.ceil(total / limitNum)
             },
             summary: {
                 totalOpen: parseInt(summaryResult.rows[0].total_open) || 0,
@@ -243,7 +249,7 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error('Error fetching clarifications:', error);
+        logger.error('Error fetching clarifications:', error);
         res.status(500).json({
             error: 'Fehler beim Laden der Klärfälle',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -252,7 +258,7 @@ router.get('/', auth_1.authenticateToken, async (req, res) => {
 });
 // GET /api/bilateral-clarifications/:id
 // Get single clarification with all related data
-router.get('/:id', auth_1.authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         // Check access permissions
@@ -262,7 +268,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
         AND (created_by = $2 OR assigned_to = $2 OR 
              (shared_with_team = true AND team_id = $3))
     `;
-        const accessResult = await database_1.default.query(accessQuery, [id, req.user.id, req.user.teamId]);
+        const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
         if (accessResult.rows.length === 0) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -275,7 +281,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
       WHERE ca.clarification_id = $1 AND ca.archived = false
       ORDER BY ca.uploaded_at DESC
     `;
-        const attachmentsResult = await database_1.default.query(attachmentsQuery, [id]);
+        const attachmentsResult = await pool.query(attachmentsQuery, [id]);
         // Get notes
         const notesQuery = `
       SELECT cn.*, u.name as author_name
@@ -284,7 +290,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
       WHERE cn.clarification_id = $1 AND cn.archived = false
       ORDER BY cn.created_at DESC
     `;
-        const notesResult = await database_1.default.query(notesQuery, [id]);
+        const notesResult = await pool.query(notesQuery, [id]);
         // Get team comments (if shared with team)
         let teamComments = [];
         if (clarification.sharedWithTeam) {
@@ -295,7 +301,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
         WHERE ctc.clarification_id = $1 AND ctc.archived = false
         ORDER BY ctc.created_at ASC
       `;
-            const commentsResult = await database_1.default.query(commentsQuery, [id]);
+            const commentsResult = await pool.query(commentsQuery, [id]);
             teamComments = commentsResult.rows;
         }
         // Get emails
@@ -306,7 +312,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
       WHERE ce.clarification_id = $1 AND ce.archived = false
       ORDER BY ce.added_at DESC
     `;
-        const emailsResult = await database_1.default.query(emailsQuery, [id]);
+        const emailsResult = await pool.query(emailsQuery, [id]);
         res.json({
             ...clarification,
             attachments: attachmentsResult.rows,
@@ -316,7 +322,7 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error('Error fetching clarification details:', error);
+        logger.error('Error fetching clarification details:', error);
         res.status(500).json({
             error: 'Fehler beim Laden der Klärfall-Details',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -325,53 +331,65 @@ router.get('/:id', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications
 // Create new clarification
-router.post('/', auth_1.authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { title, description, marketPartnerCode, caseType, priority = 'MEDIUM', assignedTo, dueDate, tags = [], externalCaseId, sourceSystem = 'MANUAL' } = req.body;
-        // Validate required fields
-        if (!title || !marketPartnerCode || !caseType) {
+        const { title, description, marketPartner, selectedRole, selectedContact, dataExchangeReference, priority = 'MEDIUM', assignedTo, tags = [], externalCaseId, sourceSystem = 'MANUAL', 
+        // Legacy support
+        marketPartnerCode, caseType } = req.body;
+        // Handle both new and legacy format
+        const partnerCode = (marketPartner === null || marketPartner === void 0 ? void 0 : marketPartner.code) || marketPartnerCode;
+        const partnerName = (marketPartner === null || marketPartner === void 0 ? void 0 : marketPartner.companyName) || `Partner ${partnerCode}`;
+        const casetype = caseType || 'B2B'; // Default to B2B for bilateral clarifications
+        // Validate required fields for bilateral clarifications
+        if (!title || !partnerCode || !(dataExchangeReference === null || dataExchangeReference === void 0 ? void 0 : dataExchangeReference.dar)) {
             return res.status(400).json({
-                error: 'Titel, Marktpartner-Code und Fall-Typ sind erforderlich'
+                error: 'Titel, Marktpartner und Datenaustauschreferenz (DAR) sind erforderlich'
             });
         }
-        // TODO: Get market partner name from CodeLookup service
-        // For now, we'll use a placeholder
-        const marketPartnerName = `Partner ${marketPartnerCode}`;
+        if (!selectedRole) {
+            return res.status(400).json({
+                error: 'Marktrolle ist erforderlich'
+            });
+        }
         const insertQuery = `
       INSERT INTO bilateral_clarifications 
       (title, description, market_partner_code, market_partner_name, case_type, 
-       priority, created_by, assigned_to, due_date, tags, external_case_id, 
-       source_system, team_id, last_modified_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       priority, created_by, assigned_to, tags, external_case_id, 
+       source_system, team_id, last_modified_by, market_partner_data, selected_role, 
+       selected_contact, data_exchange_reference)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
         const values = [
             title,
             description,
-            marketPartnerCode,
-            marketPartnerName,
-            caseType,
+            partnerCode,
+            partnerName,
+            casetype,
             priority,
             req.user.id,
             assignedTo || null,
-            dueDate || null,
             tags,
             externalCaseId || null,
             sourceSystem,
             req.user.teamId,
-            req.user.id
+            req.user.id,
+            JSON.stringify(marketPartner),
+            JSON.stringify(selectedRole),
+            JSON.stringify(selectedContact),
+            JSON.stringify(dataExchangeReference)
         ];
-        const result = await database_1.default.query(insertQuery, values);
+        const result = await pool.query(insertQuery, values);
         const newClarification = formatClarification(result.rows[0]);
         // Log the creation
-        logger_1.logger.info(`Clarification created: ${newClarification.id} by user ${req.user.id}`);
+        logger.info(`Clarification created: ${newClarification.id} by user ${req.user.id}`);
         res.status(201).json({
             message: 'Klärfall erfolgreich erstellt',
             clarification: newClarification
         });
     }
     catch (error) {
-        logger_1.logger.error('Error creating clarification:', error);
+        logger.error('Error creating clarification:', error);
         res.status(500).json({
             error: 'Fehler beim Erstellen des Klärfalls',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -380,7 +398,7 @@ router.post('/', auth_1.authenticateToken, async (req, res) => {
 });
 // PUT /api/bilateral-clarifications/:id
 // Update clarification
-router.put('/:id', auth_1.authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -389,7 +407,7 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)
     `;
-        const permissionResult = await database_1.default.query(permissionQuery, [id, req.user.id]);
+        const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
         if (permissionResult.rows.length === 0) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Bearbeiten dieses Klärfalls' });
         }
@@ -428,17 +446,17 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
       WHERE id = $${paramCounter}
       RETURNING *
     `;
-        const result = await database_1.default.query(updateQuery, updateValues);
+        const result = await pool.query(updateQuery, updateValues);
         const updatedClarification = formatClarification(result.rows[0]);
         // Log the update
-        logger_1.logger.info(`Clarification updated: ${id} by user ${req.user.id}`);
+        logger.info(`Clarification updated: ${id} by user ${req.user.id}`);
         res.json({
             message: 'Klärfall erfolgreich aktualisiert',
             clarification: updatedClarification
         });
     }
     catch (error) {
-        logger_1.logger.error('Error updating clarification:', error);
+        logger.error('Error updating clarification:', error);
         res.status(500).json({
             error: 'Fehler beim Aktualisieren des Klärfalls',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -447,7 +465,7 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
 });
 // DELETE /api/bilateral-clarifications/:id
 // Archive (soft delete) clarification
-router.delete('/:id', auth_1.authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         // Check permissions (only creator or admin can delete)
@@ -455,7 +473,7 @@ router.delete('/:id', auth_1.authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-        const permissionResult = await database_1.default.query(permissionQuery, [id, req.user.id]);
+        const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
         if (permissionResult.rows.length === 0) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Klärfalls' });
         }
@@ -465,12 +483,12 @@ router.delete('/:id', auth_1.authenticateToken, async (req, res) => {
       SET archived = true, archived_at = NOW(), last_modified_by = $2
       WHERE id = $1
     `;
-        await database_1.default.query(archiveQuery, [id, req.user.id]);
-        logger_1.logger.info(`Clarification archived: ${id} by user ${req.user.id}`);
+        await pool.query(archiveQuery, [id, req.user.id]);
+        logger.info(`Clarification archived: ${id} by user ${req.user.id}`);
         res.json({ message: 'Klärfall erfolgreich archiviert' });
     }
     catch (error) {
-        logger_1.logger.error('Error archiving clarification:', error);
+        logger.error('Error archiving clarification:', error);
         res.status(500).json({
             error: 'Fehler beim Archivieren des Klärfalls',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -479,7 +497,7 @@ router.delete('/:id', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/attachments
 // Upload attachment to clarification
-router.post('/:id/attachments', auth_1.authenticateToken, upload.array('attachments', 5), async (req, res) => {
+router.post('/:id/attachments', authenticateToken, upload.array('attachments', 5), async (req, res) => {
     try {
         const { id } = req.params;
         const { attachmentType = 'DOCUMENT', attachmentCategory = 'GENERAL', description, isSensitive = false } = req.body;
@@ -489,7 +507,7 @@ router.post('/:id/attachments', auth_1.authenticateToken, upload.array('attachme
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-        const accessResult = await database_1.default.query(accessQuery, [id, req.user.id, req.user.teamId]);
+        const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
         if (accessResult.rows.length === 0) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -518,17 +536,17 @@ router.post('/:id/attachments', auth_1.authenticateToken, upload.array('attachme
                 description || null,
                 isSensitive
             ];
-            const result = await database_1.default.query(insertQuery, values);
+            const result = await pool.query(insertQuery, values);
             uploadedAttachments.push(result.rows[0]);
         }
-        logger_1.logger.info(`${uploadedAttachments.length} attachments uploaded to clarification ${id} by user ${req.user.id}`);
+        logger.info(`${uploadedAttachments.length} attachments uploaded to clarification ${id} by user ${req.user.id}`);
         res.status(201).json({
             message: 'Anhänge erfolgreich hochgeladen',
             attachments: uploadedAttachments
         });
     }
     catch (error) {
-        logger_1.logger.error('Error uploading attachments:', error);
+        logger.error('Error uploading attachments:', error);
         res.status(500).json({
             error: 'Fehler beim Hochladen der Anhänge',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -537,7 +555,7 @@ router.post('/:id/attachments', auth_1.authenticateToken, upload.array('attachme
 });
 // DELETE /api/bilateral-clarifications/:id/attachments/:attachmentId
 // Delete attachment
-router.delete('/:id/attachments/:attachmentId', auth_1.authenticateToken, async (req, res) => {
+router.delete('/:id/attachments/:attachmentId', authenticateToken, async (req, res) => {
     try {
         const { id, attachmentId } = req.params;
         // Check permissions
@@ -547,7 +565,7 @@ router.delete('/:id/attachments/:attachmentId', auth_1.authenticateToken, async 
       JOIN bilateral_clarifications bc ON ca.clarification_id = bc.id
       WHERE ca.id = $1 AND ca.clarification_id = $2
     `;
-        const permissionResult = await database_1.default.query(permissionQuery, [attachmentId, id]);
+        const permissionResult = await pool.query(permissionQuery, [attachmentId, id]);
         if (permissionResult.rows.length === 0) {
             return res.status(404).json({ error: 'Anhang nicht gefunden' });
         }
@@ -564,12 +582,12 @@ router.delete('/:id/attachments/:attachmentId', auth_1.authenticateToken, async 
       SET archived = true, archived_at = NOW()
       WHERE id = $1
     `;
-        await database_1.default.query(deleteQuery, [attachmentId]);
-        logger_1.logger.info(`Attachment ${attachmentId} deleted from clarification ${id} by user ${req.user.id}`);
+        await pool.query(deleteQuery, [attachmentId]);
+        logger.info(`Attachment ${attachmentId} deleted from clarification ${id} by user ${req.user.id}`);
         res.json({ message: 'Anhang erfolgreich gelöscht' });
     }
     catch (error) {
-        logger_1.logger.error('Error deleting attachment:', error);
+        logger.error('Error deleting attachment:', error);
         res.status(500).json({
             error: 'Fehler beim Löschen des Anhangs',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -578,7 +596,7 @@ router.delete('/:id/attachments/:attachmentId', auth_1.authenticateToken, async 
 });
 // POST /api/bilateral-clarifications/:id/notes
 // Add note to clarification
-router.post('/:id/notes', auth_1.authenticateToken, async (req, res) => {
+router.post('/:id/notes', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { content, noteType = 'USER', isInternal = false, linkedAttachmentId, linkedEmailId, tags = [], isPinned = false } = req.body;
@@ -588,7 +606,7 @@ router.post('/:id/notes', auth_1.authenticateToken, async (req, res) => {
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-        const accessResult = await database_1.default.query(accessQuery, [id, req.user.id, req.user.teamId]);
+        const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
         if (accessResult.rows.length === 0) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -610,15 +628,15 @@ router.post('/:id/notes', auth_1.authenticateToken, async (req, res) => {
             tags,
             isPinned
         ];
-        const result = await database_1.default.query(insertQuery, values);
-        logger_1.logger.info(`Note added to clarification ${id} by user ${req.user.id}`);
+        const result = await pool.query(insertQuery, values);
+        logger.info(`Note added to clarification ${id} by user ${req.user.id}`);
         res.status(201).json({
             message: 'Notiz erfolgreich hinzugefügt',
             note: result.rows[0]
         });
     }
     catch (error) {
-        logger_1.logger.error('Error adding note:', error);
+        logger.error('Error adding note:', error);
         res.status(500).json({
             error: 'Fehler beim Hinzufügen der Notiz',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -627,7 +645,7 @@ router.post('/:id/notes', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/share-team
 // Share clarification with team
-router.post('/:id/share-team', auth_1.authenticateToken, async (req, res) => {
+router.post('/:id/share-team', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         // Check permissions (only creator can share)
@@ -635,7 +653,7 @@ router.post('/:id/share-team', auth_1.authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-        const permissionResult = await database_1.default.query(permissionQuery, [id, req.user.id]);
+        const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
         if (permissionResult.rows.length === 0) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Freigeben dieses Klärfalls' });
         }
@@ -646,27 +664,27 @@ router.post('/:id/share-team', auth_1.authenticateToken, async (req, res) => {
       WHERE id = $1
       RETURNING *
     `;
-        const result = await database_1.default.query(updateQuery, [id, req.user.id]);
+        const result = await pool.query(updateQuery, [id, req.user.id]);
         // Log team activity
         const activityQuery = `
       INSERT INTO clarification_team_activities 
       (clarification_id, team_id, user_id, activity_type, description, metadata)
       VALUES ($1, $2, $3, 'SHARED', 'Klärfall für Team freigegeben', $4)
     `;
-        await database_1.default.query(activityQuery, [
+        await pool.query(activityQuery, [
             id,
             req.user.teamId,
             req.user.id,
             JSON.stringify({ shared_at: new Date().toISOString() })
         ]);
-        logger_1.logger.info(`Clarification ${id} shared with team by user ${req.user.id}`);
+        logger.info(`Clarification ${id} shared with team by user ${req.user.id}`);
         res.json({
             message: 'Klärfall erfolgreich für Team freigegeben',
             clarification: formatClarification(result.rows[0])
         });
     }
     catch (error) {
-        logger_1.logger.error('Error sharing clarification with team:', error);
+        logger.error('Error sharing clarification with team:', error);
         res.status(500).json({
             error: 'Fehler beim Freigeben für das Team',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -675,7 +693,7 @@ router.post('/:id/share-team', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/unshare-team
 // Unshare clarification from team
-router.post('/:id/unshare-team', auth_1.authenticateToken, async (req, res) => {
+router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         // Check permissions (only creator can unshare)
@@ -683,7 +701,7 @@ router.post('/:id/unshare-team', auth_1.authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-        const permissionResult = await database_1.default.query(permissionQuery, [id, req.user.id]);
+        const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
         if (permissionResult.rows.length === 0) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Entfernen der Freigabe' });
         }
@@ -694,27 +712,27 @@ router.post('/:id/unshare-team', auth_1.authenticateToken, async (req, res) => {
       WHERE id = $1
       RETURNING *
     `;
-        const result = await database_1.default.query(updateQuery, [id, req.user.id]);
+        const result = await pool.query(updateQuery, [id, req.user.id]);
         // Log team activity
         const activityQuery = `
       INSERT INTO clarification_team_activities 
       (clarification_id, team_id, user_id, activity_type, description, metadata)
       VALUES ($1, $2, $3, 'UNSHARED', 'Team-Freigabe entfernt', $4)
     `;
-        await database_1.default.query(activityQuery, [
+        await pool.query(activityQuery, [
             id,
             req.user.teamId,
             req.user.id,
             JSON.stringify({ unshared_at: new Date().toISOString() })
         ]);
-        logger_1.logger.info(`Clarification ${id} unshared from team by user ${req.user.id}`);
+        logger.info(`Clarification ${id} unshared from team by user ${req.user.id}`);
         res.json({
             message: 'Team-Freigabe erfolgreich entfernt',
             clarification: formatClarification(result.rows[0])
         });
     }
     catch (error) {
-        logger_1.logger.error('Error unsharing clarification from team:', error);
+        logger.error('Error unsharing clarification from team:', error);
         res.status(500).json({
             error: 'Fehler beim Entfernen der Team-Freigabe',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -723,7 +741,7 @@ router.post('/:id/unshare-team', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/team-comments
 // Add team comment to shared clarification
-router.post('/:id/team-comments', auth_1.authenticateToken, async (req, res) => {
+router.post('/:id/team-comments', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { content, parentCommentId, mentionedUsers = [] } = req.body;
@@ -732,7 +750,7 @@ router.post('/:id/team-comments', auth_1.authenticateToken, async (req, res) => 
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND shared_with_team = true AND team_id = $2
     `;
-        const accessResult = await database_1.default.query(accessQuery, [id, req.user.teamId]);
+        const accessResult = await pool.query(accessQuery, [id, req.user.teamId]);
         if (accessResult.rows.length === 0) {
             return res.status(404).json({ error: 'Klärfall nicht für Team freigegeben oder nicht gefunden' });
         }
@@ -749,27 +767,27 @@ router.post('/:id/team-comments', auth_1.authenticateToken, async (req, res) => 
             parentCommentId || null,
             mentionedUsers
         ];
-        const result = await database_1.default.query(insertQuery, values);
+        const result = await pool.query(insertQuery, values);
         // Log team activity
         const activityQuery = `
       INSERT INTO clarification_team_activities 
       (clarification_id, team_id, user_id, activity_type, description, metadata)
       VALUES ($1, $2, $3, 'COMMENTED', 'Team-Kommentar hinzugefügt', $4)
     `;
-        await database_1.default.query(activityQuery, [
+        await pool.query(activityQuery, [
             id,
             req.user.teamId,
             req.user.id,
             JSON.stringify({ comment_id: result.rows[0].id })
         ]);
-        logger_1.logger.info(`Team comment added to clarification ${id} by user ${req.user.id}`);
+        logger.info(`Team comment added to clarification ${id} by user ${req.user.id}`);
         res.status(201).json({
             message: 'Team-Kommentar erfolgreich hinzugefügt',
             comment: result.rows[0]
         });
     }
     catch (error) {
-        logger_1.logger.error('Error adding team comment:', error);
+        logger.error('Error adding team comment:', error);
         res.status(500).json({
             error: 'Fehler beim Hinzufügen des Team-Kommentars',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -778,7 +796,7 @@ router.post('/:id/team-comments', auth_1.authenticateToken, async (req, res) => 
 });
 // GET /api/bilateral-clarifications/team-cases
 // Get all team-shared clarifications
-router.get('/team-cases', auth_1.authenticateToken, async (req, res) => {
+router.get('/team-cases', authenticateToken, async (req, res) => {
     try {
         const { page = 1, limit = 20, status, priority } = req.query;
         let query = `
@@ -807,7 +825,7 @@ router.get('/team-cases', auth_1.authenticateToken, async (req, res) => {
         const offset = (page - 1) * limit;
         query += ` LIMIT $${paramCounter} OFFSET $${paramCounter + 1}`;
         queryParams.push(limit, offset);
-        const result = await database_1.default.query(query, queryParams);
+        const result = await pool.query(query, queryParams);
         const teamCases = result.rows.map(row => ({
             ...formatClarification(row),
             commentCount: parseInt(row.comment_count) || 0,
@@ -824,7 +842,7 @@ router.get('/team-cases', auth_1.authenticateToken, async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error('Error fetching team cases:', error);
+        logger.error('Error fetching team cases:', error);
         res.status(500).json({
             error: 'Fehler beim Laden der Team-Klärfälle',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -833,7 +851,7 @@ router.get('/team-cases', auth_1.authenticateToken, async (req, res) => {
 });
 // POST /api/bilateral-clarifications/:id/emails
 // Add email record to clarification
-router.post('/:id/emails', auth_1.authenticateToken, async (req, res) => {
+router.post('/:id/emails', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { direction, subject, fromAddress, toAddresses = [], ccAddresses = [], content, contentType = 'text', emailType = 'OTHER', isImportant = false, source = 'MANUAL_PASTE' } = req.body;
@@ -843,7 +861,7 @@ router.post('/:id/emails', auth_1.authenticateToken, async (req, res) => {
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-        const accessResult = await database_1.default.query(accessQuery, [id, req.user.id, req.user.teamId]);
+        const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
         if (accessResult.rows.length === 0) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -868,24 +886,212 @@ router.post('/:id/emails', auth_1.authenticateToken, async (req, res) => {
             emailType,
             isImportant
         ];
-        const result = await database_1.default.query(insertQuery, values);
-        logger_1.logger.info(`Email record added to clarification ${id} by user ${req.user.id}`);
+        const result = await pool.query(insertQuery, values);
+        logger.info(`Email record added to clarification ${id} by user ${req.user.id}`);
         res.status(201).json({
             message: 'Email-Eintrag erfolgreich hinzugefügt',
             email: result.rows[0]
         });
     }
     catch (error) {
-        logger_1.logger.error('Error adding email record:', error);
+        logger.error('Error adding email record:', error);
         res.status(500).json({
             error: 'Fehler beim Hinzufügen des Email-Eintrags',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
+// Email-Versand-Endpunkt für bilaterale Klärungen
+router.post('/:id/send-email', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { to, cc, subject, body, includeAttachments, attachmentIds } = req.body;
+        if (!req.user) {
+            return res.status(401).json({ error: 'Benutzer nicht authentifiziert' });
+        }
+        // Klärfall abrufen und Berechtigung prüfen
+        const clarificationQuery = `
+      SELECT c.*, 
+             mp.code as market_partner_code,
+             mp.company_name as market_partner_name,
+             dar.dar_number
+      FROM bilateral_clarifications c
+      LEFT JOIN market_partners mp ON c.market_partner_id = mp.id
+      LEFT JOIN data_exchange_references dar ON c.dar_id = dar.id
+      WHERE c.id = $1 AND (c.created_by = $2 OR c.assigned_to = $2)
+    `;
+        const clarificationResult = await pool.query(clarificationQuery, [id, req.user.id]);
+        if (clarificationResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
+        }
+        const clarification = clarificationResult.rows[0];
+        // Email-Transport konfigurieren (sollte aus Umgebungsvariablen kommen)
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'localhost',
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+        // Email-Optionen
+        const mailOptions = {
+            from: process.env.FROM_EMAIL || 'noreply@marktkommunikation.de',
+            to: to,
+            subject: subject,
+            text: body,
+            html: body.replace(/\n/g, '<br>'), // Einfache Text-zu-HTML-Konvertierung
+        };
+        if (cc) {
+            mailOptions.cc = cc;
+        }
+        // Anhänge hinzufügen falls gewünscht
+        if (includeAttachments && (attachmentIds === null || attachmentIds === void 0 ? void 0 : attachmentIds.length) > 0) {
+            const attachmentsQuery = `
+        SELECT filename, file_path, original_filename, mime_type
+        FROM clarification_attachments 
+        WHERE id = ANY($1) AND clarification_id = $2
+      `;
+            const attachmentsResult = await pool.query(attachmentsQuery, [attachmentIds, id]);
+            mailOptions.attachments = attachmentsResult.rows.map(att => ({
+                filename: att.original_filename,
+                path: att.file_path,
+                contentType: att.mime_type
+            }));
+        }
+        // Email versenden
+        const info = await transporter.sendMail(mailOptions);
+        // Status und Email-Record aktualisieren
+        const updateStatusQuery = `
+      UPDATE bilateral_clarifications 
+      SET status = 'SENT', 
+          internal_status = 'SENT',
+          last_sent_at = CURRENT_TIMESTAMP,
+          sent_to_email = $1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `;
+        await pool.query(updateStatusQuery, [to, id]);
+        // Email-Record hinzufügen
+        const emailRecordQuery = `
+      INSERT INTO clarification_emails (
+        clarification_id, direction, subject, from_address, to_addresses, 
+        content, content_type, added_by, source, email_type, message_id
+      ) VALUES ($1, 'OUTGOING', $2, $3, $4, $5, 'text', $6, 'system', 'CLARIFICATION_REQUEST', $7)
+      RETURNING id
+    `;
+        await pool.query(emailRecordQuery, [
+            id, subject, mailOptions.from, [to], body, req.user.id, info.messageId
+        ]);
+        logger.info(`Clarification email sent for case ${id} to ${to} by user ${req.user.id}`);
+        res.json({
+            success: true,
+            messageId: info.messageId,
+            sentAt: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        logger.error('Error sending clarification email:', error);
+        res.status(500).json({
+            error: 'Fehler beim Versenden der E-Mail',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+// Status-Update-Endpunkt
+router.patch('/:id/status', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, internalStatus, reason } = req.body;
+        if (!req.user) {
+            return res.status(401).json({ error: 'Benutzer nicht authentifiziert' });
+        }
+        // Berechtigung prüfen
+        const checkQuery = `
+      SELECT id FROM bilateral_clarifications 
+      WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)
+    `;
+        const checkResult = await pool.query(checkQuery, [id, req.user.id]);
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
+        }
+        // Status aktualisieren
+        const updateQuery = `
+      UPDATE bilateral_clarifications 
+      SET status = $1, 
+          internal_status = COALESCE($2, internal_status),
+          updated_at = CURRENT_TIMESTAMP,
+          last_modified_by = $3
+      WHERE id = $4
+      RETURNING *
+    `;
+        const result = await pool.query(updateQuery, [status, internalStatus, req.user.id, id]);
+        // Status-History-Eintrag hinzufügen
+        if (reason) {
+            const historyQuery = `
+        INSERT INTO clarification_status_history (
+          clarification_id, old_status, new_status, changed_by, reason
+        ) VALUES ($1, (
+          SELECT status FROM bilateral_clarifications WHERE id = $1
+        ), $2, $3, $4)
+      `;
+            await pool.query(historyQuery, [id, status, req.user.id, reason]);
+        }
+        logger.info(`Status updated for clarification ${id} to ${status} by user ${req.user.id}`);
+        res.json(result.rows[0]);
+    }
+    catch (error) {
+        logger.error('Error updating clarification status:', error);
+        res.status(500).json({
+            error: 'Fehler beim Aktualisieren des Status',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+// Email-Validierung für Marktpartner
+router.get('/validate-email', authenticateToken, async (req, res) => {
+    try {
+        const { marketPartnerCode, role } = req.query;
+        if (!marketPartnerCode || !role) {
+            return res.status(400).json({ error: 'Marktpartner-Code und Rolle sind erforderlich' });
+        }
+        // Marktpartner und Kontakt suchen
+        const contactQuery = `
+      SELECT mp.company_name, c.contact_name, c.contact_email, c.role
+      FROM market_partners mp
+      LEFT JOIN market_partner_contacts c ON mp.id = c.market_partner_id
+      WHERE mp.code = $1 AND c.role = $2 AND c.contact_email IS NOT NULL
+      ORDER BY c.is_default DESC, c.id ASC
+      LIMIT 1
+    `;
+        const result = await pool.query(contactQuery, [marketPartnerCode, role]);
+        if (result.rows.length === 0) {
+            return res.json({
+                isValid: false,
+                error: 'Kein E-Mail-Kontakt für diesen Marktpartner und Rolle gefunden'
+            });
+        }
+        const contact = result.rows[0];
+        res.json({
+            isValid: true,
+            email: contact.contact_email,
+            contactName: contact.contact_name,
+            companyName: contact.company_name
+        });
+    }
+    catch (error) {
+        logger.error('Error validating market partner email:', error);
+        res.status(500).json({
+            error: 'Fehler bei der Email-Validierung',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
 // Error handling middleware
 router.use((error, req, res, next) => {
-    if (error instanceof multer_1.default.MulterError) {
+    if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({ error: 'Datei zu groß. Maximum 10MB erlaubt.' });
         }
@@ -893,7 +1099,7 @@ router.use((error, req, res, next) => {
             return res.status(400).json({ error: 'Zu viele Dateien. Maximum 5 Dateien erlaubt.' });
         }
     }
-    logger_1.logger.error('Bilateral clarifications route error:', error);
+    logger.error('Bilateral clarifications route error:', error);
     res.status(500).json({ error: 'Unerwarteter Server-Fehler' });
 });
 exports.default = router;

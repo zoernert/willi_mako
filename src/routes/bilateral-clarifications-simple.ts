@@ -227,7 +227,7 @@ router.post('/', authenticateToken, async (req, res) => {
       assignedTo || null,
       tags,
       'MANUAL',
-      req.user?.teamId || null,
+      (req.user as any)?.teamId || null,
       req.user?.id || 'system',
       JSON.stringify(marketPartner),
       JSON.stringify(selectedRole),
