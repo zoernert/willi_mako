@@ -1,0 +1,383 @@
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { Pool } = require('pg');
+
+class LLMDataExtractionService {
+    constructor() {
+        this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        this.pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+        });
+    }
+
+    /**
+     * Extrahiert strukturierte Daten aus einer E-Mail
+     * @param {Object} email - E-Mail-Objekt mit subject, text, html, from
+     * @param {string} teamId - ID des Teams für context-spezifische Extraktion
+     * @returns {Promise<Object>} Extrahierte Daten
+     */
+    async extractDataFromEmail(email, teamId) {
+        try {
+            // Cache-Lookup
+            const cacheKey = this.generateCacheKey(email);
+            const cachedResult = await this.getCachedExtraction(cacheKey);
+            
+            if (cachedResult) {
+                console.log('Returning cached LLM extraction result');
+                return cachedResult;
+            }
+
+            // Team-Kontext laden für bessere Extraktion
+            const teamContext = await this.getTeamContext(teamId);
+            
+            // LLM-Prompt für Datenextraktion erstellen
+            const prompt = this.buildExtractionPrompt(email, teamContext);
+            
+            // LLM-Analyse durchführen
+            const result = await this.model.generateContent(prompt);
+            const response = await result.response;
+            const extractedData = this.parseExtractionResponse(response.text());
+
+            // Ergebnis cachen
+            await this.cacheExtraction(cacheKey, extractedData, teamId);
+
+            return extractedData;
+
+        } catch (error) {
+            console.error('Error in LLM data extraction:', error);
+            throw new Error(`LLM extraction failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Erstellt einen strukturierten Prompt für die Datenextraktion
+     */
+    buildExtractionPrompt(email, teamContext) {
+        return `
+Du bist ein Experte für die Analyse von E-Mails im Energiesektor. Extrahiere folgende Informationen aus der E-Mail:
+
+TEAM-KONTEXT:
+- Team: ${teamContext.name}
+- Zuständige Bereiche: ${teamContext.responsibilities?.join(', ') || 'Allgemein'}
+- Typische Marktpartner: ${teamContext.commonPartners?.join(', ') || 'Nicht spezifiziert'}
+
+E-MAIL-DATEN:
+Betreff: ${email.subject}
+Von: ${email.from}
+Text: ${email.text || email.html}
+
+EXTRAKTIONS-AUFGABEN:
+1. **Marktpartner-Identifikation:**
+   - Name des Marktpartners
+   - E-Mail-Domain
+   - Bekannte Codes (BDEW, EIC, etc.)
+
+2. **Referenz-Extraktion:**
+   - Vorgangsnummern/IDs
+   - Zählpunkte/MSB-IDs
+   - Lieferstellennummern
+   - Abrechnungsperioden/Zeiträume
+
+3. **Klärfall-Klassifikation:**
+   - Kategorie (Abrechnung, Lieferantenwechsel, Messstellenbetrieb, etc.)
+   - Priorität (Niedrig, Normal, Hoch, Kritisch)
+   - Geschätzter Arbeitsaufwand (Gering, Mittel, Hoch)
+
+4. **Inhaltliche Analyse:**
+   - Kurze Zusammenfassung des Problems
+   - Erkannte Fragen/Klärungspunkte
+   - Vorgeschlagene nächste Schritte
+
+5. **Automatisierungs-Potential:**
+   - Kann automatisch bearbeitet werden? (Ja/Nein)
+   - Standardantwort möglich? (Ja/Nein)
+   - Weiterleitung erforderlich? (Ja/Nein und wohin)
+
+Antworte ausschließlich im folgenden JSON-Format:
+{
+  "marktpartner": {
+    "name": "string",
+    "domain": "string",
+    "codes": ["string"]
+  },
+  "referenzen": {
+    "vorgangsnummern": ["string"],
+    "zählpunkte": ["string"],
+    "lieferstellen": ["string"],
+    "zeiträume": ["string"]
+  },
+  "klassifikation": {
+    "kategorie": "string",
+    "priorität": "string",
+    "arbeitsaufwand": "string"
+  },
+  "inhalt": {
+    "zusammenfassung": "string",
+    "klärungspunkte": ["string"],
+    "nächsteSchritte": ["string"]
+  },
+  "automatisierung": {
+    "autoBearbeitung": boolean,
+    "standardAntwort": boolean,
+    "weiterleitung": {
+      "erforderlich": boolean,
+      "ziel": "string"
+    }
+  },
+  "confidence": number
+}
+`;
+    }
+
+    /**
+     * Parst die LLM-Antwort in strukturierte Daten
+     */
+    parseExtractionResponse(response) {
+        try {
+            // JSON aus der Antwort extrahieren
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('No JSON found in LLM response');
+            }
+
+            const extractedData = JSON.parse(jsonMatch[0]);
+            
+            // Validierung und Standardwerte
+            return {
+                marktpartner: extractedData.marktpartner || {},
+                referenzen: extractedData.referenzen || {},
+                klassifikation: extractedData.klassifikation || {},
+                inhalt: extractedData.inhalt || {},
+                automatisierung: extractedData.automatisierung || {},
+                confidence: extractedData.confidence || 0.5,
+                extractedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('Error parsing LLM response:', error);
+            // Fallback bei Parse-Fehlern
+            return {
+                marktpartner: {},
+                referenzen: {},
+                klassifikation: { kategorie: 'Unbekannt', priorität: 'Normal' },
+                inhalt: { zusammenfassung: 'Automatische Extraktion fehlgeschlagen' },
+                automatisierung: { autoBearbeitung: false, standardAntwort: false },
+                confidence: 0.1,
+                extractedAt: new Date().toISOString(),
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Lädt Team-Kontext für bessere Extraktion
+     */
+    async getTeamContext(teamId) {
+        try {
+            const result = await this.pool.query(`
+                SELECT 
+                    t.name,
+                    t.description,
+                    array_agg(DISTINCT tr.responsibility) as responsibilities,
+                    array_agg(DISTINCT mp.name) as common_partners
+                FROM teams t
+                LEFT JOIN team_responsibilities tr ON t.id = tr.team_id
+                LEFT JOIN team_market_partners tmp ON t.id = tmp.team_id
+                LEFT JOIN market_partners mp ON tmp.partner_id = mp.id
+                WHERE t.id = $1
+                GROUP BY t.id, t.name, t.description
+            `, [teamId]);
+
+            if (result.rows.length === 0) {
+                return { name: 'Unbekannt' };
+            }
+
+            return {
+                name: result.rows[0].name,
+                description: result.rows[0].description,
+                responsibilities: result.rows[0].responsibilities?.filter(r => r) || [],
+                commonPartners: result.rows[0].common_partners?.filter(p => p) || []
+            };
+
+        } catch (error) {
+            console.error('Error loading team context:', error);
+            return { name: 'Unbekannt' };
+        }
+    }
+
+    /**
+     * Generiert Cache-Schlüssel für E-Mail
+     */
+    generateCacheKey(email) {
+        const crypto = require('crypto');
+        const content = `${email.subject}_${email.from}_${email.text || email.html}`;
+        return crypto.createHash('md5').update(content).digest('hex');
+    }
+
+    /**
+     * Lädt gecachte Extraktion
+     */
+    async getCachedExtraction(cacheKey) {
+        try {
+            const result = await this.pool.query(`
+                SELECT extracted_data, confidence, created_at
+                FROM llm_extraction_cache
+                WHERE cache_key = $1 
+                AND created_at > NOW() - INTERVAL '7 days'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `, [cacheKey]);
+
+            if (result.rows.length > 0) {
+                return {
+                    ...result.rows[0].extracted_data,
+                    cached: true,
+                    cacheDate: result.rows[0].created_at
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error loading cached extraction:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Speichert Extraktion im Cache
+     */
+    async cacheExtraction(cacheKey, extractedData, teamId) {
+        try {
+            await this.pool.query(`
+                INSERT INTO llm_extraction_cache (
+                    cache_key, 
+                    team_id, 
+                    extracted_data, 
+                    confidence, 
+                    created_at
+                ) VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (cache_key) 
+                DO UPDATE SET 
+                    extracted_data = EXCLUDED.extracted_data,
+                    confidence = EXCLUDED.confidence,
+                    created_at = EXCLUDED.created_at
+            `, [cacheKey, teamId, JSON.stringify(extractedData), extractedData.confidence]);
+
+        } catch (error) {
+            console.error('Error caching extraction:', error);
+            // Nicht kritisch - weiter ohne Cache
+        }
+    }
+
+    /**
+     * Analysiert E-Mail für automatische Weiterleitung
+     */
+    async analyzeForRouting(email, extractedData) {
+        try {
+            const routingPrompt = `
+Basierend auf folgenden Informationen, bestimme die optimale Weiterleitung:
+
+E-Mail: ${email.subject}
+Kategorie: ${extractedData.klassifikation?.kategorie}
+Marktpartner: ${extractedData.marktpartner?.name}
+
+Verfügbare Teams und ihre Zuständigkeiten:
+- Team Netz: Netzentgelte, Messstellenbetrieb, technische Anfragen
+- Team Vertrieb: Lieferantenwechsel, Kundenanfragen, Verträge  
+- Team Abrechnung: Rechnungsfragen, Abrechnungsperioden, Zahlungen
+- Team Regulatorik: Compliance, Meldewesen, regulatorische Anfragen
+
+Antworte nur mit dem Team-Namen oder "MANUAL" für manuelle Zuordnung.
+            `;
+
+            const result = await this.model.generateContent(routingPrompt);
+            const response = await result.response;
+            const teamSuggestion = response.text().trim();
+
+            return {
+                suggestedTeam: teamSuggestion,
+                confidence: extractedData.confidence,
+                reasoning: `Basierend auf Kategorie: ${extractedData.klassifikation?.kategorie}`
+            };
+
+        } catch (error) {
+            console.error('Error in routing analysis:', error);
+            return {
+                suggestedTeam: 'MANUAL',
+                confidence: 0.1,
+                reasoning: 'Automatische Zuordnung fehlgeschlagen'
+            };
+        }
+    }
+
+    /**
+     * Schlägt Standardantworten vor
+     */
+    async suggestStandardResponse(email, extractedData) {
+        try {
+            if (!extractedData.automatisierung?.standardAntwort) {
+                return null;
+            }
+
+            const responsePrompt = `
+Erstelle eine professionelle Standardantwort für folgende E-Mail:
+
+Original: ${email.subject}
+Kategorie: ${extractedData.klassifikation?.kategorie}
+Klärungspunkte: ${extractedData.inhalt?.klärungspunkte?.join(', ')}
+
+Die Antwort soll:
+- Höflich und professionell sein
+- Den Empfang bestätigen
+- Nächste Schritte kommunizieren
+- Bei Bedarf um zusätzliche Informationen bitten
+
+Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
+            `;
+
+            const result = await this.model.generateContent(responsePrompt);
+            const response = await result.response;
+
+            return {
+                subject: `Re: ${email.subject}`,
+                body: response.text().trim(),
+                confidence: extractedData.confidence * 0.8, // Etwas weniger sicher bei Antworten
+                suggestedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('Error generating standard response:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Health Check für den Service
+     */
+    async healthCheck() {
+        try {
+            // Test LLM-Verbindung
+            const testResult = await this.model.generateContent('Test connection. Respond with: OK');
+            const response = await testResult.response;
+            
+            // Test DB-Verbindung
+            await this.pool.query('SELECT 1');
+
+            return {
+                status: 'healthy',
+                llm: response.text().includes('OK') ? 'connected' : 'limited',
+                database: 'connected',
+                timestamp: new Date().toISOString()
+            };
+
+        } catch (error) {
+            return {
+                status: 'unhealthy',
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
+        }
+    }
+}
+
+module.exports = LLMDataExtractionService;

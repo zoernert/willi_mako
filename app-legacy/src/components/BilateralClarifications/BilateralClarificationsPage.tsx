@@ -30,7 +30,8 @@ import {
   Dashboard as DashboardIcon,
   Assignment as AssignmentIcon,
   Warning as WarningIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  PlayCircleOutline as DemoIcon
 } from '@mui/icons-material';
 
 // Import types and services
@@ -48,6 +49,7 @@ import { ClarificationFilters as FiltersComponent } from './ClarificationFilters
 import { CreateClarificationModal } from './CreateClarificationModal';
 import { ClarificationDetailModal } from './ClarificationDetailModal';
 import { StatsCards } from './StatsCards';
+import { WorkflowDemoTab } from './WorkflowDemoTab';
 
 // Import existing components
 import { useAuth } from '../../contexts/AuthContext';
@@ -352,6 +354,11 @@ export const BilateralClarificationsPage: React.FC = () => {
               label="Dashboard"
               id="clarifications-tab-2"
             />
+            <Tab 
+              icon={<DemoIcon />}
+              label="Workflow Demo"
+              id="clarifications-tab-3"
+            />
           </Tabs>
         </Box>
 
@@ -415,6 +422,10 @@ export const BilateralClarificationsPage: React.FC = () => {
               </Card>
             </Box>
           </Box>
+        </TabPanel>
+
+        <TabPanel value={currentTab} index={3}>
+          <WorkflowDemoTab onCreateClarification={handleCreateClarification} />
         </TabPanel>
       </Paper>
 

@@ -23,6 +23,10 @@ import { initializeCommunityAdminRoutes } from './routes/admin/community';
 import m2cRolesRoutes from './routes/m2cRoles';
 import bilateralClarificationsRoutes from './routes/bilateral-clarifications-simple';
 import llmRoutes from './routes/llm';
+import teamEmailConfigRoutes from './routes/team-email-config.js';
+import bulkClarificationsRoutes from './routes/bulk-clarifications.js';
+import crWmako001TestRoutes from './routes/cr-wmako-001-test.js';
+import imapSchedulerRoutes from './routes/imap-scheduler.js';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -167,6 +171,12 @@ app.use('/api/v1/codes', authenticateToken, codesRoutes);
 app.use('/api', m2cRolesRoutes);
 app.use('/api/bilateral-clarifications', bilateralClarificationsRoutes);
 app.use('/api/llm', llmRoutes);
+
+// CR-WMAKO-001: New routes for email configuration and bulk clarifications
+app.use('/api/team-email-config', authenticateToken, teamEmailConfigRoutes);
+app.use('/api/bulk-clarifications', authenticateToken, bulkClarificationsRoutes);
+app.use('/api/imap', imapSchedulerRoutes);
+app.use('/api/cr-wmako-001', crWmako001TestRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

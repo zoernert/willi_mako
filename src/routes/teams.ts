@@ -462,4 +462,407 @@ router.get('/all', asyncHandler(async (req: AuthenticatedRequest, res: Response)
   });
 }));
 
+// ===== CR-WMAKO-001: TEAM EMAIL CONFIGURATION =====
+
+// GET /api/teams/:teamId/email-config - Get team email configuration
+router.get('/:teamId/email-config', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  
+  // Check team access
+  const hasAccess = await teamService.hasTeamAccess(req.user!.id, teamId);
+  if (!hasAccess) {
+    throw new AppError('Keine Berechtigung für dieses Team', 403);
+  }
+
+  const result = await pool.query(`
+    SELECT 
+      tec.*,
+      t.name as team_name
+    FROM team_email_configs tec
+    JOIN teams t ON tec.team_id = t.id
+    WHERE tec.team_id = $1
+  `, [teamId]);
+
+  if (result.rows.length === 0) {
+    return res.json({
+      teamId,
+      autoProcessingEnabled: false,
+      imapHost: '',
+      imapPort: 993,
+      imapUseSSL: true,
+      imapUsername: '',
+      outboundEmailAddress: '',
+      processingRules: {}
+    });
+  }
+
+  const config = result.rows[0];
+  
+  // Remove password for security
+  delete config.imap_password_encrypted;
+  
+  res.json({
+    teamId: config.team_id,
+    teamName: config.team_name,
+    autoProcessingEnabled: config.auto_processing_enabled,
+    imapHost: config.imap_host,
+    imapPort: config.imap_port,
+    imapUseSSL: config.imap_use_ssl,
+    imapUsername: config.imap_username,
+    outboundEmailAddress: config.outbound_email_address,
+    processingRules: config.processing_rules || {},
+    lastProcessedUid: config.last_processed_uid,
+    lastProcessedAt: config.last_processed_at,
+    status: config.status
+  });
+}));
+
+// PUT /api/teams/:teamId/email-config - Update team email configuration
+router.put('/:teamId/email-config', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  const {
+    autoProcessingEnabled,
+    imapHost,
+    imapPort,
+    imapUseSSL,
+    imapUsername,
+    imapPassword,
+    outboundEmailAddress,
+    processingRules
+  } = req.body;
+
+  // Check team admin access
+  const hasAdminAccess = await teamService.hasTeamAdminAccess(req.user!.id, teamId);
+  if (!hasAdminAccess) {
+    throw new AppError('Keine Admin-Berechtigung für dieses Team', 403);
+  }
+
+  // Validation
+  if (autoProcessingEnabled && (!imapHost || !imapUsername)) {
+    throw new AppError('IMAP-Host und Benutzername sind erforderlich für automatische Verarbeitung', 400);
+  }
+
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Encrypt password if provided
+    let encryptedPassword = null;
+    if (imapPassword) {
+      const crypto = require('crypto');
+      const algorithm = 'aes-256-cbc';
+      const key = process.env.EMAIL_ENCRYPTION_KEY || 'default-key-change-in-production';
+      const keyHash = crypto.createHash('sha256').update(key).digest();
+      
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv(algorithm, keyHash, iv);
+      
+      let encrypted = cipher.update(imapPassword, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      
+      encryptedPassword = iv.toString('hex') + ':' + encrypted;
+    }
+
+    // Upsert configuration
+    const upsertQuery = `
+      INSERT INTO team_email_configs (
+        team_id,
+        auto_processing_enabled,
+        imap_host,
+        imap_port,
+        imap_use_ssl,
+        imap_username,
+        imap_password_encrypted,
+        outbound_email_address,
+        processing_rules,
+        updated_at,
+        updated_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
+      ON CONFLICT (team_id) 
+      DO UPDATE SET
+        auto_processing_enabled = EXCLUDED.auto_processing_enabled,
+        imap_host = EXCLUDED.imap_host,
+        imap_port = EXCLUDED.imap_port,
+        imap_use_ssl = EXCLUDED.imap_use_ssl,
+        imap_username = EXCLUDED.imap_username,
+        imap_password_encrypted = CASE 
+          WHEN EXCLUDED.imap_password_encrypted IS NOT NULL 
+          THEN EXCLUDED.imap_password_encrypted 
+          ELSE team_email_configs.imap_password_encrypted 
+        END,
+        outbound_email_address = EXCLUDED.outbound_email_address,
+        processing_rules = EXCLUDED.processing_rules,
+        updated_at = EXCLUDED.updated_at,
+        updated_by = EXCLUDED.updated_by
+      RETURNING *
+    `;
+
+    const result = await client.query(upsertQuery, [
+      teamId,
+      autoProcessingEnabled,
+      imapHost,
+      imapPort || 993,
+      imapUseSSL,
+      imapUsername,
+      encryptedPassword,
+      outboundEmailAddress,
+      JSON.stringify(processingRules || {}),
+      req.user!.id
+    ]);
+
+    await client.query('COMMIT');
+
+    const config = result.rows[0];
+    delete config.imap_password_encrypted;
+
+    res.json({
+      success: true,
+      message: 'E-Mail-Konfiguration erfolgreich gespeichert',
+      data: config
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
+// GET /api/teams/:teamId/email-processing/status - Get email processing status
+router.get('/:teamId/email-processing/status', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+
+  // Check team access
+  const hasAccess = await teamService.hasTeamAccess(req.user!.id, teamId);
+  if (!hasAccess) {
+    throw new AppError('Keine Berechtigung für dieses Team', 403);
+  }
+
+  // Get queue stats
+  const queueResult = await pool.query(`
+    SELECT 
+      processing_status,
+      COUNT(*) as count
+    FROM email_processing_queue
+    WHERE team_id = $1
+      AND created_at > NOW() - INTERVAL '24 hours'
+    GROUP BY processing_status
+  `, [teamId]);
+
+  // Get recent emails
+  const recentResult = await pool.query(`
+    SELECT 
+      epq.*,
+      bc.title as clarification_title
+    FROM email_processing_queue epq
+    LEFT JOIN bilateral_clarifications bc ON epq.created_clarification_id = bc.id
+    WHERE epq.team_id = $1
+    ORDER BY epq.created_at DESC
+    LIMIT 10
+  `, [teamId]);
+
+  const queueStats = queueResult.rows.reduce((acc: any, row: any) => {
+    acc[row.processing_status] = parseInt(row.count);
+    return acc;
+  }, {});
+
+  res.json({
+    success: true,
+    data: {
+      teamId,
+      imapConnected: false, // TODO: Implement actual IMAP status check
+      queueStats,
+      recentEmails: recentResult.rows,
+      lastUpdate: new Date().toISOString()
+    }
+  });
+}));
+
+// ===== CR-WMAKO-001: TEST ENDPOINT =====
+
+// GET /api/teams/cr-wmako-001/test - Test new functionality
+router.get('/cr-wmako-001/test', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    message: 'CR-WMAKO-001 API endpoints are working!',
+    timestamp: new Date().toISOString(),
+    user: req.user?.email,
+    features: [
+      'Team Email Configuration',
+      'LLM Data Extraction',
+      'Bulk Clarifications',
+      'IMAP Integration',
+      'Auto Clarification Creation'
+    ]
+  });
+}));
+
+// ===== CR-WMAKO-001: BULK CLARIFICATIONS =====
+
+// POST /api/teams/:teamId/bulk-clarifications - Create bulk clarification
+router.post('/:teamId/bulk-clarifications', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  const {
+    title,
+    description,
+    category,
+    priority,
+    items
+  } = req.body;
+  const userId = req.user!.id;
+
+  try {
+    // Validierung
+    if (!title || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        error: 'Titel und mindestens ein Eintrag sind erforderlich' 
+      });
+    }
+
+    if (items.length > 100) {
+      return res.status(400).json({ 
+        error: 'Maximal 100 Einträge pro Bulk-Klärung erlaubt' 
+      });
+    }
+
+    // Berechtigung prüfen - User muss Mitglied des Teams sein
+    const userTeam = await teamService.getUserTeamId(userId);
+    if (userTeam !== teamId) {
+      return res.status(403).json({ error: 'Keine Berechtigung für dieses Team' });
+    }
+
+    // PostgreSQL Client für Transaktion
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+    
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Haupt-Klärfall erstellen
+      const mainClarificationResult = await client.query(`
+        INSERT INTO bilateral_clarifications (
+          title,
+          description,
+          category,
+          priority,
+          clarification_type,
+          status,
+          team_id,
+          created_by,
+          created_at
+        ) VALUES ($1, $2, $3, $4, 'sammelklärung', 'offen', $5, $6, NOW())
+        RETURNING *
+      `, [
+        title,
+        description,
+        category || 'general',
+        priority || 'normal',
+        teamId,
+        userId
+      ]);
+
+      const mainClarification = mainClarificationResult.rows[0];
+
+      // Einzeleinträge erstellen
+      const createdItems = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        
+        const itemResult = await client.query(`
+          INSERT INTO bulk_clarification_items (
+            clarification_id,
+            item_index,
+            title,
+            description,
+            reference_data,
+            status,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, 'offen', NOW())
+          RETURNING *
+        `, [
+          mainClarification.id,
+          i + 1,
+          item.title || `Eintrag ${i + 1}`,
+          item.description || '',
+          JSON.stringify(item.references || {})
+        ]);
+
+        createdItems.push(itemResult.rows[0]);
+      }
+
+      await client.query('COMMIT');
+      client.release();
+
+      res.status(201).json({
+        success: true,
+        message: 'Bulk-Klärung erfolgreich erstellt',
+        clarification: {
+          ...mainClarification,
+          items: createdItems
+        }
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      client.release();
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error creating bulk clarification:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Erstellen der Bulk-Klärung',
+      details: error.message 
+    });
+  }
+}));
+
+// GET /api/teams/:teamId/bulk-clarifications - List bulk clarifications for team
+router.get('/:teamId/bulk-clarifications', authenticateToken, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { teamId } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    // Berechtigung prüfen
+    const userTeam = await teamService.getUserTeamId(userId);
+    if (userTeam !== teamId) {
+      return res.status(403).json({ error: 'Keine Berechtigung für dieses Team' });
+    }
+
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+
+    // Bulk-Klärfälle laden
+    const result = await pool.query(`
+      SELECT 
+        bc.*,
+        (SELECT COUNT(*) FROM bulk_clarification_items bci WHERE bci.clarification_id = bc.id) as item_count,
+        (SELECT COUNT(*) FROM bulk_clarification_items bci WHERE bci.clarification_id = bc.id AND bci.status = 'abgeschlossen') as completed_count
+      FROM bilateral_clarifications bc
+      WHERE bc.team_id = $1 AND bc.clarification_type = 'sammelklärung'
+      ORDER BY bc.created_at DESC
+    `, [teamId]);
+
+    res.json({
+      success: true,
+      clarifications: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error loading bulk clarifications:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Laden der Bulk-Klärungen',
+      details: error.message 
+    });
+  }
+}));
+
 export { router as teamRoutes };

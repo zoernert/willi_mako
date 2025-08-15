@@ -48,6 +48,8 @@ import {
   Visibility as ViewIcon,
   Link as LinkIcon,
   Forum as ForumIcon,
+  Email as EmailIcon,
+  List as BulkIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
@@ -56,6 +58,8 @@ import AdminQuizManager from '../components/AdminQuizManager';
 import AdminChatConfiguration from '../components/admin/ChatConfigurationManager';
 import FAQLinkManager from '../components/admin/FAQLinkManager';
 import CommunityAdminManager from '../components/admin/CommunityAdminManager';
+import TeamEmailConfig from '../components/admin/TeamEmailConfig';
+import BulkClarificationManager from '../components/admin/BulkClarificationManager';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -1760,6 +1764,8 @@ const Admin: React.FC = () => {
     { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
     { label: 'Community', icon: <ForumIcon />, component: <CommunityAdminManager /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
+    { label: 'Team E-Mail', icon: <EmailIcon />, component: <TeamEmailConfig /> },
+    { label: 'Bulk-Klärungen', icon: <BulkIcon />, component: <BulkClarificationManager /> },
     { label: 'Chat-Config', icon: <SettingsIcon />, component: <AdminChatConfiguration /> },
     { label: 'Statistiken', icon: <StatsIcon />, component: <AdminStats /> },
     { label: 'Einstellungen', icon: <SettingsIcon />, component: <AdminSettings /> },

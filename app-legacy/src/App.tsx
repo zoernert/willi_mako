@@ -29,7 +29,6 @@ import TeamInvitationPage from './pages/TeamInvitationPage';
 import Community from './pages/Community';
 import CommunityThreadDetail from './pages/CommunityThreadDetail';
 import BilateralClarificationsPage from './components/BilateralClarifications/BilateralClarificationsPage';
-import { WorkflowDemoPage } from './components/BilateralClarifications/WorkflowDemoPage';
 import './styles/community-theme.css';
 
 const theme = createTheme({
@@ -137,7 +136,6 @@ function App() {
                 <Route path="lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
                 <Route path="invitation-acceptance" element={<InvitationAcceptance />} />
                 <Route path="bilateral-clarifications" element={<ProtectedRoute><BilateralClarificationsPage /></ProtectedRoute>} />
-                <Route path="workflow-demo" element={<ProtectedRoute><WorkflowDemoPage /></ProtectedRoute>} />
               </Route>
             </Routes>
           </Router>
