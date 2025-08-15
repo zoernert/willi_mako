@@ -1,9 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const AutoKlärfallService = require('../services/autoKlärfallService');
 const LLMDataExtractionService = require('../services/llmDataExtractionService');
-
 // Team service functions - simplified for direct use
 const teamService = {
     async hasTeamAccess(userId, teamId) {
@@ -18,53 +19,37 @@ const teamService = {
         return result.rows.length > 0;
     }
 };
-
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
-
 const autoKlärfallService = new AutoKlärfallService();
 const llmService = new LLMDataExtractionService();
-
 /**
  * POST /api/clarifications/bulk
  * Erstellt neue Bulk-Klärung
  */
 router.post('/bulk', async (req, res) => {
+    var _a, _b, _c;
     try {
-        const {
-            title,
-            description,
-            category,
-            priority,
-            teamId,
-            marketPartnerId,
-            items
-        } = req.body;
-
+        const { title, description, category, priority, teamId, marketPartnerId, items } = req.body;
         // Validierung
         if (!title || !items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ 
-                error: 'Titel und mindestens ein Eintrag sind erforderlich' 
+            return res.status(400).json({
+                error: 'Titel und mindestens ein Eintrag sind erforderlich'
             });
         }
-
         if (items.length > 100) {
-            return res.status(400).json({ 
-                error: 'Maximal 100 Einträge pro Bulk-Klärung erlaubt' 
+            return res.status(400).json({
+                error: 'Maximal 100 Einträge pro Bulk-Klärung erlaubt'
             });
         }
-
         // Berechtigung prüfen
-        if (!await hasTeamAccess(req.user?.id || "", teamId)) {
+        if (!await hasTeamAccess(((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || "", teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung für dieses Team' });
         }
-
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
-
             // Haupt-Klärfall erstellen
             const mainClarificationResult = await client.query(`
                 INSERT INTO clarifications (
@@ -87,16 +72,13 @@ router.post('/bulk', async (req, res) => {
                 priority || 'normal',
                 teamId,
                 marketPartnerId,
-                req.user?.id || ""
+                ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id) || ""
             ]);
-
             const mainClarification = mainClarificationResult.rows[0];
-
             // Einzeleinträge erstellen
             const createdItems = [];
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
-                
                 const itemResult = await client.query(`
                     INSERT INTO bulk_clarification_items (
                         bulk_clarification_id,
@@ -115,10 +97,8 @@ router.post('/bulk', async (req, res) => {
                     item.description || '',
                     JSON.stringify(item.references || {})
                 ]);
-
                 createdItems.push(itemResult.rows[0]);
             }
-
             // Aktivität protokollieren
             await client.query(`
                 INSERT INTO clarification_activities (
@@ -131,11 +111,9 @@ router.post('/bulk', async (req, res) => {
             `, [
                 mainClarification.id,
                 `Bulk-Klärung mit ${items.length} Einträgen erstellt`,
-                req.user?.id || ""
+                ((_c = req.user) === null || _c === void 0 ? void 0 : _c.id) || ""
             ]);
-
             await client.query('COMMIT');
-
             res.status(201).json({
                 message: 'Bulk-Klärung erfolgreich erstellt',
                 clarification: {
@@ -143,48 +121,44 @@ router.post('/bulk', async (req, res) => {
                     items: createdItems
                 }
             });
-
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error creating bulk clarification:', error);
         res.status(500).json({ error: 'Fehler beim Erstellen der Bulk-Klärung' });
     }
 });
-
 /**
  * GET /api/clarifications/:id/bulk-items
  * Lädt Einträge einer Bulk-Klärung
  */
 router.get('/:id/bulk-items', async (req, res) => {
+    var _a, _b, _c;
     try {
         const { id } = req.params;
         const { page = 1, limit = 20, status } = req.query;
-
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || "");
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
-
         if (clarification.type !== 'sammelklärung') {
             return res.status(400).json({ error: 'Nicht eine Bulk-Klärung' });
         }
-
         // Einträge laden
         let whereClause = 'WHERE bci.bulk_clarification_id = $1';
         const params = [id];
-
         if (status) {
             whereClause += ' AND bci.status = $2';
             params.push(status);
         }
-
         const offset = (page - 1) * limit;
         const query = `
             SELECT 
@@ -195,10 +169,8 @@ router.get('/:id/bulk-items', async (req, res) => {
             ORDER BY bci.item_index ASC
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}
         `;
-
         params.push(limit, offset);
         const result = await pool.query(query, params);
-
         // Statistiken laden
         const statsResult = await pool.query(`
             SELECT 
@@ -208,49 +180,43 @@ router.get('/:id/bulk-items', async (req, res) => {
             WHERE bulk_clarification_id = $1
             GROUP BY status
         `, [id]);
-
         const stats = statsResult.rows.reduce((acc, row) => {
             acc[row.status] = parseInt(row.count);
             return acc;
         }, {});
-
         res.json({
             items: result.rows,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                total: result.rows[0]?.total_count || 0,
-                totalPages: Math.ceil((result.rows[0]?.total_count || 0) / limit)
+                total: ((_b = result.rows[0]) === null || _b === void 0 ? void 0 : _b.total_count) || 0,
+                totalPages: Math.ceil((((_c = result.rows[0]) === null || _c === void 0 ? void 0 : _c.total_count) || 0) / limit)
             },
             stats
         });
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error loading bulk items:', error);
         res.status(500).json({ error: 'Fehler beim Laden der Einträge' });
     }
 });
-
 /**
  * PUT /api/clarifications/:id/bulk-items/:itemId
  * Aktualisiert einzelnen Bulk-Eintrag
  */
 router.put('/:id/bulk-items/:itemId', async (req, res) => {
+    var _a, _b, _c;
     try {
         const { id, itemId } = req.params;
         const { title, description, status, referenceData, notes } = req.body;
-
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || "");
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
-
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
-
             // Eintrag aktualisieren
             const updateResult = await client.query(`
                 UPDATE bulk_clarification_items 
@@ -270,17 +236,14 @@ router.put('/:id/bulk-items/:itemId', async (req, res) => {
                 status,
                 referenceData ? JSON.stringify(referenceData) : null,
                 notes,
-                req.user?.id || "",
+                ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id) || "",
                 itemId,
                 id
             ]);
-
             if (updateResult.rows.length === 0) {
                 throw new Error('Eintrag nicht gefunden');
             }
-
             const updatedItem = updateResult.rows[0];
-
             // Aktivität protokollieren
             await client.query(`
                 INSERT INTO clarification_activities (
@@ -294,69 +257,59 @@ router.put('/:id/bulk-items/:itemId', async (req, res) => {
             `, [
                 id,
                 `Eintrag ${updatedItem.item_index} aktualisiert`,
-                req.user?.id || "",
+                ((_c = req.user) === null || _c === void 0 ? void 0 : _c.id) || "",
                 JSON.stringify({ itemId, changes: { title, description, status } })
             ]);
-
             // Gesamt-Status der Bulk-Klärung prüfen und ggf. aktualisieren
             await updateBulkClarificationStatus(id, client);
-
             await client.query('COMMIT');
-
             res.json({
                 message: 'Eintrag erfolgreich aktualisiert',
                 item: updatedItem
             });
-
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error updating bulk item:', error);
         res.status(500).json({ error: 'Fehler beim Aktualisieren des Eintrags' });
     }
 });
-
 /**
  * POST /api/clarifications/:id/bulk-items/batch-update
  * Aktualisiert mehrere Bulk-Einträge gleichzeitig
  */
 router.post('/:id/bulk-items/batch-update', async (req, res) => {
+    var _a, _b, _c, _d, _e;
     try {
         const { id } = req.params;
         const { updates, newStatus } = req.body;
-
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || "");
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
-
         if ((!updates || !Array.isArray(updates)) && !newStatus) {
             return res.status(400).json({ error: 'Updates oder neuer Status erforderlich' });
         }
-
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
-
             let updatedCount = 0;
-
             if (newStatus) {
                 // Alle Einträge auf neuen Status setzen
                 const result = await client.query(`
                     UPDATE bulk_clarification_items 
                     SET status = $1, updated_at = NOW(), updated_by = $2
                     WHERE bulk_clarification_id = $3
-                `, [newStatus, req.user?.id || "", id]);
-
+                `, [newStatus, ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id) || "", id]);
                 updatedCount = result.rowCount;
-
                 await client.query(`
                     INSERT INTO clarification_activities (
                         clarification_id,
@@ -368,18 +321,16 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                 `, [
                     id,
                     `Alle ${updatedCount} Einträge auf Status "${newStatus}" gesetzt`,
-                    req.user?.id || ""
+                    ((_c = req.user) === null || _c === void 0 ? void 0 : _c.id) || ""
                 ]);
-
-            } else {
+            }
+            else {
                 // Spezifische Updates durchführen
                 for (const update of updates) {
                     const { itemId, changes } = update;
-                    
                     const setClauses = [];
                     const values = [];
                     let paramIndex = 1;
-
                     Object.entries(changes).forEach(([key, value]) => {
                         if (['title', 'description', 'status', 'notes'].includes(key)) {
                             setClauses.push(`${key} = $${paramIndex}`);
@@ -387,29 +338,24 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                             paramIndex++;
                         }
                     });
-
                     if (setClauses.length > 0) {
                         setClauses.push(`updated_at = NOW()`);
                         setClauses.push(`updated_by = $${paramIndex}`);
-                        values.push(req.user?.id || "");
+                        values.push(((_d = req.user) === null || _d === void 0 ? void 0 : _d.id) || "");
                         paramIndex++;
-
                         values.push(itemId);
                         values.push(id);
-
                         const updateQuery = `
                             UPDATE bulk_clarification_items 
                             SET ${setClauses.join(', ')}
                             WHERE id = $${paramIndex - 1} AND bulk_clarification_id = $${paramIndex}
                         `;
-
                         const result = await client.query(updateQuery, values);
                         if (result.rowCount > 0) {
                             updatedCount++;
                         }
                     }
                 }
-
                 await client.query(`
                     INSERT INTO clarification_activities (
                         clarification_id,
@@ -421,74 +367,64 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                 `, [
                     id,
                     `${updatedCount} Einträge in Batch-Update aktualisiert`,
-                    req.user?.id || ""
+                    ((_e = req.user) === null || _e === void 0 ? void 0 : _e.id) || ""
                 ]);
             }
-
             // Gesamt-Status der Bulk-Klärung aktualisieren
             await updateBulkClarificationStatus(id, client);
-
             await client.query('COMMIT');
-
             res.json({
                 message: `${updatedCount} Einträge erfolgreich aktualisiert`,
                 updatedCount
             });
-
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error in batch update:', error);
         res.status(500).json({ error: 'Fehler beim Batch-Update' });
     }
 });
-
 /**
  * POST /api/clarifications/:id/llm-suggestions
  * Generiert LLM-Vorschläge für Klärfall
  */
 router.post('/:id/llm-suggestions', async (req, res) => {
+    var _a, _b, _c;
     try {
         const { id } = req.params;
         const { context, requestType = 'analysis' } = req.body;
-
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || "");
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
-
         // Klärfall-Daten für LLM-Analyse vorbereiten
         const emailData = {
             subject: clarification.title,
             text: clarification.description,
-            from: clarification.original_email?.from || 'Unbekannt'
+            from: ((_b = clarification.original_email) === null || _b === void 0 ? void 0 : _b.from) || 'Unbekannt'
         };
-
         let suggestions;
-
         switch (requestType) {
             case 'analysis':
                 suggestions = await llmService.extractDataFromEmail(emailData, clarification.team_id);
                 break;
-            
             case 'response':
                 suggestions = await llmService.suggestStandardResponse(emailData, context);
                 break;
-            
             case 'routing':
                 suggestions = await llmService.analyzeForRouting(emailData, context);
                 break;
-            
             default:
                 return res.status(400).json({ error: 'Unbekannter Request-Type' });
         }
-
         // Vorschläge in Cache speichern
         await pool.query(`
             INSERT INTO llm_suggestion_cache (
@@ -504,21 +440,19 @@ router.post('/:id/llm-suggestions', async (req, res) => {
             requestType,
             JSON.stringify(suggestions),
             suggestions.confidence || 0.5,
-            req.user?.id || ""
+            ((_c = req.user) === null || _c === void 0 ? void 0 : _c.id) || ""
         ]);
-
         res.json({
             suggestions,
             requestType,
             generatedAt: new Date().toISOString()
         });
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error generating LLM suggestions:', error);
         res.status(500).json({ error: 'Fehler beim Generieren der Vorschläge' });
     }
 });
-
 /**
  * Hilfsfunktionen
  */
@@ -532,31 +466,29 @@ async function getClarificationWithAccess(clarificationId, userId) {
             WHERE c.id = $1 AND tm.user_id = $2
             LIMIT 1
         `, [clarificationId, userId]);
-
         return result.rows[0] || null;
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error checking clarification access:', error);
         return null;
     }
 }
-
 async function hasTeamAccess(userId, teamId) {
     try {
         const result = await pool.query(`
             SELECT 1 FROM team_members 
             WHERE user_id = $1 AND team_id = $2
         `, [userId, teamId]);
-        
         return result.rows.length > 0;
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error checking team access:', error);
         return false;
     }
 }
-
 // Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
 // Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
-async function updateBulkClarificationStatus(clarificationId: string, client: any) {
+async function updateBulkClarificationStatus(clarificationId, client) {
     try {
         const statusResult = await client.query(`
             SELECT 
@@ -566,26 +498,24 @@ async function updateBulkClarificationStatus(clarificationId: string, client: an
             FROM bulk_clarification_items
             WHERE bulk_clarification_id = $1
         `, [clarificationId]);
-
         const stats = statusResult.rows[0];
         let newStatus = 'offen';
-
         if (stats.completed == stats.total) {
             newStatus = 'abgeschlossen';
-        } else if (stats.in_progress > 0 || stats.completed > 0) {
+        }
+        else if (stats.in_progress > 0 || stats.completed > 0) {
             newStatus = 'in_bearbeitung';
         }
-
         await client.query(`
             UPDATE clarifications 
             SET status = $1, updated_at = NOW()
             WHERE id = $2
         `, [newStatus, clarificationId]);
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error updating bulk clarification status:', error);
         // Nicht kritisch
     }
 }
-
-export default router;
+exports.default = router;
+//# sourceMappingURL=bulk-clarifications.js.map

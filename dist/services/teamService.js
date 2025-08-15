@@ -765,6 +765,34 @@ class TeamService {
             client.release();
         }
     }
+    /**
+     * Check if user has access to team (is member, admin, or owner)
+     */
+    async hasTeamAccess(userId, teamId) {
+        const client = await database_1.default.connect();
+        try {
+            const result = await client.query(`SELECT 1 FROM team_members 
+         WHERE user_id = $1 AND team_id = $2`, [userId, teamId]);
+            return result.rows.length > 0;
+        }
+        finally {
+            client.release();
+        }
+    }
+    /**
+     * Check if user has admin access to team (is admin or owner)
+     */
+    async hasTeamAdminAccess(userId, teamId) {
+        const client = await database_1.default.connect();
+        try {
+            const result = await client.query(`SELECT 1 FROM team_members 
+         WHERE user_id = $1 AND team_id = $2 AND role IN ('admin', 'owner')`, [userId, teamId]);
+            return result.rows.length > 0;
+        }
+        finally {
+            client.release();
+        }
+    }
 }
 exports.TeamService = TeamService;
 //# sourceMappingURL=teamService.js.map

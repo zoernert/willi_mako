@@ -166,5 +166,13 @@ export declare class TeamService {
      * Get invitation by token
      */
     getInvitationByToken(token: string): Promise<TeamInvitation | null>;
+    /**
+     * Check if user has access to team (is member, admin, or owner)
+     */
+    hasTeamAccess(userId: string, teamId: string): Promise<boolean>;
+    /**
+     * Check if user has admin access to team (is admin or owner)
+     */
+    hasTeamAdminAccess(userId: string, teamId: string): Promise<boolean>;
 }
 //# sourceMappingURL=teamService.d.ts.map

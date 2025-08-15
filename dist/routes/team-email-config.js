@@ -1,21 +1,22 @@
-import express from 'express';
-import { Pool } from 'pg';
-import { ImapEmailService } from '../services/imapEmailService.js';
-import LLMDataExtractionService from '../services/llmDataExtractionService.js';
-import AutoKlärfallService from '../services/autoKlärfallService.js';
-import { TeamService } from '../services/teamService.js';
-
-const router = express.Router();
-const teamService = new TeamService();
-
-const pool = new Pool({
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const pg_1 = require("pg");
+const imapEmailService_js_1 = require("../services/imapEmailService.js");
+const llmDataExtractionService_js_1 = __importDefault(require("../services/llmDataExtractionService.js"));
+const autoKl_rfallService_js_1 = __importDefault(require("../services/autoKl\u00E4rfallService.js"));
+const teamService_js_1 = require("../services/teamService.js");
+const router = express_1.default.Router();
+const teamService = new teamService_js_1.TeamService();
+const pool = new pg_1.Pool({
     connectionString: process.env.DATABASE_URL,
 });
-
-const imapService = new ImapEmailService();
-const llmService = new LLMDataExtractionService();
-const autoKlärfallService = new AutoKlärfallService();
-
+const imapService = new imapEmailService_js_1.ImapEmailService();
+const llmService = new llmDataExtractionService_js_1.default();
+const autoKlärfallService = new autoKl_rfallService_js_1.default();
 /**
  * GET /api/team-email-config/:teamId
  * Lädt E-Mail-Konfiguration für ein Team
@@ -23,12 +24,10 @@ const autoKlärfallService = new AutoKlärfallService();
 router.get('/:teamId', async (req, res) => {
     try {
         const { teamId } = req.params;
-        
         // Berechtigung prüfen
-        if (req.user!.role !== 'admin' && !await teamService.hasTeamAccess(req.user!.id, teamId)) {
+        if (req.user.role !== 'admin' && !await teamService.hasTeamAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung für dieses Team' });
         }
-
         const result = await pool.query(`
             SELECT 
                 tec.*,
@@ -37,7 +36,6 @@ router.get('/:teamId', async (req, res) => {
             JOIN teams t ON tec.team_id = t.id
             WHERE tec.team_id = $1
         `, [teamId]);
-
         if (result.rows.length === 0) {
             return res.json({
                 teamId,
@@ -50,12 +48,9 @@ router.get('/:teamId', async (req, res) => {
                 processingRules: {}
             });
         }
-
         const config = result.rows[0];
-        
         // Passwort für Sicherheit entfernen
         delete config.imap_password_encrypted;
-        
         res.json({
             teamId: config.team_id,
             teamName: config.team_name,
@@ -70,13 +65,12 @@ router.get('/:teamId', async (req, res) => {
             lastProcessedAt: config.last_processed_at,
             status: config.status
         });
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error loading team email config:', error);
         res.status(500).json({ error: 'Fehler beim Laden der E-Mail-Konfiguration' });
     }
 });
-
 /**
  * PUT /api/team-email-config/:teamId
  * Aktualisiert E-Mail-Konfiguration für ein Team
@@ -84,40 +78,25 @@ router.get('/:teamId', async (req, res) => {
 router.put('/:teamId', async (req, res) => {
     try {
         const { teamId } = req.params;
-        const {
-            autoProcessingEnabled,
-            imapHost,
-            imapPort,
-            imapUseSSL,
-            imapUsername,
-            imapPassword,
-            outboundEmailAddress,
-            processingRules
-        } = req.body;
-
+        const { autoProcessingEnabled, imapHost, imapPort, imapUseSSL, imapUsername, imapPassword, outboundEmailAddress, processingRules } = req.body;
         // Berechtigung prüfen
-        if (req.user!.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user!.id, teamId)) {
+        if (req.user.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Admin-Berechtigung für dieses Team' });
         }
-
         // Validierung
         if (autoProcessingEnabled && (!imapHost || !imapUsername)) {
-            return res.status(400).json({ 
-                error: 'IMAP-Host und Benutzername sind erforderlich für automatische Verarbeitung' 
+            return res.status(400).json({
+                error: 'IMAP-Host und Benutzername sind erforderlich für automatische Verarbeitung'
             });
         }
-
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
-
             // Passwort verschlüsseln wenn vorhanden
             let encryptedPassword = null;
             if (imapPassword) {
-                encryptedPassword = ImapEmailService.encryptPassword(imapPassword) || null;
+                encryptedPassword = imapEmailService_js_1.ImapEmailService.encryptPassword(imapPassword) || null;
             }
-
             // Konfiguration speichern oder aktualisieren
             const upsertQuery = `
                 INSERT INTO team_email_configs (
@@ -151,7 +130,6 @@ router.put('/:teamId', async (req, res) => {
                     updated_by = EXCLUDED.updated_by
                 RETURNING *
             `;
-
             const result = await client.query(upsertQuery, [
                 teamId,
                 autoProcessingEnabled,
@@ -162,9 +140,8 @@ router.put('/:teamId', async (req, res) => {
                 encryptedPassword,
                 outboundEmailAddress,
                 JSON.stringify(processingRules || {}),
-                req.user!.id
+                req.user.id
             ]);
-
             // Aktivität protokollieren
             await client.query(`
                 INSERT INTO team_activities (
@@ -177,43 +154,40 @@ router.put('/:teamId', async (req, res) => {
             `, [
                 teamId,
                 `E-Mail-Konfiguration ${autoProcessingEnabled ? 'aktiviert' : 'deaktiviert'}`,
-                req.user!.id
+                req.user.id
             ]);
-
             await client.query('COMMIT');
-
             // IMAP-Service neu starten falls aktiviert
             if (autoProcessingEnabled) {
                 try {
                     await imapService.stopMonitoring();
                     await imapService.startMonitoring();
-                } catch (imapError) {
+                }
+                catch (imapError) {
                     console.error('Error restarting IMAP service:', imapError);
                     // Nicht kritisch - Konfiguration wurde gespeichert
                 }
             }
-
             const config = result.rows[0];
             delete config.imap_password_encrypted;
-
             res.json({
                 message: 'E-Mail-Konfiguration erfolgreich gespeichert',
                 config
             });
-
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error updating team email config:', error);
         res.status(500).json({ error: 'Fehler beim Speichern der E-Mail-Konfiguration' });
     }
 });
-
 /**
  * POST /api/team-email-config/:teamId/test
  * Testet IMAP-Verbindung
@@ -222,15 +196,12 @@ router.post('/:teamId/test', async (req, res) => {
     try {
         const { teamId } = req.params;
         const { imapHost, imapPort, imapUseSSL, imapUsername, imapPassword } = req.body;
-
         // Berechtigung prüfen
-        if (req.user!.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user!.id, teamId)) {
+        if (req.user.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung' });
         }
-
         // Test-Verbindung durchführen
         const Imap = require('imap');
-        
         const testConfig = {
             host: imapHost,
             port: imapPort || 993,
@@ -239,46 +210,40 @@ router.post('/:teamId/test', async (req, res) => {
             password: imapPassword,
             tlsOptions: { rejectUnauthorized: false }
         };
-
         const testConnection = new Promise((resolve, reject) => {
             const imap = new Imap(testConfig);
-            
             imap.once('ready', () => {
                 imap.openBox('INBOX', true, (err) => {
                     if (err) {
                         reject(new Error(`Fehler beim Öffnen der Inbox: ${err.message}`));
-                    } else {
+                    }
+                    else {
                         imap.end();
                         resolve({ success: true, message: 'Verbindung erfolgreich' });
                     }
                 });
             });
-
             imap.once('error', (err) => {
                 reject(new Error(`IMAP-Verbindungsfehler: ${err.message}`));
             });
-
             // Timeout nach 10 Sekunden
             setTimeout(() => {
                 imap.end();
                 reject(new Error('Verbindungstest abgebrochen (Timeout)'));
             }, 10000);
-
             imap.connect();
         });
-
         const result = await testConnection;
         res.json(result);
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('IMAP test error:', error);
-        res.status(400).json({ 
-            success: false, 
-            error: error.message 
+        res.status(400).json({
+            success: false,
+            error: error.message
         });
     }
 });
-
 /**
  * GET /api/team-email-config/:teamId/status
  * Status der E-Mail-Verarbeitung
@@ -286,12 +251,10 @@ router.post('/:teamId/test', async (req, res) => {
 router.get('/:teamId/status', async (req, res) => {
     try {
         const { teamId } = req.params;
-
         // Berechtigung prüfen
-        if (req.user!.role !== 'admin' && !await teamService.hasTeamAccess(req.user!.id, teamId)) {
+        if (req.user.role !== 'admin' && !await teamService.hasTeamAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung' });
         }
-
         // Queue-Status laden
         const queueResult = await pool.query(`
             SELECT 
@@ -302,7 +265,6 @@ router.get('/:teamId/status', async (req, res) => {
                 AND created_at > NOW() - INTERVAL '24 hours'
             GROUP BY processing_status
         `, [teamId]);
-
         // Letzte verarbeitete E-Mails
         const recentResult = await pool.query(`
             SELECT 
@@ -314,11 +276,9 @@ router.get('/:teamId/status', async (req, res) => {
             ORDER BY epq.created_at DESC
             LIMIT 10
         `, [teamId]);
-
         // IMAP-Verbindungsstatus
         const imapStatus = imapService.getHealthStatus();
         const teamConnected = imapStatus.connections.includes(teamId);
-
         res.json({
             teamId,
             imapConnected: teamConnected,
@@ -329,13 +289,12 @@ router.get('/:teamId/status', async (req, res) => {
             recentEmails: recentResult.rows,
             lastUpdate: new Date().toISOString()
         });
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error loading email processing status:', error);
         res.status(500).json({ error: 'Fehler beim Laden des Status' });
     }
 });
-
 /**
  * POST /api/team-email-config/:teamId/retry
  * Wiederholt fehlgeschlagene E-Mail-Verarbeitung
@@ -344,21 +303,16 @@ router.post('/:teamId/retry', async (req, res) => {
     try {
         const { teamId } = req.params;
         const { queueIds } = req.body;
-
         // Berechtigung prüfen
-        if (req.user!.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user!.id, teamId)) {
+        if (req.user.role !== 'admin' && !await teamService.hasTeamAdminAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung' });
         }
-
         const client = await pool.connect();
-        
         try {
             await client.query('BEGIN');
-
             // Status zurücksetzen
             let updateQuery;
             let values;
-
             if (queueIds && queueIds.length > 0) {
                 const placeholders = queueIds.map((_, index) => `$${index + 2}`).join(',');
                 updateQuery = `
@@ -369,7 +323,8 @@ router.post('/:teamId/retry', async (req, res) => {
                     WHERE team_id = $1 AND id IN (${placeholders})
                 `;
                 values = [teamId, ...queueIds];
-            } else {
+            }
+            else {
                 updateQuery = `
                     UPDATE email_processing_queue 
                     SET processing_status = 'PENDING',
@@ -379,27 +334,25 @@ router.post('/:teamId/retry', async (req, res) => {
                 `;
                 values = [teamId];
             }
-
             const result = await client.query(updateQuery, values);
-
             await client.query('COMMIT');
-
             res.json({
                 message: `${result.rowCount} E-Mails für Wiederholung markiert`,
                 retriedCount: result.rowCount
             });
-
-        } catch (error) {
+        }
+        catch (error) {
             await client.query('ROLLBACK');
             throw error;
-        } finally {
+        }
+        finally {
             client.release();
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error retrying email processing:', error);
         res.status(500).json({ error: 'Fehler beim Wiederholen der Verarbeitung' });
     }
 });
-
-export default router;
+exports.default = router;
+//# sourceMappingURL=team-email-config.js.map

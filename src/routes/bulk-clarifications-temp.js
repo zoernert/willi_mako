@@ -56,7 +56,7 @@ router.post('/bulk', async (req, res) => {
         }
 
         // Berechtigung prüfen
-        if (!await hasTeamAccess(req.user?.id || "", teamId)) {
+        if (!await hasTeamAccess(req.user.id, teamId)) {
             return res.status(403).json({ error: 'Keine Berechtigung für dieses Team' });
         }
 
@@ -87,7 +87,7 @@ router.post('/bulk', async (req, res) => {
                 priority || 'normal',
                 teamId,
                 marketPartnerId,
-                req.user?.id || ""
+                req.user.id
             ]);
 
             const mainClarification = mainClarificationResult.rows[0];
@@ -131,7 +131,7 @@ router.post('/bulk', async (req, res) => {
             `, [
                 mainClarification.id,
                 `Bulk-Klärung mit ${items.length} Einträgen erstellt`,
-                req.user?.id || ""
+                req.user.id
             ]);
 
             await client.query('COMMIT');
@@ -167,7 +167,7 @@ router.get('/:id/bulk-items', async (req, res) => {
         const { page = 1, limit = 20, status } = req.query;
 
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, req.user.id);
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -241,7 +241,7 @@ router.put('/:id/bulk-items/:itemId', async (req, res) => {
         const { title, description, status, referenceData, notes } = req.body;
 
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, req.user.id);
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -270,7 +270,7 @@ router.put('/:id/bulk-items/:itemId', async (req, res) => {
                 status,
                 referenceData ? JSON.stringify(referenceData) : null,
                 notes,
-                req.user?.id || "",
+                req.user.id,
                 itemId,
                 id
             ]);
@@ -294,12 +294,12 @@ router.put('/:id/bulk-items/:itemId', async (req, res) => {
             `, [
                 id,
                 `Eintrag ${updatedItem.item_index} aktualisiert`,
-                req.user?.id || "",
+                req.user.id,
                 JSON.stringify({ itemId, changes: { title, description, status } })
             ]);
 
             // Gesamt-Status der Bulk-Klärung prüfen und ggf. aktualisieren
-            await updateBulkClarificationStatus(id, client);
+            await this.updateBulkClarificationStatus(id, client);
 
             await client.query('COMMIT');
 
@@ -331,7 +331,7 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
         const { updates, newStatus } = req.body;
 
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, req.user.id);
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -353,7 +353,7 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                     UPDATE bulk_clarification_items 
                     SET status = $1, updated_at = NOW(), updated_by = $2
                     WHERE bulk_clarification_id = $3
-                `, [newStatus, req.user?.id || "", id]);
+                `, [newStatus, req.user.id, id]);
 
                 updatedCount = result.rowCount;
 
@@ -368,7 +368,7 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                 `, [
                     id,
                     `Alle ${updatedCount} Einträge auf Status "${newStatus}" gesetzt`,
-                    req.user?.id || ""
+                    req.user.id
                 ]);
 
             } else {
@@ -391,7 +391,7 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                     if (setClauses.length > 0) {
                         setClauses.push(`updated_at = NOW()`);
                         setClauses.push(`updated_by = $${paramIndex}`);
-                        values.push(req.user?.id || "");
+                        values.push(req.user.id);
                         paramIndex++;
 
                         values.push(itemId);
@@ -421,12 +421,12 @@ router.post('/:id/bulk-items/batch-update', async (req, res) => {
                 `, [
                     id,
                     `${updatedCount} Einträge in Batch-Update aktualisiert`,
-                    req.user?.id || ""
+                    req.user.id
                 ]);
             }
 
             // Gesamt-Status der Bulk-Klärung aktualisieren
-            await updateBulkClarificationStatus(id, client);
+            await this.updateBulkClarificationStatus(id, client);
 
             await client.query('COMMIT');
 
@@ -458,7 +458,7 @@ router.post('/:id/llm-suggestions', async (req, res) => {
         const { context, requestType = 'analysis' } = req.body;
 
         // Berechtigung prüfen
-        const clarification = await getClarificationWithAccess(id, req.user?.id || "");
+        const clarification = await getClarificationWithAccess(id, req.user.id);
         if (!clarification) {
             return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
         }
@@ -504,7 +504,7 @@ router.post('/:id/llm-suggestions', async (req, res) => {
             requestType,
             JSON.stringify(suggestions),
             suggestions.confidence || 0.5,
-            req.user?.id || ""
+            req.user.id
         ]);
 
         res.json({
@@ -555,8 +555,7 @@ async function hasTeamAccess(userId, teamId) {
 }
 
 // Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
-// Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
-async function updateBulkClarificationStatus(clarificationId: string, client: any) {
+router.updateBulkClarificationStatus = async function(clarificationId, client) {
     try {
         const statusResult = await client.query(`
             SELECT 
@@ -586,6 +585,6 @@ async function updateBulkClarificationStatus(clarificationId: string, client: an
         console.error('Error updating bulk clarification status:', error);
         // Nicht kritisch
     }
-}
+};
 
-export default router;
+module.exports = router;

@@ -271,7 +271,7 @@ router.get('/', authenticateToken, async (req, res) => {
         AND (created_by = $1 OR assigned_to = $1 OR 
              (shared_with_team = true AND team_id = $2))
     `;
-    const summaryResult = await pool.query(summaryQuery, [req.user.id, req.user.teamId]);
+    const summaryResult = await pool.query(summaryQuery, [req.user!.id, req.user.teamId]);
 
     const clarifications = result.rows.map(row => ({
       ...formatClarification(row),
@@ -286,10 +286,10 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json({
       clarifications,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(String(page || "1")),
+        limit: parseInt(String(limit || "20")),
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil((total as number) / (limit as number))
       },
       summary: {
         totalOpen: parseInt(summaryResult.rows[0].total_open) || 0,
@@ -323,7 +323,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         AND (created_by = $2 OR assigned_to = $2 OR 
              (shared_with_team = true AND team_id = $3))
     `;
-    const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
+    const accessResult = await pool.query(accessQuery, [id, req.user!.id, req.user.teamId]);
 
     if (accessResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -448,13 +448,13 @@ router.post('/', authenticateToken, async (req, res) => {
       partnerName,
       casetype,
       priority,
-      req.user.id,
+      req.user!.id,
       assignedTo || null,
       tags,
       externalCaseId || null,
       sourceSystem,
       req.user.teamId,
-      req.user.id,
+      req.user!.id,
       JSON.stringify(marketPartner),
       JSON.stringify(selectedRole),
       JSON.stringify(selectedContact),
@@ -465,7 +465,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const newClarification = formatClarification(result.rows[0]);
 
     // Log the creation
-    logger.info(`Clarification created: ${newClarification.id} by user ${req.user.id}`);
+    logger.info(`Clarification created: ${newClarification.id} by user ${req.user!.id}`);
 
     res.status(201).json({
       message: 'Klärfall erfolgreich erstellt',
@@ -493,7 +493,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)
     `;
-    const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
+    const permissionResult = await pool.query(permissionQuery, [id, req.user!.id]);
 
     if (permissionResult.rows.length === 0) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Bearbeiten dieses Klärfalls' });
@@ -528,7 +528,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Add metadata
     updateFields.push(`last_modified_by = $${paramCounter}`);
-    updateValues.push(req.user.id);
+    updateValues.push(req.user!.id);
     paramCounter++;
 
     updateFields.push(`version = version + 1`);
@@ -547,7 +547,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const updatedClarification = formatClarification(result.rows[0]);
 
     // Log the update
-    logger.info(`Clarification updated: ${id} by user ${req.user.id}`);
+    logger.info(`Clarification updated: ${id} by user ${req.user!.id}`);
 
     res.json({
       message: 'Klärfall erfolgreich aktualisiert',
@@ -574,7 +574,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-    const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
+    const permissionResult = await pool.query(permissionQuery, [id, req.user!.id]);
 
     if (permissionResult.rows.length === 0) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Klärfalls' });
@@ -586,9 +586,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       SET archived = true, archived_at = NOW(), last_modified_by = $2
       WHERE id = $1
     `;
-    await pool.query(archiveQuery, [id, req.user.id]);
+    await pool.query(archiveQuery, [id, req.user!.id]);
 
-    logger.info(`Clarification archived: ${id} by user ${req.user.id}`);
+    logger.info(`Clarification archived: ${id} by user ${req.user!.id}`);
 
     res.json({ message: 'Klärfall erfolgreich archiviert' });
 
@@ -614,7 +614,7 @@ router.post('/:id/attachments', authenticateToken, upload.array('attachments', 5
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-    const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
+    const accessResult = await pool.query(accessQuery, [id, req.user!.id, req.user.teamId]);
 
     if (accessResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -626,7 +626,7 @@ router.post('/:id/attachments', authenticateToken, upload.array('attachments', 5
 
     const uploadedAttachments = [];
 
-    for (const file of req.files) {
+    for (const file of (req.files as any[])) {
       const insertQuery = `
         INSERT INTO clarification_attachments 
         (clarification_id, filename, original_filename, file_path, file_size, 
@@ -642,7 +642,7 @@ router.post('/:id/attachments', authenticateToken, upload.array('attachments', 5
         file.path,
         file.size,
         file.mimetype,
-        req.user.id,
+        req.user!.id,
         attachmentType,
         attachmentCategory,
         description || null,
@@ -653,7 +653,7 @@ router.post('/:id/attachments', authenticateToken, upload.array('attachments', 5
       uploadedAttachments.push(result.rows[0]);
     }
 
-    logger.info(`${uploadedAttachments.length} attachments uploaded to clarification ${id} by user ${req.user.id}`);
+    logger.info(`${uploadedAttachments.length} attachments uploaded to clarification ${id} by user ${req.user!.id}`);
 
     res.status(201).json({
       message: 'Anhänge erfolgreich hochgeladen',
@@ -691,9 +691,9 @@ router.delete('/:id/attachments/:attachmentId', authenticateToken, async (req, r
     const attachment = permissionResult.rows[0];
     
     // Only uploader, case creator, or assigned user can delete
-    if (attachment.uploaded_by !== req.user.id && 
-        attachment.created_by !== req.user.id && 
-        attachment.assigned_to !== req.user.id) {
+    if (attachment.uploaded_by !== req.user!.id && 
+        attachment.created_by !== req.user!.id && 
+        attachment.assigned_to !== req.user!.id) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Anhangs' });
     }
 
@@ -705,7 +705,7 @@ router.delete('/:id/attachments/:attachmentId', authenticateToken, async (req, r
     `;
     await pool.query(deleteQuery, [attachmentId]);
 
-    logger.info(`Attachment ${attachmentId} deleted from clarification ${id} by user ${req.user.id}`);
+    logger.info(`Attachment ${attachmentId} deleted from clarification ${id} by user ${req.user!.id}`);
 
     res.json({ message: 'Anhang erfolgreich gelöscht' });
 
@@ -739,7 +739,7 @@ router.post('/:id/notes', authenticateToken, async (req, res) => {
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-    const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
+    const accessResult = await pool.query(accessQuery, [id, req.user!.id, req.user.teamId]);
 
     if (accessResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -757,7 +757,7 @@ router.post('/:id/notes', authenticateToken, async (req, res) => {
       id,
       content,
       noteType,
-      req.user.id,
+      req.user!.id,
       isInternal,
       linkedAttachmentId || null,
       linkedEmailId || null,
@@ -767,7 +767,7 @@ router.post('/:id/notes', authenticateToken, async (req, res) => {
 
     const result = await pool.query(insertQuery, values);
 
-    logger.info(`Note added to clarification ${id} by user ${req.user.id}`);
+    logger.info(`Note added to clarification ${id} by user ${req.user!.id}`);
 
     res.status(201).json({
       message: 'Notiz erfolgreich hinzugefügt',
@@ -794,7 +794,7 @@ router.post('/:id/share-team', authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-    const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
+    const permissionResult = await pool.query(permissionQuery, [id, req.user!.id]);
 
     if (permissionResult.rows.length === 0) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Freigeben dieses Klärfalls' });
@@ -807,7 +807,7 @@ router.post('/:id/share-team', authenticateToken, async (req, res) => {
       WHERE id = $1
       RETURNING *
     `;
-    const result = await pool.query(updateQuery, [id, req.user.id]);
+    const result = await pool.query(updateQuery, [id, req.user!.id]);
 
     // Log team activity
     const activityQuery = `
@@ -818,11 +818,11 @@ router.post('/:id/share-team', authenticateToken, async (req, res) => {
     await pool.query(activityQuery, [
       id, 
       req.user.teamId, 
-      req.user.id, 
+      req.user!.id, 
       JSON.stringify({ shared_at: new Date().toISOString() })
     ]);
 
-    logger.info(`Clarification ${id} shared with team by user ${req.user.id}`);
+    logger.info(`Clarification ${id} shared with team by user ${req.user!.id}`);
 
     res.json({
       message: 'Klärfall erfolgreich für Team freigegeben',
@@ -849,7 +849,7 @@ router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
       SELECT * FROM bilateral_clarifications 
       WHERE id = $1 AND created_by = $2
     `;
-    const permissionResult = await pool.query(permissionQuery, [id, req.user.id]);
+    const permissionResult = await pool.query(permissionQuery, [id, req.user!.id]);
 
     if (permissionResult.rows.length === 0) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Entfernen der Freigabe' });
@@ -862,7 +862,7 @@ router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
       WHERE id = $1
       RETURNING *
     `;
-    const result = await pool.query(updateQuery, [id, req.user.id]);
+    const result = await pool.query(updateQuery, [id, req.user!.id]);
 
     // Log team activity
     const activityQuery = `
@@ -873,11 +873,11 @@ router.post('/:id/unshare-team', authenticateToken, async (req, res) => {
     await pool.query(activityQuery, [
       id, 
       req.user.teamId, 
-      req.user.id, 
+      req.user!.id, 
       JSON.stringify({ unshared_at: new Date().toISOString() })
     ]);
 
-    logger.info(`Clarification ${id} unshared from team by user ${req.user.id}`);
+    logger.info(`Clarification ${id} unshared from team by user ${req.user!.id}`);
 
     res.json({
       message: 'Team-Freigabe erfolgreich entfernt',
@@ -921,7 +921,7 @@ router.post('/:id/team-comments', authenticateToken, async (req, res) => {
     const values = [
       id,
       content,
-      req.user.id,
+      req.user!.id,
       parentCommentId || null,
       mentionedUsers
     ];
@@ -937,11 +937,11 @@ router.post('/:id/team-comments', authenticateToken, async (req, res) => {
     await pool.query(activityQuery, [
       id, 
       req.user.teamId, 
-      req.user.id, 
+      req.user!.id, 
       JSON.stringify({ comment_id: result.rows[0].id })
     ]);
 
-    logger.info(`Team comment added to clarification ${id} by user ${req.user.id}`);
+    logger.info(`Team comment added to clarification ${id} by user ${req.user!.id}`);
 
     res.status(201).json({
       message: 'Team-Kommentar erfolgreich hinzugefügt',
@@ -978,22 +978,22 @@ router.get('/team-cases', authenticateToken, async (req, res) => {
 
     if (status) {
       query += ` AND bc.status = $${paramCounter}`;
-      queryParams.push(status);
+      queryParams.push(String(status));
       paramCounter++;
     }
 
     if (priority) {
       query += ` AND bc.priority = $${paramCounter}`;
-      queryParams.push(priority);
+      queryParams.push(String(priority));
       paramCounter++;
     }
 
     query += ` GROUP BY bc.id, u.name, u2.name ORDER BY bc.updated_at DESC`;
 
     // Add pagination
-    const offset = (page - 1) * limit;
+    const offset = ((page as number) - 1) * (limit as number);
     query += ` LIMIT $${paramCounter} OFFSET $${paramCounter + 1}`;
-    queryParams.push(limit, offset);
+    queryParams.push(String(limit), String(offset));
 
     const result = await pool.query(query, queryParams);
 
@@ -1007,8 +1007,8 @@ router.get('/team-cases', authenticateToken, async (req, res) => {
     res.json({
       teamCases,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(String(page || "1")),
+        limit: parseInt(String(limit || "20")),
         // TODO: Add total count
       }
     });
@@ -1046,7 +1046,7 @@ router.post('/:id/emails', authenticateToken, async (req, res) => {
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2 OR 
                          (shared_with_team = true AND team_id = $3))
     `;
-    const accessResult = await pool.query(accessQuery, [id, req.user.id, req.user.teamId]);
+    const accessResult = await pool.query(accessQuery, [id, req.user!.id, req.user.teamId]);
 
     if (accessResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -1069,7 +1069,7 @@ router.post('/:id/emails', authenticateToken, async (req, res) => {
       ccAddresses,
       content,
       contentType,
-      req.user.id,
+      req.user!.id,
       source,
       emailType,
       isImportant
@@ -1077,7 +1077,7 @@ router.post('/:id/emails', authenticateToken, async (req, res) => {
 
     const result = await pool.query(insertQuery, values);
 
-    logger.info(`Email record added to clarification ${id} by user ${req.user.id}`);
+    logger.info(`Email record added to clarification ${id} by user ${req.user!.id}`);
 
     res.status(201).json({
       message: 'Email-Eintrag erfolgreich hinzugefügt',
@@ -1115,7 +1115,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       WHERE c.id = $1 AND (c.created_by = $2 OR c.assigned_to = $2)
     `;
     
-    const clarificationResult = await pool.query(clarificationQuery, [id, req.user.id]);
+    const clarificationResult = await pool.query(clarificationQuery, [id, req.user!.id]);
     
     if (clarificationResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -1191,10 +1191,10 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
     `;
     
     await pool.query(emailRecordQuery, [
-      id, subject, mailOptions.from, [to], body, req.user.id, info.messageId
+      id, subject, mailOptions.from, [to], body, req.user!.id, info.messageId
     ]);
 
-    logger.info(`Clarification email sent for case ${id} to ${to} by user ${req.user.id}`);
+    logger.info(`Clarification email sent for case ${id} to ${to} by user ${req.user!.id}`);
 
     res.json({
       success: true,
@@ -1227,7 +1227,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       WHERE id = $1 AND (created_by = $2 OR assigned_to = $2)
     `;
     
-    const checkResult = await pool.query(checkQuery, [id, req.user.id]);
+    const checkResult = await pool.query(checkQuery, [id, req.user!.id]);
     
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Klärfall nicht gefunden oder keine Berechtigung' });
@@ -1244,7 +1244,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       RETURNING *
     `;
     
-    const result = await pool.query(updateQuery, [status, internalStatus, req.user.id, id]);
+    const result = await pool.query(updateQuery, [status, internalStatus, req.user!.id, id]);
 
     // Status-History-Eintrag hinzufügen
     if (reason) {
@@ -1256,10 +1256,10 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
         ), $2, $3, $4)
       `;
       
-      await pool.query(historyQuery, [id, status, req.user.id, reason]);
+      await pool.query(historyQuery, [id, status, req.user!.id, reason]);
     }
 
-    logger.info(`Status updated for clarification ${id} to ${status} by user ${req.user.id}`);
+    logger.info(`Status updated for clarification ${id} to ${status} by user ${req.user!.id}`);
 
     res.json(result.rows[0]);
 

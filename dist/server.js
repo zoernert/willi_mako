@@ -27,6 +27,10 @@ const community_2 = require("./routes/admin/community");
 const m2cRoles_1 = __importDefault(require("./routes/m2cRoles"));
 const bilateral_clarifications_simple_1 = __importDefault(require("./routes/bilateral-clarifications-simple"));
 const llm_1 = __importDefault(require("./routes/llm"));
+const team_email_config_js_1 = __importDefault(require("./routes/team-email-config.js"));
+const bulk_clarifications_js_1 = __importDefault(require("./routes/bulk-clarifications.js"));
+const cr_wmako_001_test_js_1 = __importDefault(require("./routes/cr-wmako-001-test.js"));
+const imap_scheduler_js_1 = __importDefault(require("./routes/imap-scheduler.js"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -147,6 +151,11 @@ app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
 app.use('/api', m2cRoles_1.default);
 app.use('/api/bilateral-clarifications', bilateral_clarifications_simple_1.default);
 app.use('/api/llm', llm_1.default);
+// CR-WMAKO-001: New routes for email configuration and bulk clarifications
+app.use('/api/team-email-config', auth_2.authenticateToken, team_email_config_js_1.default);
+app.use('/api/bulk-clarifications', auth_2.authenticateToken, bulk_clarifications_js_1.default);
+app.use('/api/imap', imap_scheduler_js_1.default);
+app.use('/api/cr-wmako-001', cr_wmako_001_test_js_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Initialize Qdrant collections
