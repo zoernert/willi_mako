@@ -29,4 +29,5 @@ export interface UserPreferences {
     created_at: string;
     preferences?: UserPreferences;
     flip_mode_preferences?: FlipModePreferences;
+    can_access_cs30?: boolean; // CR-CS30: Added CS30 access flag
   }

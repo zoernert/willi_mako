@@ -152,7 +152,7 @@ router.get('/profile', authenticateToken, asyncHandler(async (req: Authenticated
   
   try {
     const userResult = await client.query(
-      'SELECT id, email, name, full_name, company, role, selected_m2c_role_ids FROM users WHERE id = $1',
+      'SELECT id, email, name, full_name, company, role, selected_m2c_role_ids, can_access_cs30 FROM users WHERE id = $1',
       [userId]
     );
 
@@ -179,6 +179,7 @@ router.get('/profile', authenticateToken, asyncHandler(async (req: Authenticated
       full_name: user.full_name,
       company: user.company,
       role: user.role,
+      can_access_cs30: user.can_access_cs30, // CR-CS30: Include CS30 access flag
       selectedM2cRoles: selectedM2cRoles
     }, 'Profil erfolgreich abgerufen');
 

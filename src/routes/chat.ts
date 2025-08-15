@@ -17,6 +17,72 @@ const router = Router();
 const qdrantService = new QdrantService();
 const gamificationService = new GamificationService();
 
+// CR-CS30: Helper function to generate CS30 additional response
+async function generateCs30AdditionalResponse(
+  userQuery: string, 
+  userHasCs30Access: boolean
+): Promise<{ hasCs30Response: boolean; cs30Response?: string; cs30Sources?: any[] }> {
+  if (!userHasCs30Access) {
+    console.log('🔍 CS30: User does not have cs30 access');
+    return { hasCs30Response: false };
+  }
+
+  try {
+    // Check if cs30 collection is available
+    const isCs30Available = await qdrantService.isCs30Available();
+    if (!isCs30Available) {
+      console.log('🔍 CS30: Collection not available, skipping cs30 response');
+      return { hasCs30Response: false };
+    }
+
+    console.log('🔍 CS30: Collection available, searching...');
+    
+    // Search cs30 collection for relevant content with lower threshold for testing
+    const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.60); // Lowered from 0.80 to 0.60
+    
+    console.log(`🔍 CS30: Found ${cs30Results.length} results`);
+    if (cs30Results.length > 0) {
+      console.log('🔍 CS30: Top result score:', cs30Results[0].score);
+    }
+    
+    if (cs30Results.length === 0) {
+      console.log('🔍 CS30: No relevant results found above threshold');
+      return { hasCs30Response: false };
+    }
+
+    // Extract context from cs30 results
+    const cs30Context = cs30Results.map(result => {
+      // CS30 uses 'content' field instead of 'text'
+      return result.payload?.content || result.payload?.text || '';
+    }).join('\n\n');
+    
+    console.log('🔍 CS30: Generating response with context length:', cs30Context.length);
+    
+    // Generate cs30-specific response
+    const cs30Response = await geminiService.generateResponse(
+      [{ role: 'user', content: userQuery }],
+      cs30Context,
+      {},
+      false   // not enhanced query
+    );
+
+    console.log(`✅ CS30: Generated response with ${cs30Results.length} sources`);
+    
+    return {
+      hasCs30Response: true,
+      cs30Response: cs30Response,
+      cs30Sources: cs30Results.map(r => ({
+        source_document: r.payload?.source || 'Schleupen Dokumentation',
+        content_type: r.payload?.type || 'N/A',
+        score: r.score
+      }))
+    };
+  } catch (error) {
+    console.error('❌ CS30: Error generating response:', error);
+    return { hasCs30Response: false };
+  }
+}
+
 // Advanced retrieval service for contextual compression
 class AdvancedRetrieval {
   async getContextualCompressedResults(
@@ -445,14 +511,66 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   const totalResponseTime = Date.now() - startTime;
   console.log(`📊 Chat response completed in ${totalResponseTime}ms (API calls: ${reasoningResult.apiCallsUsed || 'unknown'})`);
 
+  // CR-CS30: Check if user has cs30 access and generate additional response
+  const userQuery = await pool.query(
+    'SELECT can_access_cs30 FROM users WHERE id = $1',
+    [userId]
+  );
+  const userHasCs30Access = userQuery.rows[0]?.can_access_cs30 || false;
+  
+  console.log(`🔍 CS30 Access Check: User ${userId} has cs30 access: ${userHasCs30Access}`);
+
+  // Generate CS30 additional response asynchronously (don't block primary response)
+  let cs30ResponsePromise: Promise<any> | null = null;
+  if (userHasCs30Access) {
+    console.log(`🔍 Starting CS30 search for query: "${content}"`);
+    cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access);
+  }
+
+  // Prepare primary response data
+  const primaryResponseData = {
+    userMessage: userMessage.rows[0],
+    assistantMessage: assistantMessage.rows[0],
+    updatedChatTitle,
+    type: 'normal' as const
+  };
+
+  // If cs30 access is enabled, wait for cs30 response and include if relevant
+  if (cs30ResponsePromise) {
+    try {
+      const cs30Result = await cs30ResponsePromise;
+      
+      if (cs30Result.hasCs30Response) {
+        // Save CS30 additional response as separate message
+        const cs30Message = await pool.query(
+          'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at',
+          [chatId, 'assistant', cs30Result.cs30Response, JSON.stringify({
+            type: 'cs30_additional',
+            sources: cs30Result.cs30Sources,
+            sourceCount: cs30Result.cs30Sources?.length || 0
+          })]
+        );
+
+        console.log(`✅ Added CS30 additional response with ${cs30Result.cs30Sources?.length || 0} sources`);
+        
+        return res.json({
+          success: true,
+          data: {
+            ...primaryResponseData,
+            cs30AdditionalResponse: cs30Message.rows[0],
+            hasCs30Additional: true
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error in CS30 response generation:', error);
+      // Continue with primary response only
+    }
+  }
+
   return res.json({
     success: true,
-    data: {
-      userMessage: userMessage.rows[0],
-      assistantMessage: assistantMessage.rows[0],
-      updatedChatTitle,
-      type: 'normal'
-    }
+    data: primaryResponseData
   });
 }));
 

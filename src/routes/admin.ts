@@ -168,10 +168,11 @@ router.get('/users', asyncHandler(async (req: AuthenticatedRequest, res: Respons
       full_name: string;
       role: string;
       company: string;
+      can_access_cs30: boolean;
       created_at: Date;
       updated_at: Date;
     }>(`
-      SELECT id, email, full_name, role, company, created_at, updated_at
+      SELECT id, email, full_name, role, company, can_access_cs30, created_at, updated_at
       FROM users 
       ORDER BY created_at DESC
     `);
@@ -201,6 +202,41 @@ router.put('/users/:userId/role', asyncHandler(async (req: AuthenticatedRequest,
   } catch (error) {
     console.error('Error updating user role:', error);
     throw new AppError('Failed to update user role', 500);
+  }
+}));
+
+/**
+ * PUT /admin/users/:userId/cs30-access
+ * Update user CS30 access permission
+ * CR-CS30: New endpoint for managing cs30 database access
+ */
+router.put('/users/:userId/cs30-access', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  const { canAccess } = req.body;
+
+  if (typeof canAccess !== 'boolean') {
+    throw new AppError('canAccess must be a boolean value', 400);
+  }
+
+  try {
+    // Check if user exists
+    const userExists = await DatabaseHelper.executeQuerySingle<{count: number}>('SELECT COUNT(*) as count FROM users WHERE id = $1', [userId]);
+    if (!userExists || userExists.count === 0) {
+      throw new AppError('User not found', 404);
+    }
+
+    await DatabaseHelper.executeQuery(
+      'UPDATE users SET can_access_cs30 = $1, updated_at = NOW() WHERE id = $2', 
+      [canAccess, userId]
+    );
+    
+    ResponseUtils.success(res, { 
+      id: userId, 
+      can_access_cs30: canAccess 
+    }, `CS30 access ${canAccess ? 'granted' : 'revoked'} successfully`);
+  } catch (error) {
+    console.error('Error updating CS30 access:', error);
+    throw new AppError('Failed to update CS30 access', 500);
   }
 }));
 

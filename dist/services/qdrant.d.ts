@@ -21,6 +21,7 @@ export declare class QdrantService {
         order_value?: number | Record<string, unknown> | null | undefined;
     }[]>;
     private ensureCollection;
+    private ensureCs30Collection;
     upsertDocument(document: UserDocument, text: string): Promise<void>;
     deleteDocument(documentId: string): Promise<void>;
     search(userId: string, queryText: string, limit?: number): Promise<{
@@ -96,5 +97,7 @@ export declare class QdrantService {
         shard_key?: string | number | Record<string, unknown> | null | undefined;
         order_value?: number | Record<string, unknown> | null | undefined;
     }[]>;
+    searchCs30(query: string, limit?: number, scoreThreshold?: number): Promise<any[]>;
+    isCs30Available(): Promise<boolean>;
 }
 //# sourceMappingURL=qdrant.d.ts.map

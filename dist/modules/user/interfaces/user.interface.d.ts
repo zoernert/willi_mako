@@ -9,6 +9,7 @@ export interface User {
     password_hash?: string;
     created_at?: Date;
     updated_at?: Date;
+    can_access_cs30?: boolean;
 }
 export interface UserProfile {
     id: string;

@@ -82,7 +82,7 @@ class UserController {
         this.getUserProfile = async (req, res, next) => {
             try {
                 const userId = req.user.id;
-                const user = await database_1.DatabaseHelper.executeQuerySingle('SELECT id, email, role, name, created_at, updated_at FROM users WHERE id = $1', [userId]);
+                const user = await database_1.DatabaseHelper.executeQuerySingle('SELECT id, email, role, name, created_at, updated_at, can_access_cs30 FROM users WHERE id = $1', [userId]);
                 if (!user) {
                     throw new errors_1.AppError('User not found', 404);
                 }

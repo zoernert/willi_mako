@@ -127,8 +127,9 @@ export class UserController {
                 name: string;
                 created_at: Date;
                 updated_at: Date;
+                can_access_cs30: boolean; // CR-CS30: Include CS30 access flag
             }>(
-                'SELECT id, email, role, name, created_at, updated_at FROM users WHERE id = $1',
+                'SELECT id, email, role, name, created_at, updated_at, can_access_cs30 FROM users WHERE id = $1',
                 [userId]
             );
 

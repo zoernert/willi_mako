@@ -44,6 +44,12 @@ interface Message {
   metadata?: any;
 }
 
+// CR-CS30: Extended interface for CS30 additional responses
+interface MessageWithCs30 extends Message {
+  cs30AdditionalResponse?: Message;
+  hasCs30Additional?: boolean;
+}
+
 interface ChatSession {
   id: string;
   title: string;
@@ -95,6 +101,10 @@ const Chat: React.FC = () => {
   // Community escalation state
   const [escalationModalOpen, setEscalationModalOpen] = useState(false);
   
+  // CR-CS30: State for CS30 toggle functionality
+  const [userHasCs30Access, setUserHasCs30Access] = useState(false);
+  const [showCs30Mode, setShowCs30Mode] = useState(false); // false = normal mode, true = cs30 mode
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Text selection for creating notes
@@ -111,7 +121,21 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     fetchChats();
+    // CR-CS30: Check user's CS30 access on component mount
+    checkUserCs30Access();
   }, []);
+
+  // CR-CS30: Function to check if user has CS30 access
+  const checkUserCs30Access = async () => {
+    try {
+      const userProfile = await userApi.getUserProfile();
+      setUserHasCs30Access(!!userProfile.can_access_cs30);
+      console.log('User CS30 access:', !!userProfile.can_access_cs30);
+    } catch (error) {
+      console.error('Error checking CS30 access:', error);
+      setUserHasCs30Access(false);
+    }
+  };
 
   useEffect(() => {
     if (chatId) {
@@ -217,11 +241,16 @@ const Chat: React.FC = () => {
       console.log('API Response:', response);
 
       // The chatApi returns the data directly, no need to access .data.data
-      const { userMessage, assistantMessage, updatedChatTitle, type } = response;
+      const { userMessage, assistantMessage, updatedChatTitle, type, cs30AdditionalResponse, hasCs30Additional } = response;
       
       // Validate required fields
       if (!userMessage || !assistantMessage) {
         throw new Error('Invalid response format: missing userMessage or assistantMessage');
+      }
+
+      // CR-CS30: Log CS30 additional response if present
+      if (hasCs30Additional && cs30AdditionalResponse) {
+        console.log('CS30 additional response received:', cs30AdditionalResponse);
       }
 
       console.log('User message:', userMessage);
@@ -244,7 +273,15 @@ const Chat: React.FC = () => {
         // Normal response - add assistant message
         setMessages(prev => {
           console.log('Adding assistant message to state:', assistantMessage);
-          return [...prev, assistantMessage];
+          
+          // CR-CS30: Add CS30 additional response to the assistant message if available
+          const enrichedAssistantMessage = hasCs30Additional ? {
+            ...assistantMessage,
+            cs30AdditionalResponse: cs30AdditionalResponse,
+            hasCs30Additional: true
+          } : assistantMessage;
+          
+          return [...prev, enrichedAssistantMessage];
         });
         setPendingClarification(null);
       }
@@ -430,7 +467,50 @@ const Chat: React.FC = () => {
           <>
             {/* Chat Header */}
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography variant="h6">{currentChat.title}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="h6">{currentChat.title}</Typography>
+                
+                {/* CR-CS30: Toggle Switch for CS30 Mode */}
+                {userHasCs30Access && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Normale
+                    </Typography>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 20,
+                        backgroundColor: showCs30Mode ? 'primary.main' : 'grey.300',
+                        borderRadius: 10,
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          backgroundColor: showCs30Mode ? 'primary.dark' : 'grey.400',
+                        }
+                      }}
+                      onClick={() => setShowCs30Mode(!showCs30Mode)}
+                    >
+                      <Box
+                        sx={{
+                          width: 16,
+                          height: 16,
+                          backgroundColor: 'white',
+                          borderRadius: '50%',
+                          position: 'absolute',
+                          top: 2,
+                          left: showCs30Mode ? 22 : 2,
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      CS30
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Box>
 
             {/* Context Control Panel */}
@@ -601,8 +681,62 @@ const Chat: React.FC = () => {
                                 ),
                               }}
                             >
-                              {message.content}
+                              {/* CR-CS30: Toggle-based content display */}
+                              {(() => {
+                                const messageWithCs30 = message as MessageWithCs30;
+                                const hasCs30Response = messageWithCs30.cs30AdditionalResponse;
+                                const shouldShowCs30 = userHasCs30Access && showCs30Mode && hasCs30Response;
+                                const contentToShow = shouldShowCs30 
+                                  ? messageWithCs30.cs30AdditionalResponse?.content || message.content
+                                  : message.content;
+                                const isCs30Content = shouldShowCs30;
+
+                                return contentToShow;
+                              })()}
                             </ReactMarkdown>
+                            
+                            {/* CR-CS30: Display indicator and source info outside ReactMarkdown */}
+                            {(() => {
+                              const messageWithCs30 = message as MessageWithCs30;
+                              const hasCs30Response = messageWithCs30.cs30AdditionalResponse;
+                              const shouldShowCs30 = userHasCs30Access && showCs30Mode && hasCs30Response;
+                              const isCs30Content = shouldShowCs30;
+
+                              if (!userHasCs30Access || !hasCs30Response) {
+                                return null;
+                              }
+
+                              return (
+                                <Box sx={{ mt: 1 }}>
+                                  {/* Display toggle indicator - smaller styling */}
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      display: 'inline-block',
+                                      mb: 1,
+                                      px: 0.8,
+                                      py: 0.3,
+                                      backgroundColor: isCs30Content ? 'primary.light' : 'grey.200',
+                                      color: isCs30Content ? 'primary.contrastText' : 'text.secondary',
+                                      borderRadius: 1,
+                                      fontWeight: 'medium',
+                                      fontSize: '0.65rem'
+                                    }}
+                                  >
+                                    {isCs30Content ? 'Schleupen-Dokumentation' : 'Allgemeine Wissensbasis'}
+                                  </Typography>
+                                  
+                                  {/* CS30 Source Information - smaller styling */}
+                                  {isCs30Content && messageWithCs30.cs30AdditionalResponse?.metadata?.sources && (
+                                    <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderTopColor: 'divider' }}>
+                                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                        Quellen: {messageWithCs30.cs30AdditionalResponse.metadata.sourceCount} Schleupen-Dokument(e)
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              );
+                            })()}
                                 </div>
                               </Box>
                               
@@ -625,31 +759,6 @@ const Chat: React.FC = () => {
                                   }}
                                 />
                               )}
-                              
-                              {/* Bilaterale Klärung Button für längere Assistant-Nachrichten */}
-                              {message.role === 'assistant' && message.content.length > 100 && (
-                                <Box sx={{ mt: 2 }}>
-                                  <CreateFromContextButton
-                                    variant="chip"
-                                    size="small"
-                                    context={{
-                                      source: 'chat',
-                                      chatContext: {
-                                        chatId: currentChat?.id || '',
-                                        messageId: message.id,
-                                        content: message.content,
-                                        timestamp: message.created_at,
-                                        role: message.role,
-                                        metadata: message.metadata
-                                      }
-                                    }}
-                                    onSuccess={(clarification) => {
-                                      console.log('Bilaterale Klärung aus Chat erstellt:', clarification);
-                                      showSnackbar('Bilaterale Klärung erfolgreich erstellt!', 'success');
-                                    }}
-                                  />
-                                </Box>
-                              )}
                             </Box>
                           </Box>
                         )}
@@ -667,6 +776,31 @@ const Chat: React.FC = () => {
                               relatedNotes: message.metadata.relatedNotes || []
                             } : null}
                           />
+                        )}
+                        
+                        {/* Bilaterale Klärung Button für längere Assistant-Nachrichten - moved outside message box */}
+                        {message.role === 'assistant' && message.content.length > 100 && (
+                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                            <CreateFromContextButton
+                              variant="chip"
+                              size="small"
+                              context={{
+                                source: 'chat',
+                                chatContext: {
+                                  chatId: currentChat?.id || '',
+                                  messageId: message.id,
+                                  content: message.content,
+                                  timestamp: message.created_at,
+                                  role: message.role,
+                                  metadata: message.metadata
+                                }
+                              }}
+                              onSuccess={(clarification) => {
+                                console.log('Bilaterale Klärung aus Chat erstellt:', clarification);
+                                showSnackbar('Bilaterale Klärung erfolgreich erstellt!', 'success');
+                              }}
+                            />
+                          </Box>
                         )}
                         
                         <Typography

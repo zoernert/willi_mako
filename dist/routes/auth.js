@@ -114,7 +114,7 @@ router.get('/profile', auth_1.authenticateToken, (0, errorHandler_1.asyncHandler
     const userId = req.user.id;
     const client = await database_1.default.connect();
     try {
-        const userResult = await client.query('SELECT id, email, name, full_name, company, role, selected_m2c_role_ids FROM users WHERE id = $1', [userId]);
+        const userResult = await client.query('SELECT id, email, name, full_name, company, role, selected_m2c_role_ids, can_access_cs30 FROM users WHERE id = $1', [userId]);
         if (userResult.rows.length === 0) {
             throw new errors_1.AppError('Benutzer nicht gefunden', 404);
         }
@@ -132,6 +132,7 @@ router.get('/profile', auth_1.authenticateToken, (0, errorHandler_1.asyncHandler
             full_name: user.full_name,
             company: user.company,
             role: user.role,
+            can_access_cs30: user.can_access_cs30, // CR-CS30: Include CS30 access flag
             selectedM2cRoles: selectedM2cRoles
         }, 'Profil erfolgreich abgerufen');
     }

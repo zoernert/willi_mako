@@ -7,6 +7,8 @@ import { QueryAnalysisService, QueryAnalysisResult } from './queryAnalysisServic
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
 const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'ewilli';
+// CR-CS30: Add cs30 collection constant
+const CS30_COLLECTION_NAME = process.env.CS30_COLLECTION || 'cs30';
 
 export class QdrantService {
   private client: QdrantClient;
@@ -19,6 +21,8 @@ export class QdrantService {
       checkCompatibility: false  // Bypass version compatibility check
     });
     this.ensureCollection();
+    // CR-CS30: Ensure cs30 collection exists
+    this.ensureCs30Collection();
     this.initializeAbbreviationIndex();
   }
 
@@ -82,6 +86,24 @@ export class QdrantService {
       }
     } catch (error) {
       console.error('Error ensuring Qdrant collection:', error);
+    }
+  }
+
+  // CR-CS30: Ensure cs30 collection exists
+  private async ensureCs30Collection() {
+    try {
+      const result = await this.client.getCollections();
+      const collectionExists = result.collections.some(
+        (collection: any) => collection.name === CS30_COLLECTION_NAME
+      );
+
+      if (!collectionExists) {
+        console.log(`⚠️  CS30 collection '${CS30_COLLECTION_NAME}' does not exist. Skipping creation as it should be managed externally.`);
+      } else {
+        console.log(`✅ CS30 collection '${CS30_COLLECTION_NAME}' is available.`);
+      }
+    } catch (error) {
+      console.error('Error checking CS30 collection:', error);
     }
   }
 
@@ -465,6 +487,37 @@ export class QdrantService {
     } catch (error) {
       console.error('Error searching FAQs:', error);
       return [];
+    }
+  }
+
+  // CR-CS30: Search in cs30 collection for additional context
+  async searchCs30(query: string, limit: number = 3, scoreThreshold: number = 0.80): Promise<any[]> {
+    try {
+      const queryVector = await geminiService.generateEmbedding(query);
+      const results = await this.client.search(CS30_COLLECTION_NAME, {
+        vector: queryVector,
+        limit,
+        score_threshold: scoreThreshold,
+      });
+      
+      console.log(`🔍 CS30 search for "${query}": found ${results.length} results above threshold ${scoreThreshold}`);
+      return results;
+    } catch (error) {
+      console.error('Error searching CS30 collection:', error);
+      return [];
+    }
+  }
+
+  // CR-CS30: Check if cs30 collection is available
+  async isCs30Available(): Promise<boolean> {
+    try {
+      const result = await this.client.getCollections();
+      return result.collections.some(
+        (collection: any) => collection.name === CS30_COLLECTION_NAME
+      );
+    } catch (error) {
+      console.error('Error checking CS30 availability:', error);
+      return false;
     }
   }
 }

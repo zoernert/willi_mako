@@ -33,6 +33,8 @@ import {
   Tooltip,
   Divider,
   Grid,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -216,7 +218,8 @@ const AdminUsers = () => {
     email: '',
     name: '',
     role: 'user',
-    isActive: true
+    isActive: true,
+    canAccessCs30: false // CR-CS30: Add cs30 access field
   });
   const { showSnackbar } = useSnackbar();
 
@@ -245,16 +248,26 @@ const AdminUsers = () => {
       email: user.email,
       name: user.full_name || user.name,
       role: user.role,
-      isActive: user.is_active !== false
+      isActive: user.is_active !== false,
+      canAccessCs30: user.can_access_cs30 || false // CR-CS30: Include cs30 access field
     });
     setEditDialogOpen(true);
   };
 
   const handleUpdateUser = async () => {
     try {
+      // Update role
       await apiClient.put(`/admin/users/${userForm.id}/role`, {
         role: userForm.role
       });
+      
+      // CR-CS30: Update cs30 access if changed
+      if (selectedUser && selectedUser.can_access_cs30 !== userForm.canAccessCs30) {
+        await apiClient.put(`/admin/users/${userForm.id}/cs30-access`, {
+          canAccess: userForm.canAccessCs30
+        });
+      }
+      
       showSnackbar('Benutzer erfolgreich aktualisiert', 'success');
       setEditDialogOpen(false);
       fetchUsers();
@@ -376,6 +389,17 @@ const AdminUsers = () => {
               <MenuItem value="admin">Administrator</MenuItem>
             </Select>
           </FormControl>
+          {/* CR-CS30: Add CS30 access checkbox */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={userForm.canAccessCs30}
+                onChange={(e) => setUserForm({ ...userForm, canAccessCs30: e.target.checked })}
+              />
+            }
+            label="Zugriff auf Schleupen-Wissensbasis (cs30) gewähren"
+            sx={{ mb: 2 }}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Abbrechen</Button>

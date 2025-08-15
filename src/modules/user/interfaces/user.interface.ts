@@ -10,6 +10,7 @@ export interface User {
   password_hash?: string;
   created_at?: Date;
   updated_at?: Date;
+  can_access_cs30?: boolean; // CR-CS30: Added CS30 access flag
 }
 
 export interface UserProfile {

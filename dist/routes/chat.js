@@ -17,6 +17,59 @@ const router = (0, express_1.Router)();
 // Initialize services
 const qdrantService = new qdrant_1.QdrantService();
 const gamificationService = new gamification_service_1.GamificationService();
+// CR-CS30: Helper function to generate CS30 additional response
+async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
+    if (!userHasCs30Access) {
+        console.log('🔍 CS30: User does not have cs30 access');
+        return { hasCs30Response: false };
+    }
+    try {
+        // Check if cs30 collection is available
+        const isCs30Available = await qdrantService.isCs30Available();
+        if (!isCs30Available) {
+            console.log('🔍 CS30: Collection not available, skipping cs30 response');
+            return { hasCs30Response: false };
+        }
+        console.log('🔍 CS30: Collection available, searching...');
+        // Search cs30 collection for relevant content with lower threshold for testing
+        const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.60); // Lowered from 0.80 to 0.60
+        console.log(`🔍 CS30: Found ${cs30Results.length} results`);
+        if (cs30Results.length > 0) {
+            console.log('🔍 CS30: Top result score:', cs30Results[0].score);
+        }
+        if (cs30Results.length === 0) {
+            console.log('🔍 CS30: No relevant results found above threshold');
+            return { hasCs30Response: false };
+        }
+        // Extract context from cs30 results
+        const cs30Context = cs30Results.map(result => {
+            var _a, _b;
+            // CS30 uses 'content' field instead of 'text'
+            return ((_a = result.payload) === null || _a === void 0 ? void 0 : _a.content) || ((_b = result.payload) === null || _b === void 0 ? void 0 : _b.text) || '';
+        }).join('\n\n');
+        console.log('🔍 CS30: Generating response with context length:', cs30Context.length);
+        // Generate cs30-specific response
+        const cs30Response = await gemini_1.default.generateResponse([{ role: 'user', content: userQuery }], cs30Context, {}, false // not enhanced query
+        );
+        console.log(`✅ CS30: Generated response with ${cs30Results.length} sources`);
+        return {
+            hasCs30Response: true,
+            cs30Response: cs30Response,
+            cs30Sources: cs30Results.map(r => {
+                var _a, _b;
+                return ({
+                    source_document: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.source) || 'Schleupen Dokumentation',
+                    content_type: ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.type) || 'N/A',
+                    score: r.score
+                });
+            })
+        };
+    }
+    catch (error) {
+        console.error('❌ CS30: Error generating response:', error);
+        return { hasCs30Response: false };
+    }
+}
 // Advanced retrieval service for contextual compression
 class AdvancedRetrieval {
     async getContextualCompressedResults(query, userPreferences, // userPreferences is kept for interface consistency, but not used in the new flow
@@ -185,7 +238,7 @@ router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
 }));
 // Send message in chat
 router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    var _a;
+    var _a, _b, _c, _d;
     const { chatId } = req.params;
     const { content, contextSettings } = req.body;
     const userId = req.user.id;
@@ -336,14 +389,53 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     }
     const totalResponseTime = Date.now() - startTime;
     console.log(`📊 Chat response completed in ${totalResponseTime}ms (API calls: ${reasoningResult.apiCallsUsed || 'unknown'})`);
+    // CR-CS30: Check if user has cs30 access and generate additional response
+    const userQuery = await database_1.default.query('SELECT can_access_cs30 FROM users WHERE id = $1', [userId]);
+    const userHasCs30Access = ((_b = userQuery.rows[0]) === null || _b === void 0 ? void 0 : _b.can_access_cs30) || false;
+    console.log(`🔍 CS30 Access Check: User ${userId} has cs30 access: ${userHasCs30Access}`);
+    // Generate CS30 additional response asynchronously (don't block primary response)
+    let cs30ResponsePromise = null;
+    if (userHasCs30Access) {
+        console.log(`🔍 Starting CS30 search for query: "${content}"`);
+        cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access);
+    }
+    // Prepare primary response data
+    const primaryResponseData = {
+        userMessage: userMessage.rows[0],
+        assistantMessage: assistantMessage.rows[0],
+        updatedChatTitle,
+        type: 'normal'
+    };
+    // If cs30 access is enabled, wait for cs30 response and include if relevant
+    if (cs30ResponsePromise) {
+        try {
+            const cs30Result = await cs30ResponsePromise;
+            if (cs30Result.hasCs30Response) {
+                // Save CS30 additional response as separate message
+                const cs30Message = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', cs30Result.cs30Response, JSON.stringify({
+                        type: 'cs30_additional',
+                        sources: cs30Result.cs30Sources,
+                        sourceCount: ((_c = cs30Result.cs30Sources) === null || _c === void 0 ? void 0 : _c.length) || 0
+                    })]);
+                console.log(`✅ Added CS30 additional response with ${((_d = cs30Result.cs30Sources) === null || _d === void 0 ? void 0 : _d.length) || 0} sources`);
+                return res.json({
+                    success: true,
+                    data: {
+                        ...primaryResponseData,
+                        cs30AdditionalResponse: cs30Message.rows[0],
+                        hasCs30Additional: true
+                    }
+                });
+            }
+        }
+        catch (error) {
+            console.error('❌ Error in CS30 response generation:', error);
+            // Continue with primary response only
+        }
+    }
     return res.json({
         success: true,
-        data: {
-            userMessage: userMessage.rows[0],
-            assistantMessage: assistantMessage.rows[0],
-            updatedChatTitle,
-            type: 'normal'
-        }
+        data: primaryResponseData
     });
 }));
 // Generate response (with or without clarification)
