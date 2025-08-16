@@ -81,6 +81,8 @@ const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
+  const [loadingElapsed, setLoadingElapsed] = useState<number>(0);
   const [chatLoading, setChatLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -118,6 +120,23 @@ const Chat: React.FC = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Timer effect for loading elapsed time
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (loading && loadingStartTime) {
+      interval = setInterval(() => {
+        setLoadingElapsed(Math.floor((Date.now() - loadingStartTime) / 1000));
+      }, 1000);
+    } else {
+      setLoadingElapsed(0);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading, loadingStartTime]);
 
   useEffect(() => {
     fetchChats();
@@ -223,20 +242,14 @@ const Chat: React.FC = () => {
     const messageContent = newMessage.trim();
     setNewMessage('');
     setLoading(true);
+    setLoadingStartTime(Date.now());
     setIsTyping(true);
 
     console.log('Sending message:', messageContent);
 
-    // Timeout-Promise für 30 Sekunden
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 30000);
-    });
-
     try {
-      const response = await Promise.race([
-        chatApi.sendMessage(currentChat.id, messageContent, contextSettings),
-        timeoutPromise
-      ]) as any;
+      // Remove frontend timeout - let the API client handle timeouts
+      const response = await chatApi.sendMessage(currentChat.id, messageContent, contextSettings);
 
       console.log('API Response:', response);
 
@@ -321,6 +334,7 @@ const Chat: React.FC = () => {
     } finally {
       console.log('Setting loading to false');
       setLoading(false);
+      setLoadingStartTime(null);
       setIsTyping(false);
     }
   };
@@ -875,7 +889,17 @@ const Chat: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <CircularProgress size={16} />
                           <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                            Mako Willi tippt...
+                            Mako Willi analysiert... 
+                            {loadingElapsed > 0 && (
+                              <span style={{ color: '#666', marginLeft: '8px' }}>
+                                ({loadingElapsed}s)
+                              </span>
+                            )}
+                            {loadingElapsed > 30 && (
+                              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                                Komplexe Anfrage wird verarbeitet...
+                              </Typography>
+                            )}
                           </Typography>
                         </Box>
                       </Paper>

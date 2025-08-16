@@ -20,7 +20,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: process.env.REACT_APP_API_URL || '/api',
-      timeout: 60000, // 60 seconds for complex analysis operations
+      timeout: 60000, // 60 seconds default timeout
       headers: {
         'Content-Type': 'application/json',
       },
@@ -194,6 +194,21 @@ class ApiClient {
 
     const response = await this.client.post<ApiResponse<T>>(url, formData, config);
     return response.data.data as T;
+  }
+
+  // HTTP Methods with custom timeouts
+  async postWithTimeout<T>(url: string, data?: any, timeoutMs?: number, config?: AxiosRequestConfig): Promise<T> {
+    const customConfig = {
+      ...config,
+      timeout: timeoutMs || this.client.defaults.timeout
+    };
+    
+    const response = await this.client.post<T | ApiResponse<T>>(url, data, customConfig);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
   }
 }
 

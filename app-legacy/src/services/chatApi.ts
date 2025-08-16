@@ -26,6 +26,8 @@ export interface SendMessageResponse {
   assistantMessage: Message;
   updatedChatTitle?: string;
   type: 'normal' | 'clarification';
+  cs30AdditionalResponse?: Message; // CR-CS30: Add CS30 additional response support
+  hasCs30Additional?: boolean;      // CR-CS30: Indicator for CS30 additional response
 }
 
 export interface GenerateResponse {
@@ -63,12 +65,12 @@ export const chatApi = {
     return apiClient.post(API_ENDPOINTS.chat.create, { title: title || 'Neuer Chat' });
   },
 
-  // Send message in chat
+  // Send message in chat with extended timeout for complex queries
   sendMessage: (chatId: string, content: string, contextSettings?: ContextSettings): Promise<SendMessageResponse> => {
-    return apiClient.post(API_ENDPOINTS.chat.sendMessage(chatId), { 
+    return apiClient.postWithTimeout(API_ENDPOINTS.chat.sendMessage(chatId), { 
       content, 
       contextSettings 
-    });
+    }, 180000); // 3 minutes timeout for complex chat queries
   },
 
   // Send clarification response
@@ -83,16 +85,16 @@ export const chatApi = {
     });
   },
 
-  // Generate response with clarification
+  // Generate response with clarification with extended timeout
   generateResponse: (
     chatId: string, 
     originalQuery: string, 
     clarificationResponses?: { questionId: string; answer: string }[]
   ): Promise<GenerateResponse> => {
-    return apiClient.post(API_ENDPOINTS.chat.generate(chatId), {
+    return apiClient.postWithTimeout(API_ENDPOINTS.chat.generate(chatId), {
       originalQuery,
       clarificationResponses: clarificationResponses || []
-    });
+    }, 180000); // 3 minutes timeout for complex generations
   },
 
   // Update chat title
