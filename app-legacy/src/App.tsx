@@ -19,6 +19,7 @@ import FAQDetail from './pages/FAQDetail';
 import Workspace from './pages/Workspace';
 import MessageAnalyzerPage from './pages/MessageAnalyzer';
 import CodeLookupPage from './pages/CodeLookup';
+import ScreenshotAnalysisPage from './pages/ScreenshotAnalysis';
 import ProcessesAndProcedures from './pages/ProcessesAndProcedures';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
@@ -133,6 +134,7 @@ function App() {
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
                 <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />
                 <Route path="code-lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
+                <Route path="screenshot-analysis" element={<ProtectedRoute><ScreenshotAnalysisPage /></ProtectedRoute>} />
                 <Route path="lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
                 <Route path="invitation-acceptance" element={<InvitationAcceptance />} />
                 <Route path="bilateral-clarifications" element={<ProtectedRoute><BilateralClarificationsPage /></ProtectedRoute>} />

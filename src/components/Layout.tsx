@@ -24,10 +24,12 @@ import {
   Home as HomeIcon,
   Info as InfoIcon,
   Api as ApiIcon,
+  PhotoCamera as PhotoIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+import ScreenshotAnalyzer from './ScreenshotAnalyzer';
 
 const drawerWidth = 240;
 
@@ -49,6 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
   const menuItems = [
     { text: 'Startseite', icon: <HomeIcon />, path: '/' },
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
+    { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
   ];
 
@@ -92,6 +95,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
           </ListItem>
         ))}
       </List>
+      
+      {/* Screenshot-Analyse Tool */}
+      <Divider sx={{ mt: 2, mb: 2 }} />
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, display: 'block', mb: 1 }}>
+          Tools
+        </Typography>
+        <ScreenshotAnalyzer />
+      </Box>
+      
       <Divider sx={{ mt: 2 }} />
       <Box sx={{ p: 2 }}>
         <ListItemButton

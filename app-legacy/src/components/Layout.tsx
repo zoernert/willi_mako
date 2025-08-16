@@ -37,9 +37,11 @@ import {
   AccountTree as ProcessIcon,
   Groups as CommunityIcon,
   Work as WorkspaceIcon,
+  PhotoCamera as PhotoIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
+import ScreenshotAnalyzer from './ScreenshotAnalyzer';
 
 const drawerWidth = 240;
 
@@ -79,6 +81,7 @@ const Layout: React.FC = () => {
     // { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' }, // Ausgeblendet - keine Dokumente im Augenblick
     { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },
     { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
+    { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
@@ -120,6 +123,15 @@ const Layout: React.FC = () => {
           </ListItem>
         ))}
       </List>
+      
+      {/* Screenshot-Analyse Tool */}
+      <Divider sx={{ mt: 2, mb: 2 }} />
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, display: 'block', mb: 1 }}>
+          Tools
+        </Typography>
+        <ScreenshotAnalyzer />
+      </Box>
       
       {/* Öffentlicher Bereich - Community Hub */}
       <Divider sx={{ mt: 2, mb: 2 }} />

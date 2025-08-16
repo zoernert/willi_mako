@@ -489,7 +489,10 @@ const Chat: React.FC = () => {
                           backgroundColor: showCs30Mode ? 'primary.dark' : 'grey.400',
                         }
                       }}
-                      onClick={() => setShowCs30Mode(!showCs30Mode)}
+                      onClick={() => {
+                        console.log('CS30 Toggle clicked:', !showCs30Mode);
+                        setShowCs30Mode(!showCs30Mode);
+                      }}
                     >
                       <Box
                         sx={{
@@ -690,6 +693,19 @@ const Chat: React.FC = () => {
                                   ? messageWithCs30.cs30AdditionalResponse?.content || message.content
                                   : message.content;
                                 const isCs30Content = shouldShowCs30;
+
+                                // Debug logging
+                                if (message.role === 'assistant') {
+                                  console.log('Message render debug:', {
+                                    messageId: message.id,
+                                    userHasCs30Access,
+                                    showCs30Mode,
+                                    hasCs30Response: !!hasCs30Response,
+                                    shouldShowCs30,
+                                    contentPreview: contentToShow?.substring(0, 50) + '...',
+                                    cs30ContentPreview: messageWithCs30.cs30AdditionalResponse?.content?.substring(0, 50) + '...'
+                                  });
+                                }
 
                                 return contentToShow;
                               })()}

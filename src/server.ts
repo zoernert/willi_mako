@@ -27,6 +27,7 @@ import teamEmailConfigRoutes from './routes/team-email-config.js';
 import bulkClarificationsRoutes from './routes/bulk-clarifications.js';
 import crWmako001TestRoutes from './routes/cr-wmako-001-test.js';
 import imapSchedulerRoutes from './routes/imap-scheduler.js';
+import screenshotAnalysisRoutes from './routes/screenshot-analysis';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -171,6 +172,9 @@ app.use('/api/v1/codes', authenticateToken, codesRoutes);
 app.use('/api', m2cRolesRoutes);
 app.use('/api/bilateral-clarifications', bilateralClarificationsRoutes);
 app.use('/api/llm', llmRoutes);
+
+// Screenshot Analysis (public endpoint - no authentication required)
+app.use('/api/analyze-screenshot', screenshotAnalysisRoutes);
 
 // CR-WMAKO-001: New routes for email configuration and bulk clarifications
 app.use('/api/team-email-config', authenticateToken, teamEmailConfigRoutes);
