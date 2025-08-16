@@ -28,13 +28,13 @@ import ClarificationUI from '../components/ClarificationUI';
 import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import PipelineInfoDialog from '../components/Chat/PipelineInfoDialog';
-import { useTextSelection } from '../hooks/useTextSelection';
+import ContextControlPanel from '../components/Workspace/ContextControlPanel';
+import CreateFromContextButton from '../components/Workspace/CreateFromContextButton';
+import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
+import { useTimelineCapture } from '../hooks/useTimelineCapture'; // NEU: Timeline-Integration
 import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
-import ContextControlPanel from '../components/Chat/ContextControlPanel';
-import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
-import CreateFromContextButton from '../components/BilateralClarifications/CreateFromContextButton';
-import { ChatContext } from '../types/bilateral';
+import { useTextSelection } from '../hooks/useTextSelection';
 
 interface Message {
   id: string;
@@ -75,6 +75,7 @@ interface ClarificationResult {
 const Chat: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { showSnackbar } = useSnackbar();
+  const { captureActivity } = useTimelineCapture(); // NEU: Timeline-Integration
   
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [currentChat, setCurrentChat] = useState<ChatSession | null>(null);
@@ -824,10 +825,6 @@ const Chat: React.FC = () => {
                                   role: message.role,
                                   metadata: message.metadata
                                 }
-                              }}
-                              onSuccess={(clarification) => {
-                                console.log('Bilaterale Klärung aus Chat erstellt:', clarification);
-                                showSnackbar('Bilaterale Klärung erfolgreich erstellt!', 'success');
                               }}
                             />
                           </Box>

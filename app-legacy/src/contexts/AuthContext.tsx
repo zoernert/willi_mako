@@ -14,6 +14,7 @@ interface AuthState {
   token: string | null;
   loading: boolean;
   error: string | null;
+  activeTimelineId: string | null; // NEU: Aktuelle Timeline
 }
 
 type AuthAction =
@@ -22,13 +23,15 @@ type AuthAction =
   | { type: 'LOGIN_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'SET_USER'; payload: User }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_ACTIVE_TIMELINE'; payload: string | null }; // NEU
 
 const initialState: AuthState = {
   user: null,
   token: localStorage.getItem('token'),
   loading: false,
   error: null,
+  activeTimelineId: localStorage.getItem('activeTimelineId'), // NEU: Persistierung
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -57,6 +60,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         user: null,
         token: null,
         error: null,
+        activeTimelineId: null, // NEU: Timeline zurücksetzen
       };
     case 'SET_USER':
       return {
@@ -67,6 +71,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         error: null,
+      };
+    case 'SET_ACTIVE_TIMELINE': // NEU: Timeline-Case
+      return {
+        ...state,
+        activeTimelineId: action.payload,
       };
     default:
       return state;
@@ -80,6 +89,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, company?: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  setActiveTimeline: (timelineId: string | null) => void; // NEU
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -213,6 +223,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearError = () => dispatch({ type: 'CLEAR_ERROR' });
 
+  // Timeline-Management
+  const setActiveTimeline = (timelineId: string | null) => {
+    if (timelineId) {
+      localStorage.setItem('activeTimelineId', timelineId);
+    } else {
+      localStorage.removeItem('activeTimelineId');
+    }
+    dispatch({ type: 'SET_ACTIVE_TIMELINE', payload: timelineId });
+  };
+
   const value = {
     state,
     dispatch,
@@ -220,6 +240,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     clearError,
+    setActiveTimeline, // NEU
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

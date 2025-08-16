@@ -1,0 +1,641 @@
+import express from 'express';
+import pool from '../config/database';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+
+const router = express.Router();
+
+// Timeline CRUD Operations
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      `SELECT * FROM timelines 
+       WHERE user_id = $1 AND is_archived = false 
+       ORDER BY updated_at DESC`,
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching timelines:', error);
+    res.status(500).json({ error: 'Failed to fetch timelines' });
+  }
+});
+
+router.post('/', authenticateToken, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const userId = req.user.id;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Timeline name is required' });
+    }
+
+    if (name.length > 50) {
+      return res.status(400).json({ error: 'Timeline name must be 50 characters or less' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO timelines (user_id, name, description) 
+       VALUES ($1, $2, $3) RETURNING *`,
+      [userId, name.trim(), description || null]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating timeline:', error);
+    res.status(500).json({ error: 'Failed to create timeline' });
+  }
+});
+
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const userId = req.user.id;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Timeline name is required' });
+    }
+
+    if (name.length > 50) {
+      return res.status(400).json({ error: 'Timeline name must be 50 characters or less' });
+    }
+
+    const result = await pool.query(
+      `UPDATE timelines SET 
+       name = $1, description = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND user_id = $4 AND is_archived = false
+       RETURNING *`,
+      [name.trim(), description || null, id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating timeline:', error);
+    res.status(500).json({ error: 'Failed to update timeline' });
+  }
+});
+
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `UPDATE timelines SET 
+       is_archived = true, archived_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND user_id = $2 AND is_archived = false
+       RETURNING *`,
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+    
+    res.json({ success: true, message: 'Timeline archived successfully' });
+  } catch (error) {
+    console.error('Error archiving timeline:', error);
+    res.status(500).json({ error: 'Failed to archive timeline' });
+  }
+});
+
+router.put('/:id/activate', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Deactivate all other timelines for this user
+      await client.query(
+        'UPDATE timelines SET is_active = false WHERE user_id = $1',
+        [userId]
+      );
+
+      // Activate the selected timeline
+      const result = await client.query(
+        `UPDATE timelines SET 
+         is_active = true, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND user_id = $2 AND is_archived = false
+         RETURNING *`,
+        [id, userId]
+      );
+
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Timeline not found' });
+      }
+
+      await client.query('COMMIT');
+      res.json(result.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error activating timeline:', error);
+    res.status(500).json({ error: 'Failed to activate timeline' });
+  }
+});
+
+// Timeline Activities
+router.get('/:timelineId/activities', authenticateToken, async (req, res) => {
+  try {
+    const { timelineId } = req.params;
+    const userId = req.user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+
+    // Prüfen ob Timeline dem User gehört
+    const timelineResult = await pool.query(
+      'SELECT id FROM timelines WHERE id = $1 AND user_id = $2',
+      [timelineId, userId]
+    );
+
+    if (timelineResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    const offset = (page - 1) * limit;
+    const result = await pool.query(
+      `SELECT * FROM timeline_activities 
+       WHERE timeline_id = $1 AND is_deleted = false 
+       ORDER BY created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [timelineId, limit, offset]
+    );
+
+    // Count total activities for pagination
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM timeline_activities 
+       WHERE timeline_id = $1 AND is_deleted = false`,
+      [timelineId]
+    );
+
+    const totalActivities = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalActivities / limit);
+
+    res.json({
+      activities: result.rows,
+      pagination: {
+        page,
+        limit,
+        totalActivities,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching timeline activities:', error);
+    res.status(500).json({ error: 'Failed to fetch activities' });
+  }
+});
+
+// Activity deletion
+router.delete('/activities/:activityId', authenticateToken, async (req, res) => {
+  try {
+    const { activityId } = req.params;
+    const userId = req.user.id;
+
+    await TimelineActivityService.deleteActivity(activityId, userId);
+    res.json({ success: true, message: 'Activity deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting activity:', error);
+    if (error.message === 'Activity not found or not authorized') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to delete activity' });
+    }
+  }
+});
+
+// Activity status
+router.get('/activities/:activityId/status', authenticateToken, async (req, res) => {
+  try {
+    const { activityId } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT ta.processing_status, tpq.status as queue_status, tpq.error_message
+       FROM timeline_activities ta
+       LEFT JOIN timeline_processing_queue tpq ON ta.id = tpq.activity_id
+       JOIN timelines t ON ta.timeline_id = t.id
+       WHERE ta.id = $1 AND t.user_id = $2`,
+      [activityId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching activity status:', error);
+    res.status(500).json({ error: 'Failed to fetch activity status' });
+  }
+});
+
+// Zentrale Aktivitätserfassung
+router.post('/activity/capture', authenticateToken, async (req, res) => {
+  try {
+    const { timelineId, feature, activityType, rawData, priority } = req.body;
+    const userId = req.user.id;
+
+    // Validation
+    if (!timelineId || !feature || !activityType || !rawData) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: timelineId, feature, activityType, rawData' 
+      });
+    }
+
+    // Prüfen ob Timeline dem User gehört
+    const timelineResult = await pool.query(
+      'SELECT id FROM timelines WHERE id = $1 AND user_id = $2 AND is_archived = false',
+      [timelineId, userId]
+    );
+
+    if (timelineResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    const activityId = await TimelineActivityService.captureActivity({
+      timelineId,
+      feature,
+      activityType,
+      rawData,
+      priority: priority || 5
+    });
+
+    res.status(201).json({ success: true, activityId });
+  } catch (error) {
+    console.error('Error capturing timeline activity:', error);
+    res.status(500).json({ error: 'Failed to capture activity' });
+  }
+});
+
+// Timeline statistics
+router.get('/:timelineId/stats', authenticateToken, async (req, res) => {
+  try {
+    const { timelineId } = req.params;
+    const userId = req.user.id;
+
+    // Prüfen ob Timeline dem User gehört
+    const timelineResult = await pool.query(
+      'SELECT id FROM timelines WHERE id = $1 AND user_id = $2',
+      [timelineId, userId]
+    );
+
+    if (timelineResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    // Activity statistics
+    const statsResult = await pool.query(
+      `SELECT 
+         COUNT(*) as total_activities,
+         COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as completed_activities,
+         COUNT(CASE WHEN processing_status = 'pending' THEN 1 END) as pending_activities,
+         COUNT(CASE WHEN processing_status = 'failed' THEN 1 END) as failed_activities,
+         COUNT(DISTINCT feature_name) as unique_features,
+         MIN(created_at) as first_activity,
+         MAX(created_at) as last_activity
+       FROM timeline_activities 
+       WHERE timeline_id = $1 AND is_deleted = false`,
+      [timelineId]
+    );
+
+    // Feature breakdown
+    const featureBreakdown = await pool.query(
+      `SELECT feature_name, COUNT(*) as count
+       FROM timeline_activities 
+       WHERE timeline_id = $1 AND is_deleted = false
+       GROUP BY feature_name
+       ORDER BY count DESC`,
+      [timelineId]
+    );
+
+    res.json({
+      ...statsResult.rows[0],
+      featureBreakdown: featureBreakdown.rows
+    });
+  } catch (error) {
+    console.error('Error fetching timeline stats:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline statistics' });
+  }
+});
+
+// Timeline Stats für Dashboard Widget
+router.get('/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Parallel alle Statistiken laden
+    const [
+      timelinesResult,
+      activitiesResult,
+      todayActivitiesResult,
+      weekActivitiesResult,
+      mostActiveResult,
+      recentActivitiesResult,
+      queueResult
+    ] = await Promise.all([
+      // Timelines-Statistiken
+      pool.query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(CASE WHEN is_archived = false THEN 1 END) as active,
+          COUNT(CASE WHEN is_archived = true THEN 1 END) as archived
+        FROM timelines 
+        WHERE user_id = $1
+      `, [userId]),
+      
+      // Aktivitäten-Gesamtzahl
+      pool.query(`
+        SELECT COUNT(*) as total
+        FROM timeline_activities ta
+        JOIN timelines t ON ta.timeline_id = t.id
+        WHERE t.user_id = $1 AND ta.is_deleted = false
+      `, [userId]),
+      
+      // Aktivitäten heute
+      pool.query(`
+        SELECT COUNT(*) as today
+        FROM timeline_activities ta
+        JOIN timelines t ON ta.timeline_id = t.id
+        WHERE t.user_id = $1 
+          AND ta.is_deleted = false
+          AND ta.created_at >= CURRENT_DATE
+      `, [userId]),
+      
+      // Aktivitäten diese Woche
+      pool.query(`
+        SELECT COUNT(*) as week
+        FROM timeline_activities ta
+        JOIN timelines t ON ta.timeline_id = t.id
+        WHERE t.user_id = $1 
+          AND ta.is_deleted = false
+          AND ta.created_at >= DATE_TRUNC('week', CURRENT_DATE)
+      `, [userId]),
+      
+      // Aktivste Timeline
+      pool.query(`
+        SELECT 
+          t.id,
+          t.name,
+          COUNT(ta.id) as activity_count
+        FROM timelines t
+        LEFT JOIN timeline_activities ta ON t.id = ta.timeline_id AND ta.is_deleted = false
+        WHERE t.user_id = $1 AND t.is_archived = false
+        GROUP BY t.id, t.name
+        ORDER BY activity_count DESC
+        LIMIT 1
+      `, [userId]),
+      
+      // Neueste Aktivitäten
+      pool.query(`
+        SELECT 
+          ta.id,
+          t.name as timeline_name,
+          ta.feature_name,
+          ta.activity_type,
+          ta.title,
+          ta.created_at
+        FROM timeline_activities ta
+        JOIN timelines t ON ta.timeline_id = t.id
+        WHERE t.user_id = $1 AND ta.is_deleted = false
+        ORDER BY ta.created_at DESC
+        LIMIT 10
+      `, [userId]),
+      
+      // Warteschlangen-Status
+      pool.query(`
+        SELECT COUNT(*) as queue_count
+        FROM timeline_processing_queue tpq
+        JOIN timeline_activities ta ON tpq.activity_id = ta.id
+        JOIN timelines t ON ta.timeline_id = t.id
+        WHERE t.user_id = $1 AND tpq.status IN ('queued', 'processing')
+      `, [userId])
+    ]);
+
+    const stats = {
+      total_timelines: parseInt(timelinesResult.rows[0].total),
+      active_timelines: parseInt(timelinesResult.rows[0].active),
+      archived_timelines: parseInt(timelinesResult.rows[0].archived),
+      total_activities: parseInt(activitiesResult.rows[0].total),
+      activities_today: parseInt(todayActivitiesResult.rows[0].today),
+      activities_this_week: parseInt(weekActivitiesResult.rows[0].week),
+      most_active_timeline: mostActiveResult.rows.length > 0 && parseInt(mostActiveResult.rows[0].activity_count) > 0 
+        ? {
+            id: mostActiveResult.rows[0].id,
+            name: mostActiveResult.rows[0].name,
+            activity_count: parseInt(mostActiveResult.rows[0].activity_count)
+          }
+        : null,
+      recent_activities: recentActivitiesResult.rows.map(row => ({
+        id: row.id,
+        timeline_name: row.timeline_name,
+        activity_type: `${row.feature_name}_${row.activity_type}`,
+        title: row.title,
+        created_at: row.created_at
+      })),
+      processing_queue_count: parseInt(queueResult.rows[0].queue_count)
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching timeline stats:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline stats' });
+  }
+});
+
+// Einzelne Timeline abrufen
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT * FROM timelines 
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching timeline:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline' });
+  }
+});
+
+// Timeline bearbeiten
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, is_active } = req.body;
+    const userId = req.user.id;
+
+    // Prüfen ob Timeline existiert und dem User gehört
+    const timelineResult = await pool.query(
+      'SELECT id FROM timelines WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    if (timelineResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    if (name && (name.trim().length === 0 || name.length > 50)) {
+      return res.status(400).json({ error: 'Timeline name must be 1-50 characters' });
+    }
+
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    let paramCount = 1;
+
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramCount++}`);
+      updateValues.push(name.trim());
+    }
+
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramCount++}`);
+      updateValues.push(description);
+    }
+
+    if (is_active !== undefined) {
+      updateFields.push(`is_active = $${paramCount++}`);
+      updateValues.push(is_active);
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    updateValues.push(id, userId);
+
+    const result = await pool.query(
+      `UPDATE timelines SET ${updateFields.join(', ')} 
+       WHERE id = $${paramCount++} AND user_id = $${paramCount++} 
+       RETURNING *`,
+      updateValues
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating timeline:', error);
+    res.status(500).json({ error: 'Failed to update timeline' });
+  }
+});
+
+// Timeline archivieren
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `UPDATE timelines 
+       SET is_archived = true, archived_at = NOW() 
+       WHERE id = $1 AND user_id = $2 
+       RETURNING *`,
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error archiving timeline:', error);
+    res.status(500).json({ error: 'Failed to archive timeline' });
+  }
+});
+
+// Timeline als aktiv setzen
+router.put('/:id/activate', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Zuerst alle anderen Timelines deaktivieren
+    await pool.query(
+      'UPDATE timelines SET is_active = false WHERE user_id = $1',
+      [userId]
+    );
+
+    // Dann die gewählte Timeline aktivieren
+    const result = await pool.query(
+      `UPDATE timelines 
+       SET is_active = true, updated_at = NOW() 
+       WHERE id = $1 AND user_id = $2 
+       RETURNING *`,
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error activating timeline:', error);
+    res.status(500).json({ error: 'Failed to activate timeline' });
+  }
+});
+
+// Timeline PDF-Export
+router.get('/:id/export', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Prüfen ob Timeline existiert
+    const timelineResult = await pool.query(
+      'SELECT * FROM timelines WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    if (timelineResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Timeline not found' });
+    }
+
+    const timeline = timelineResult.rows[0];
+
+    // Alle Aktivitäten laden
+    const activitiesResult = await pool.query(`
+      SELECT * FROM timeline_activities 
+      WHERE timeline_id = $1 AND is_deleted = false 
+      ORDER BY created_at DESC
+    `, [id]);
+
+    // Einfacher Text-Export (später kann PDF-Generation implementiert werden)
+    const exportData = {
+      timeline,
+      activities: activitiesResult.rows,
+      exported_at: new Date().toISOString(),
+      exported_by: req.user.email
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.json"`);
+    res.json(exportData);
+
+  } catch (error) {
+    console.error('Error exporting timeline:', error);
+    res.status(500).json({ error: 'Failed to export timeline' });
+  }
+});
+
+// ...existing activities code...

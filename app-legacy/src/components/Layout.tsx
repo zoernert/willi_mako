@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
+import TimelineSelector from './Timeline/TimelineSelector'; // NEU: Timeline-Selector
 import ProblemReportDialog from './ProblemReportDialog';
 
 const drawerWidth = 240;
@@ -215,6 +216,7 @@ const Layout: React.FC = () => {
             Stromhaltig - Willi Mako
           </Typography>
           <HeaderQuickNoteButton />
+          <TimelineSelector /> {/* NEU: Timeline-Selector */}
           <Button
             color="inherit"
             onClick={handleProfileMenuOpen}

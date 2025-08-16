@@ -33,7 +33,11 @@
     "db:migrate": "psql -f db/migrations/$(ls db/migrations/ | tail -1)",
     "seed:m2c-roles": "npx tsx scripts/seed-m2c-roles.ts",
     "setup:m2c": "npm run db:migrate && npm run seed:m2c-roles",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "timeline:worker": "npx tsx workers/timelineProcessor.ts",
+    "timeline:worker:dev": "nodemon --exec \"npx tsx workers/timelineProcessor.ts\"",
+    "timeline:migrate": "psql $DATABASE_URL -f migrations/timeline_system.sql",
+    "timeline:stats": "node -e \"require('./workers/timelineProcessor.ts').timelineProcessor.getQueueStats().then(console.log)\""
   },
   "repository": {
     "type": "git",
