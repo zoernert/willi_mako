@@ -41,7 +41,6 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
-import ScreenshotAnalyzer from './ScreenshotAnalyzer';
 
 const drawerWidth = 240;
 
@@ -124,13 +123,31 @@ const Layout: React.FC = () => {
         ))}
       </List>
       
-      {/* Screenshot-Analyse Tool */}
+      {/* Quick Access Tools */}
       <Divider sx={{ mt: 2, mb: 2 }} />
       <Box sx={{ px: 2, pb: 2 }}>
         <Typography variant="caption" color="text.secondary" sx={{ px: 2, display: 'block', mb: 1 }}>
-          Tools
+          Quick Access
         </Typography>
-        <ScreenshotAnalyzer />
+        <Button
+          variant="outlined"
+          fullWidth
+          startIcon={<PhotoIcon />}
+          onClick={() => {
+            navigate('/screenshot-analysis');
+            if (isMobile) {
+              setMobileOpen(false);
+            }
+          }}
+          sx={{ 
+            borderRadius: 2,
+            textAlign: 'left',
+            justifyContent: 'flex-start',
+            py: 1
+          }}
+        >
+          Screenshot-Tool
+        </Button>
       </Box>
       
       {/* Öffentlicher Bereich - Community Hub */}
