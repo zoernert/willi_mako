@@ -21,6 +21,12 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    path?: string;
+    content?: Buffer;
+    cid?: string;
+  }>;
 }
 
 export interface TeamInvitationEmailData {
@@ -30,6 +36,23 @@ export interface TeamInvitationEmailData {
   invitationToken: string;
   invitationUrl: string;
   isNewUser: boolean;
+}
+
+export interface ProblemReportEmailData {
+  reporterEmail: string;
+  reporterName: string;
+  problemDescription: string;
+  category: string;
+  currentPage: string;
+  browserInfo: string;
+  additionalInfo?: string | null;
+  screenshots: Array<{
+    filename: string;
+    originalName: string;
+    path: string;
+    size: number;
+    mimetype: string;
+  }>;
 }
 
 export class EmailService {
@@ -155,7 +178,8 @@ export class EmailService {
         to: options.to,
         subject: options.subject,
         html: options.html,
-        text: options.text || this.htmlToText(options.html)
+        text: options.text || this.htmlToText(options.html),
+        attachments: options.attachments || []
       };
 
       const info = await transporter.sendMail(mailOptions);
@@ -181,7 +205,8 @@ export class EmailService {
             to: options.to,
             subject: options.subject,
             html: options.html,
-            text: options.text || this.htmlToText(options.html)
+            text: options.text || this.htmlToText(options.html),
+            attachments: options.attachments || []
           };
 
           const info = await alternativeTransporter.sendMail(mailOptions);
@@ -244,6 +269,29 @@ export class EmailService {
       to: 'willi@stromhaltig.de',
       subject,
       html
+    });
+  }
+
+  /**
+   * Sendet einen allgemeinen Problembericht mit optionalen Screenshots
+   */
+  async sendProblemReport(data: ProblemReportEmailData): Promise<void> {
+    const subject = `Problembericht: ${data.category} - ${data.problemDescription.substring(0, 50)}...`;
+    
+    const html = this.generateProblemReportHTML(data);
+    
+    // Prepare attachments from screenshots
+    const attachments = data.screenshots.map(screenshot => ({
+      filename: screenshot.originalName,
+      path: screenshot.path,
+      cid: screenshot.filename // For embedding in email if needed
+    }));
+    
+    await this.sendEmail({
+      to: 'willi@stromhaltig.de',
+      subject,
+      html,
+      attachments
     });
   }
 
@@ -554,6 +602,120 @@ export class EmailService {
             <div class="footer">
                 <p>© 2025 Willi Mako - Intelligente Wissensmanagement-Plattform</p>
                 <p>Diese E-Mail wurde automatisch vom Fehlermeldesystem generiert.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+  }
+
+  /**
+   * Generiert HTML für Problembericht-E-Mail
+   */
+  private generateProblemReportHTML(data: ProblemReportEmailData): string {
+    const currentDate = new Date().toLocaleDateString('de-DE');
+    const currentTime = new Date().toLocaleTimeString('de-DE');
+    
+    return `
+    <!DOCTYPE html>
+    <html lang="de">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Problembericht Willi Mako</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #ff6b35; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .problem-info { background-color: white; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #ff6b35; }
+            .technical-info { background-color: #e8f4f8; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .reporter-info { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .screenshots-info { background-color: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #ffc107; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+            .field { margin-bottom: 10px; }
+            .field-label { font-weight: bold; color: #555; }
+            .field-value { margin-left: 10px; }
+            .category-badge { 
+                display: inline-block; 
+                background-color: #ff6b35; 
+                color: white; 
+                padding: 4px 8px; 
+                border-radius: 12px; 
+                font-size: 12px; 
+                font-weight: bold; 
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔧 Problembericht</h1>
+                <p>Neuer Problembericht von einem Nutzer</p>
+                <span class="category-badge">${data.category}</span>
+            </div>
+            
+            <div class="content">
+                <div class="problem-info">
+                    <h2>📝 Problembeschreibung</h2>
+                    <p>${data.problemDescription}</p>
+                    ${data.additionalInfo ? `
+                    <h3>ℹ️ Zusätzliche Informationen</h3>
+                    <p>${data.additionalInfo}</p>
+                    ` : ''}
+                </div>
+                
+                <div class="technical-info">
+                    <h2>🔧 Technische Informationen</h2>
+                    <div class="field">
+                        <span class="field-label">Kategorie:</span>
+                        <span class="field-value">${data.category}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Aktuelle Seite:</span>
+                        <span class="field-value">${data.currentPage}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Browser-Information:</span>
+                        <span class="field-value">${data.browserInfo}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">Datum/Zeit:</span>
+                        <span class="field-value">${currentDate} um ${currentTime}</span>
+                    </div>
+                </div>
+                
+                ${data.screenshots.length > 0 ? `
+                <div class="screenshots-info">
+                    <h2>📸 Screenshots (${data.screenshots.length})</h2>
+                    <p>Die folgenden Screenshots wurden vom Nutzer beigefügt:</p>
+                    <ul>
+                        ${data.screenshots.map(screenshot => `
+                        <li>
+                            <strong>${screenshot.originalName}</strong>
+                            <br><small>Größe: ${Math.round(screenshot.size / 1024)} KB, Typ: ${screenshot.mimetype}</small>
+                        </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                <div class="reporter-info">
+                    <h2>👤 Nutzer-Informationen</h2>
+                    <div class="field">
+                        <span class="field-label">Name:</span>
+                        <span class="field-value">${data.reporterName}</span>
+                    </div>
+                    <div class="field">
+                        <span class="field-label">E-Mail:</span>
+                        <span class="field-value">${data.reporterEmail}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>© 2025 Willi Mako - Automatisch generierter Problembericht</p>
+                <p>Diese E-Mail wurde automatisch vom System generiert.</p>
             </div>
         </div>
     </body>

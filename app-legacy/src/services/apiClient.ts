@@ -218,4 +218,5 @@ const apiClient = new ApiClient();
 // Initialize auth on startup
 apiClient.initializeAuth();
 
+export { apiClient };
 export default apiClient;

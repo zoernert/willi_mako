@@ -32,6 +32,7 @@ const bulk_clarifications_js_1 = __importDefault(require("./routes/bulk-clarific
 const cr_wmako_001_test_js_1 = __importDefault(require("./routes/cr-wmako-001-test.js"));
 const imap_scheduler_js_1 = __importDefault(require("./routes/imap-scheduler.js"));
 const screenshot_analysis_1 = __importDefault(require("./routes/screenshot-analysis"));
+const problemReport_1 = __importDefault(require("./routes/problemReport"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -159,6 +160,8 @@ app.use('/api/team-email-config', auth_2.authenticateToken, team_email_config_js
 app.use('/api/bulk-clarifications', auth_2.authenticateToken, bulk_clarifications_js_1.default);
 app.use('/api/imap', imap_scheduler_js_1.default);
 app.use('/api/cr-wmako-001', cr_wmako_001_test_js_1.default);
+// Problem Report routes
+app.use('/api/problem-report', auth_2.authenticateToken, problemReport_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Initialize Qdrant collections

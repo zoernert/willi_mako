@@ -38,9 +38,11 @@ import {
   Groups as CommunityIcon,
   Work as WorkspaceIcon,
   PhotoCamera as PhotoIcon,
+  ReportProblem as ReportProblemIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
+import ProblemReportDialog from './ProblemReportDialog';
 
 const drawerWidth = 240;
 
@@ -53,6 +55,7 @@ const Layout: React.FC = () => {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [problemReportOpen, setProblemReportOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -324,8 +327,29 @@ const Layout: React.FC = () => {
               display: 'flex', 
               gap: 3,
               flexWrap: 'wrap',
-              justifyContent: { xs: 'center', md: 'flex-end' }
+              justifyContent: { xs: 'center', md: 'flex-end' },
+              alignItems: 'center'
             }}>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={<ReportProblemIcon />}
+                onClick={() => setProblemReportOpen(true)}
+                sx={{
+                  borderColor: 'error.main',
+                  color: 'error.main',
+                  '&:hover': {
+                    backgroundColor: 'error.main',
+                    color: 'white',
+                    borderColor: 'error.main',
+                  },
+                  textTransform: 'none',
+                }}
+              >
+                Problem melden
+              </Button>
+              
               <Typography 
                 variant="body2" 
                 color="primary" 
@@ -386,6 +410,12 @@ const Layout: React.FC = () => {
           </Box>
         </Box>
       </Box>
+      
+      {/* Problem Report Dialog */}
+      <ProblemReportDialog 
+        open={problemReportOpen} 
+        onClose={() => setProblemReportOpen(false)} 
+      />
     </Box>
   );
 };

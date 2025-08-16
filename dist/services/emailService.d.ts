@@ -4,6 +4,12 @@ export interface EmailOptions {
     subject: string;
     html: string;
     text?: string;
+    attachments?: Array<{
+        filename: string;
+        path?: string;
+        content?: Buffer;
+        cid?: string;
+    }>;
 }
 export interface TeamInvitationEmailData {
     invitedBy: string;
@@ -12,6 +18,22 @@ export interface TeamInvitationEmailData {
     invitationToken: string;
     invitationUrl: string;
     isNewUser: boolean;
+}
+export interface ProblemReportEmailData {
+    reporterEmail: string;
+    reporterName: string;
+    problemDescription: string;
+    category: string;
+    currentPage: string;
+    browserInfo: string;
+    additionalInfo?: string | null;
+    screenshots: Array<{
+        filename: string;
+        originalName: string;
+        path: string;
+        size: number;
+        mimetype: string;
+    }>;
 }
 export declare class EmailService {
     private transporter;
@@ -43,6 +65,10 @@ export declare class EmailService {
      */
     sendMarketPartnerErrorReport(reporterEmail: string, reporterName: string, marketPartner: any, errorDescription: string): Promise<void>;
     /**
+     * Sendet einen allgemeinen Problembericht mit optionalen Screenshots
+     */
+    sendProblemReport(data: ProblemReportEmailData): Promise<void>;
+    /**
      * Generiert HTML für Team-Einladungs-E-Mail
      */
     private generateTeamInvitationHTML;
@@ -54,6 +80,10 @@ export declare class EmailService {
      * Generiert HTML für Marktpartner-Fehlermeldungs-E-Mail
      */
     private generateErrorReportHTML;
+    /**
+     * Generiert HTML für Problembericht-E-Mail
+     */
+    private generateProblemReportHTML;
     /**
      * Konvertiert HTML zu einfachem Text (Fallback)
      */

@@ -28,6 +28,7 @@ import bulkClarificationsRoutes from './routes/bulk-clarifications.js';
 import crWmako001TestRoutes from './routes/cr-wmako-001-test.js';
 import imapSchedulerRoutes from './routes/imap-scheduler.js';
 import screenshotAnalysisRoutes from './routes/screenshot-analysis';
+import problemReportRoutes from './routes/problemReport';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -181,6 +182,9 @@ app.use('/api/team-email-config', authenticateToken, teamEmailConfigRoutes);
 app.use('/api/bulk-clarifications', authenticateToken, bulkClarificationsRoutes);
 app.use('/api/imap', imapSchedulerRoutes);
 app.use('/api/cr-wmako-001', crWmako001TestRoutes);
+
+// Problem Report routes
+app.use('/api/problem-report', authenticateToken, problemReportRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
