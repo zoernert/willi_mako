@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Willi-Mako Screenshot-Analyse</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <svg class="energy-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14.69 2.21L4.33 11.49c-.64.58-.28 1.65.58 1.73L8 13.64V20c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-6.36l3.09-.42c.86-.08 1.22-1.15.58-1.73L9.31 2.21c-.41-.37-1.02-.37-1.43 0z"/>
+                </svg>
+                <div class="brand">
+                    <div class="brand-name">Stromhaltig</div>
+                    <div class="brand-subtitle">Willi Mako</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <h1>Screenshot-Analyse</h1>
+            <p class="description">
+                Extrahieren Sie automatisch Energiewirtschafts-Codes aus Screenshots
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button id="newScreenshot" class="btn btn-primary">
+                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14.25 2.1l-.35.35-.35-.35c-.45-.45-1.18-.45-1.63 0L9.5 4.52c-.45.45-.45 1.18 0 1.63l.35.35-.35.35c-.45.45-.45 1.18 0 1.63l2.42 2.42c.45.45 1.18.45 1.63 0l.35-.35.35.35c.45.45 1.18.45 1.63 0l2.42-2.42c.45-.45.45-1.18 0-1.63l-.35-.35.35-.35c.45-.45.45-1.18 0-1.63L14.25 2.1z"/>
+                    </svg>
+                    Neuen Screenshot erstellen
+                </button>
+                
+                <button id="pasteImage" class="btn btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 2h-4.18C14.4.84 13.3 0 12 0S9.6.84 9.18 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/>
+                    </svg>
+                    Aus Zwischenablage einfügen
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Analysiere Screenshot...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error" class="alert alert-error hidden">
+                <div class="alert-content">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span id="errorMessage"></span>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="results hidden">
+                <div id="extractedCodes" class="result-section hidden">
+                    <h3>Erkannte Codes</h3>
+                    <div id="codesList" class="codes-list"></div>
+                </div>
+
+                <div id="bdewInfo" class="result-section hidden">
+                    <h3>BDEW Marktpartner-Information</h3>
+                    <div id="bdewDetails" class="info-details"></div>
+                </div>
+
+                <div id="additionalInfo" class="result-section hidden">
+                    <h3>Zusätzliche Informationen</h3>
+                    <div id="additionalDetails" class="info-details"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="https://stromhaltig.de/" target="_blank" class="footer-link">
+                    Zur Hauptanwendung
+                </a>
+                <a href="https://stromhaltig.de/screenshot-analysis" target="_blank" class="footer-link">
+                    Web-Version
+                </a>
+            </div>
+            <div class="footer-text">
+                Powered by <strong>Willi-Mako</strong> • STROMDAO GmbH
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
