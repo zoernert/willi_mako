@@ -134,11 +134,7 @@ const ProblemReportDialog: React.FC<ProblemReportDialogProps> = ({ open, onClose
         formData.append('screenshots', uploadedFile.file);
       });
 
-      await apiClient.post('/problem-report/submit', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await apiClient.postMultipart('/problem-report/submit', formData);
 
       setSubmitSuccess(true);
       

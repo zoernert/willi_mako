@@ -50,6 +50,11 @@ const upload = (0, multer_1.default)({
  */
 router.post('/submit', upload.array('screenshots', 5), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     var _a;
+    console.log('Problem report request received');
+    console.log('Content-Type:', req.get('Content-Type'));
+    console.log('Files:', req.files);
+    console.log('Body keys:', Object.keys(req.body || {}));
+    console.log('Body:', req.body);
     const { problemDescription, category, currentPage, browserInfo, additionalInfo } = req.body;
     if (!problemDescription || problemDescription.trim().length === 0) {
         throw new errorHandler_1.AppError('Problembeschreibung ist erforderlich', 400);

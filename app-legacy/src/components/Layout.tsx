@@ -39,6 +39,7 @@ import {
   Work as WorkspaceIcon,
   PhotoCamera as PhotoIcon,
   ReportProblem as ReportProblemIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -77,14 +78,14 @@ const Layout: React.FC = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
+    { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
+    { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },
+    { text: 'Nachrichten-Analyzer', icon: <AnalyticsIcon />, path: '/message-analyzer' },
+    { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
+    { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
     { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
-    { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     // { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' }, // Ausgeblendet - keine Dokumente im Augenblick
-    { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },
-    { text: 'Nachrichten-Analyzer', icon: <RuleIcon />, path: '/message-analyzer' },
-    { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
-    { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
       : []

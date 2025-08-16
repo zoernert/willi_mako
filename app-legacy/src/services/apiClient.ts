@@ -210,6 +210,30 @@ class ApiClient {
     }
     return response.data as T;
   }
+
+  // Multipart form data upload - let browser set Content-Type with boundary
+  async postMultipart<T>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> {
+    // Don't set Content-Type header for multipart - browser will set it with boundary
+    const customConfig = {
+      ...config,
+      headers: {
+        ...config?.headers,
+        // Remove any Content-Type that might be set by default interceptors
+      }
+    };
+    
+    // Explicitly remove Content-Type to let browser set it
+    if (customConfig.headers && 'Content-Type' in customConfig.headers) {
+      delete (customConfig.headers as any)['Content-Type'];
+    }
+    
+    const response = await this.client.post<T | ApiResponse<T>>(url, formData, customConfig);
+    // Handle both wrapped and unwrapped responses
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as ApiResponse<T>).data as T;
+    }
+    return response.data as T;
+  }
 }
 
 // Singleton Instance

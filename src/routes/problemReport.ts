@@ -51,6 +51,12 @@ const upload = multer({
  * Submit a general problem report with optional screenshots
  */
 router.post('/submit', upload.array('screenshots', 5), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  console.log('Problem report request received');
+  console.log('Content-Type:', req.get('Content-Type'));
+  console.log('Files:', req.files);
+  console.log('Body keys:', Object.keys(req.body || {}));
+  console.log('Body:', req.body);
+  
   const { problemDescription, category, currentPage, browserInfo, additionalInfo } = req.body;
   
   if (!problemDescription || problemDescription.trim().length === 0) {
