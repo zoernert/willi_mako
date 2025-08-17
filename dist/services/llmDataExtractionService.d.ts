@@ -106,9 +106,13 @@ declare class LLMDataExtractionService {
         summary: string;
     }>;
     /**
-     * Erstellt Timeline-spezifische Prompts
+     * Erstellt detaillierte Timeline-spezifische Prompts basierend auf Aktivitätstyp
      */
-    buildTimelinePrompt(featureType: any, actionType: any, contextData: any): string;
+    buildDetailedTimelinePrompt(activityType: any, rawData: any): string;
+    /**
+     * Generiert einen informativen Titel basierend auf dem Aktivitätstyp und Raw-Daten
+     */
+    generateTitleForActivityType(activityType: any, rawData: any): string;
     /**
      * Health Check für den Service
      */

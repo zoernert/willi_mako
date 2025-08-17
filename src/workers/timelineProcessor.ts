@@ -202,134 +202,17 @@ class TimelineProcessor {
   }
 
   /**
-   * Erstellt den entsprechenden Prompt basierend auf dem Aktivitätstyp
-   */
-  private buildPromptForActivityType(activityType: string, rawData: any): string {
-    const basePrompt = `Du bist ein KI-Assistent für die Marktkommunikation in der Energiewirtschaft. 
-Erstelle eine prägnante, professionelle Zusammenfassung (max. 200 Wörter) der folgenden Aktivität für die Timeline-Dokumentation.
-
-Fokussiere dich auf:
-- Wichtige Erkenntnisse und Entscheidungen
-- Relevante Marktpartner oder Codes
-- Nächste Schritte oder offene Punkte
-- Geschäftskritische Informationen
-
-Aktivitätstyp: ${activityType}
-`;
-
-    switch (activityType) {
-      case 'message':
-      case 'chat_message':
-        return `${basePrompt}
-
-Chat-Nachricht Kontext:
-- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
-- Benutzer-Nachricht: ${rawData.userMessage || 'Keine Nachricht'}
-- Assistent-Antwort: ${rawData.assistantMessage?.substring(0, 500) + (rawData.assistantMessage?.length > 500 ? '...' : '') || 'Keine Antwort'}
-- Nachrichtentyp: ${rawData.messageType || 'normal'}
-- Zeitstempel: ${rawData.timestamp || 'unbekannt'}
-- Kontext-Einstellungen: ${rawData.contextSettings ? JSON.stringify(rawData.contextSettings, null, 2) : 'Standard'}
-
-Erstelle eine prägnante Zusammenfassung dieser Chat-Interaktion. Fokussiere dich auf:
-1. Das Hauptthema der Unterhaltung
-2. Die wichtigsten behandelten Punkte oder Nachrichtenformate
-3. Relevante Erkenntnisse für die Marktkommunikation
-4. Handlungsempfehlungen oder nächste Schritte (falls erkennbar)`;
-
-      case 'chat_session':
-        return `${basePrompt}
-
-Chat-Session Daten:
-- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
-- Anzahl Nachrichten: ${rawData.message_count || 'unbekannt'}
-- Dauer: ${rawData.duration || 'unbekannt'}
-- Hauptthemen: ${rawData.topics?.join(', ') || 'keine spezifiziert'}
-- Letzter Kontext: ${rawData.last_context || 'kein Kontext'}
-
-Erstelle eine Zusammenfassung der wichtigsten Gesprächsinhalte und Erkenntnisse.`;
-
-      case 'code_lookup':
-      case 'search':
-        return `${basePrompt}
-
-Marktpartner-Suche:
-- Suchterm: ${rawData.searchTerm || rawData.query || 'unbekannt'}
-- Gesuchte Codes: ${rawData.searched_codes?.join(', ') || 'keine'}
-- Gefundene Marktpartner: ${rawData.found_partners?.length || rawData.results?.length || 0}
-- Anzahl Treffer: ${rawData.count || rawData.results?.length || 0}
-- Suchkriterien: ${JSON.stringify(rawData.search_criteria || {})}
-
-Fasse die wichtigsten gefundenen Informationen und deren Relevanz zusammen.`;
-
-      case 'bilateral_clarification':
-      case 'status':
-        return `${basePrompt}
-
-Bilaterale Klärung:
-- Partner: ${rawData.partner_name || rawData.partner || 'unbekannt'}
-- Status: ${rawData.status || 'unbekannt'}
-- Thema: ${rawData.subject || 'kein Thema'}
-- Kommentar: ${rawData.comment || 'kein Kommentar'}
-- Beteiligte: ${rawData.participants?.join(', ') || 'keine angegeben'}
-- Erkenntnisse: ${rawData.findings || 'keine'}
-
-Fasse den aktuellen Stand und die wichtigsten Erkenntnisse zusammen.`;
-
-      case 'screenshot_analysis':
-      case 'result':
-        return `${basePrompt}
-
-Screenshot-Analyse:
-- Dateiname: ${rawData.filename || 'unbekannt'}
-- Extrahierte Texte: ${rawData.extractedText || 'keine'}
-- KI-Analyse: ${rawData.analysis || rawData.analysis_result || 'kein Ergebnis'}
-- Konfidenz: ${rawData.confidence || 'unbekannt'}
-- Erkannte Elemente: ${rawData.detected_elements?.join(', ') || 'keine'}
-- Kontext: ${rawData.context || 'kein Kontext'}
-
-Fasse die wichtigsten Erkenntnisse aus der Analyse zusammen.`;
-
-      case 'message_analysis':
-      case 'analysis':
-        return `${basePrompt}
-
-Nachrichten-Analyse:
-- Nachricht: ${rawData.message?.substring(0, 200) + (rawData.message?.length > 200 ? '...' : '') || 'keine'}
-- Nachrichtentyp: ${rawData.message_type || rawData.messageType || 'unbekannt'}
-- Kategorien: ${rawData.categories?.join(', ') || 'keine'}
-- Sentiment: ${rawData.sentiment || 'unbekannt'}
-- Priorität: ${rawData.priority || 'normal'}
-- Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
-- Wichtige Punkte: ${rawData.key_points?.join(', ') || 'keine'}
-
-Fasse die wichtigsten Erkenntnisse und Handlungsempfehlungen zusammen.`;
-
-      case 'notes':
-        return `${basePrompt}
-
-Notizen-Aktivität:
-- Anzahl Notizen: ${rawData.note_count || 'unbekannt'}
-- Kategorien: ${rawData.categories?.join(', ') || 'keine'}
-- Wichtige Stichworte: ${rawData.keywords?.join(', ') || 'keine'}
-
-Fasse die wichtigsten dokumentierten Informationen zusammen.`;
-
-      default:
-        return `${basePrompt}
-
-Allgemeine Aktivität:
-${JSON.stringify(rawData, null, 2)}
-
-Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
-    }
-  }
-
-  /**
    * Aktualisiert eine existierende Timeline-Aktivität mit der generierten Zusammenfassung
    */
   private async createTimelineActivity(entry: QueueEntry, summary: string): Promise<void> {
-    // Der Placeholder-Eintrag existiert bereits - wir aktualisieren ihn
-    const title = this.generateTitleForActivityType(entry.activity_type, entry.raw_data);
+    // Hole den Titel auch vom LLM-Service
+    const result = await this.llmService.generateTimelineActivitySummary(
+      entry.raw_data.feature || 'unknown',
+      entry.activity_type,
+      entry.raw_data
+    );
+
+    const title = result.title || this.generateTitleForActivityType(entry.activity_type, entry.raw_data);
 
     const query = `
       UPDATE timeline_activities 
@@ -348,7 +231,7 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
       'completed'
     ]);
 
-    logger.debug(`Updated timeline activity ${entry.activity_id} with generated summary`);
+    logger.debug(`Updated timeline activity ${entry.activity_id} with generated summary and title`);
   }
 
   /**

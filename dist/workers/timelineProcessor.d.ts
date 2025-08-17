@@ -29,10 +29,6 @@ declare class TimelineProcessor {
      */
     private generateSummary;
     /**
-     * Erstellt den entsprechenden Prompt basierend auf dem Aktivitätstyp
-     */
-    private buildPromptForActivityType;
-    /**
      * Aktualisiert eine existierende Timeline-Aktivität mit der generierten Zusammenfassung
      */
     private createTimelineActivity;

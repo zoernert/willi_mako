@@ -980,6 +980,8 @@ if (process.env.NODE_ENV !== 'test') {
 - ✅ **JSON-Parsing-Robustheit**: LLM-Service entfernt automatisch Markdown-Codeblöcke aus JSON-Antworten
 - ✅ **SQL-Schema-Korrektheit**: Timeline-Worker nutzt korrektes Schema (`content`, `feature_name`, etc.)
 - ✅ **Produktions-Validierung**: Live-Test bestätigt vollständige End-to-End-Funktionalität (17.08.2025)
+- ✅ **Intelligente Titel-Generierung**: Timeline-Einträge haben jetzt aussagekräftige Titel basierend auf Kontext-Daten
+- ✅ **Verbesserte Prompt-Templates**: LLM-Zusammenfassungen nutzen vollständige Kontext-Informationen für bessere Qualität
 - ✅ **JSON-Parsing-Probleme behoben**: LLM-Service entfernt automatisch Markdown-Formatierung aus JSON-Antworten
 - ✅ **SQL-Schema-Fehler behoben**: Timeline-Worker nutzt korrekte Spaltennamen (`content` statt `description`, `feature_name` ergänzt)
 
