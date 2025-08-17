@@ -199,7 +199,7 @@ class TimelineProcessor {
      * Erstellt den entsprechenden Prompt basierend auf dem Aktivitätstyp
      */
     buildPromptForActivityType(activityType, rawData) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
         const basePrompt = `Du bist ein KI-Assistent für die Marktkommunikation in der Energiewirtschaft. 
 Erstelle eine prägnante, professionelle Zusammenfassung (max. 200 Wörter) der folgenden Aktivität für die Timeline-Dokumentation.
 
@@ -212,51 +212,84 @@ Fokussiere dich auf:
 Aktivitätstyp: ${activityType}
 `;
         switch (activityType) {
+            case 'message':
+            case 'chat_message':
+                return `${basePrompt}
+
+Chat-Nachricht Kontext:
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
+- Benutzer-Nachricht: ${rawData.userMessage || 'Keine Nachricht'}
+- Assistent-Antwort: ${((_a = rawData.assistantMessage) === null || _a === void 0 ? void 0 : _a.substring(0, 500)) + (((_b = rawData.assistantMessage) === null || _b === void 0 ? void 0 : _b.length) > 500 ? '...' : '') || 'Keine Antwort'}
+- Nachrichtentyp: ${rawData.messageType || 'normal'}
+- Zeitstempel: ${rawData.timestamp || 'unbekannt'}
+- Kontext-Einstellungen: ${rawData.contextSettings ? JSON.stringify(rawData.contextSettings, null, 2) : 'Standard'}
+
+Erstelle eine prägnante Zusammenfassung dieser Chat-Interaktion. Fokussiere dich auf:
+1. Das Hauptthema der Unterhaltung
+2. Die wichtigsten behandelten Punkte oder Nachrichtenformate
+3. Relevante Erkenntnisse für die Marktkommunikation
+4. Handlungsempfehlungen oder nächste Schritte (falls erkennbar)`;
             case 'chat_session':
                 return `${basePrompt}
 
 Chat-Session Daten:
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
 - Anzahl Nachrichten: ${rawData.message_count || 'unbekannt'}
 - Dauer: ${rawData.duration || 'unbekannt'}
-- Hauptthemen: ${((_a = rawData.topics) === null || _a === void 0 ? void 0 : _a.join(', ')) || 'keine spezifiziert'}
+- Hauptthemen: ${((_c = rawData.topics) === null || _c === void 0 ? void 0 : _c.join(', ')) || 'keine spezifiziert'}
 - Letzter Kontext: ${rawData.last_context || 'kein Kontext'}
 
 Erstelle eine Zusammenfassung der wichtigsten Gesprächsinhalte und Erkenntnisse.`;
             case 'code_lookup':
+            case 'search':
                 return `${basePrompt}
 
-Code-Lookup Aktivität:
-- Gesuchte Codes: ${((_b = rawData.searched_codes) === null || _b === void 0 ? void 0 : _b.join(', ')) || 'keine'}
-- Gefundene Marktpartner: ${((_c = rawData.found_partners) === null || _c === void 0 ? void 0 : _c.length) || 0}
+Marktpartner-Suche:
+- Suchterm: ${rawData.searchTerm || rawData.query || 'unbekannt'}
+- Gesuchte Codes: ${((_d = rawData.searched_codes) === null || _d === void 0 ? void 0 : _d.join(', ')) || 'keine'}
+- Gefundene Marktpartner: ${((_e = rawData.found_partners) === null || _e === void 0 ? void 0 : _e.length) || ((_f = rawData.results) === null || _f === void 0 ? void 0 : _f.length) || 0}
+- Anzahl Treffer: ${rawData.count || ((_g = rawData.results) === null || _g === void 0 ? void 0 : _g.length) || 0}
 - Suchkriterien: ${JSON.stringify(rawData.search_criteria || {})}
 
 Fasse die wichtigsten gefundenen Informationen und deren Relevanz zusammen.`;
             case 'bilateral_clarification':
+            case 'status':
                 return `${basePrompt}
 
 Bilaterale Klärung:
-- Partner: ${rawData.partner_name || 'unbekannt'}
+- Partner: ${rawData.partner_name || rawData.partner || 'unbekannt'}
 - Status: ${rawData.status || 'unbekannt'}
 - Thema: ${rawData.subject || 'kein Thema'}
+- Kommentar: ${rawData.comment || 'kein Kommentar'}
+- Beteiligte: ${((_h = rawData.participants) === null || _h === void 0 ? void 0 : _h.join(', ')) || 'keine angegeben'}
 - Erkenntnisse: ${rawData.findings || 'keine'}
 
 Fasse den aktuellen Stand und die wichtigsten Erkenntnisse zusammen.`;
             case 'screenshot_analysis':
+            case 'result':
                 return `${basePrompt}
 
 Screenshot-Analyse:
-- Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
-- Erkannte Elemente: ${((_d = rawData.detected_elements) === null || _d === void 0 ? void 0 : _d.join(', ')) || 'keine'}
+- Dateiname: ${rawData.filename || 'unbekannt'}
+- Extrahierte Texte: ${rawData.extractedText || 'keine'}
+- KI-Analyse: ${rawData.analysis || rawData.analysis_result || 'kein Ergebnis'}
+- Konfidenz: ${rawData.confidence || 'unbekannt'}
+- Erkannte Elemente: ${((_j = rawData.detected_elements) === null || _j === void 0 ? void 0 : _j.join(', ')) || 'keine'}
 - Kontext: ${rawData.context || 'kein Kontext'}
 
 Fasse die wichtigsten Erkenntnisse aus der Analyse zusammen.`;
             case 'message_analysis':
+            case 'analysis':
                 return `${basePrompt}
 
 Nachrichten-Analyse:
-- Nachrichtentyp: ${rawData.message_type || 'unbekannt'}
+- Nachricht: ${((_k = rawData.message) === null || _k === void 0 ? void 0 : _k.substring(0, 200)) + (((_l = rawData.message) === null || _l === void 0 ? void 0 : _l.length) > 200 ? '...' : '') || 'keine'}
+- Nachrichtentyp: ${rawData.message_type || rawData.messageType || 'unbekannt'}
+- Kategorien: ${((_m = rawData.categories) === null || _m === void 0 ? void 0 : _m.join(', ')) || 'keine'}
+- Sentiment: ${rawData.sentiment || 'unbekannt'}
+- Priorität: ${rawData.priority || 'normal'}
 - Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
-- Wichtige Punkte: ${((_e = rawData.key_points) === null || _e === void 0 ? void 0 : _e.join(', ')) || 'keine'}
+- Wichtige Punkte: ${((_o = rawData.key_points) === null || _o === void 0 ? void 0 : _o.join(', ')) || 'keine'}
 
 Fasse die wichtigsten Erkenntnisse und Handlungsempfehlungen zusammen.`;
             case 'notes':
@@ -264,8 +297,8 @@ Fasse die wichtigsten Erkenntnisse und Handlungsempfehlungen zusammen.`;
 
 Notizen-Aktivität:
 - Anzahl Notizen: ${rawData.note_count || 'unbekannt'}
-- Kategorien: ${((_f = rawData.categories) === null || _f === void 0 ? void 0 : _f.join(', ')) || 'keine'}
-- Wichtige Stichworte: ${((_g = rawData.keywords) === null || _g === void 0 ? void 0 : _g.join(', ')) || 'keine'}
+- Kategorien: ${((_p = rawData.categories) === null || _p === void 0 ? void 0 : _p.join(', ')) || 'keine'}
+- Wichtige Stichworte: ${((_q = rawData.keywords) === null || _q === void 0 ? void 0 : _q.join(', ')) || 'keine'}
 
 Fasse die wichtigsten dokumentierten Informationen zusammen.`;
             default:
@@ -301,25 +334,71 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
         logger_1.logger.debug(`Updated timeline activity ${entry.activity_id} with generated summary`);
     }
     /**
-     * Generiert einen Titel basierend auf dem Aktivitätstyp
+     * Generiert einen informativen Titel basierend auf dem Aktivitätstyp und Raw-Daten
      */
     generateTitleForActivityType(activityType, rawData) {
         var _a;
         switch (activityType) {
+            case 'message':
+            case 'chat_message':
+                // Für Chat-Nachrichten: Nutze Chat-Titel oder ersten Teil der User-Message
+                if (rawData.chatTitle && rawData.chatTitle !== 'Neue Unterhaltung') {
+                    return `Chat: ${rawData.chatTitle}`;
+                }
+                else if (rawData.userMessage) {
+                    const userMsg = rawData.userMessage.substring(0, 60);
+                    return `Chat: ${userMsg}${userMsg.length >= 60 ? '...' : ''}`;
+                }
+                else {
+                    return 'Chat-Nachricht';
+                }
             case 'chat_session':
+                if (rawData.chatTitle) {
+                    return `Chat-Session: ${rawData.chatTitle}`;
+                }
                 return `Chat-Session (${rawData.message_count || 0} Nachrichten)`;
             case 'code_lookup':
-                return `Code-Lookup: ${((_a = rawData.searched_codes) === null || _a === void 0 ? void 0 : _a.join(', ')) || 'Suche'}`;
+            case 'search':
+                if (rawData.searchTerm || rawData.query) {
+                    return `Marktpartner-Suche: ${rawData.searchTerm || rawData.query}`;
+                }
+                else if ((_a = rawData.searched_codes) === null || _a === void 0 ? void 0 : _a.length) {
+                    return `Code-Lookup: ${rawData.searched_codes.join(', ')}`;
+                }
+                return 'Marktpartner-Suche';
             case 'bilateral_clarification':
-                return `Bilaterale Klärung: ${rawData.partner_name || 'Partner'}`;
+            case 'status':
+                if (rawData.subject) {
+                    return `Bilaterale Klärung: ${rawData.subject}`;
+                }
+                else if (rawData.partner_name || rawData.partner) {
+                    return `Bilaterale Klärung: ${rawData.partner_name || rawData.partner}`;
+                }
+                return 'Bilaterale Klärung';
             case 'screenshot_analysis':
+            case 'result':
+                if (rawData.filename) {
+                    return `Screenshot-Analyse: ${rawData.filename}`;
+                }
                 return 'Screenshot-Analyse durchgeführt';
             case 'message_analysis':
-                return `Nachrichten-Analyse: ${rawData.message_type || 'Nachricht'}`;
+            case 'analysis':
+                if (rawData.messageType && rawData.messageType !== 'normal') {
+                    return `Nachrichten-Analyse: ${rawData.messageType}`;
+                }
+                else if (rawData.message_type) {
+                    return `Nachrichten-Analyse: ${rawData.message_type}`;
+                }
+                return 'Nachrichten-Analyse';
             case 'notes':
+                if (rawData.title) {
+                    return `Notiz: ${rawData.title}`;
+                }
                 return `Notizen erstellt (${rawData.note_count || 0})`;
             default:
-                return `${activityType} ausgeführt`;
+                // Fallback: Versuche Feature-Name und Activity-Type zu kombinieren
+                const feature = rawData.feature || 'Unbekannt';
+                return `${feature}: ${activityType}`;
         }
     }
     /**

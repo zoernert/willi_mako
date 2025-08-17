@@ -218,10 +218,29 @@ Aktivitätstyp: ${activityType}
 `;
 
     switch (activityType) {
+      case 'message':
+      case 'chat_message':
+        return `${basePrompt}
+
+Chat-Nachricht Kontext:
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
+- Benutzer-Nachricht: ${rawData.userMessage || 'Keine Nachricht'}
+- Assistent-Antwort: ${rawData.assistantMessage?.substring(0, 500) + (rawData.assistantMessage?.length > 500 ? '...' : '') || 'Keine Antwort'}
+- Nachrichtentyp: ${rawData.messageType || 'normal'}
+- Zeitstempel: ${rawData.timestamp || 'unbekannt'}
+- Kontext-Einstellungen: ${rawData.contextSettings ? JSON.stringify(rawData.contextSettings, null, 2) : 'Standard'}
+
+Erstelle eine prägnante Zusammenfassung dieser Chat-Interaktion. Fokussiere dich auf:
+1. Das Hauptthema der Unterhaltung
+2. Die wichtigsten behandelten Punkte oder Nachrichtenformate
+3. Relevante Erkenntnisse für die Marktkommunikation
+4. Handlungsempfehlungen oder nächste Schritte (falls erkennbar)`;
+
       case 'chat_session':
         return `${basePrompt}
 
 Chat-Session Daten:
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
 - Anzahl Nachrichten: ${rawData.message_count || 'unbekannt'}
 - Dauer: ${rawData.duration || 'unbekannt'}
 - Hauptthemen: ${rawData.topics?.join(', ') || 'keine spezifiziert'}
@@ -230,41 +249,56 @@ Chat-Session Daten:
 Erstelle eine Zusammenfassung der wichtigsten Gesprächsinhalte und Erkenntnisse.`;
 
       case 'code_lookup':
+      case 'search':
         return `${basePrompt}
 
-Code-Lookup Aktivität:
+Marktpartner-Suche:
+- Suchterm: ${rawData.searchTerm || rawData.query || 'unbekannt'}
 - Gesuchte Codes: ${rawData.searched_codes?.join(', ') || 'keine'}
-- Gefundene Marktpartner: ${rawData.found_partners?.length || 0}
+- Gefundene Marktpartner: ${rawData.found_partners?.length || rawData.results?.length || 0}
+- Anzahl Treffer: ${rawData.count || rawData.results?.length || 0}
 - Suchkriterien: ${JSON.stringify(rawData.search_criteria || {})}
 
 Fasse die wichtigsten gefundenen Informationen und deren Relevanz zusammen.`;
 
       case 'bilateral_clarification':
+      case 'status':
         return `${basePrompt}
 
 Bilaterale Klärung:
-- Partner: ${rawData.partner_name || 'unbekannt'}
+- Partner: ${rawData.partner_name || rawData.partner || 'unbekannt'}
 - Status: ${rawData.status || 'unbekannt'}
 - Thema: ${rawData.subject || 'kein Thema'}
+- Kommentar: ${rawData.comment || 'kein Kommentar'}
+- Beteiligte: ${rawData.participants?.join(', ') || 'keine angegeben'}
 - Erkenntnisse: ${rawData.findings || 'keine'}
 
 Fasse den aktuellen Stand und die wichtigsten Erkenntnisse zusammen.`;
 
       case 'screenshot_analysis':
+      case 'result':
         return `${basePrompt}
 
 Screenshot-Analyse:
-- Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
+- Dateiname: ${rawData.filename || 'unbekannt'}
+- Extrahierte Texte: ${rawData.extractedText || 'keine'}
+- KI-Analyse: ${rawData.analysis || rawData.analysis_result || 'kein Ergebnis'}
+- Konfidenz: ${rawData.confidence || 'unbekannt'}
 - Erkannte Elemente: ${rawData.detected_elements?.join(', ') || 'keine'}
 - Kontext: ${rawData.context || 'kein Kontext'}
 
 Fasse die wichtigsten Erkenntnisse aus der Analyse zusammen.`;
 
       case 'message_analysis':
+      case 'analysis':
         return `${basePrompt}
 
 Nachrichten-Analyse:
-- Nachrichtentyp: ${rawData.message_type || 'unbekannt'}
+- Nachricht: ${rawData.message?.substring(0, 200) + (rawData.message?.length > 200 ? '...' : '') || 'keine'}
+- Nachrichtentyp: ${rawData.message_type || rawData.messageType || 'unbekannt'}
+- Kategorien: ${rawData.categories?.join(', ') || 'keine'}
+- Sentiment: ${rawData.sentiment || 'unbekannt'}
+- Priorität: ${rawData.priority || 'normal'}
 - Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
 - Wichtige Punkte: ${rawData.key_points?.join(', ') || 'keine'}
 
@@ -318,24 +352,72 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
   }
 
   /**
-   * Generiert einen Titel basierend auf dem Aktivitätstyp
+   * Generiert einen informativen Titel basierend auf dem Aktivitätstyp und Raw-Daten
    */
   private generateTitleForActivityType(activityType: string, rawData: any): string {
     switch (activityType) {
+      case 'message':
+      case 'chat_message':
+        // Für Chat-Nachrichten: Nutze Chat-Titel oder ersten Teil der User-Message
+        if (rawData.chatTitle && rawData.chatTitle !== 'Neue Unterhaltung') {
+          return `Chat: ${rawData.chatTitle}`;
+        } else if (rawData.userMessage) {
+          const userMsg = rawData.userMessage.substring(0, 60);
+          return `Chat: ${userMsg}${userMsg.length >= 60 ? '...' : ''}`;
+        } else {
+          return 'Chat-Nachricht';
+        }
+
       case 'chat_session':
+        if (rawData.chatTitle) {
+          return `Chat-Session: ${rawData.chatTitle}`;
+        }
         return `Chat-Session (${rawData.message_count || 0} Nachrichten)`;
+
       case 'code_lookup':
-        return `Code-Lookup: ${rawData.searched_codes?.join(', ') || 'Suche'}`;
+      case 'search':
+        if (rawData.searchTerm || rawData.query) {
+          return `Marktpartner-Suche: ${rawData.searchTerm || rawData.query}`;
+        } else if (rawData.searched_codes?.length) {
+          return `Code-Lookup: ${rawData.searched_codes.join(', ')}`;
+        }
+        return 'Marktpartner-Suche';
+
       case 'bilateral_clarification':
-        return `Bilaterale Klärung: ${rawData.partner_name || 'Partner'}`;
+      case 'status':
+        if (rawData.subject) {
+          return `Bilaterale Klärung: ${rawData.subject}`;
+        } else if (rawData.partner_name || rawData.partner) {
+          return `Bilaterale Klärung: ${rawData.partner_name || rawData.partner}`;
+        }
+        return 'Bilaterale Klärung';
+
       case 'screenshot_analysis':
+      case 'result':
+        if (rawData.filename) {
+          return `Screenshot-Analyse: ${rawData.filename}`;
+        }
         return 'Screenshot-Analyse durchgeführt';
+
       case 'message_analysis':
-        return `Nachrichten-Analyse: ${rawData.message_type || 'Nachricht'}`;
+      case 'analysis':
+        if (rawData.messageType && rawData.messageType !== 'normal') {
+          return `Nachrichten-Analyse: ${rawData.messageType}`;
+        } else if (rawData.message_type) {
+          return `Nachrichten-Analyse: ${rawData.message_type}`;
+        }
+        return 'Nachrichten-Analyse';
+
       case 'notes':
+        if (rawData.title) {
+          return `Notiz: ${rawData.title}`;
+        }
         return `Notizen erstellt (${rawData.note_count || 0})`;
+
       default:
-        return `${activityType} ausgeführt`;
+        // Fallback: Versuche Feature-Name und Activity-Type zu kombinieren
+        const feature = rawData.feature || 'Unbekannt';
+        return `${feature}: ${activityType}`;
     }
   }
 

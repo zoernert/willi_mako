@@ -37,7 +37,7 @@ declare class TimelineProcessor {
      */
     private createTimelineActivity;
     /**
-     * Generiert einen Titel basierend auf dem Aktivitätstyp
+     * Generiert einen informativen Titel basierend auf dem Aktivitätstyp und Raw-Daten
      */
     private generateTitleForActivityType;
     /**
