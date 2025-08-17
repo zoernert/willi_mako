@@ -33,7 +33,7 @@ declare class TimelineProcessor {
      */
     private buildPromptForActivityType;
     /**
-     * Erstellt eine Timeline-Aktivität in der Datenbank
+     * Aktualisiert eine existierende Timeline-Aktivität mit der generierten Zusammenfassung
      */
     private createTimelineActivity;
     /**

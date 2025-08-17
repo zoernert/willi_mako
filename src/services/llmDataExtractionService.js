@@ -399,7 +399,11 @@ Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
             
             const fullPrompt = `Du bist ein Assistent für die Marktkommunikation bei Energieversorgern. 
 Erstelle prägnante deutsche Titel und Zusammenfassungen für Benutzeraktivitäten.
-Antworte immer im JSON-Format: {"title": "...", "summary": "..."}
+
+WICHTIG: Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt in diesem Format:
+{"title": "Kurzer prägnanter Titel", "summary": "Detaillierte Zusammenfassung der Aktivität"}
+
+Verwende KEINE Markdown-Formatierung, KEINE Code-Blöcke, nur reines JSON.
 
 ${prompt}`;
 
@@ -408,7 +412,29 @@ ${prompt}`;
                 maxOutputTokens: 300
             });
 
-            const parsed = JSON.parse(content);
+            // Clean content - remove any potential markdown formatting
+            let cleanContent = content.trim();
+            
+            // Remove common markdown artifacts and code blocks
+            cleanContent = cleanContent.replace(/^```json\s*/gim, '');
+            cleanContent = cleanContent.replace(/^```\s*/gim, '');
+            cleanContent = cleanContent.replace(/\s*```$/gim, '');
+            cleanContent = cleanContent.replace(/^\s*json\s*/gim, '');
+            cleanContent = cleanContent.replace(/```json/gi, '');
+            cleanContent = cleanContent.replace(/```/g, '');
+            
+            // Remove any leading/trailing text that's not JSON
+            const jsonStart = cleanContent.indexOf('{');
+            const jsonEnd = cleanContent.lastIndexOf('}');
+            
+            if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                cleanContent = cleanContent.substring(jsonStart, jsonEnd + 1);
+            }
+
+            // Additional cleanup - remove any remaining non-JSON artifacts
+            cleanContent = cleanContent.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+
+            const parsed = JSON.parse(cleanContent);
             return {
                 title: parsed.title || `${featureType} - ${actionType}`,
                 summary: parsed.summary || 'Keine Zusammenfassung verfügbar'

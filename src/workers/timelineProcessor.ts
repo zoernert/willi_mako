@@ -134,7 +134,7 @@ class TimelineProcessor {
    * Verarbeitet einen einzelnen Queue-Eintrag
    */
   private async processEntry(entry: QueueEntry): Promise<void> {
-    logger.debug(`Processing timeline entry ${entry.id} for timeline ${entry.timeline_id}`);
+    logger.debug(`Processing timeline entry ${entry.id} for activity ${entry.activity_id}`);
 
     // Markiere als in Bearbeitung
     await this.updateQueueStatus(entry.id, 'processing');
@@ -143,13 +143,14 @@ class TimelineProcessor {
       const result = await this.generateSummary(entry);
 
       if (result.success && result.summary) {
-        // Erstelle Timeline-Aktivität
+        // Aktualisiere Timeline-Aktivität mit der generierten Zusammenfassung
         await this.createTimelineActivity(entry, result.summary);
         
-        // Entferne aus Queue
+        // Markiere Queue-Eintrag als abgeschlossen und entferne ihn
+        await this.updateQueueStatus(entry.id, 'completed');
         await this.removeFromQueue(entry.id);
         
-        logger.info(`Successfully processed timeline entry ${entry.id}`);
+        logger.info(`Successfully processed timeline entry ${entry.id} for activity ${entry.activity_id}`);
       } else {
         throw new Error(result.error || 'Failed to generate summary');
       }
@@ -290,30 +291,30 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
   }
 
   /**
-   * Erstellt eine Timeline-Aktivität in der Datenbank
+   * Aktualisiert eine existierende Timeline-Aktivität mit der generierten Zusammenfassung
    */
   private async createTimelineActivity(entry: QueueEntry, summary: string): Promise<void> {
-    const query = `
-      INSERT INTO timeline_activities (
-        timeline_id,
-        activity_type,
-        title,
-        description,
-        raw_data,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-    `;
-
+    // Der Placeholder-Eintrag existiert bereits - wir aktualisieren ihn
     const title = this.generateTitleForActivityType(entry.activity_type, entry.raw_data);
 
+    const query = `
+      UPDATE timeline_activities 
+      SET 
+        title = $2,
+        content = $3,
+        processing_status = $4,
+        processed_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `;
+
     await this.db.query(query, [
-      entry.timeline_id,
-      entry.activity_type,
+      entry.activity_id, // Die ID der existierenden Timeline-Aktivität
       title,
       summary,
-      entry.raw_data,
-      entry.created_at
+      'completed'
     ]);
+
+    logger.debug(`Updated timeline activity ${entry.activity_id} with generated summary`);
   }
 
   /**
