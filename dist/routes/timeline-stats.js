@@ -7,8 +7,8 @@ const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../config/database"));
 const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-// Timeline Stats für Dashboard Widget
-router.get('/stats', auth_1.authenticateToken, async (req, res) => {
+// Timeline Stats für Dashboard Widget - Root-Route
+router.get('/', auth_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id; // User ist durch authenticateToken garantiert
         // Parallel alle Statistiken laden

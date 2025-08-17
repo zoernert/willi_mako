@@ -60,7 +60,7 @@ const TimelineDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/timeline', {
+      const response = await fetch('/api/timelines', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -79,7 +79,7 @@ const TimelineDashboard: React.FC = () => {
       const newTimeline = await response.json();
       
       // Timeline als aktiv setzen
-      await fetch(`/api/timeline/${newTimeline.id}/activate`, {
+      await fetch(`/api/timelines/${newTimeline.id}/activate`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${state.token}`,

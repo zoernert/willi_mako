@@ -100,6 +100,32 @@ export const API_ENDPOINTS = {
     validateMermaid: '/processes/validate-mermaid',
   },
 
+  // Timeline
+  timeline: {
+    list: '/timelines',
+    create: '/timelines',
+    detail: (timelineId: string) => `/timelines/${timelineId}`,
+    update: (timelineId: string) => `/timelines/${timelineId}`,
+    delete: (timelineId: string) => `/timelines/${timelineId}`,
+    activate: (timelineId: string) => `/timelines/${timelineId}/activate`,
+    activities: (timelineId: string) => `/timelines/${timelineId}/activities`,
+    stats: '/timeline/stats',
+    
+    // Activity Management
+    activity: {
+      capture: '/timeline-activity/capture',
+      status: (activityId: string) => `/timeline-activity/${activityId}/status`,
+      update: (activityId: string) => `/activities/${activityId}`,
+      delete: (activityId: string) => `/activities/${activityId}`,
+    },
+    
+    // Sharing (planned)
+    sharing: {
+      share: (timelineId: string) => `/timelines/${timelineId}/share`,
+      shared: '/timelines/shared',
+    }
+  },
+
   // Teams
   teams: {
     list: '/teams',

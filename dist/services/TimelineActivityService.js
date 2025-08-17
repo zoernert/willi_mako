@@ -1,10 +1,49 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimelineActivityService = void 0;
-const generative_ai_1 = require("@google/generative-ai");
+// Use central LLM service instead of direct Gemini integration
+const LLMDataExtractionService = require('./llmDataExtractionService.js');
 class TimelineActivityService {
     constructor(db) {
         this.db = db;
+        this.llmService = new LLMDataExtractionService();
+    }
+    /**
+     * Zentrale Methode für Timeline-Activity-Capture
+     * Erstellt sofort einen Placeholder-Eintrag und startet asynchrone Verarbeitung
+     */
+    async captureActivity(request) {
+        try {
+            // Erstelle sofortigen Placeholder-Eintrag
+            const activityResult = await this.db.query(`INSERT INTO timeline_activities 
+         (timeline_id, feature_name, activity_type, title, content, metadata, processing_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id`, [
+                request.timelineId,
+                request.feature,
+                request.activityType,
+                `${request.feature} - Wird verarbeitet...`,
+                'Die Aktivität wird gerade von der KI analysiert...',
+                JSON.stringify(request.rawData),
+                'pending'
+            ]);
+            const activityId = activityResult.rows[0].id;
+            // In Verarbeitungsqueue einreihen
+            await this.db.query(`INSERT INTO timeline_processing_queue 
+         (activity_id, raw_data, prompt_template, priority, status)
+         VALUES ($1, $2, $3, $4, $5)`, [
+                activityId,
+                JSON.stringify(request.rawData),
+                `${request.feature}:${request.activityType}`,
+                request.priority || 5,
+                'queued'
+            ]);
+            return activityId;
+        }
+        catch (error) {
+            console.error('Error capturing activity:', error);
+            throw new Error(`Failed to capture activity: ${error.message}`);
+        }
     }
     // Timeline Management
     async createTimeline(name, createdBy, description, metadata) {
@@ -138,32 +177,8 @@ class TimelineActivityService {
     }
     async generateAISummary(featureType, actionType, contextData) {
         try {
-            const prompt = this.buildAIPrompt(featureType, actionType, contextData);
-            // Initialize Gemini
-            const genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({
-                model: "gemini-pro",
-                generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 300,
-                }
-            });
-            const fullPrompt = `Du bist ein Assistent für die Marktkommunikation bei Energieversorgern. 
-Erstelle prägnante deutsche Titel und Zusammenfassungen für Benutzeraktivitäten.
-Antworte immer im JSON-Format: {"title": "...", "summary": "..."}
-
-${prompt}`;
-            const result = await model.generateContent(fullPrompt);
-            const response = await result.response;
-            const content = response.text();
-            if (!content) {
-                throw new Error('Keine Antwort von Gemini erhalten');
-            }
-            const parsed = JSON.parse(content);
-            return {
-                title: parsed.title || `${featureType} - ${actionType}`,
-                summary: parsed.summary || 'Keine Zusammenfassung verfügbar'
-            };
+            // Use the central LLM service for timeline activity summary generation
+            return await this.llmService.generateTimelineActivitySummary(featureType, actionType, contextData);
         }
         catch (error) {
             console.error('Error generating AI summary:', error);
@@ -172,55 +187,6 @@ ${prompt}`;
                 summary: 'AI-Zusammenfassung nicht verfügbar'
             };
         }
-    }
-    buildAIPrompt(featureType, actionType, contextData) {
-        let prompt = `Feature: ${featureType}\nAktion: ${actionType}\n\n`;
-        switch (featureType) {
-            case 'chat':
-                prompt += `Chat-Kontext:\n`;
-                if (contextData.message)
-                    prompt += `Nachricht: ${contextData.message}\n`;
-                if (contextData.response)
-                    prompt += `Antwort: ${contextData.response}\n`;
-                break;
-            case 'code_lookup':
-                prompt += `Code-Suche:\n`;
-                if (contextData.query)
-                    prompt += `Suchanfrage: ${contextData.query}\n`;
-                if (contextData.results)
-                    prompt += `Anzahl Ergebnisse: ${contextData.results.length}\n`;
-                break;
-            case 'bilateral_clarifications':
-                prompt += `Bilaterale Klärung:\n`;
-                if (contextData.partner)
-                    prompt += `Partner: ${contextData.partner}\n`;
-                if (contextData.topic)
-                    prompt += `Thema: ${contextData.topic}\n`;
-                break;
-            case 'screenshot_analyzer':
-                prompt += `Screenshot-Analyse:\n`;
-                if (contextData.filename)
-                    prompt += `Datei: ${contextData.filename}\n`;
-                if (contextData.analysis)
-                    prompt += `Analyse: ${contextData.analysis}\n`;
-                break;
-            case 'message_analyzer':
-                prompt += `Nachrichten-Analyse:\n`;
-                if (contextData.messageType)
-                    prompt += `Nachrichtentyp: ${contextData.messageType}\n`;
-                if (contextData.content)
-                    prompt += `Inhalt: ${contextData.content}\n`;
-                break;
-            case 'notes':
-                prompt += `Notizen:\n`;
-                if (contextData.title)
-                    prompt += `Titel: ${contextData.title}\n`;
-                if (contextData.content)
-                    prompt += `Inhalt: ${contextData.content}\n`;
-                break;
-        }
-        prompt += `\nErstelle einen kurzen deutschen Titel (max. 60 Zeichen) und eine Zusammenfassung (max. 200 Zeichen) für diese Aktivität.`;
-        return prompt;
     }
     // Statistics and Analytics
     async getTimelineStats(timelineId, userId) {

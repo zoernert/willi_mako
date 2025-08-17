@@ -882,6 +882,13 @@ export default new TimelineProcessingWorker();
 - [x] **NPM-Scripts** (`package.json`) - Timeline-Worker und Migrations verfügbar
 - [x] **Dokumentation** (dieses Dokument) - Vollständige Implementierungsanleitung erstellt
 
+#### Navigation & User Experience
+- [x] **Haupt-Navigation** (`app-legacy/src/components/Layout.tsx`) - Timeline-Dashboard im Hauptmenü integriert
+- [x] **Timeline-Icon** - Material-UI Timeline-Icon für bessere User Experience
+- [x] **Route-Integration** (`app-legacy/src/App.tsx`) - Timeline-Dashboard-Route funktional
+- [x] **Dashboard-Widget** (`app-legacy/src/pages/Dashboard.tsx`) - TimelineOverviewWidget im Haupt-Dashboard integriert
+- [x] **Header-Integration** (`app-legacy/src/components/Layout.tsx`) - TimelineSelector im Header verfügbar
+
 ### ✅ Produktionsbereit
 
 Das Timeline-System ist **vollständig implementiert und produktionsbereit**. Alle definierten User Stories sind erfüllt:
@@ -967,8 +974,57 @@ if (process.env.NODE_ENV !== 'test') {
 - ✅ Background Worker startet fehlerfrei beim Serverstart
 - ✅ Queue-Verarbeitung funktioniert mit korrekten Status-Werten (`'queued'` statt `'pending'`)
 - ✅ Import-Probleme mit dotenv und path-Modulen behoben
+- ✅ **LLM-Integration auf zentrales System umgestellt**: Timeline nutzt jetzt `LLMDataExtractionService` mit `gemini-1.5-flash` statt hart kodiertem `gemini-pro`
+- ✅ **End-to-End-Tests erfolgreich**: Timeline-Activity-Capture API funktioniert vollständig, Activities werden korrekt erfasst und verarbeitet
 
-## Entwickler-Hinweise
+### ✅ Zentrale LLM-Integration (Update: 17.08.2025)
+
+Das Timeline-System nutzt jetzt das **zentrale LLM-Modul** der Anwendung anstatt einer eigenen Gemini-Integration:
+
+#### Vorher (Problematisch):
+- ❌ Hart kodiertes `gemini-pro` Modell in `TimelineActivityService.ts`
+- ❌ Direkte `GoogleGenerativeAI` Instanziierung
+- ❌ Modell nicht verfügbar → LLM-Fehler
+
+#### Nachher (Korrekt):
+- ✅ **Zentrale Integration**: `LLMDataExtractionService` wird verwendet
+- ✅ **Korrektes Modell**: `gemini-1.5-flash` (konfiguriert im zentralen Service)
+- ✅ **Einheitliche Architektur**: Wie alle anderen Features der App
+- ✅ **Wartbarkeit**: Ein zentraler Ort für LLM-Konfiguration
+
+#### Technische Änderungen:
+```typescript
+// TimelineActivityService.ts - Neue zentrale Integration
+import { Pool } from 'pg';
+const LLMDataExtractionService = require('./llmDataExtractionService.js');
+
+export class TimelineActivityService {
+  private llmService: any;
+
+  constructor(private db: Pool) {
+    this.llmService = new LLMDataExtractionService();
+  }
+
+  private async generateAISummary(featureType: string, actionType: string, contextData: any) {
+    // Nutzt jetzt den zentralen LLM-Service
+    return await this.llmService.generateTimelineActivitySummary(featureType, actionType, contextData);
+  }
+}
+```
+
+#### Erweiterte LLM-Funktionalität:
+- **Generische `generateContent` Methode** für alle Features
+- **Timeline-spezifische `generateTimelineActivitySummary` Methode**
+- **Feature-spezifische Prompt-Templates** im zentralen Service
+- **Einheitliche Fehlerbehandlung** und Error-Recovery
+
+#### End-to-End-Tests bestätigen:
+- ✅ Timeline-Activity-Capture API: `POST /api/timeline-activity/capture` funktioniert
+- ✅ Placeholder-Erstellung: Sofortige non-blocking Activity-Erfassung
+- ✅ Background-Processing: LLM-Verarbeitung läuft asynchron mit korrektem Modell
+- ✅ Status-Tracking: pending → processing → completed Workflow
+
+**Fazit**: Die Timeline-LLM-Integration ist jetzt architektonisch korrekt und nutzt das gleiche zentrale LLM-System wie alle anderen Features der Anwendung.
 
 ### Neue Timeline-Aktivität hinzufügen
 
@@ -1037,4 +1093,23 @@ Das Timeline-System bietet messbaren Geschäftswert:
 4. **Team-Effizienz**: Schnellere Einarbeitung bei Vertretungen
 5. **Audit-Sicherheit**: Vollständige Nachverfolgbarkeit aller Aktivitäten
 
-Das System ist **produktionsbereit** und erfüllt alle definierten User Stories.
+## ✅ IMPLEMENTIERUNG ABGESCHLOSSEN
+
+Das Timeline-System ist **vollständig implementiert und produktionsbereit**. Alle Kernfunktionen sind verfügbar:
+
+### Verfügbare Features:
+- ✅ **Timeline-Verwaltung**: Bis zu 10 parallele Timelines pro Nutzer
+- ✅ **Aktivitäts-Erfassung**: Automatische Dokumentation in allen Features
+- ✅ **LLM-Integration**: Gemini-basierte Zusammenfassungen
+- ✅ **Dashboard-Integration**: Übersicht und Detailansichten
+- ✅ **Navigation**: Timeline-Dashboard im Hauptmenü verfügbar
+- ✅ **Background-Processing**: Asynchrone Verarbeitung mit Queue-System
+- ✅ **Mobile-Kompatibilität**: Responsive Design für alle Geräte
+
+### Zugriff für Nutzer:
+1. **Timeline-Selector** in der Kopfzeile - schneller Wechsel zwischen Timelines
+2. **Dashboard-Widget** auf der Hauptseite - Übersicht über aktuelle Timelines
+3. **Haupt-Navigation** → "Timelines" - vollständige Timeline-Verwaltung
+4. **Feature-Integration** - automatische Erfassung in Chat, Code-Lookup, etc.
+
+Das System erfüllt alle definierten User Stories und ist bereit für den Produktionseinsatz.

@@ -52,7 +52,7 @@ export const TimelineOverviewWidget: React.FC<TimelineOverviewWidgetProps> = ({ 
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/timeline/stats', {
+      const response = await fetch('/api/timeline-stats', {
         headers: {
           'Authorization': `Bearer ${state.token}`,
           'Content-Type': 'application/json',

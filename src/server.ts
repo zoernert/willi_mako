@@ -29,8 +29,9 @@ import crWmako001TestRoutes from './routes/cr-wmako-001-test.js';
 import imapSchedulerRoutes from './routes/imap-scheduler.js';
 import screenshotAnalysisRoutes from './routes/screenshot-analysis';
 import problemReportRoutes from './routes/problemReport';
-import { default as timelineRoutes } from './routes/timeline'; // NEU: Timeline-Routes
-import timelineStatsRoutes from './routes/timeline-stats'; // Import für Timeline-Stats-Routes
+import { default as timelineRoutes } from './routes/timeline'; // Timeline-Routes
+import timelineStatsRoutes from './routes/timeline-stats'; // Timeline-Stats-Routes
+import timelineActivityRoutes from './routes/timeline-activity'; // Timeline-Activity-Capture-Routes
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -175,8 +176,9 @@ app.use('/api/v1/codes', authenticateToken, codesRoutes);
 app.use('/api', m2cRolesRoutes);
 app.use('/api/bilateral-clarifications', bilateralClarificationsRoutes);
 app.use('/api/llm', llmRoutes);
-app.use('/api/timeline', timelineRoutes); // NEU: Timeline API
-app.use('/api/timeline-stats', timelineStatsRoutes); // NEU: Timeline-Stats API
+app.use('/api/timelines', timelineRoutes); // Timeline API (mit 's' für REST-Konvention)
+app.use('/api/timeline-stats', timelineStatsRoutes); // Timeline-Stats API
+app.use('/api/timeline-activity', timelineActivityRoutes); // Timeline-Activity-Capture API
 
 // Screenshot Analysis (public endpoint - no authentication required)
 app.use('/api/analyze-screenshot', screenshotAnalysisRoutes);
@@ -189,9 +191,6 @@ app.use('/api/cr-wmako-001', crWmako001TestRoutes);
 
 // Problem Report routes
 app.use('/api/problem-report', authenticateToken, problemReportRoutes);
-
-// Timeline routes
-app.use('/api/timeline', authenticateToken, timelineRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

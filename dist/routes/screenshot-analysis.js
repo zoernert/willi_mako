@@ -29,7 +29,9 @@ class ScreenshotAnalysisService {
             throw new Error('GEMINI_API_KEY ist nicht in den Umgebungsvariablen gesetzt');
         }
         this.genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use model from environment variable for better configuration management
+        const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+        this.model = this.genAI.getGenerativeModel({ model: modelName });
         this.pool = new pg_1.Pool({
             connectionString: process.env.DATABASE_URL,
         });

@@ -1,6 +1,6 @@
 declare class TimelineProcessor {
     private db;
-    private gemini;
+    private llmService;
     private isProcessing;
     private processingInterval;
     constructor();

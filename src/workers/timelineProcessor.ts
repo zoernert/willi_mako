@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Use central LLM service instead of direct Gemini integration
+const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
 import { logger } from '../lib/logger';
 import pool from '../config/database';
 import * as dotenv from 'dotenv';
@@ -26,18 +27,13 @@ interface ProcessingResult {
 
 class TimelineProcessor {
   private db: Pool;
-  private gemini: GoogleGenerativeAI;
+  private llmService: any;
   private isProcessing = false;
   private processingInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.db = pool; // Verwende die bereits konfigurierte Pool-Instanz
-
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is required for timeline processing');
-    }
-
-    this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.llmService = new LLMDataExtractionService();
   }
 
   /**
@@ -168,15 +164,14 @@ class TimelineProcessor {
    */
   private async generateSummary(entry: QueueEntry): Promise<ProcessingResult> {
     try {
-      const model = this.gemini.getGenerativeModel({ model: 'gemini-pro' });
+      // Use central LLM service for timeline activity summary generation
+      const result = await this.llmService.generateTimelineActivitySummary(
+        entry.raw_data.feature || 'unknown',
+        entry.activity_type,
+        entry.raw_data
+      );
 
-      const prompt = this.buildPromptForActivityType(entry.activity_type, entry.raw_data);
-      
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const summary = response.text();
-
-      if (!summary || summary.trim().length === 0) {
+      if (!result.summary || result.summary.trim().length === 0) {
         return {
           success: false,
           error: 'Empty summary generated'
@@ -185,7 +180,7 @@ class TimelineProcessor {
 
       return {
         success: true,
-        summary: summary.trim()
+        summary: result.summary.trim()
       };
     } catch (error: any) {
       logger.error(`Error generating summary for entry ${entry.id}:`, error);

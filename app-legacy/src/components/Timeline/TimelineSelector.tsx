@@ -67,7 +67,7 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
   const fetchTimelines = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/timeline', {
+      const response = await fetch('/api/timelines', {
         headers: {
           'Authorization': `Bearer ${state.token}`,
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
   const handleTimelineSelect = async (timeline: Timeline) => {
     try {
       // Timeline als aktiv setzen
-      const response = await fetch(`/api/timeline/${timeline.id}/activate`, {
+      const response = await fetch(`/api/timelines/${timeline.id}/activate`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -130,7 +130,7 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
     try {
       setLoading(true);
 
-      const response = await fetch('/api/timeline', {
+      const response = await fetch('/api/timelines', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -146,7 +146,7 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
         const newTimeline = await response.json();
         
         // Timeline als aktiv setzen
-        await fetch(`/api/timeline/${newTimeline.id}/activate`, {
+        await fetch(`/api/timelines/${newTimeline.id}/activate`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${state.token}`,

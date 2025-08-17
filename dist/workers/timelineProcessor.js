@@ -1,21 +1,56 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.timelineProcessor = void 0;
-const generative_ai_1 = require("@google/generative-ai");
+// Use central LLM service instead of direct Gemini integration
+const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
 const logger_1 = require("../lib/logger");
 const database_1 = __importDefault(require("../config/database"));
+const dotenv = __importStar(require("dotenv"));
+const path = __importStar(require("path"));
+// Stelle sicher, dass .env geladen wird mit korrektem Pfad
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 class TimelineProcessor {
     constructor() {
         this.isProcessing = false;
         this.processingInterval = null;
         this.db = database_1.default; // Verwende die bereits konfigurierte Pool-Instanz
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error('GEMINI_API_KEY is required for timeline processing');
-        }
-        this.gemini = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        this.llmService = new LLMDataExtractionService();
     }
     /**
      * Startet den Background Worker
@@ -82,12 +117,19 @@ class TimelineProcessor {
      */
     async getQueueEntries() {
         const query = `
-      SELECT id, timeline_id, raw_data, activity_type, created_at, retry_count
-      FROM timeline_processing_queue
-      WHERE status = 'pending'
-        AND (retry_after IS NULL OR retry_after <= NOW())
-        AND retry_count < 3
-      ORDER BY created_at ASC
+      SELECT 
+        tpq.id, 
+        tpq.activity_id,
+        ta.timeline_id,
+        tpq.raw_data, 
+        ta.activity_type, 
+        tpq.created_at, 
+        tpq.retry_count
+      FROM timeline_processing_queue tpq
+      JOIN timeline_activities ta ON tpq.activity_id = ta.id
+      WHERE tpq.status = 'queued'
+        AND tpq.retry_count < 3
+      ORDER BY tpq.created_at ASC
       LIMIT 10
     `;
         const result = await this.db.query(query);
@@ -124,12 +166,9 @@ class TimelineProcessor {
     async generateSummary(entry) {
         var _a, _b;
         try {
-            const model = this.gemini.getGenerativeModel({ model: 'gemini-pro' });
-            const prompt = this.buildPromptForActivityType(entry.activity_type, entry.raw_data);
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const summary = response.text();
-            if (!summary || summary.trim().length === 0) {
+            // Use central LLM service for timeline activity summary generation
+            const result = await this.llmService.generateTimelineActivitySummary(entry.raw_data.feature || 'unknown', entry.activity_type, entry.raw_data);
+            if (!result.summary || result.summary.trim().length === 0) {
                 return {
                     success: false,
                     error: 'Empty summary generated'
@@ -137,7 +176,7 @@ class TimelineProcessor {
             }
             return {
                 success: true,
-                summary: summary.trim()
+                summary: result.summary.trim()
             };
         }
         catch (error) {
@@ -146,8 +185,7 @@ class TimelineProcessor {
             if (((_a = error.message) === null || _a === void 0 ? void 0 : _a.includes('quota')) || ((_b = error.message) === null || _b === void 0 ? void 0 : _b.includes('rate'))) {
                 return {
                     success: false,
-                    error: 'Rate limit exceeded',
-                    retry_after: 300 // 5 Minuten warten
+                    error: 'Rate limit exceeded'
                 };
             }
             return {
@@ -296,17 +334,15 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
             logger_1.logger.error(`Timeline entry ${entry.id} failed permanently after ${maxRetries} retries`);
         }
         else {
-            // Plane Wiederholung
-            const retryAfter = new Date(Date.now() + (retryCount * 60000)); // Exponential backoff
+            // Plane Wiederholung - erhöhe retry_count
             await this.db.query(`
         UPDATE timeline_processing_queue 
-        SET status = 'pending', 
+        SET status = 'queued', 
             retry_count = $2, 
-            retry_after = $3,
-            error_message = $4
+            error_message = $3
         WHERE id = $1
-      `, [entry.id, retryCount, retryAfter, error.message]);
-            logger_1.logger.warn(`Timeline entry ${entry.id} will be retried (attempt ${retryCount}/${maxRetries}) after ${retryAfter}`);
+      `, [entry.id, retryCount, error.message]);
+            logger_1.logger.warn(`Timeline entry ${entry.id} will be retried (attempt ${retryCount}/${maxRetries})`);
         }
     }
     /**
@@ -315,8 +351,7 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
     async updateQueueStatus(id, status, errorMessage) {
         const query = `
       UPDATE timeline_processing_queue 
-      SET status = $2, 
-          updated_at = NOW()
+      SET status = $2
           ${errorMessage ? ', error_message = $3' : ''}
       WHERE id = $1
     `;

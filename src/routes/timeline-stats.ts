@@ -4,8 +4,8 @@ import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 
-// Timeline Stats für Dashboard Widget
-router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res) => {
+// Timeline Stats für Dashboard Widget - Root-Route
+router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id; // User ist durch authenticateToken garantiert
     

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { timelineService, ActivityCaptureRequest } from '../services/timelineService';
 
 interface UseTimelineCaptureReturn {
   captureActivity: (feature: string, activityType: string, data: any, priority?: number) => Promise<void>;
@@ -34,28 +35,15 @@ export const useTimelineCapture = (): UseTimelineCaptureReturn => {
       setIsCapturing(true);
       setLastError(null);
       
-      // Sofortige API-Anfrage (non-blocking für User)
-      const response = await fetch('/api/timeline/activity/capture', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${state.token}`
-        },
-        body: JSON.stringify({
-          timelineId: state.activeTimelineId,
-          feature,
-          activityType,
-          rawData: data,
-          priority
-        })
-      });
+      const request: ActivityCaptureRequest = {
+        timelineId: state.activeTimelineId,
+        feature,
+        activityType,
+        rawData: data,
+        priority
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await timelineService.captureActivity(request);
       console.log('Timeline activity captured:', result.activityId);
       
     } catch (error) {

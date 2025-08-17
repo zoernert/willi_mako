@@ -1,0 +1,100 @@
+import express from 'express';
+import pool from '../config/database';
+import { authenticateToken } from '../middleware/auth';
+import { TimelineActivityService } from '../services/TimelineActivityService';
+import { logger } from '../lib/logger';
+
+const router = express.Router();
+const timelineService = new TimelineActivityService(pool);
+
+// Type assertion helper for authenticated requests
+const getAuthUser = (req: any) => req.user;
+
+/**
+ * Zentrale API für Timeline-Activity-Capture
+ * POST /api/timeline-activity/capture
+ */
+router.post('/capture', authenticateToken, async (req, res) => {
+  try {
+    const { timelineId, feature, activityType, rawData, priority } = req.body;
+    const userId = getAuthUser(req).id;
+
+    // Validierung
+    if (!timelineId || !feature || !activityType) {
+      return res.status(400).json({ 
+        error: 'timelineId, feature, and activityType are required' 
+      });
+    }
+
+    // Prüfen ob Timeline dem User gehört
+    const timelineCheck = await pool.query(
+      'SELECT id FROM timelines WHERE id = $1 AND user_id = $2 AND is_archived = false',
+      [timelineId, userId]
+    );
+
+    if (timelineCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Timeline not found or not accessible' 
+      });
+    }
+
+    // Activity über Service erfassen (asynchron)
+    const activityId = await timelineService.captureActivity({
+      timelineId,
+      feature,
+      activityType,
+      rawData: rawData || {},
+      priority: priority || 5
+    });
+
+    logger.info('Timeline activity captured', {
+      activityId,
+      timelineId,
+      feature,
+      activityType,
+      userId
+    });
+
+    res.status(201).json({ 
+      activityId,
+      status: 'captured',
+      message: 'Activity is being processed in background'
+    });
+
+  } catch (error) {
+    logger.error('Error capturing timeline activity', { error: error.message });
+    res.status(500).json({ error: 'Failed to capture activity' });
+  }
+});
+
+/**
+ * Activity-Status abrufen
+ * GET /api/timeline-activity/:id/status
+ */
+router.get('/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = getAuthUser(req).id;
+
+    const result = await pool.query(`
+      SELECT ta.processing_status, ta.created_at, ta.processed_at,
+             tpq.status as queue_status, tpq.retry_count, tpq.error_message
+      FROM timeline_activities ta
+      LEFT JOIN timeline_processing_queue tpq ON ta.id = tpq.activity_id
+      LEFT JOIN timelines t ON ta.timeline_id = t.id
+      WHERE ta.id = $1 AND t.user_id = $2
+    `, [id, userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (error) {
+    logger.error('Error fetching activity status', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch activity status' });
+  }
+});
+
+export default router;

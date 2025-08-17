@@ -21,6 +21,7 @@ import MessageAnalyzerPage from './pages/MessageAnalyzer';
 import CodeLookupPage from './pages/CodeLookup';
 import ScreenshotAnalysisPage from './pages/ScreenshotAnalysis';
 import ProcessesAndProcedures from './pages/ProcessesAndProcedures';
+import TimelineDashboard from './pages/TimelineDashboard';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -126,6 +127,7 @@ function App() {
                 <Route path="faqs/:id" element={<FAQDetail />} />
                 <Route path="quiz" element={<ProtectedRoute><QuizDashboard /></ProtectedRoute>} />
                 <Route path="quiz/:quizId" element={<ProtectedRoute><QuizPlayer /></ProtectedRoute>} />
+                <Route path="timelines" element={<ProtectedRoute><TimelineDashboard /></ProtectedRoute>} />
                 <Route path="processes" element={<ProtectedRoute><ProcessesAndProcedures /></ProtectedRoute>} />
                 <Route path="teams" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
                 <Route path="community" element={<ProtectedRoute><Community /></ProtectedRoute>} />

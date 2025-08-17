@@ -40,6 +40,7 @@ import {
   PhotoCamera as PhotoIcon,
   ReportProblem as ReportProblemIcon,
   Analytics as AnalyticsIcon,
+  Timeline as TimelineIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -78,6 +79,7 @@ const Layout: React.FC = () => {
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+    { text: 'Timelines', icon: <TimelineIcon />, path: '/timelines' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
     { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
     { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },

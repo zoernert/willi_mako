@@ -88,6 +88,28 @@ declare class LLMDataExtractionService {
         suggestedAt: string;
     }>;
     /**
+     * Generische LLM-Content-Generierung für verschiedene Features
+     * @param {string} prompt - Der Prompt für das LLM
+     * @param {Object} options - Optionale Konfiguration
+     * @returns {Promise<string>} Generierter Content
+     */
+    generateContent(prompt: string, options?: any): Promise<string>;
+    /**
+     * Timeline-spezifische Aktivitätszusammenfassung
+     * @param {string} featureType - Art des Features (chat, code_lookup, etc.)
+     * @param {string} actionType - Art der Aktion
+     * @param {Object} contextData - Kontextdaten der Aktivität
+     * @returns {Promise<{title: string, summary: string}>} Titel und Zusammenfassung
+     */
+    generateTimelineActivitySummary(featureType: string, actionType: string, contextData: any): Promise<{
+        title: string;
+        summary: string;
+    }>;
+    /**
+     * Erstellt Timeline-spezifische Prompts
+     */
+    buildTimelinePrompt(featureType: any, actionType: any, contextData: any): string;
+    /**
      * Health Check für den Service
      */
     healthCheck(): Promise<{

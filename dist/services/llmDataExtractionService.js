@@ -3,7 +3,9 @@ const { Pool } = require('pg');
 class LLMDataExtractionService {
     constructor() {
         this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use model from environment variable for better configuration management
+        const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+        this.model = this.genAI.getGenerativeModel({ model: modelName });
         this.pool = new Pool({
             connectionString: process.env.DATABASE_URL,
         });
@@ -327,6 +329,128 @@ Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
             console.error('Error generating standard response:', error);
             return null;
         }
+    }
+    /**
+     * Generische LLM-Content-Generierung für verschiedene Features
+     * @param {string} prompt - Der Prompt für das LLM
+     * @param {Object} options - Optionale Konfiguration
+     * @returns {Promise<string>} Generierter Content
+     */
+    async generateContent(prompt, options = {}) {
+        try {
+            const config = {
+                temperature: options.temperature || 0.3,
+                maxOutputTokens: options.maxOutputTokens || 500,
+                ...options.generationConfig
+            };
+            const result = await this.model.generateContent([{
+                    text: prompt
+                }], { generationConfig: config });
+            const response = await result.response;
+            const content = response.text();
+            if (!content) {
+                throw new Error('Keine Antwort vom LLM erhalten');
+            }
+            return content;
+        }
+        catch (error) {
+            console.error('Error in generic LLM content generation:', error);
+            throw new Error(`LLM content generation failed: ${error.message}`);
+        }
+    }
+    /**
+     * Timeline-spezifische Aktivitätszusammenfassung
+     * @param {string} featureType - Art des Features (chat, code_lookup, etc.)
+     * @param {string} actionType - Art der Aktion
+     * @param {Object} contextData - Kontextdaten der Aktivität
+     * @returns {Promise<{title: string, summary: string}>} Titel und Zusammenfassung
+     */
+    async generateTimelineActivitySummary(featureType, actionType, contextData) {
+        try {
+            const prompt = this.buildTimelinePrompt(featureType, actionType, contextData);
+            const fullPrompt = `Du bist ein Assistent für die Marktkommunikation bei Energieversorgern. 
+Erstelle prägnante deutsche Titel und Zusammenfassungen für Benutzeraktivitäten.
+Antworte immer im JSON-Format: {"title": "...", "summary": "..."}
+
+${prompt}`;
+            const content = await this.generateContent(fullPrompt, {
+                temperature: 0.3,
+                maxOutputTokens: 300
+            });
+            const parsed = JSON.parse(content);
+            return {
+                title: parsed.title || `${featureType} - ${actionType}`,
+                summary: parsed.summary || 'Keine Zusammenfassung verfügbar'
+            };
+        }
+        catch (error) {
+            console.error('Error generating timeline activity summary:', error);
+            return {
+                title: `${featureType} - ${actionType}`,
+                summary: 'AI-Zusammenfassung nicht verfügbar'
+            };
+        }
+    }
+    /**
+     * Erstellt Timeline-spezifische Prompts
+     */
+    buildTimelinePrompt(featureType, actionType, contextData) {
+        let prompt = `Feature: ${featureType}\nAktion: ${actionType}\n\n`;
+        switch (featureType) {
+            case 'chat':
+                prompt += `Chat-Kontext:\n`;
+                if (contextData.message)
+                    prompt += `Nachricht: ${contextData.message}\n`;
+                if (contextData.response)
+                    prompt += `Antwort: ${contextData.response}\n`;
+                break;
+            case 'code_lookup':
+                prompt += `Code-Suche:\n`;
+                if (contextData.query)
+                    prompt += `Suchanfrage: ${contextData.query}\n`;
+                if (contextData.results)
+                    prompt += `Anzahl Ergebnisse: ${contextData.results.length}\n`;
+                break;
+            case 'bilateral_clarifications':
+                prompt += `Bilaterale Klärung:\n`;
+                if (contextData.partner)
+                    prompt += `Partner: ${contextData.partner}\n`;
+                if (contextData.subject)
+                    prompt += `Betreff: ${contextData.subject}\n`;
+                break;
+            case 'screenshot_analyzer':
+                prompt += `Screenshot-Analyse:\n`;
+                if (contextData.filename)
+                    prompt += `Datei: ${contextData.filename}\n`;
+                if (contextData.analysis)
+                    prompt += `Analyse: ${contextData.analysis}\n`;
+                break;
+            case 'message_analyzer':
+                prompt += `Nachrichtenanalyse:\n`;
+                if (contextData.messageType)
+                    prompt += `Nachrichtentyp: ${contextData.messageType}\n`;
+                if (contextData.content)
+                    prompt += `Inhalt: ${contextData.content.substring(0, 200)}...\n`;
+                break;
+            case 'notes':
+                prompt += `Notizen:\n`;
+                if (contextData.title)
+                    prompt += `Titel: ${contextData.title}\n`;
+                if (contextData.content)
+                    prompt += `Inhalt: ${contextData.content.substring(0, 200)}...\n`;
+                break;
+            default:
+                prompt += `Allgemeine Aktivität:\n`;
+                if (contextData) {
+                    const keys = Object.keys(contextData).slice(0, 3);
+                    keys.forEach(key => {
+                        if (contextData[key]) {
+                            prompt += `${key}: ${String(contextData[key]).substring(0, 100)}\n`;
+                        }
+                    });
+                }
+        }
+        return prompt;
     }
     /**
      * Health Check für den Service

@@ -33,7 +33,19 @@ export interface ActivityProcessingQueue {
 }
 export declare class TimelineActivityService {
     private db;
+    private llmService;
     constructor(db: Pool);
+    /**
+     * Zentrale Methode für Timeline-Activity-Capture
+     * Erstellt sofort einen Placeholder-Eintrag und startet asynchrone Verarbeitung
+     */
+    captureActivity(request: {
+        timelineId: string;
+        feature: string;
+        activityType: string;
+        rawData: any;
+        priority?: number;
+    }): Promise<string>;
     createTimeline(name: string, createdBy: string, description?: string, metadata?: any): Promise<Timeline>;
     getTimelinesByUser(userId: string): Promise<Timeline[]>;
     getTimelineById(timelineId: string, userId: string): Promise<Timeline | null>;
@@ -46,7 +58,6 @@ export declare class TimelineActivityService {
     processActivityQueue(): Promise<void>;
     private processActivityForAI;
     private generateAISummary;
-    private buildAIPrompt;
     getTimelineStats(timelineId: string, userId: string): Promise<any>;
     getRecentActivities(userId: string, limit?: number): Promise<Activity[]>;
     shareTimeline(timelineId: string, ownerId: string, sharedWithUserId: string, permissions?: 'read' | 'write'): Promise<void>;

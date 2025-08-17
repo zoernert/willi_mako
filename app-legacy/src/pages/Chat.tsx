@@ -321,6 +321,24 @@ const Chat: React.FC = () => {
 
       console.log('Message sent successfully');
 
+      // Timeline-Integration: Chat-Aktivität erfassen
+      try {
+        await captureActivity('chat', 'message', {
+          chatId: currentChat.id,
+          chatTitle: currentChat.title,
+          userMessage: messageContent,
+          assistantMessage: assistantMessage.content,
+          messageType: type,
+          hasCs30Additional: hasCs30Additional,
+          contextSettings: contextSettings,
+          timestamp: new Date().toISOString()
+        });
+        console.log('Chat activity captured to timeline');
+      } catch (timelineError) {
+        console.error('Failed to capture chat activity to timeline:', timelineError);
+        // Timeline-Fehler sollen den Chat-Flow nicht blockieren
+      }
+
     } catch (error: any) {
       console.error('Error sending message:', error);
       

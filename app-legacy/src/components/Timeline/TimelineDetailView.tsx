@@ -103,13 +103,13 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
 
       // Fetch timeline info and activities in parallel
       const [timelineResponse, activitiesResponse] = await Promise.all([
-        fetch(`/api/timeline/${timelineId}`, {
+        fetch(`/api/timelines/${timelineId}`, {
           headers: {
             'Authorization': `Bearer ${state.token}`,
             'Content-Type': 'application/json',
           },
         }),
-        fetch(`/api/timeline/${timelineId}/activities?` + new URLSearchParams({
+        fetch(`/api/timelines/${timelineId}/activities?` + new URLSearchParams({
           page: page.toString(),
           limit: itemsPerPage.toString(),
           search: searchTerm,
@@ -176,7 +176,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
 
   const handleRetryActivity = async (activityId: string) => {
     try {
-      const response = await fetch(`/api/timeline/activities/${activityId}/retry`, {
+      const response = await fetch(`/api/timeline-activity/${activityId}/retry`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -202,7 +202,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
     if (!selectedActivity) return;
 
     try {
-      const response = await fetch(`/api/timeline/activities/${selectedActivity.id}`, {
+      const response = await fetch(`/api/timeline-activity/${selectedActivity.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -227,7 +227,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
 
   const handleExportPDF = async () => {
     try {
-      const response = await fetch(`/api/timeline/${timelineId}/export`, {
+      const response = await fetch(`/api/timelines/${timelineId}/export`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${state.token}`,

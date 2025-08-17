@@ -33,8 +33,9 @@ const cr_wmako_001_test_js_1 = __importDefault(require("./routes/cr-wmako-001-te
 const imap_scheduler_js_1 = __importDefault(require("./routes/imap-scheduler.js"));
 const screenshot_analysis_1 = __importDefault(require("./routes/screenshot-analysis"));
 const problemReport_1 = __importDefault(require("./routes/problemReport"));
-const timeline_1 = __importDefault(require("./routes/timeline")); // NEU: Timeline-Routes
-const timeline_stats_1 = __importDefault(require("./routes/timeline-stats")); // Import für Timeline-Stats-Routes
+const timeline_1 = __importDefault(require("./routes/timeline")); // Timeline-Routes
+const timeline_stats_1 = __importDefault(require("./routes/timeline-stats")); // Timeline-Stats-Routes
+const timeline_activity_1 = __importDefault(require("./routes/timeline-activity")); // Timeline-Activity-Capture-Routes
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -155,8 +156,9 @@ app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
 app.use('/api', m2cRoles_1.default);
 app.use('/api/bilateral-clarifications', bilateral_clarifications_simple_1.default);
 app.use('/api/llm', llm_1.default);
-app.use('/api/timeline', timeline_1.default); // NEU: Timeline API
-app.use('/api/timeline-stats', timeline_stats_1.default); // NEU: Timeline-Stats API
+app.use('/api/timelines', timeline_1.default); // Timeline API (mit 's' für REST-Konvention)
+app.use('/api/timeline-stats', timeline_stats_1.default); // Timeline-Stats API
+app.use('/api/timeline-activity', timeline_activity_1.default); // Timeline-Activity-Capture API
 // Screenshot Analysis (public endpoint - no authentication required)
 app.use('/api/analyze-screenshot', screenshot_analysis_1.default);
 // CR-WMAKO-001: New routes for email configuration and bulk clarifications
@@ -166,8 +168,6 @@ app.use('/api/imap', imap_scheduler_js_1.default);
 app.use('/api/cr-wmako-001', cr_wmako_001_test_js_1.default);
 // Problem Report routes
 app.use('/api/problem-report', auth_2.authenticateToken, problemReport_1.default);
-// Timeline routes
-app.use('/api/timeline', auth_2.authenticateToken, timeline_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Initialize Qdrant collections
