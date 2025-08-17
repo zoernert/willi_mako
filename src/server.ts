@@ -29,7 +29,7 @@ import crWmako001TestRoutes from './routes/cr-wmako-001-test.js';
 import imapSchedulerRoutes from './routes/imap-scheduler.js';
 import screenshotAnalysisRoutes from './routes/screenshot-analysis';
 import problemReportRoutes from './routes/problemReport';
-import timelineRoutes from './routes/timeline'; // NEU: Timeline-Routes
+import { default as timelineRoutes } from './routes/timeline'; // NEU: Timeline-Routes
 import timelineStatsRoutes from './routes/timeline-stats'; // Import für Timeline-Stats-Routes
 
 // New Presentation Layer Routes
@@ -230,4 +230,4 @@ app.listen(PORT, '0.0.0.0', async () => {
 export default app;
 
 // Importiere den Timeline-Processor
-import { timelineProcessor } from '../workers/timelineProcessor';
+import { timelineProcessor } from './workers/timelineProcessor';

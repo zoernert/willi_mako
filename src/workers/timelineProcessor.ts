@@ -1,10 +1,17 @@
 import { Pool } from 'pg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { logger } from '../src/lib/logger';
+import { logger } from '../lib/logger';
+import pool from '../config/database';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Stelle sicher, dass .env geladen wird mit korrektem Pfad
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 interface QueueEntry {
-  id: number;
-  timeline_id: number;
+  id: string;
+  activity_id: string;
+  timeline_id: string;
   raw_data: any;
   activity_type: string;
   created_at: Date;
@@ -15,7 +22,6 @@ interface ProcessingResult {
   success: boolean;
   summary?: string;
   error?: string;
-  retry_after?: number;
 }
 
 class TimelineProcessor {
@@ -25,9 +31,7 @@ class TimelineProcessor {
   private processingInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.db = new Pool({
-      connectionString: process.env.DATABASE_URL,
-    });
+    this.db = pool; // Verwende die bereits konfigurierte Pool-Instanz
 
     if (!process.env.GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY is required for timeline processing');
@@ -110,12 +114,19 @@ class TimelineProcessor {
    */
   private async getQueueEntries(): Promise<QueueEntry[]> {
     const query = `
-      SELECT id, timeline_id, raw_data, activity_type, created_at, retry_count
-      FROM timeline_processing_queue
-      WHERE status = 'pending'
-        AND (retry_after IS NULL OR retry_after <= NOW())
-        AND retry_count < 3
-      ORDER BY created_at ASC
+      SELECT 
+        tpq.id, 
+        tpq.activity_id,
+        ta.timeline_id,
+        tpq.raw_data, 
+        ta.activity_type, 
+        tpq.created_at, 
+        tpq.retry_count
+      FROM timeline_processing_queue tpq
+      JOIN timeline_activities ta ON tpq.activity_id = ta.id
+      WHERE tpq.status = 'queued'
+        AND tpq.retry_count < 3
+      ORDER BY tpq.created_at ASC
       LIMIT 10
     `;
 
@@ -183,8 +194,7 @@ class TimelineProcessor {
       if (error.message?.includes('quota') || error.message?.includes('rate')) {
         return {
           success: false,
-          error: 'Rate limit exceeded',
-          retry_after: 300 // 5 Minuten warten
+          error: 'Rate limit exceeded'
         };
       }
 
@@ -345,30 +355,26 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
       await this.updateQueueStatus(entry.id, 'failed', error.message);
       logger.error(`Timeline entry ${entry.id} failed permanently after ${maxRetries} retries`);
     } else {
-      // Plane Wiederholung
-      const retryAfter = new Date(Date.now() + (retryCount * 60000)); // Exponential backoff
-      
+      // Plane Wiederholung - erhöhe retry_count
       await this.db.query(`
         UPDATE timeline_processing_queue 
-        SET status = 'pending', 
+        SET status = 'queued', 
             retry_count = $2, 
-            retry_after = $3,
-            error_message = $4
+            error_message = $3
         WHERE id = $1
-      `, [entry.id, retryCount, retryAfter, error.message]);
+      `, [entry.id, retryCount, error.message]);
 
-      logger.warn(`Timeline entry ${entry.id} will be retried (attempt ${retryCount}/${maxRetries}) after ${retryAfter}`);
+      logger.warn(`Timeline entry ${entry.id} will be retried (attempt ${retryCount}/${maxRetries})`);
     }
   }
 
   /**
    * Aktualisiert den Status eines Queue-Eintrags
    */
-  private async updateQueueStatus(id: number, status: string, errorMessage?: string): Promise<void> {
+  private async updateQueueStatus(id: string, status: string, errorMessage?: string): Promise<void> {
     const query = `
       UPDATE timeline_processing_queue 
-      SET status = $2, 
-          updated_at = NOW()
+      SET status = $2
           ${errorMessage ? ', error_message = $3' : ''}
       WHERE id = $1
     `;
@@ -380,7 +386,7 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
   /**
    * Entfernt einen erfolgreich verarbeiteten Eintrag aus der Queue
    */
-  private async removeFromQueue(id: number): Promise<void> {
+  private async removeFromQueue(id: string): Promise<void> {
     await this.db.query('DELETE FROM timeline_processing_queue WHERE id = $1', [id]);
   }
 

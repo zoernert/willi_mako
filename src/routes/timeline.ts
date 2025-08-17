@@ -1,13 +1,18 @@
 import express from 'express';
 import pool from '../config/database';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
+import { TimelineActivityService } from '../services/TimelineActivityService';
 
 const router = express.Router();
+const timelineService = new TimelineActivityService(pool);
+
+// Type assertion helper for authenticated requests
+const getAuthUser = (req: any) => req.user;
 
 // Timeline CRUD Operations
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
     const result = await pool.query(
       `SELECT * FROM timelines 
        WHERE user_id = $1 AND is_archived = false 
@@ -24,7 +29,7 @@ router.get('/', authenticateToken, async (req: AuthenticatedRequest, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, description } = req.body;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ error: 'Timeline name is required' });
@@ -51,7 +56,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ error: 'Timeline name is required' });
@@ -83,7 +88,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     const result = await pool.query(
       `UPDATE timelines SET 
@@ -107,7 +112,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.put('/:id/activate', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     const client = await pool.connect();
     try {
@@ -151,7 +156,7 @@ router.put('/:id/activate', authenticateToken, async (req, res) => {
 router.get('/:timelineId/activities', authenticateToken, async (req, res) => {
   try {
     const { timelineId } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
 
@@ -205,9 +210,9 @@ router.get('/:timelineId/activities', authenticateToken, async (req, res) => {
 router.delete('/activities/:activityId', authenticateToken, async (req, res) => {
   try {
     const { activityId } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
-    await TimelineActivityService.deleteActivity(activityId, userId);
+    await timelineService.deleteActivity(activityId, userId);
     res.json({ success: true, message: 'Activity deleted successfully' });
   } catch (error) {
     console.error('Error deleting activity:', error);
@@ -223,7 +228,7 @@ router.delete('/activities/:activityId', authenticateToken, async (req, res) => 
 router.get('/activities/:activityId/status', authenticateToken, async (req, res) => {
   try {
     const { activityId } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     const result = await pool.query(
       `SELECT ta.processing_status, tpq.status as queue_status, tpq.error_message
@@ -249,7 +254,7 @@ router.get('/activities/:activityId/status', authenticateToken, async (req, res)
 router.post('/activity/capture', authenticateToken, async (req, res) => {
   try {
     const { timelineId, feature, activityType, rawData, priority } = req.body;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     // Validation
     if (!timelineId || !feature || !activityType || !rawData) {
@@ -268,13 +273,15 @@ router.post('/activity/capture', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Timeline not found' });
     }
 
-    const activityId = await TimelineActivityService.captureActivity({
+    const activityId = await timelineService.createActivity(
       timelineId,
       feature,
       activityType,
       rawData,
-      priority: priority || 5
-    });
+      userId, // created_by
+      false, // is_milestone
+      { priority: priority || 5 } // metadata
+    );
 
     res.status(201).json({ success: true, activityId });
   } catch (error) {
@@ -287,7 +294,7 @@ router.post('/activity/capture', authenticateToken, async (req, res) => {
 router.get('/:timelineId/stats', authenticateToken, async (req, res) => {
   try {
     const { timelineId } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     // Prüfen ob Timeline dem User gehört
     const timelineResult = await pool.query(
@@ -337,7 +344,7 @@ router.get('/:timelineId/stats', authenticateToken, async (req, res) => {
 // Timeline Stats für Dashboard Widget
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
     
     // Parallel alle Statistiken laden
     const [
@@ -462,7 +469,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     const result = await pool.query(
       `SELECT * FROM timelines 
@@ -486,7 +493,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, is_active } = req.body;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     // Prüfen ob Timeline existiert und dem User gehört
     const timelineResult = await pool.query(
@@ -542,7 +549,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     const result = await pool.query(
       `UPDATE timelines 
@@ -567,7 +574,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.put('/:id/activate', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     // Zuerst alle anderen Timelines deaktivieren
     await pool.query(
@@ -599,7 +606,7 @@ router.put('/:id/activate', authenticateToken, async (req, res) => {
 router.get('/:id/export', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = getAuthUser(req).id;
 
     // Prüfen ob Timeline existiert
     const timelineResult = await pool.query(
@@ -625,7 +632,7 @@ router.get('/:id/export', authenticateToken, async (req, res) => {
       timeline,
       activities: activitiesResult.rows,
       exported_at: new Date().toISOString(),
-      exported_by: req.user.email
+      exported_by: getAuthUser(req).email
     };
 
     res.setHeader('Content-Type', 'application/json');
@@ -638,4 +645,4 @@ router.get('/:id/export', authenticateToken, async (req, res) => {
   }
 });
 
-// ...existing activities code...
+export default router;
