@@ -57,7 +57,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     
-    const { title, content, source_type, source_id, source_context, tags } = req.body;
+    const { title, content, source_type, source_id, source_context, tags, timelineId } = req.body;
     
     if (!content) {
       return res.status(400).json({ error: 'Content is required' });
@@ -73,6 +73,36 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
     };
     
     const note = await notesService.createNote(userId, noteData);
+
+    // Timeline-Integration (falls timelineId übergeben)
+    if (timelineId) {
+      try {
+        const { TimelineActivityService } = await import('../services/TimelineActivityService');
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const timelineService = new TimelineActivityService(pool);
+
+        // Timeline-Aktivität erfassen
+        await timelineService.captureActivity({
+          timelineId,
+          feature: 'notes',
+          activityType: 'note_created',
+          rawData: {
+            note_id: note.id,
+            title: note.title,
+            content: note.content,
+            source_type: note.source_type,
+            tags: note.tags,
+            created_at: note.created_at
+          },
+          priority: 4
+        });
+      } catch (timelineError) {
+        console.warn('Timeline integration failed:', timelineError);
+        // Don't fail the main request if timeline integration fails
+      }
+    }
+    
     return res.status(201).json(note);
     
   } catch (error) {
@@ -185,7 +215,7 @@ router.put('/:id', async (req: AuthenticatedRequest, res) => {
     }
     
     const noteId = req.params.id;
-    const { title, content, tags } = req.body;
+    const { title, content, tags, timelineId } = req.body;
     
     const updateData = {
       title,
@@ -194,6 +224,35 @@ router.put('/:id', async (req: AuthenticatedRequest, res) => {
     };
     
     const note = await notesService.updateNote(noteId, userId, updateData);
+
+    // Timeline-Integration (falls timelineId übergeben)
+    if (timelineId) {
+      try {
+        const { TimelineActivityService } = await import('../services/TimelineActivityService');
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const timelineService = new TimelineActivityService(pool);
+
+        // Timeline-Aktivität erfassen
+        await timelineService.captureActivity({
+          timelineId,
+          feature: 'notes',
+          activityType: 'note_updated',
+          rawData: {
+            note_id: note.id,
+            title: note.title,
+            content: note.content,
+            tags: note.tags,
+            updated_at: note.updated_at
+          },
+          priority: 4
+        });
+      } catch (timelineError) {
+        console.warn('Timeline integration failed:', timelineError);
+        // Don't fail the main request if timeline integration fails
+      }
+    }
+    
     return res.json(note);
     
   } catch (error) {

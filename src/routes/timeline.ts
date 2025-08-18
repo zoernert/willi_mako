@@ -606,6 +606,7 @@ router.put('/:id/activate', authenticateToken, async (req, res) => {
 router.get('/:id/export', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const { format } = req.query;
     const userId = getAuthUser(req).id;
 
     // Prüfen ob Timeline existiert
@@ -627,17 +628,46 @@ router.get('/:id/export', authenticateToken, async (req, res) => {
       ORDER BY created_at DESC
     `, [id]);
 
-    // Einfacher Text-Export (später kann PDF-Generation implementiert werden)
+    // Statistiken laden
+    const statsResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total_activities,
+        COUNT(DISTINCT feature_name) as features_used,
+        MIN(created_at) as first_activity,
+        MAX(created_at) as last_activity
+      FROM timeline_activities 
+      WHERE timeline_id = $1 AND is_deleted = false
+    `, [id]);
+
     const exportData = {
       timeline,
       activities: activitiesResult.rows,
+      stats: statsResult.rows[0] || {
+        total_activities: 0,
+        features_used: 0,
+        first_activity: null,
+        last_activity: null
+      },
       exported_at: new Date().toISOString(),
-      exported_by: getAuthUser(req).email
+      exported_by: getAuthUser(req).email || getAuthUser(req).username || 'Unbekannt'
     };
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.json"`);
-    res.json(exportData);
+    // PDF-Export
+    if (format === 'pdf') {
+      const { TimelinePDFExportService } = await import('../services/TimelinePDFExportService');
+      const pdfService = new TimelinePDFExportService();
+      
+      const pdfBuffer = await pdfService.exportTimelineToPDF(exportData);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.pdf"`);
+      res.send(pdfBuffer);
+    } else {
+      // JSON-Export (Standard)
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    }
 
   } catch (error) {
     console.error('Error exporting timeline:', error);

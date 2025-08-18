@@ -274,6 +274,8 @@ Führe jetzt die Analyse durch:`;
 router.post('/', upload.single('image'), async (req, res) => {
   try {
     const file = req.file;
+    const { timelineId } = req.body;
+
     if (!file) {
       return res.status(400).json({ error: 'Keine Bilddatei übertragen' });
     }
@@ -283,6 +285,34 @@ router.post('/', upload.single('image'), async (req, res) => {
     
     // Screenshot analysieren
     const result = await analysisService.analyzeScreenshot(file.buffer, file.mimetype);
+
+    // Timeline-Integration (falls timelineId übergeben)
+    if (timelineId && req.headers.authorization) {
+      try {
+        const { TimelineActivityService } = await import('../services/TimelineActivityService');
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const timelineService = new TimelineActivityService(pool);
+
+        // Timeline-Aktivität erfassen
+        await timelineService.captureActivity({
+          timelineId,
+          feature: 'screenshot-analysis',
+          activityType: 'analysis_completed',
+          rawData: {
+            filename: file.originalname,
+            filesize: file.size,
+            analysis_result: result,
+            detected_codes: result.codes.length,
+            processing_timestamp: new Date().toISOString()
+          },
+          priority: 3
+        });
+      } catch (timelineError) {
+        console.warn('Timeline integration failed:', timelineError);
+        // Don't fail the main request if timeline integration fails
+      }
+    }
 
     // Ergebnis zurückgeben
     res.status(200).json(result);

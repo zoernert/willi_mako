@@ -85,5 +85,41 @@ router.get('/:id/status', auth_1.authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch activity status' });
     }
 });
+/**
+ * Activity löschen
+ * DELETE /api/timeline-activity/:id
+ */
+router.delete('/:id', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = getAuthUser(req).id;
+        // Prüfen ob Activity dem User gehört (über Timeline)
+        const result = await database_1.default.query(`
+      UPDATE timeline_activities 
+      SET is_deleted = true, deleted_at = NOW()
+      FROM timelines 
+      WHERE timeline_activities.id = $1 
+        AND timeline_activities.timeline_id = timelines.id 
+        AND timelines.user_id = $2
+        AND timeline_activities.is_deleted = false
+      RETURNING timeline_activities.id
+    `, [id, userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Activity not found or not authorized' });
+        }
+        logger_1.logger.info('Timeline activity deleted', {
+            activityId: id,
+            userId
+        });
+        res.json({
+            success: true,
+            message: 'Activity deleted successfully'
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Error deleting activity', { error: error.message });
+        res.status(500).json({ error: 'Failed to delete activity' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=timeline-activity.js.map

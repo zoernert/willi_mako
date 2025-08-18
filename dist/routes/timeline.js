@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -472,6 +505,7 @@ router.put('/:id/activate', auth_1.authenticateToken, async (req, res) => {
 router.get('/:id/export', auth_1.authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
+        const { format } = req.query;
         const userId = getAuthUser(req).id;
         // Prüfen ob Timeline existiert
         const timelineResult = await database_1.default.query('SELECT * FROM timelines WHERE id = $1 AND user_id = $2', [id, userId]);
@@ -485,16 +519,43 @@ router.get('/:id/export', auth_1.authenticateToken, async (req, res) => {
       WHERE timeline_id = $1 AND is_deleted = false 
       ORDER BY created_at DESC
     `, [id]);
-        // Einfacher Text-Export (später kann PDF-Generation implementiert werden)
+        // Statistiken laden
+        const statsResult = await database_1.default.query(`
+      SELECT 
+        COUNT(*) as total_activities,
+        COUNT(DISTINCT feature_name) as features_used,
+        MIN(created_at) as first_activity,
+        MAX(created_at) as last_activity
+      FROM timeline_activities 
+      WHERE timeline_id = $1 AND is_deleted = false
+    `, [id]);
         const exportData = {
             timeline,
             activities: activitiesResult.rows,
+            stats: statsResult.rows[0] || {
+                total_activities: 0,
+                features_used: 0,
+                first_activity: null,
+                last_activity: null
+            },
             exported_at: new Date().toISOString(),
-            exported_by: getAuthUser(req).email
+            exported_by: getAuthUser(req).email || getAuthUser(req).username || 'Unbekannt'
         };
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.json"`);
-        res.json(exportData);
+        // PDF-Export
+        if (format === 'pdf') {
+            const { TimelinePDFExportService } = await Promise.resolve().then(() => __importStar(require('../services/TimelinePDFExportService')));
+            const pdfService = new TimelinePDFExportService();
+            const pdfBuffer = await pdfService.exportTimelineToPDF(exportData);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.pdf"`);
+            res.send(pdfBuffer);
+        }
+        else {
+            // JSON-Export (Standard)
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', `attachment; filename="timeline-${timeline.name}-${new Date().toISOString().split('T')[0]}.json"`);
+            res.json(exportData);
+        }
     }
     catch (error) {
         console.error('Error exporting timeline:', error);

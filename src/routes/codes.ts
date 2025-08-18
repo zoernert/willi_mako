@@ -72,7 +72,7 @@ const buildFilters = (query: any): SearchFilters => {
  * Erweiterte Suche nach BDEW- und EIC-Codes mit Filtern
  */
 router.get('/search', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { q } = req.query;
+  const { q, timelineId } = req.query;
 
   if (!q || typeof q !== 'string') {
     throw new AppError('Query parameter "q" is required', 400);
@@ -80,6 +80,38 @@ router.get('/search', asyncHandler(async (req: AuthenticatedRequest, res: Respon
 
   const filters = buildFilters(req.query);
   const results = await codeLookupService.searchCodes(q, filters);
+
+  // Timeline-Integration (falls timelineId übergeben)
+  if (timelineId && typeof timelineId === 'string') {
+    try {
+      const { TimelineActivityService } = await import('../services/TimelineActivityService');
+      const { Pool } = await import('pg');
+      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const timelineService = new TimelineActivityService(pool);
+
+      // Timeline-Aktivität erfassen
+      await timelineService.captureActivity({
+        timelineId,
+        feature: 'code-lookup',
+        activityType: 'search_performed',
+        rawData: {
+          search_query: q,
+          filters,
+          results_count: results.length,
+          search_timestamp: new Date().toISOString(),
+          found_codes: results.slice(0, 5).map(r => ({
+            code: r.code,
+            company_name: r.companyName || 'Unknown',
+            code_type: r.codeType || 'BDEW'
+          }))
+        },
+        priority: 3
+      });
+    } catch (timelineError) {
+      console.warn('Timeline integration failed:', timelineError);
+      // Don't fail the main request if timeline integration fails
+    }
+  }
 
   res.json({
     success: true,

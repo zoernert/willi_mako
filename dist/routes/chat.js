@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -240,7 +273,7 @@ router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
 router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     var _a, _b, _c, _d;
     const { chatId } = req.params;
-    const { content, contextSettings } = req.body;
+    const { content, contextSettings, timelineId } = req.body;
     const userId = req.user.id;
     const startTime = Date.now();
     if (!content) {
@@ -418,6 +451,33 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                         sourceCount: ((_c = cs30Result.cs30Sources) === null || _c === void 0 ? void 0 : _c.length) || 0
                     })]);
                 console.log(`✅ Added CS30 additional response with ${((_d = cs30Result.cs30Sources) === null || _d === void 0 ? void 0 : _d.length) || 0} sources`);
+                // Timeline-Integration (falls timelineId übergeben)
+                if (timelineId) {
+                    try {
+                        const { TimelineActivityService } = await Promise.resolve().then(() => __importStar(require('../services/TimelineActivityService')));
+                        const timelineService = new TimelineActivityService(database_1.default);
+                        // Timeline-Aktivität erfassen
+                        await timelineService.captureActivity({
+                            timelineId,
+                            feature: 'chat',
+                            activityType: 'conversation_completed',
+                            rawData: {
+                                chat_id: chatId,
+                                user_message: content,
+                                assistant_response: reasoningResult.response,
+                                cs30_additional: cs30Result.hasCs30Response,
+                                reasoning_quality: reasoningResult.finalQuality,
+                                api_calls_used: reasoningResult.apiCallsUsed,
+                                processing_time_ms: Date.now() - startTime
+                            },
+                            priority: 2
+                        });
+                    }
+                    catch (timelineError) {
+                        console.warn('Timeline integration failed:', timelineError);
+                        // Don't fail the main request if timeline integration fails
+                    }
+                }
                 return res.json({
                     success: true,
                     data: {
@@ -431,6 +491,33 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         catch (error) {
             console.error('❌ Error in CS30 response generation:', error);
             // Continue with primary response only
+        }
+    }
+    // Timeline-Integration für normale Chats (ohne CS30)
+    if (timelineId) {
+        try {
+            const { TimelineActivityService } = await Promise.resolve().then(() => __importStar(require('../services/TimelineActivityService')));
+            const timelineService = new TimelineActivityService(database_1.default);
+            // Timeline-Aktivität erfassen
+            await timelineService.captureActivity({
+                timelineId,
+                feature: 'chat',
+                activityType: 'conversation_completed',
+                rawData: {
+                    chat_id: chatId,
+                    user_message: content,
+                    assistant_response: reasoningResult.response,
+                    cs30_additional: false,
+                    reasoning_quality: reasoningResult.finalQuality,
+                    api_calls_used: reasoningResult.apiCallsUsed,
+                    processing_time_ms: Date.now() - startTime
+                },
+                priority: 2
+            });
+        }
+        catch (timelineError) {
+            console.warn('Timeline integration failed:', timelineError);
+            // Don't fail the main request if timeline integration fails
         }
     }
     return res.json({

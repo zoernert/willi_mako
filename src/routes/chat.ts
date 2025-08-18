@@ -289,7 +289,7 @@ router.post('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Respon
 // Send message in chat
 router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { chatId } = req.params;
-  const { content, contextSettings } = req.body;
+  const { content, contextSettings, timelineId } = req.body;
   const userId = req.user!.id;
   const startTime = Date.now();
   
@@ -553,6 +553,34 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
 
         console.log(`✅ Added CS30 additional response with ${cs30Result.cs30Sources?.length || 0} sources`);
         
+        // Timeline-Integration (falls timelineId übergeben)
+        if (timelineId) {
+          try {
+            const { TimelineActivityService } = await import('../services/TimelineActivityService');
+            const timelineService = new TimelineActivityService(pool);
+
+            // Timeline-Aktivität erfassen
+            await timelineService.captureActivity({
+              timelineId,
+              feature: 'chat',
+              activityType: 'conversation_completed',
+              rawData: {
+                chat_id: chatId,
+                user_message: content,
+                assistant_response: reasoningResult.response,
+                cs30_additional: cs30Result.hasCs30Response,
+                reasoning_quality: reasoningResult.finalQuality,
+                api_calls_used: reasoningResult.apiCallsUsed,
+                processing_time_ms: Date.now() - startTime
+              },
+              priority: 2
+            });
+          } catch (timelineError) {
+            console.warn('Timeline integration failed:', timelineError);
+            // Don't fail the main request if timeline integration fails
+          }
+        }
+        
         return res.json({
           success: true,
           data: {
@@ -565,6 +593,34 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     } catch (error) {
       console.error('❌ Error in CS30 response generation:', error);
       // Continue with primary response only
+    }
+  }
+
+  // Timeline-Integration für normale Chats (ohne CS30)
+  if (timelineId) {
+    try {
+      const { TimelineActivityService } = await import('../services/TimelineActivityService');
+      const timelineService = new TimelineActivityService(pool);
+
+      // Timeline-Aktivität erfassen
+      await timelineService.captureActivity({
+        timelineId,
+        feature: 'chat',
+        activityType: 'conversation_completed',
+        rawData: {
+          chat_id: chatId,
+          user_message: content,
+          assistant_response: reasoningResult.response,
+          cs30_additional: false,
+          reasoning_quality: reasoningResult.finalQuality,
+          api_calls_used: reasoningResult.apiCallsUsed,
+          processing_time_ms: Date.now() - startTime
+        },
+        priority: 2
+      });
+    } catch (timelineError) {
+      console.warn('Timeline integration failed:', timelineError);
+      // Don't fail the main request if timeline integration fails
     }
   }
 

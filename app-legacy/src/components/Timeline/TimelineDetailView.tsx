@@ -87,6 +87,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
   // UI state
   const [selectedActivity, setSelectedActivity] = useState<TimelineActivity | null>(null);
   const [activityMenuAnchor, setActivityMenuAnchor] = useState<{ element: HTMLElement; activity: TimelineActivity } | null>(null);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<HTMLElement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -229,7 +230,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
 
   const handleExportPDF = async () => {
     try {
-      const response = await fetch(`/api/timelines/${timelineId}/export`, {
+      const response = await fetch(`/api/timelines/${timelineId}/export?format=pdf`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${state.token}`,
@@ -245,6 +246,35 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
       const a = document.createElement('a');
       a.href = url;
       a.download = `timeline-${timeline?.name || timelineId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (err: any) {
+      console.error('Error exporting timeline:', err);
+      setError(err.message || 'Fehler beim Exportieren der Timeline');
+    }
+  };
+
+  const handleExportJSON = async () => {
+    try {
+      const response = await fetch(`/api/timelines/${timelineId}/export?format=json`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export timeline');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timeline-${timeline?.name || timelineId}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -339,13 +369,8 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
                 </IconButton>
               </Tooltip>
               <Tooltip title="Exportieren">
-                <IconButton onClick={handleExportPDF}>
+                <IconButton onClick={(e) => setExportMenuAnchor(e.currentTarget)}>
                   <ExportIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Timeline archivieren">
-                <IconButton onClick={() => setArchiveDialogOpen(true)}>
-                  <ArchiveIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Aktualisieren">
@@ -520,6 +545,28 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Export Menu */}
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={() => setExportMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => {
+          handleExportPDF();
+          setExportMenuAnchor(null);
+        }}>
+          <ExportIcon sx={{ mr: 1 }} />
+          Als PDF exportieren
+        </MenuItem>
+        <MenuItem onClick={() => {
+          handleExportJSON();
+          setExportMenuAnchor(null);
+        }}>
+          <ExportIcon sx={{ mr: 1 }} />
+          Als JSON exportieren
+        </MenuItem>
+      </Menu>
 
       {/* Activity Menu */}
       <Menu
