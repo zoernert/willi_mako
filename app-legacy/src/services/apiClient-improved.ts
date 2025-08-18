@@ -140,6 +140,32 @@ export const apiUtils = {
   },
 
   /**
+   * POST-Request with multipart/form-data (for file uploads)
+   */
+  async postMultipart<T>(url: string, data: FormData, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      // Remove Content-Type header to let browser set it with boundary
+      const requestConfig = {
+        ...config,
+        headers: {
+          ...config?.headers,
+        },
+      };
+      
+      // Remove Content-Type to let browser set it with boundary for multipart
+      if (requestConfig.headers && 'Content-Type' in requestConfig.headers) {
+        delete requestConfig.headers['Content-Type'];
+      }
+      
+      const response = await apiClient.post<T>(url, data, requestConfig);
+      return response.data;
+    } catch (error) {
+      console.error(`POST MULTIPART ${url} failed:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Prüft ob API verfügbar ist
    */
   async healthCheck(): Promise<boolean> {

@@ -22,6 +22,7 @@ import {
   SmartToy as BotIcon,
   Add as AddIcon,
   Groups as CommunityIcon,
+  PhotoCamera as PhotoCameraIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -31,6 +32,7 @@ import PipelineInfoDialog from '../components/Chat/PipelineInfoDialog';
 import ContextControlPanel from '../components/Workspace/ContextControlPanel';
 import CreateFromContextButton from '../components/Workspace/CreateFromContextButton';
 import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
+import ScreenshotUpload from '../components/Chat/ScreenshotUpload';
 import { useTimelineCapture } from '../hooks/useTimelineCapture'; // NEU: Timeline-Integration
 import { chatApi, ContextSettings } from '../services/chatApi';
 import { userApi } from '../services/userApi';
@@ -107,6 +109,11 @@ const Chat: React.FC = () => {
   // CR-CS30: State for CS30 toggle functionality
   const [userHasCs30Access, setUserHasCs30Access] = useState(false);
   const [showCs30Mode, setShowCs30Mode] = useState(false); // false = normal mode, true = cs30 mode
+  
+  // Screenshot functionality state
+  const [attachedScreenshot, setAttachedScreenshot] = useState<File | null>(null);
+  const [screenshotAnalysis, setScreenshotAnalysis] = useState<any>(null);
+  const [showScreenshotUpload, setShowScreenshotUpload] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -236,21 +243,40 @@ const Chat: React.FC = () => {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !currentChat || loading) {
+    if ((!newMessage.trim() && !attachedScreenshot) || !currentChat || loading) {
       return;
     }
 
     const messageContent = newMessage.trim();
+    const screenshotFile = attachedScreenshot;
+    const analysis = screenshotAnalysis;
+    
     setNewMessage('');
+    setAttachedScreenshot(null);
+    setScreenshotAnalysis(null);
+    setShowScreenshotUpload(false);
     setLoading(true);
     setLoadingStartTime(Date.now());
     setIsTyping(true);
 
-    console.log('Sending message:', messageContent);
+    console.log('Sending message:', messageContent, 'with screenshot:', !!screenshotFile);
 
     try {
-      // Remove frontend timeout - let the API client handle timeouts
-      const response = await chatApi.sendMessage(currentChat.id, messageContent, contextSettings);
+      let response;
+      
+      if (screenshotFile) {
+        // Send message with screenshot
+        response = await chatApi.sendMessageWithScreenshot(
+          currentChat.id, 
+          messageContent, 
+          screenshotFile,
+          analysis,
+          contextSettings
+        );
+      } else {
+        // Send regular message
+        response = await chatApi.sendMessage(currentChat.id, messageContent, contextSettings);
+      }
 
       console.log('API Response:', response);
 
@@ -932,6 +958,42 @@ const Chat: React.FC = () => {
               onSubmit={sendMessage}
               sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}
             >
+              {/* Screenshot Upload Area */}
+              {showScreenshotUpload && (
+                <Box sx={{ mb: 2 }}>
+                  <ScreenshotUpload
+                    onScreenshotUploaded={(file, analysis) => {
+                      setAttachedScreenshot(file);
+                      setScreenshotAnalysis(analysis);
+                    }}
+                    onScreenshotRemoved={() => {
+                      setAttachedScreenshot(null);
+                      setScreenshotAnalysis(null);
+                    }}
+                    disabled={loading}
+                  />
+                </Box>
+              )}
+
+              {/* Screenshot Info Display */}
+              {attachedScreenshot && (
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'primary.contrastText' }}>
+                    📷 Screenshot anhängend: {attachedScreenshot.name}
+                    {screenshotAnalysis?.isSchleupnCS30 && (
+                      <Box component="span" sx={{ ml: 1, fontWeight: 'bold' }}>
+                        (Schleupen CS 3.0 erkannt)
+                      </Box>
+                    )}
+                  </Typography>
+                  {screenshotAnalysis?.errorMessages?.length > 0 && (
+                    <Typography variant="caption" sx={{ color: 'primary.contrastText', display: 'block', mt: 0.5 }}>
+                      🚨 {screenshotAnalysis.errorMessages.length} Fehlermeldung(en) erkannt
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
               {/* Community Escalation Button */}
               {messages.length > 0 && (
                 <Box sx={{ mb: 1, textAlign: 'center' }}>
@@ -954,27 +1016,51 @@ const Chat: React.FC = () => {
                 </Box>
               )}
               
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  maxRows={4}
-                  placeholder="Fragen Sie Mako Willi etwas über die Energiewirtschaft..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                <Box sx={{ flex: 1 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    maxRows={4}
+                    placeholder={
+                      attachedScreenshot 
+                        ? "Beschreiben Sie Ihr Problem mit diesem Screenshot..." 
+                        : "Fragen Sie Mako Willi etwas über die Energiewirtschaft..."
+                    }
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    disabled={loading}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage(e);
+                      }
+                    }}
+                  />
+                </Box>
+                
+                {/* Screenshot Button */}
+                <IconButton
+                  onClick={() => setShowScreenshotUpload(!showScreenshotUpload)}
+                  color={showScreenshotUpload || attachedScreenshot ? 'primary' : 'default'}
                   disabled={loading}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage(e);
+                  sx={{ 
+                    height: 56, // Match TextField height
+                    width: 56,
+                    bgcolor: showScreenshotUpload || attachedScreenshot ? 'primary.light' : 'transparent',
+                    '&:hover': {
+                      bgcolor: showScreenshotUpload || attachedScreenshot ? 'primary.main' : 'action.hover',
                     }
                   }}
-                />
+                >
+                  <PhotoCameraIcon />
+                </IconButton>
+
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={loading || !newMessage.trim()}
-                  sx={{ minWidth: 'auto', px: 2 }}
+                  disabled={loading || (!newMessage.trim() && !attachedScreenshot)}
+                  sx={{ minWidth: 'auto', px: 2, height: 56 }}
                 >
                   {loading ? <CircularProgress size={24} /> : <SendIcon />}
                 </Button>

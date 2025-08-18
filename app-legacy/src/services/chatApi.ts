@@ -97,6 +97,37 @@ export const chatApi = {
     }, 180000); // 3 minutes timeout for complex generations
   },
 
+  // Send message with screenshot
+  sendMessageWithScreenshot: (
+    chatId: string, 
+    content: string, 
+    screenshot: File,
+    analysis?: any,
+    contextSettings?: ContextSettings
+  ): Promise<SendMessageResponse> => {
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('screenshot', screenshot);
+    if (analysis) {
+      formData.append('analysis', JSON.stringify(analysis));
+    }
+    if (contextSettings) {
+      formData.append('contextSettings', JSON.stringify(contextSettings));
+    }
+    
+    return apiClient.postMultipart(API_ENDPOINTS.chat.sendMessage(chatId), formData, {
+      timeout: 180000 // 3 minutes timeout for screenshot processing
+    });
+  },
+
+  // Analyze screenshot
+  analyzeScreenshot: (screenshot: File): Promise<{ analysis: any }> => {
+    const formData = new FormData();
+    formData.append('screenshot', screenshot);
+    
+    return apiClient.postMultipart('/chat/analyze-screenshot', formData);
+  },
+
   // Update chat title
   updateChatTitle: (chatId: string, title: string): Promise<ChatSession> => {
     return apiClient.put(API_ENDPOINTS.chat.update(chatId), { title });

@@ -234,6 +234,12 @@ EOF
         exit 1
     fi
     
+    # Migration-Dateien kopieren (falls vorhanden)
+    if [ -f "migration-screenshot-support.sql" ]; then
+        cp migration-screenshot-support.sql "$TEMP_DIR/"
+        echo "✅ Screenshot-Migration-Datei kopiert"
+    fi
+    
     # Next.js Build kopieren
     if [ -d ".next" ]; then
         cp -r .next "$TEMP_DIR/"
@@ -448,6 +454,43 @@ fi
 EOF
 }
 
+# Führe Datenbankmigrationen aus
+run_database_migrations() {
+    echo "🗃️ Führe Datenbankmigrationen aus..."
+    
+    ssh $PROD_SERVER << 'EOF'
+cd $DEPLOY_DIR
+
+# Prüfe ob Migration-Dateien existieren
+if [ -f "migration-screenshot-support.sql" ]; then
+    echo "📄 Screenshot-Support Migration gefunden"
+    
+    # Prüfe ob Screenshot-Tabellen bereits existieren
+    if PGPASSWORD=willi_password psql -h 10.0.0.2 -p 5117 -U willi_user -d willi_mako -c "\d file_uploads" 2>/dev/null | grep -q "file_uploads"; then
+        echo "✅ Screenshot-Support bereits migriert (file_uploads Tabelle existiert)"
+    else
+        echo "🔄 Führe Screenshot-Support Migration aus..."
+        if PGPASSWORD=willi_password psql -h 10.0.0.2 -p 5117 -U willi_user -d willi_mako -f migration-screenshot-support.sql; then
+            echo "✅ Screenshot-Support Migration erfolgreich"
+        else
+            echo "❌ Screenshot-Support Migration fehlgeschlagen"
+            exit 1
+        fi
+    fi
+else
+    echo "⚠️  migration-screenshot-support.sql nicht gefunden - überspringe Screenshot-Migration"
+fi
+
+# Prüfe Upload-Verzeichnisse
+echo "📁 Erstelle Upload-Verzeichnisse..."
+mkdir -p uploads/screenshots uploads/temp
+chmod 755 uploads uploads/screenshots uploads/temp
+echo "✅ Upload-Verzeichnisse erstellt"
+EOF
+
+    echo "✅ Datenbankmigrationen abgeschlossen"
+}
+
 # Anwendung mit PM2 starten
 start_application() {
     echo "🚀 Starte Anwendung mit PM2..."
@@ -555,6 +598,7 @@ main() {
     install_dependencies
     verify_backend_code
     test_database_connection
+    run_database_migrations
     start_application
     check_status
     

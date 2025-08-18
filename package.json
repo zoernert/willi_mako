@@ -88,6 +88,7 @@
     "puppeteer": "^24.16.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "sharp": "^0.33.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
