@@ -26,9 +26,23 @@ if [ "$NEED_MIGRATION" = true ]; then
     echo ""
     echo "🔍 Verifying screenshot feature deployment..."
     
-    # Test if screenshot tables were created
+    # Run production check script on the server
     PROD_SERVER=${1:-"root@10.0.0.2"}
+    
+    # Copy and run the production check script
+    scp check-screenshot-production.sh $PROD_SERVER:/opt/willi_mako/
+    
     ssh $PROD_SERVER << 'EOF'
+cd /opt/willi_mako
+chmod +x check-screenshot-production.sh
+
+echo "Running production check for screenshot feature..."
+./check-screenshot-production.sh
+
+# Additional quick verification
+echo ""
+echo "🔍 Quick manual verification..."
+
 echo "Testing screenshot tables..."
 if PGPASSWORD=willi_password psql -h 10.0.0.2 -p 5117 -U willi_user -d willi_mako -c "\d file_uploads" 2>/dev/null | grep -q "Table"; then
     echo "✅ Screenshot tables successfully created"
@@ -41,6 +55,20 @@ if [ -d "/opt/willi_mako/uploads/screenshots" ]; then
     echo "✅ Upload directories created"
 else
     echo "❌ Upload directories missing"
+fi
+
+echo "Testing Node.js dependencies..."
+cd /opt/willi_mako
+if npm list sharp >/dev/null 2>&1; then
+    echo "✅ Sharp library installed"
+else
+    echo "❌ Sharp library missing - run npm install"
+fi
+
+if npm list @google/generative-ai >/dev/null 2>&1; then
+    echo "✅ Google Generative AI library installed"
+else
+    echo "❌ Google Generative AI library missing - run npm install"
 fi
 EOF
     

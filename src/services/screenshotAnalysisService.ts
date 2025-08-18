@@ -8,7 +8,33 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs/promises';
 
+interface ScreenshotAnalysis {
+  detectedElements: DetectedElement[];
+  errorMessages: string[];
+  uiComponents: UIComponent[];
+  confidence: number;
+  isSchleupnCS30: boolean;
+  extractedText: string;
+  analysis: string;
+}
+
+interface DetectedElement {
+  type: 'error' | 'warning' | 'dialog' | 'menu' | 'form' | 'button' | 'table';
+  text: string;
+  confidence: number;
+  position?: { x: number; y: number; width: number; height: number };
+}
+
+interface UIComponent {
+  name: string;
+  visible: boolean;
+  text?: string;
+}
+
 class ScreenshotAnalysisService {
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+
   constructor() {
     if (!process.env.GOOGLE_API_KEY) {
       throw new Error('Google API Key is required for screenshot analysis');
@@ -30,7 +56,7 @@ class ScreenshotAnalysisService {
   /**
    * Main analysis method - processes a screenshot and extracts relevant information
    */
-  async analyzeScreenshot(imagePath) {
+  async analyzeScreenshot(imagePath: string): Promise<ScreenshotAnalysis> {
     try {
       console.log(`Analyzing screenshot: ${imagePath}`);
       
@@ -81,7 +107,7 @@ class ScreenshotAnalysisService {
   /**
    * Preprocess image for optimal analysis
    */
-  async preprocessImage(imagePath) {
+  private async preprocessImage(imagePath: string): Promise<string> {
     const ext = path.extname(imagePath).toLowerCase();
     
     // If already PNG, use as-is for now (could add enhancement later)
@@ -107,7 +133,7 @@ class ScreenshotAnalysisService {
   /**
    * Create detailed analysis prompt for Gemini Vision
    */
-  createAnalysisPrompt() {
+  private createAnalysisPrompt(): string {
     return `Analyze this screenshot with focus on German energy industry software (especially Schleupen CS 3.0).
 
 Please provide a JSON response with the following structure:
@@ -148,7 +174,7 @@ Extract ALL visible text accurately, especially error messages and technical ter
   /**
    * Parse the JSON response from Gemini Vision
    */
-  parseAnalysisResponse(responseText) {
+  private parseAnalysisResponse(responseText: string): ScreenshotAnalysis {
     try {
       // Try to extract JSON from the response
       let jsonText = responseText;
@@ -198,7 +224,7 @@ Extract ALL visible text accurately, especially error messages and technical ter
   /**
    * Extract error messages from raw text (fallback method)
    */
-  extractErrorMessages(text) {
+  private extractErrorMessages(text: string): string[] {
     const errorPatterns = [
       /fehler[:\-\s]*(.*?)(?:\n|$)/gi,
       /error[:\-\s]*(.*?)(?:\n|$)/gi,
@@ -206,7 +232,7 @@ Extract ALL visible text accurately, especially error messages and technical ter
       /warning[:\-\s]*(.*?)(?:\n|$)/gi
     ];
     
-    const errors = [];
+    const errors: string[] = [];
     errorPatterns.forEach(pattern => {
       const matches = text.matchAll(pattern);
       for (const match of matches) {
@@ -222,7 +248,7 @@ Extract ALL visible text accurately, especially error messages and technical ter
   /**
    * Generate context-enhanced prompt for LLM based on screenshot analysis
    */
-  generateContextPrompt(userMessage, analysis) {
+  generateContextPrompt(userMessage: string, analysis: ScreenshotAnalysis): string {
     let contextPrompt = `
 KONTEXT INFORMATION aus Screenshot-Analyse:
 
@@ -265,7 +291,7 @@ Bitte nutze die oben stehenden Informationen aus dem Screenshot, um eine präzis
   /**
    * Save uploaded screenshot to the appropriate directory
    */
-  async saveScreenshot(file, chatId, messageId) {
+  async saveScreenshot(file: Express.Multer.File, chatId: string, messageId: string): Promise<string> {
     const uploadDir = path.join(process.cwd(), 'uploads', 'screenshots');
     await fs.mkdir(uploadDir, { recursive: true });
     
