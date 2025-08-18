@@ -30,7 +30,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { TimelineOverviewWidget } from '../components/Timeline/TimelineOverviewWidget';
+import { TimelineDashboardWidget } from '../components/Timeline/TimelineDashboardWidget';
 import apiClient from '../services/apiClient';
 
 interface UserStats {
@@ -287,9 +287,9 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Timeline Overview Widget */}
-        <Grid size={{ xs: 12 }}>
-          <TimelineOverviewWidget />
+        {/* Timeline Dashboard Widget */}
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <TimelineDashboardWidget />
         </Grid>
 
         {/* Recent Chats */}

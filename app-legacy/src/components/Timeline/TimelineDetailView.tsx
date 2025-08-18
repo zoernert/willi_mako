@@ -9,7 +9,8 @@ import {
   GetApp as ExportIcon,
   MoreVert as MoreIcon,
   PlayArrow as RetryIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  Archive as ArchiveIcon
 } from '@mui/icons-material';
 import {
   Box,
@@ -89,6 +90,7 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   const itemsPerPage = 20;
 
@@ -254,6 +256,33 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
     }
   };
 
+  const handleArchiveTimeline = async () => {
+    if (!timeline) return;
+
+    try {
+      const response = await fetch(`/api/timelines/${timeline.id}/archive`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive timeline');
+      }
+
+      setArchiveDialogOpen(false);
+      if (onClose) {
+        onClose(); // Close the detail view after archiving
+      }
+      
+    } catch (err: any) {
+      console.error('Error archiving timeline:', err);
+      setError(err.message || 'Fehler beim Archivieren der Timeline');
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" alignItems="center" justifyContent="center" py={8}>
@@ -304,9 +333,19 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
               </Box>
             </Box>
             <Box display="flex" gap={1}>
+              <Tooltip title="Archivieren">
+                <IconButton onClick={() => setArchiveDialogOpen(true)} color="warning">
+                  <ArchiveIcon />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Exportieren">
                 <IconButton onClick={handleExportPDF}>
                   <ExportIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Timeline archivieren">
+                <IconButton onClick={() => setArchiveDialogOpen(true)}>
+                  <ArchiveIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Aktualisieren">
@@ -618,6 +657,33 @@ export const TimelineDetailView: React.FC<TimelineDetailViewProps> = ({
             variant="contained"
           >
             Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Archive Timeline Dialog */}
+      <Dialog
+        open={archiveDialogOpen}
+        onClose={() => setArchiveDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Timeline archivieren</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Möchten Sie die Timeline "{timeline?.name}" wirklich archivieren?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Archivierte Timelines bleiben 90 Tage lang zugänglich und können nicht mehr bearbeitet werden.
+            Alle Aktivitäten bleiben erhalten, aber es können keine neuen hinzugefügt werden.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setArchiveDialogOpen(false)}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleArchiveTimeline} variant="contained" color="warning">
+            Archivieren
           </Button>
         </DialogActions>
       </Dialog>

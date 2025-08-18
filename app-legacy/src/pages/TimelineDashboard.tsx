@@ -104,6 +104,11 @@ const TimelineDashboard: React.FC = () => {
     }
   };
 
+  const handleTimelineSelect = (timelineId: string) => {
+    setSelectedTimelineId(timelineId);
+    setTabValue(1); // Switch to details tab
+  };
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -149,66 +154,80 @@ const TimelineDashboard: React.FC = () => {
 
       {/* Tab Panels */}
       <TabPanel value={tabValue} index={0}>
-        <Box>
+        <Grid container spacing={3}>
           {/* Timeline Overview Widget */}
-          <Box mb={3}>
-            <TimelineOverviewWidget />
-          </Box>
-
-          {/* Weitere Dashboard-Widgets */}
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Box 
-                p={4} 
-                textAlign="center" 
-                bgcolor="grey.50" 
-                borderRadius={2}
-                border="2px dashed"
-                borderColor="grey.300"
-              >
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  Weitere Features in Entwicklung
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Timeline-Sharing, erweiterte Analysen und mehr...
-                </Typography>
-              </Box>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Box 
-                p={4} 
-                textAlign="center" 
-                bgcolor="grey.50" 
-                borderRadius={2}
-                border="2px dashed"
-                borderColor="grey.300"
-              >
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  Performance-Metriken
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Bald verfügbar: Timeline-Performance und Team-Statistiken
-                </Typography>
-              </Box>
-            </Grid>
+          <Grid size={{ xs: 12, lg: 8 }}>
+            <TimelineOverviewWidget onTimelineSelect={handleTimelineSelect} />
           </Grid>
-        </Box>
+
+          {/* Quick Actions */}
+          <Grid size={{ xs: 12, lg: 4 }}>
+            <Box 
+              p={3} 
+              bgcolor="primary.50" 
+              borderRadius={2}
+              border="1px solid"
+              borderColor="primary.200"
+            >
+              <Typography variant="h6" color="primary.main" gutterBottom>
+                Schnellaktionen
+              </Typography>
+              <Box display="flex" flexDirection="column" gap={2}>
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateDialogOpen(true)}
+                  fullWidth
+                >
+                  Neue Timeline erstellen
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  fullWidth
+                  disabled
+                >
+                  Timeline importieren (bald)
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  fullWidth
+                  disabled
+                >
+                  Berichte exportieren (bald)
+                </Button>
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
         {selectedTimelineId ? (
-          <TimelineDetailView 
-            timelineId={selectedTimelineId}
-            onClose={() => {
-              setSelectedTimelineId(null);
-              setTabValue(0);
-            }}
-          />
+          <Box>
+            <Box mb={2}>
+              <Typography variant="h5" gutterBottom>
+                Timeline-Details
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Detaillierte Ansicht mit allen Aktivitäten und Einstellungen
+              </Typography>
+            </Box>
+            <TimelineDetailView 
+              timelineId={selectedTimelineId}
+              onClose={() => {
+                setSelectedTimelineId(null);
+                setTabValue(0);
+              }}
+            />
+          </Box>
         ) : (
           <Box textAlign="center" py={8}>
             <Typography variant="h6" color="text.secondary">
               Wählen Sie eine Timeline aus der Übersicht aus
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Klicken Sie auf "Details anzeigen" bei einer Timeline in der Übersicht, 
+              um hier die detaillierte Ansicht zu sehen.
             </Typography>
           </Box>
         )}
