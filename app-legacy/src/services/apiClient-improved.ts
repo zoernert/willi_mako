@@ -1,7 +1,7 @@
 /**
  * API Client mit verbesserter Token-Verwaltung
  */
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { TokenService } from './TokenService';
 
 // Base URL konfigurieren
@@ -18,7 +18,7 @@ const apiClient = axios.create({
 
 // Request Interceptor - Token automatisch hinzufügen
 apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = TokenService.getToken();
     
     if (token) {
