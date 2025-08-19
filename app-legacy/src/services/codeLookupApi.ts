@@ -253,6 +253,17 @@ class CodeLookupApi {
               contactEmail: contact.CodeContactEmail,
               contactPhone: contact.CodeContactPhone,
               isDefault: contacts.length === 0,
+              
+              // BDEW-Codedetails
+              BdewCode: contact.BdewCode,
+              BdewCodeType: contact.BdewCodeType,
+              BdewCodeFunction: contact.BdewCodeFunction,
+              BdewCodeStatus: contact.BdewCodeStatus,
+              BdewCodeStatusBegin: contact.BdewCodeStatusBegin,
+              CompanyUID: contact.CompanyUID,
+              CompanyName: contact.CompanyName,
+              EditedOn: contact.EditedOn,
+              
               // Zusätzliche EIC-Informationen
               EIC_Typ: contact.EIC_Typ,
               EIC_Code: contact.EIC_Code,
@@ -261,6 +272,7 @@ class CodeLookupApi {
               Website: contact.Website,
               UstId: contact.UstId,
               EIC_Function: contact.EIC_Function,
+              
               // Deutsche Bezeichnungen
               Unternehmen: contact.Unternehmen,
               Strasse: contact.Strasse,

@@ -48,6 +48,16 @@ export interface MarketPartnerContact {
   contactPhone?: string;
   isDefault: boolean; // Haupt-Ansprechpartner für diese Rolle
   
+  // BDEW-Codedetails
+  BdewCode?: string;
+  BdewCodeType?: string;
+  BdewCodeFunction?: string;
+  BdewCodeStatus?: string;
+  BdewCodeStatusBegin?: string;
+  CompanyUID?: string;
+  CompanyName?: string;
+  EditedOn?: string;
+  
   // Zusätzliche EIC-Informationen
   EIC_Typ?: string;
   EIC_Code?: string;

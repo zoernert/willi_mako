@@ -122,6 +122,17 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
             contactEmail: contact.CodeContactEmail,
             contactPhone: contact.CodeContactPhone,
             isDefault: contacts.length === 0,
+            
+            // BDEW-Codedetails
+            BdewCode: contact.BdewCode,
+            BdewCodeType: contact.BdewCodeType,
+            BdewCodeFunction: contact.BdewCodeFunction,
+            BdewCodeStatus: contact.BdewCodeStatus,
+            BdewCodeStatusBegin: contact.BdewCodeStatusBegin,
+            CompanyUID: contact.CompanyUID,
+            CompanyName: contact.CompanyName,
+            EditedOn: contact.EditedOn,
+            
             // Zusätzliche EIC-Informationen
             EIC_Typ: contact.EIC_Typ,
             EIC_Code: contact.EIC_Code,
@@ -130,6 +141,7 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
             Website: contact.Website,
             UstId: contact.UstId,
             EIC_Function: contact.EIC_Function,
+            
             // Deutsche Bezeichnungen
             Unternehmen: contact.Unternehmen,
             Strasse: contact.Strasse,
@@ -345,34 +357,79 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
                   )}
                   
                   {/* Zusätzliche EIC-Informationen */}
+                  {selectedContact.BdewCode && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">BDEW-Code: {selectedContact.BdewCode}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.BdewCodeFunction && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Funktion: {selectedContact.BdewCodeFunction}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.BdewCodeStatus && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Status: {selectedContact.BdewCodeStatus}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.BdewCodeStatusBegin && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Status seit: {new Date(selectedContact.BdewCodeStatusBegin).toLocaleDateString('de-DE')}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.CompanyUID && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Unternehmensnummer: {selectedContact.CompanyUID}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EditedOn && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Bearbeitet: {new Date(selectedContact.EditedOn).toLocaleDateString('de-DE')}</Typography>
+                    </Box>
+                  )}
+                  
+                  <Divider sx={{ my: 1 }}/>
+                  
+                  {/* EIC-Code Informationen */}
+                  {(selectedContact.EIC_Code || selectedContact.EIC_Typ || selectedContact.EIC_Function) && (
+                    <Typography variant="subtitle2" gutterBottom>
+                      EIC-Informationen
+                    </Typography>
+                  )}
                   {selectedContact.EIC_Code && (
                     <Box display="flex" alignItems="center" gap={1}>
                       <AssignmentIcon fontSize="small" color="action" />
-                      <Typography variant="body2">EIC Code: {selectedContact.EIC_Code}</Typography>
-                    </Box>
-                  )}
-                  {selectedContact.EIC_Display_Name && (
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <BusinessIcon fontSize="small" color="action" />
-                      <Typography variant="body2">EIC Name: {selectedContact.EIC_Display_Name}</Typography>
-                    </Box>
-                  )}
-                  {selectedContact.EIC_Long_Name && (
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <BusinessIcon fontSize="small" color="action" />
-                      <Typography variant="body2">EIC Vollname: {selectedContact.EIC_Long_Name}</Typography>
+                      <Typography variant="body2">EIC-Code: {selectedContact.EIC_Code}</Typography>
                     </Box>
                   )}
                   {selectedContact.EIC_Typ && (
                     <Box display="flex" alignItems="center" gap={1}>
                       <AssignmentIcon fontSize="small" color="action" />
-                      <Typography variant="body2">EIC Typ: {selectedContact.EIC_Typ}</Typography>
+                      <Typography variant="body2">EIC-Typ: {selectedContact.EIC_Typ}</Typography>
                     </Box>
                   )}
                   {selectedContact.EIC_Function && (
                     <Box display="flex" alignItems="center" gap={1}>
                       <AssignmentIcon fontSize="small" color="action" />
-                      <Typography variant="body2">EIC Funktion: {selectedContact.EIC_Function}</Typography>
+                      <Typography variant="body2">EIC-Funktion: {selectedContact.EIC_Function}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Display_Name && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC-Name: {selectedContact.EIC_Display_Name}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Long_Name && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC-Vollname: {selectedContact.EIC_Long_Name}</Typography>
                     </Box>
                   )}
                   {selectedContact.Website && (

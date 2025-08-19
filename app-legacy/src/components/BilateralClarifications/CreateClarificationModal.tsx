@@ -96,9 +96,20 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
               if (marketPartner.contacts && marketPartner.contacts.length > 0) {
                 const contactForRole = marketPartner.contacts.find((c) => c.role === role) || marketPartner.contacts[0];
                 
-                // Sicherstellen, dass alle EIC-Felder berücksichtigt werden
-                const contactWithEIC = {
+                // Sicherstellen, dass alle Felder berücksichtigt werden
+                const contactWithDetails = {
                   ...contactForRole,
+                  // BDEW-Codedetails
+                  BdewCode: contactForRole.BdewCode,
+                  BdewCodeType: contactForRole.BdewCodeType,
+                  BdewCodeFunction: contactForRole.BdewCodeFunction,
+                  BdewCodeStatus: contactForRole.BdewCodeStatus,
+                  BdewCodeStatusBegin: contactForRole.BdewCodeStatusBegin,
+                  CompanyUID: contactForRole.CompanyUID,
+                  CompanyName: contactForRole.CompanyName,
+                  EditedOn: contactForRole.EditedOn,
+                  
+                  // EIC-Informationen
                   EIC_Typ: contactForRole.EIC_Typ,
                   EIC_Code: contactForRole.EIC_Code,
                   EIC_Display_Name: contactForRole.EIC_Display_Name,
@@ -106,6 +117,7 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
                   Website: contactForRole.Website,
                   UstId: contactForRole.UstId,
                   EIC_Function: contactForRole.EIC_Function,
+                  
                   // Deutsche Bezeichnungen
                   Unternehmen: contactForRole.Unternehmen,
                   Strasse: contactForRole.Strasse,
@@ -115,7 +127,7 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
                   International: contactForRole.International
                 };
                 
-                handleInputChange('selectedContact', contactWithEIC);
+                handleInputChange('selectedContact', contactWithDetails);
               }
             }
           } else {
