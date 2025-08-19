@@ -23,7 +23,9 @@ import {
   ChatContext, 
   MessageAnalyzerContext,
   ClarificationContext,
-  BilateralClarification 
+  BilateralClarification,
+  ClarificationPriority,
+  ClarificationCaseType
 } from '../../types/bilateral';
 
 interface CreateFromContextButtonProps {
@@ -37,6 +39,21 @@ interface CreateFromContextButtonProps {
   onSuccess?: (clarification: BilateralClarification) => void;
   disabled?: boolean;
 }
+
+// Helper functions to map priority and caseType values
+const mapPriorityToCreateModal = (priority?: ClarificationPriority): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  if (!priority) return 'MEDIUM';
+  
+  // Map CRITICAL to HIGH, all other values pass through (they're already compatible)
+  return priority === 'CRITICAL' ? 'HIGH' : (priority as 'HIGH' | 'MEDIUM' | 'LOW');
+};
+
+const mapCaseTypeToCreateModal = (caseType?: ClarificationCaseType): 'GENERAL' | 'TECHNICAL' | 'B2B' | 'B2C' => {
+  if (!caseType) return 'GENERAL';
+  
+  // Map BILLING to GENERAL, all other values pass through
+  return caseType === 'BILLING' ? 'GENERAL' : (caseType as 'GENERAL' | 'TECHNICAL' | 'B2B' | 'B2C');
+};
 
 export const CreateFromContextButton: React.FC<CreateFromContextButtonProps> = ({
   variant = 'button',
@@ -241,9 +258,9 @@ export const CreateFromContextButton: React.FC<CreateFromContextButtonProps> = (
                 initialData={{
                   title: previewContext.suggestedTitle || '',
                   description: previewContext.suggestedDescription || '',
-                  priority: previewContext.suggestedPriority || 'MEDIUM',
+                  priority: mapPriorityToCreateModal(previewContext.suggestedPriority),
                   marketPartnerCode: previewContext.suggestedMarketPartner?.code || '',
-                  caseType: previewContext.suggestedCaseType || 'GENERAL'
+                  caseType: mapCaseTypeToCreateModal(previewContext.suggestedCaseType)
                 }}
               />
             </>
