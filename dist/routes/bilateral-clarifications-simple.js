@@ -64,6 +64,16 @@ const initializeTable = async () => {
           BEFORE UPDATE ON bilateral_clarifications
           FOR EACH ROW
           EXECUTE FUNCTION update_bilateral_clarifications_updated_at();
+          
+      -- Create references table for storing links to external data sources
+      CREATE TABLE IF NOT EXISTS clarification_references (
+          id SERIAL PRIMARY KEY,
+          clarification_id INTEGER NOT NULL REFERENCES bilateral_clarifications(id) ON DELETE CASCADE,
+          reference_type VARCHAR(50) NOT NULL, -- 'CHAT', 'MESSAGE_ANALYZER', 'EMAIL', etc.
+          reference_id VARCHAR(255) NOT NULL,  -- External identifier (chatId, messageId, etc.)
+          reference_data JSONB,                -- Additional context data
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
         await database_1.default.query(createTableQuery);
         console.log('✅ bilateral_clarifications table initialized');
@@ -259,8 +269,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 // Context Transfer Endpoints
-router.post('/from-chat-context', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g;
+router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     try {
         const { context, clarification } = req.body;
         console.log('Creating clarification from chat context:', {
@@ -275,26 +285,76 @@ router.post('/from-chat-context', async (req, res) => {
                 priority: context.suggestedPriority
             }
         });
-        // For now, return a mock response
-        const mockClarification = {
-            id: Date.now(),
-            title: context.suggestedTitle || clarification.title || 'Chat-basierte Klärung',
-            description: context.suggestedDescription || clarification.description || '',
-            marketPartnerCode: ((_e = context.suggestedMarketPartner) === null || _e === void 0 ? void 0 : _e.code) || clarification.marketPartnerCode || '',
-            marketPartnerName: ((_f = context.suggestedMarketPartner) === null || _f === void 0 ? void 0 : _f.name) || clarification.marketPartnerName || '',
-            caseType: context.suggestedCaseType || clarification.caseType || 'GENERAL',
+        // Create actual clarification in the database (no longer a mock)
+        const now = new Date();
+        const title = context.suggestedTitle || clarification.title || 'Chat-basierte Klärung';
+        const description = context.suggestedDescription || clarification.description || '';
+        const marketPartnerCode = ((_e = context.suggestedMarketPartner) === null || _e === void 0 ? void 0 : _e.code) || clarification.marketPartnerCode || '';
+        const marketPartnerName = ((_f = context.suggestedMarketPartner) === null || _f === void 0 ? void 0 : _f.name) || clarification.marketPartnerName || '';
+        const caseType = context.suggestedCaseType || clarification.caseType || 'GENERAL';
+        const priority = context.suggestedPriority || clarification.priority || 'MEDIUM';
+        const userId = ((_g = req.user) === null || _g === void 0 ? void 0 : _g.id) || 'system';
+        const assignedTo = clarification.assignedTo || userId; // Assign to creating user by default
+        // Insert into database
+        const insertResult = await database_1.default.query(`INSERT INTO bilateral_clarifications (
+        title, description, market_partner_code, market_partner_name, case_type, status,
+        priority, created_by, created_at, updated_at, tags, shared_with_team, source_system,
+        version, archived, assigned_to
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [
+            title,
+            description,
+            marketPartnerCode,
+            marketPartnerName,
+            caseType,
+            'OPEN', // Start as OPEN 
+            priority,
+            userId,
+            now,
+            now,
+            JSON.stringify(clarification.tags || []),
+            clarification.sharedWithTeam || false,
+            'CHAT', // Mark source as CHAT
+            1,
+            false,
+            assignedTo
+        ]);
+        const clarificationId = insertResult.rows[0].id;
+        // Create reference to chat context
+        if ((_h = context.chatContext) === null || _h === void 0 ? void 0 : _h.chatId) {
+            await database_1.default.query(`INSERT INTO clarification_references (
+          clarification_id, reference_type, reference_id, reference_data
+        ) VALUES ($1, $2, $3, $4)`, [
+                clarificationId,
+                'CHAT',
+                context.chatContext.chatId,
+                JSON.stringify({
+                    chatId: context.chatContext.chatId,
+                    messageId: context.chatContext.messageId,
+                    timestamp: now.toISOString()
+                })
+            ]);
+        }
+        const newClarification = {
+            id: clarificationId,
+            title,
+            description,
+            marketPartnerCode,
+            marketPartnerName,
+            caseType,
             status: 'OPEN',
-            priority: context.suggestedPriority || clarification.priority || 'MEDIUM',
-            createdBy: ((_g = req.user) === null || _g === void 0 ? void 0 : _g.id) || 'system',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            priority,
+            createdBy: userId,
+            assignedTo,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
             tags: clarification.tags || [],
-            sharedWithTeam: false,
+            sharedWithTeam: clarification.sharedWithTeam || false,
             sourceSystem: 'CHAT',
             version: 1,
             archived: false
         };
-        res.json(mockClarification);
+        console.log(`✅ Bilateral clarification created from chat: ${clarificationId} by user ${userId}`);
+        res.json(newClarification);
     }
     catch (error) {
         console.error('Error creating clarification from chat context:', error);
@@ -304,8 +364,8 @@ router.post('/from-chat-context', async (req, res) => {
         });
     }
 });
-router.post('/from-analyzer-context', async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     try {
         const { context, clarification } = req.body;
         console.log('Creating clarification from analyzer context:', {
@@ -321,31 +381,83 @@ router.post('/from-analyzer-context', async (req, res) => {
                 edifactType: context.edifactMessageType
             }
         });
-        // For now, return a mock response
-        const mockClarification = {
-            id: Date.now(),
-            title: context.suggestedTitle || clarification.title || 'Analyzer-basierte Klärung',
-            description: context.suggestedDescription || clarification.description || '',
-            marketPartnerCode: ((_h = context.suggestedMarketPartner) === null || _h === void 0 ? void 0 : _h.code) || clarification.marketPartnerCode || '',
-            marketPartnerName: ((_j = context.suggestedMarketPartner) === null || _j === void 0 ? void 0 : _j.name) || clarification.marketPartnerName || '',
-            caseType: context.suggestedCaseType || clarification.caseType || 'TECHNICAL',
+        // Create actual clarification in the database (no longer a mock)
+        const now = new Date();
+        const title = context.suggestedTitle || clarification.title || 'Analyzer-basierte Klärung';
+        const description = context.suggestedDescription || clarification.description || '';
+        const marketPartnerCode = ((_h = context.suggestedMarketPartner) === null || _h === void 0 ? void 0 : _h.code) || clarification.marketPartnerCode || '';
+        const marketPartnerName = ((_j = context.suggestedMarketPartner) === null || _j === void 0 ? void 0 : _j.name) || clarification.marketPartnerName || '';
+        const caseType = context.suggestedCaseType || clarification.caseType || 'TECHNICAL';
+        const priority = context.suggestedPriority || clarification.priority || 'MEDIUM';
+        const userId = ((_k = req.user) === null || _k === void 0 ? void 0 : _k.id) || 'system';
+        const assignedTo = clarification.assignedTo || userId; // Assign to creating user by default
+        // Include special tags for message analyzer
+        const tags = [
+            ...(clarification.tags || []),
+            'nachrichtenanalyse',
+            ...(context.edifactMessageType ? [context.edifactMessageType.toLowerCase()] : []),
+            ...(context.problemType ? [context.problemType] : [])
+        ];
+        // Insert into database
+        const insertResult = await database_1.default.query(`INSERT INTO bilateral_clarifications (
+        title, description, market_partner_code, market_partner_name, case_type, status,
+        priority, created_by, created_at, updated_at, tags, shared_with_team, source_system,
+        version, archived, assigned_to
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [
+            title,
+            description,
+            marketPartnerCode,
+            marketPartnerName,
+            caseType,
+            'OPEN', // Start as OPEN 
+            priority,
+            userId,
+            now,
+            now,
+            JSON.stringify(tags),
+            clarification.sharedWithTeam || false,
+            'MESSAGE_ANALYZER', // Mark source as MESSAGE_ANALYZER
+            1,
+            false,
+            assignedTo
+        ]);
+        const clarificationId = insertResult.rows[0].id;
+        // Create reference to message analyzer data
+        if ((_l = context.messageAnalyzerContext) === null || _l === void 0 ? void 0 : _l.originalMessage) {
+            await database_1.default.query(`INSERT INTO clarification_references (
+          clarification_id, reference_type, reference_id, reference_data
+        ) VALUES ($1, $2, $3, $4)`, [
+                clarificationId,
+                'MESSAGE_ANALYZER',
+                `message_${Date.now()}`, // Generate a unique ID
+                JSON.stringify({
+                    originalMessage: context.messageAnalyzerContext.originalMessage.substring(0, 1000), // Truncate long messages
+                    analysisResult: context.messageAnalyzerContext.analysisResult,
+                    timestamp: now.toISOString()
+                })
+            ]);
+        }
+        const newClarification = {
+            id: clarificationId,
+            title,
+            description,
+            marketPartnerCode,
+            marketPartnerName,
+            caseType,
             status: 'OPEN',
-            priority: context.suggestedPriority || clarification.priority || 'MEDIUM',
-            createdBy: ((_k = req.user) === null || _k === void 0 ? void 0 : _k.id) || 'system',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            tags: [
-                ...(clarification.tags || []),
-                'nachrichtenanalyse',
-                ...(context.edifactMessageType ? [context.edifactMessageType.toLowerCase()] : []),
-                ...(context.problemType ? [context.problemType] : [])
-            ],
-            sharedWithTeam: false,
+            priority,
+            createdBy: userId,
+            assignedTo,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+            tags,
+            sharedWithTeam: clarification.sharedWithTeam || false,
             sourceSystem: 'MESSAGE_ANALYZER',
             version: 1,
             archived: false
         };
-        res.json(mockClarification);
+        console.log(`✅ Bilateral clarification created from analyzer: ${clarificationId} by user ${userId}`);
+        res.json(newClarification);
     }
     catch (error) {
         console.error('Error creating clarification from analyzer context:', error);
