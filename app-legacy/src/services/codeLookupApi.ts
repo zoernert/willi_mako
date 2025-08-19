@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { MarketRole, MarketPartnerContact } from '../types/bilateral';
 
 // New contact entry structure from backend
 export interface ContactEntry {
@@ -171,21 +172,14 @@ class CodeLookupApi {
   async findByCode(code: string): Promise<{
     code: string;
     name: string;
-    roles: string[];
+    roles: MarketRole[];
     address: {
       street?: string;
       postCode?: string;
       city?: string;
       country?: string;
     };
-    contacts: Array<{
-      role: string;
-      roleName: string;
-      contactName?: string;
-      contactEmail?: string;
-      contactPhone?: string;
-      isDefault: boolean;
-    }>;
+    contacts: MarketPartnerContact[];
   } | null> {
     try {
       const response = await this.getCodeDetails(code);
@@ -197,12 +191,12 @@ class CodeLookupApi {
       const result = response.result;
       
       // Kontakte vorbereiten
-      const contacts: any[] = [];
+      const contacts: MarketPartnerContact[] = [];
       
       // Legacy-Format unterstützen
       if (result.contact?.email || result.contact?.name) {
         contacts.push({
-          role: 'OTHER',
+          role: 'OTHER' as MarketRole,
           roleName: 'Allgemein',
           contactName: result.contact?.name,
           contactEmail: result.contact?.email,
@@ -216,8 +210,8 @@ class CodeLookupApi {
         result.contacts.forEach((contact: any) => {
           if (contact.CodeContactEmail || contact.CodeContact) {
             // Versuche Rolle aus BdewCodeFunction zu extrahieren
-            let role: string = 'OTHER';
-            const roleMapping: Record<string, string> = {
+            let role: MarketRole = 'OTHER';
+            const roleMapping: Record<string, MarketRole> = {
               'LF': 'LF',
               'VNB': 'VNB', 
               'MSB': 'MSB',
@@ -229,7 +223,7 @@ class CodeLookupApi {
             
             if (contact.BdewCodeFunction) {
               const func = contact.BdewCodeFunction.toUpperCase();
-              role = roleMapping[func] || 'OTHER';
+              role = (roleMapping[func] || 'OTHER') as MarketRole;
             }
             
             contacts.push({
@@ -250,7 +244,7 @@ class CodeLookupApi {
       // Mindestens einen Standard-Kontakt sicherstellen
       if (contacts.length === 0) {
         contacts.push({
-          role: 'OTHER',
+          role: 'OTHER' as MarketRole,
           roleName: 'Allgemein',
           isDefault: true
         });
@@ -260,7 +254,7 @@ class CodeLookupApi {
       return {
         code: result.code || result.bdewCodes?.[0] || code,
         name: result.companyName || '',
-        roles: contacts.map((c: any) => c.role).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i),
+        roles: contacts.map(c => c.role),
         address: {
           street: result.street,
           postCode: result.postCode,

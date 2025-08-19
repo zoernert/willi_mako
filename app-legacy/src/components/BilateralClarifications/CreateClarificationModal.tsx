@@ -94,7 +94,7 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
               
               // Passenden Kontakt für die Rolle finden, falls verfügbar
               if (marketPartner.contacts && marketPartner.contacts.length > 0) {
-                const contactForRole = marketPartner.contacts.find((c: any) => c.role === role) || marketPartner.contacts[0];
+                const contactForRole = marketPartner.contacts.find((c) => c.role === role) || marketPartner.contacts[0];
                 handleInputChange('selectedContact', contactForRole);
               }
             }
