@@ -18,6 +18,14 @@ export interface ContactEntry {
   CodeContactPhone?: string;
   CodeContactEmail?: string;
   EditedOn?: string;
+  // Zusätzliche EIC-Informationen
+  EIC_Typ?: string;
+  EIC_Code?: string;
+  EIC_Display_Name?: string;
+  EIC_Long_Name?: string;
+  Website?: string;
+  UstId?: string;
+  EIC_Function?: string;
 }
 
 export interface SoftwareSystem {
@@ -235,7 +243,15 @@ class CodeLookupApi {
               contactName: contact.CodeContact,
               contactEmail: contact.CodeContactEmail,
               contactPhone: contact.CodeContactPhone,
-              isDefault: contacts.length === 0
+              isDefault: contacts.length === 0,
+              // Zusätzliche EIC-Informationen, wenn vorhanden
+              EIC_Typ: contact.EIC_Typ,
+              EIC_Code: contact.EIC_Code,
+              EIC_Display_Name: contact.EIC_Display_Name,
+              EIC_Long_Name: contact.EIC_Long_Name,
+              Website: contact.Website,
+              UstId: contact.UstId,
+              EIC_Function: contact.EIC_Function
             });
           }
         });

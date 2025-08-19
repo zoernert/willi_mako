@@ -24,7 +24,9 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   Person as PersonIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Web as WebIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { MarketPartnerInfo, MarketPartnerContact, MarketRole } from '../../types/bilateral';
 import codeLookupApi, { UnifiedCodeSearchResult } from '../../services/codeLookupApi';
@@ -119,7 +121,15 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
             contactName: contact.CodeContact,
             contactEmail: contact.CodeContactEmail,
             contactPhone: contact.CodeContactPhone,
-            isDefault: contacts.length === 0
+            isDefault: contacts.length === 0,
+            // Zusätzliche EIC-Informationen, wenn vorhanden
+            EIC_Typ: contact.EIC_Typ,
+            EIC_Code: contact.EIC_Code,
+            EIC_Display_Name: contact.EIC_Display_Name,
+            EIC_Long_Name: contact.EIC_Long_Name,
+            Website: contact.Website,
+            UstId: contact.UstId,
+            EIC_Function: contact.EIC_Function
           });
         }
       });
@@ -324,6 +334,50 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
                     <Box display="flex" alignItems="center" gap={1}>
                       <PhoneIcon fontSize="small" color="action" />
                       <Typography variant="body2">{selectedContact.contactPhone}</Typography>
+                    </Box>
+                  )}
+                  
+                  {/* Zusätzliche EIC-Informationen */}
+                  {selectedContact.EIC_Code && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC Code: {selectedContact.EIC_Code}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Display_Name && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC Name: {selectedContact.EIC_Display_Name}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Long_Name && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC Vollname: {selectedContact.EIC_Long_Name}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Typ && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC Typ: {selectedContact.EIC_Typ}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.EIC_Function && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">EIC Funktion: {selectedContact.EIC_Function}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.Website && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <WebIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Website: {selectedContact.Website}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.UstId && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AssignmentIcon fontSize="small" color="action" />
+                      <Typography variant="body2">USt-ID: {selectedContact.UstId}</Typography>
                     </Box>
                   )}
                 </Box>

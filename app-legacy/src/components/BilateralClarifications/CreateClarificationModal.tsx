@@ -95,7 +95,20 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
               // Passenden Kontakt für die Rolle finden, falls verfügbar
               if (marketPartner.contacts && marketPartner.contacts.length > 0) {
                 const contactForRole = marketPartner.contacts.find((c) => c.role === role) || marketPartner.contacts[0];
-                handleInputChange('selectedContact', contactForRole);
+                
+                // Sicherstellen, dass alle EIC-Felder berücksichtigt werden
+                const contactWithEIC = {
+                  ...contactForRole,
+                  EIC_Typ: contactForRole.EIC_Typ,
+                  EIC_Code: contactForRole.EIC_Code,
+                  EIC_Display_Name: contactForRole.EIC_Display_Name,
+                  EIC_Long_Name: contactForRole.EIC_Long_Name,
+                  Website: contactForRole.Website,
+                  UstId: contactForRole.UstId,
+                  EIC_Function: contactForRole.EIC_Function
+                };
+                
+                handleInputChange('selectedContact', contactWithEIC);
               }
             }
           } else {

@@ -295,12 +295,30 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
         const priority = context.suggestedPriority || clarification.priority || 'MEDIUM';
         const userId = ((_g = req.user) === null || _g === void 0 ? void 0 : _g.id) || 'system';
         const assignedTo = clarification.assignedTo || userId; // Assign to creating user by default
+        // Sicherstellen, dass tags ein valides Array ist
+        let tagsArray = [];
+        try {
+            // Wenn tags bereits ein Array ist, verwenden wir es
+            if (Array.isArray(clarification.tags)) {
+                tagsArray = clarification.tags;
+            }
+            // Wenn tags ein String ist, versuchen wir es zu parsen
+            else if (typeof clarification.tags === 'string') {
+                tagsArray = JSON.parse(clarification.tags);
+            }
+        }
+        catch (err) {
+            console.warn('Failed to parse tags, using empty array:', err);
+        }
+        // Doppelter JSON.stringify-Schutz: Stellen Sie sicher, dass wir ein gültiges JSON-Array haben
+        const tagsJson = JSON.stringify(tagsArray);
+        console.log('Tags for insertion:', tagsJson);
         // Insert into database
         const insertResult = await database_1.default.query(`INSERT INTO bilateral_clarifications (
         title, description, market_partner_code, market_partner_name, case_type, status,
         priority, created_by, created_at, updated_at, tags, shared_with_team, source_system,
         version, archived, assigned_to
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16) RETURNING id`, [
             title,
             description,
             marketPartnerCode,
@@ -311,7 +329,7 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
             userId,
             now,
             now,
-            JSON.stringify(clarification.tags || []),
+            tagsJson, // Stellen sicher, dass es ein gültiges JSON-Array ist
             clarification.sharedWithTeam || false,
             'CHAT', // Mark source as CHAT
             1,
@@ -333,6 +351,52 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
                     timestamp: now.toISOString()
                 })
             ]);
+        }
+        // Bei bilateralen Klärungen müssen wir zusätzliche Objekte verarbeiten
+        try {
+            // Marktpartner und DataExchangeReference in die Datenbank speichern
+            if (clarification.marketPartner) {
+                const marketPartnerData = JSON.stringify(clarification.marketPartner);
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'MARKET_PARTNER',
+                    marketPartnerData
+                ]);
+            }
+            if (clarification.dataExchangeReference) {
+                const darData = JSON.stringify(clarification.dataExchangeReference);
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'DATA_EXCHANGE_REFERENCE',
+                    darData
+                ]);
+            }
+            if (clarification.selectedRole) {
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'SELECTED_ROLE',
+                    JSON.stringify({ role: clarification.selectedRole })
+                ]);
+            }
+            if (clarification.selectedContact) {
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'SELECTED_CONTACT',
+                    JSON.stringify(clarification.selectedContact)
+                ]);
+            }
+        }
+        catch (additionalDataError) {
+            console.error('Error storing additional clarification data:', additionalDataError);
+            // Wir lassen den Hauptprozess weiterlaufen, auch wenn zusätzliche Daten nicht gespeichert werden konnten
         }
         const newClarification = {
             id: clarificationId,
@@ -392,18 +456,21 @@ router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res)
         const userId = ((_k = req.user) === null || _k === void 0 ? void 0 : _k.id) || 'system';
         const assignedTo = clarification.assignedTo || userId; // Assign to creating user by default
         // Include special tags for message analyzer
-        const tags = [
-            ...(clarification.tags || []),
+        const tagsArray = [
+            ...(Array.isArray(clarification.tags) ? clarification.tags : []),
             'nachrichtenanalyse',
             ...(context.edifactMessageType ? [context.edifactMessageType.toLowerCase()] : []),
             ...(context.problemType ? [context.problemType] : [])
         ];
+        // Stellen Sie sicher, dass wir ein gültiges JSON-Array haben
+        const tagsJson = JSON.stringify(tagsArray);
+        console.log('Analyzer tags for insertion:', tagsJson);
         // Insert into database
         const insertResult = await database_1.default.query(`INSERT INTO bilateral_clarifications (
         title, description, market_partner_code, market_partner_name, case_type, status,
         priority, created_by, created_at, updated_at, tags, shared_with_team, source_system,
         version, archived, assigned_to
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16) RETURNING id`, [
             title,
             description,
             marketPartnerCode,
@@ -414,7 +481,7 @@ router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res)
             userId,
             now,
             now,
-            JSON.stringify(tags),
+            tagsJson, // Stellen sicher, dass es ein gültiges JSON-Array ist
             clarification.sharedWithTeam || false,
             'MESSAGE_ANALYZER', // Mark source as MESSAGE_ANALYZER
             1,
@@ -422,7 +489,7 @@ router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res)
             assignedTo
         ]);
         const clarificationId = insertResult.rows[0].id;
-        // Create reference to message analyzer data
+        // Create reference to analyzer context
         if ((_l = context.messageAnalyzerContext) === null || _l === void 0 ? void 0 : _l.originalMessage) {
             await database_1.default.query(`INSERT INTO clarification_references (
           clarification_id, reference_type, reference_id, reference_data
@@ -437,6 +504,52 @@ router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res)
                 })
             ]);
         }
+        // Bei bilateralen Klärungen müssen wir zusätzliche Objekte verarbeiten
+        try {
+            // Marktpartner und DataExchangeReference in die Datenbank speichern
+            if (clarification.marketPartner) {
+                const marketPartnerData = JSON.stringify(clarification.marketPartner);
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'MARKET_PARTNER',
+                    marketPartnerData
+                ]);
+            }
+            if (clarification.dataExchangeReference) {
+                const darData = JSON.stringify(clarification.dataExchangeReference);
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'DATA_EXCHANGE_REFERENCE',
+                    darData
+                ]);
+            }
+            if (clarification.selectedRole) {
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'SELECTED_ROLE',
+                    JSON.stringify({ role: clarification.selectedRole })
+                ]);
+            }
+            if (clarification.selectedContact) {
+                await database_1.default.query(`INSERT INTO clarification_additional_data (
+            clarification_id, data_type, data
+          ) VALUES ($1, $2, $3)`, [
+                    clarificationId,
+                    'SELECTED_CONTACT',
+                    JSON.stringify(clarification.selectedContact)
+                ]);
+            }
+        }
+        catch (additionalDataError) {
+            console.error('Error storing additional clarification data:', additionalDataError);
+            // Wir lassen den Hauptprozess weiterlaufen, auch wenn zusätzliche Daten nicht gespeichert werden konnten
+        }
         const newClarification = {
             id: clarificationId,
             title,
@@ -450,7 +563,7 @@ router.post('/from-analyzer-context', auth_1.authenticateToken, async (req, res)
             assignedTo,
             createdAt: now.toISOString(),
             updatedAt: now.toISOString(),
-            tags,
+            tags: tagsArray,
             sharedWithTeam: clarification.sharedWithTeam || false,
             sourceSystem: 'MESSAGE_ANALYZER',
             version: 1,

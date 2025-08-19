@@ -47,6 +47,15 @@ export interface MarketPartnerContact {
   contactEmail?: string;
   contactPhone?: string;
   isDefault: boolean; // Haupt-Ansprechpartner für diese Rolle
+  
+  // Zusätzliche EIC-Informationen
+  EIC_Typ?: string;
+  EIC_Code?: string;
+  EIC_Display_Name?: string;
+  EIC_Long_Name?: string;
+  Website?: string;
+  UstId?: string;
+  EIC_Function?: string;
 }
 
 export interface MarketPartnerInfo {
