@@ -78,8 +78,8 @@ else
         echo "✅ GEMINI_VISION_MODEL in .env gefunden"
     else
         echo "⚠️  GEMINI_VISION_MODEL fehlt in .env"
-        echo "Füge hinzu: GEMINI_VISION_MODEL=gemini-1.5-flash"
-        echo "GEMINI_VISION_MODEL=gemini-1.5-flash" >> .env
+        echo "Füge hinzu: GEMINI_VISION_MODEL=gemini-2.5-flash"
+        echo "GEMINI_VISION_MODEL=gemini-2.5-flash" >> .env
         echo "✅ GEMINI_VISION_MODEL zu .env hinzugefügt"
     fi
 fi

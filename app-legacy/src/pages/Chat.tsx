@@ -30,7 +30,7 @@ import ContextIndicator from '../components/Workspace/ContextIndicator';
 import TextSelectionMenu from '../components/Workspace/TextSelectionMenu';
 import PipelineInfoDialog from '../components/Chat/PipelineInfoDialog';
 import ContextControlPanel from '../components/Workspace/ContextControlPanel';
-import CreateFromContextButton from '../components/Workspace/CreateFromContextButton';
+import CreateFromContextButton from '../components/BilateralClarifications/CreateFromContextButton';
 import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
 import ScreenshotUpload from '../components/Chat/ScreenshotUpload';
 import { useTimelineCapture } from '../hooks/useTimelineCapture'; // NEU: Timeline-Integration
@@ -869,6 +869,10 @@ const Chat: React.FC = () => {
                                   role: message.role,
                                   metadata: message.metadata
                                 }
+                              }}
+                              onSuccess={() => {
+                                // Optional: Add logic to refresh data or show a confirmation
+                                showSnackbar('Klärfall erfolgreich erstellt und zur Bearbeitung weitergeleitet.', 'success');
                               }}
                             />
                           </Box>

@@ -1,114 +1,101 @@
+"use strict";
 /**
  * Screenshot Analysis Service
  * Analyzes uploaded screenshots to detect UI elements, errors, and application context
  */
-
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
-import path from 'path';
-import fs from 'fs/promises';
-
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const generative_ai_1 = require("@google/generative-ai");
+const sharp_1 = __importDefault(require("sharp"));
+const path_1 = __importDefault(require("path"));
+const promises_1 = __importDefault(require("fs/promises"));
 class ScreenshotAnalysisService {
-  constructor() {
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new Error('Google API Key is required for screenshot analysis');
-    }
-    
-    const visionModel = process.env.GEMINI_VISION_MODEL || 'gemini-1.5-flash';
-    console.log(`Initializing Screenshot Analysis with model: ${visionModel}`);
-    
-    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ 
-      model: visionModel,
-      generationConfig: {
-        temperature: 0.1, // Low temperature for consistent analysis
-        maxOutputTokens: 2048,
-      }
-    });
-  }
-
-  /**
-   * Main analysis method - processes a screenshot and extracts relevant information
-   */
-  async analyzeScreenshot(imagePath) {
-    try {
-      console.log(`Analyzing screenshot: ${imagePath}`);
-      
-      // Preprocess the image
-      const processedImagePath = await this.preprocessImage(imagePath);
-      
-      // Read the processed image
-      const imageData = await fs.readFile(processedImagePath);
-      
-      // Create analysis prompt
-      const prompt = this.createAnalysisPrompt();
-      
-      // Generate analysis using Gemini Vision
-      const result = await this.model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: imageData.toString('base64'),
-            mimeType: 'image/png'
-          }
+    constructor() {
+        if (!process.env.GOOGLE_API_KEY) {
+            throw new Error('Google API Key is required for screenshot analysis');
         }
-      ]);
-      
-      const response = await result.response;
-      const text = response.text();
-      
-      console.log('Gemini Vision Analysis Response:', text.substring(0, 500) + '...');
-      
-      // Parse the structured response
-      const analysis = this.parseAnalysisResponse(text);
-      
-      // Clean up temporary processed image if different from original
-      if (processedImagePath !== imagePath) {
+        const visionModel = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
+        console.log(`Initializing Screenshot Analysis with model: ${visionModel}`);
+        this.genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+        this.model = this.genAI.getGenerativeModel({
+            model: visionModel,
+            generationConfig: {
+                temperature: 0.1, // Low temperature for consistent analysis
+                maxOutputTokens: 2048,
+            }
+        });
+    }
+    /**
+     * Main analysis method - processes a screenshot and extracts relevant information
+     */
+    async analyzeScreenshot(imagePath) {
         try {
-          await fs.unlink(processedImagePath);
-        } catch (error) {
-          console.warn('Could not delete temporary processed image:', error);
+            console.log(`Analyzing screenshot: ${imagePath}`);
+            // Preprocess the image
+            const processedImagePath = await this.preprocessImage(imagePath);
+            // Read the processed image
+            const imageData = await promises_1.default.readFile(processedImagePath);
+            // Create analysis prompt
+            const prompt = this.createAnalysisPrompt();
+            // Generate analysis using Gemini Vision
+            const result = await this.model.generateContent([
+                prompt,
+                {
+                    inlineData: {
+                        data: imageData.toString('base64'),
+                        mimeType: 'image/png'
+                    }
+                }
+            ]);
+            const response = await result.response;
+            const text = response.text();
+            console.log('Gemini Vision Analysis Response:', text.substring(0, 500) + '...');
+            // Parse the structured response
+            const analysis = this.parseAnalysisResponse(text);
+            // Clean up temporary processed image if different from original
+            if (processedImagePath !== imagePath) {
+                try {
+                    await promises_1.default.unlink(processedImagePath);
+                }
+                catch (error) {
+                    console.warn('Could not delete temporary processed image:', error);
+                }
+            }
+            return analysis;
         }
-      }
-      
-      return analysis;
-    } catch (error) {
-      console.error('Screenshot analysis failed:', error);
-      throw new Error(`Screenshot analysis failed: ${error.message}`);
+        catch (error) {
+            console.error('Screenshot analysis failed:', error);
+            throw new Error(`Screenshot analysis failed: ${error.message}`);
+        }
     }
-  }
-
-  /**
-   * Preprocess image for optimal analysis
-   */
-  async preprocessImage(imagePath) {
-    const ext = path.extname(imagePath).toLowerCase();
-    
-    // If already PNG, use as-is for now (could add enhancement later)
-    if (ext === '.png') {
-      return imagePath;
+    /**
+     * Preprocess image for optimal analysis
+     */
+    async preprocessImage(imagePath) {
+        const ext = path_1.default.extname(imagePath).toLowerCase();
+        // If already PNG, use as-is for now (could add enhancement later)
+        if (ext === '.png') {
+            return imagePath;
+        }
+        // Convert to PNG and enhance
+        const outputPath = imagePath.replace(/\.[^.]+$/, '_processed.png');
+        await (0, sharp_1.default)(imagePath)
+            .png({ quality: 90 })
+            .resize(1920, 1080, {
+            fit: 'inside',
+            withoutEnlargement: true
+        })
+            .sharpen()
+            .toFile(outputPath);
+        return outputPath;
     }
-    
-    // Convert to PNG and enhance
-    const outputPath = imagePath.replace(/\.[^.]+$/, '_processed.png');
-    
-    await sharp(imagePath)
-      .png({ quality: 90 })
-      .resize(1920, 1080, { 
-        fit: 'inside',
-        withoutEnlargement: true 
-      })
-      .sharpen()
-      .toFile(outputPath);
-    
-    return outputPath;
-  }
-
-  /**
-   * Create detailed analysis prompt for Gemini Vision
-   */
-  createAnalysisPrompt() {
-    return `Analyze this screenshot with focus on German energy industry software (especially Schleupen CS 3.0).
+    /**
+     * Create detailed analysis prompt for Gemini Vision
+     */
+    createAnalysisPrompt() {
+        return `Analyze this screenshot with focus on German energy industry software (especially Schleupen CS 3.0).
 
 Please provide a JSON response with the following structure:
 {
@@ -143,142 +130,125 @@ Focus on:
 7. Any technical terms related to energy industry (Netzbetreiber, EIC-Code, BDEW, etc.)
 
 Extract ALL visible text accurately, especially error messages and technical terms.`;
-  }
-
-  /**
-   * Parse the JSON response from Gemini Vision
-   */
-  parseAnalysisResponse(responseText) {
-    try {
-      // Try to extract JSON from the response
-      let jsonText = responseText;
-      
-      // Look for JSON blocks in markdown
-      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[1];
-      } else {
-        // Look for direct JSON object
-        const objectMatch = responseText.match(/\{[\s\S]*\}/);
-        if (objectMatch) {
-          jsonText = objectMatch[0];
-        }
-      }
-      
-      const parsed = JSON.parse(jsonText);
-      
-      // Validate and provide defaults
-      return {
-        detectedElements: Array.isArray(parsed.detectedElements) ? parsed.detectedElements : [],
-        errorMessages: Array.isArray(parsed.errorMessages) ? parsed.errorMessages : [],
-        uiComponents: Array.isArray(parsed.uiComponents) ? parsed.uiComponents : [],
-        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
-        isSchleupnCS30: Boolean(parsed.isSchleupnCS30),
-        extractedText: typeof parsed.extractedText === 'string' ? parsed.extractedText : '',
-        analysis: typeof parsed.analysis === 'string' ? parsed.analysis : responseText
-      };
-    } catch (error) {
-      console.error('Failed to parse Gemini response as JSON:', error);
-      console.log('Raw response:', responseText);
-      
-      // Fallback: create analysis from raw text
-      return {
-        detectedElements: [],
-        errorMessages: this.extractErrorMessages(responseText),
-        uiComponents: [],
-        confidence: 0.3,
-        isSchleupnCS30: responseText.toLowerCase().includes('schleupen') || 
-                       responseText.toLowerCase().includes('cs 3.0'),
-        extractedText: responseText,
-        analysis: responseText
-      };
     }
-  }
-
-  /**
-   * Extract error messages from raw text (fallback method)
-   */
-  extractErrorMessages(text) {
-    const errorPatterns = [
-      /fehler[:\-\s]*(.*?)(?:\n|$)/gi,
-      /error[:\-\s]*(.*?)(?:\n|$)/gi,
-      /warnung[:\-\s]*(.*?)(?:\n|$)/gi,
-      /warning[:\-\s]*(.*?)(?:\n|$)/gi
-    ];
-    
-    const errors = [];
-    errorPatterns.forEach(pattern => {
-      const matches = text.matchAll(pattern);
-      for (const match of matches) {
-        if (match[1] && match[1].trim()) {
-          errors.push(match[1].trim());
+    /**
+     * Parse the JSON response from Gemini Vision
+     */
+    parseAnalysisResponse(responseText) {
+        try {
+            // Try to extract JSON from the response
+            let jsonText = responseText;
+            // Look for JSON blocks in markdown
+            const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+                jsonText = jsonMatch[1];
+            }
+            else {
+                // Look for direct JSON object
+                const objectMatch = responseText.match(/\{[\s\S]*\}/);
+                if (objectMatch) {
+                    jsonText = objectMatch[0];
+                }
+            }
+            const parsed = JSON.parse(jsonText);
+            // Validate and provide defaults
+            return {
+                detectedElements: Array.isArray(parsed.detectedElements) ? parsed.detectedElements : [],
+                errorMessages: Array.isArray(parsed.errorMessages) ? parsed.errorMessages : [],
+                uiComponents: Array.isArray(parsed.uiComponents) ? parsed.uiComponents : [],
+                confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+                isSchleupnCS30: Boolean(parsed.isSchleupnCS30),
+                extractedText: typeof parsed.extractedText === 'string' ? parsed.extractedText : '',
+                analysis: typeof parsed.analysis === 'string' ? parsed.analysis : responseText
+            };
         }
-      }
-    });
-    
-    return errors;
-  }
-
-  /**
-   * Generate context-enhanced prompt for LLM based on screenshot analysis
-   */
-  generateContextPrompt(userMessage, analysis) {
-    let contextPrompt = `
+        catch (error) {
+            console.error('Failed to parse Gemini response as JSON:', error);
+            console.log('Raw response:', responseText);
+            // Fallback: create analysis from raw text
+            return {
+                detectedElements: [],
+                errorMessages: this.extractErrorMessages(responseText),
+                uiComponents: [],
+                confidence: 0.3,
+                isSchleupnCS30: responseText.toLowerCase().includes('schleupen') ||
+                    responseText.toLowerCase().includes('cs 3.0'),
+                extractedText: responseText,
+                analysis: responseText
+            };
+        }
+    }
+    /**
+     * Extract error messages from raw text (fallback method)
+     */
+    extractErrorMessages(text) {
+        const errorPatterns = [
+            /fehler[:\-\s]*(.*?)(?:\n|$)/gi,
+            /error[:\-\s]*(.*?)(?:\n|$)/gi,
+            /warnung[:\-\s]*(.*?)(?:\n|$)/gi,
+            /warning[:\-\s]*(.*?)(?:\n|$)/gi
+        ];
+        const errors = [];
+        errorPatterns.forEach(pattern => {
+            const matches = text.matchAll(pattern);
+            for (const match of matches) {
+                if (match[1] && match[1].trim()) {
+                    errors.push(match[1].trim());
+                }
+            }
+        });
+        return errors;
+    }
+    /**
+     * Generate context-enhanced prompt for LLM based on screenshot analysis
+     */
+    generateContextPrompt(userMessage, analysis) {
+        let contextPrompt = `
 KONTEXT INFORMATION aus Screenshot-Analyse:
 
 Analysiertes Bild: ${analysis.isSchleupnCS30 ? 'Schleupen CS 3.0 Software erkannt' : 'Unbekannte Software'}
 Vertrauen: ${Math.round(analysis.confidence * 100)}%
 
 `;
-
-    if (analysis.errorMessages.length > 0) {
-      contextPrompt += `ERKANNTE FEHLERMELDUNGEN:\n`;
-      analysis.errorMessages.forEach((error, index) => {
-        contextPrompt += `${index + 1}. ${error}\n`;
-      });
-      contextPrompt += '\n';
-    }
-
-    if (analysis.detectedElements.length > 0) {
-      contextPrompt += `ERKANNTE UI-ELEMENTE:\n`;
-      analysis.detectedElements.forEach((element, index) => {
-        contextPrompt += `${index + 1}. ${element.type}: "${element.text}" (Vertrauen: ${Math.round(element.confidence * 100)}%)\n`;
-      });
-      contextPrompt += '\n';
-    }
-
-    if (analysis.extractedText) {
-      contextPrompt += `EXTRAHIERTER TEXT:\n${analysis.extractedText}\n\n`;
-    }
-
-    if (analysis.analysis) {
-      contextPrompt += `ANALYSE:\n${analysis.analysis}\n\n`;
-    }
-
-    contextPrompt += `BENUTZER NACHRICHT: ${userMessage}
+        if (analysis.errorMessages.length > 0) {
+            contextPrompt += `ERKANNTE FEHLERMELDUNGEN:\n`;
+            analysis.errorMessages.forEach((error, index) => {
+                contextPrompt += `${index + 1}. ${error}\n`;
+            });
+            contextPrompt += '\n';
+        }
+        if (analysis.detectedElements.length > 0) {
+            contextPrompt += `ERKANNTE UI-ELEMENTE:\n`;
+            analysis.detectedElements.forEach((element, index) => {
+                contextPrompt += `${index + 1}. ${element.type}: "${element.text}" (Vertrauen: ${Math.round(element.confidence * 100)}%)\n`;
+            });
+            contextPrompt += '\n';
+        }
+        if (analysis.extractedText) {
+            contextPrompt += `EXTRAHIERTER TEXT:\n${analysis.extractedText}\n\n`;
+        }
+        if (analysis.analysis) {
+            contextPrompt += `ANALYSE:\n${analysis.analysis}\n\n`;
+        }
+        contextPrompt += `BENUTZER NACHRICHT: ${userMessage}
 
 Bitte nutze die oben stehenden Informationen aus dem Screenshot, um eine präzise und hilfreiche Antwort zu geben. Fokussiere dich besonders auf erkannte Fehlermeldungen und relevante UI-Elemente.`;
-
-    return contextPrompt;
-  }
-
-  /**
-   * Save uploaded screenshot to the appropriate directory
-   */
-  async saveScreenshot(file, chatId, messageId) {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'screenshots');
-    await fs.mkdir(uploadDir, { recursive: true });
-    
-    const timestamp = Date.now();
-    const extension = path.extname(file.originalname) || '.png';
-    const filename = `screenshot_${chatId}_${messageId}_${timestamp}${extension}`;
-    const filepath = path.join(uploadDir, filename);
-    
-    await fs.writeFile(filepath, file.buffer);
-    
-    console.log(`Screenshot saved: ${filepath}`);
-    return filepath;
-  }
+        return contextPrompt;
+    }
+    /**
+     * Save uploaded screenshot to the appropriate directory
+     */
+    async saveScreenshot(file, chatId, messageId) {
+        const uploadDir = path_1.default.join(process.cwd(), 'uploads', 'screenshots');
+        await promises_1.default.mkdir(uploadDir, { recursive: true });
+        const timestamp = Date.now();
+        const extension = path_1.default.extname(file.originalname) || '.png';
+        const filename = `screenshot_${chatId}_${messageId}_${timestamp}${extension}`;
+        const filepath = path_1.default.join(uploadDir, filename);
+        await promises_1.default.writeFile(filepath, file.buffer);
+        console.log(`Screenshot saved: ${filepath}`);
+        return filepath;
+    }
 }
-
-export default new ScreenshotAnalysisService();
+exports.default = new ScreenshotAnalysisService();
+//# sourceMappingURL=screenshotAnalysisService.js.map
