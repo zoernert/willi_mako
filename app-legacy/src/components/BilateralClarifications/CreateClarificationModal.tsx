@@ -64,20 +64,42 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
     async function initializeMarketPartner() {
       if (initialData?.marketPartnerCode && !formData.marketPartner) {
         try {
+          console.log("Suche Marktpartner mit Code:", initialData.marketPartnerCode);
           const marketPartner = await codeLookupApi.findByCode(initialData.marketPartnerCode);
+          
           if (marketPartner) {
-            handleInputChange('marketPartner', {
-              code: marketPartner.code,
-              name: marketPartner.name,
-              marketRoles: marketPartner.roles || [],
-              address: marketPartner.address,
-              contacts: marketPartner.contacts || []
-            });
+            console.log("Marktpartner gefunden:", marketPartner);
             
-            // Standard-Rolle setzen
+            // MarketPartnerInfo-Objekt erstellen
+            const partnerInfo: MarketPartnerInfo = {
+              code: marketPartner.code,
+              companyName: marketPartner.name,
+              codeType: 'bdew', // Standard-Typ setzen, falls nicht verfügbar
+              contacts: marketPartner.contacts || [],
+              // Weitere Felder aus marketPartner übernehmen, falls vorhanden
+              ...(marketPartner.address ? {
+                street: marketPartner.address.street,
+                postCode: marketPartner.address.postCode,
+                city: marketPartner.address.city,
+                country: marketPartner.address.country
+              } : {})
+            };
+            
+            handleInputChange('marketPartner', partnerInfo);
+            
+            // Standard-Rolle setzen, falls verfügbar
             if (marketPartner.roles && marketPartner.roles.length > 0) {
-              handleInputChange('selectedRole', marketPartner.roles[0]);
+              const role = marketPartner.roles[0] as MarketRole;
+              handleInputChange('selectedRole', role);
+              
+              // Passenden Kontakt für die Rolle finden, falls verfügbar
+              if (marketPartner.contacts && marketPartner.contacts.length > 0) {
+                const contactForRole = marketPartner.contacts.find((c: any) => c.role === role) || marketPartner.contacts[0];
+                handleInputChange('selectedContact', contactForRole);
+              }
             }
+          } else {
+            console.warn("Kein Marktpartner für Code gefunden:", initialData.marketPartnerCode);
           }
         } catch (err) {
           console.error("Fehler beim Laden des Marktpartners:", err);
@@ -111,30 +133,37 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
       // Validierung
       if (!formData.title.trim()) {
         setError('Titel ist erforderlich');
+        setLoading(false);
         return;
       }
 
       // Neue Validierungen für bilaterale Klärungen
       if (!formData.marketPartner || !formData.marketPartner.code) {
+        console.error("Fehlender Marktpartner:", formData.marketPartner);
         setError('Marktpartner ist erforderlich');
+        setLoading(false);
         return;
       }
 
       if (!formData.selectedRole) {
         setError('Marktrolle ist erforderlich');
+        setLoading(false);
         return;
       }
 
       if (!formData.dataExchangeReference || !formData.dataExchangeReference.isValid) {
         setError('Gültige Datenaustauschreferenz (DAR) ist erforderlich');
+        setLoading(false);
         return;
       }
 
-      // Daten für Backend vorbereiten - sicherstellen dass alle Pflichtfelder gesetzt sind
-      if (!formData.marketPartner || !formData.selectedRole || !formData.dataExchangeReference) {
-        throw new Error('Pflichtfelder sind nicht vollständig ausgefüllt');
-      }
+      console.log("Alle Validierungen bestanden, bereite Daten vor:", {
+        marketPartner: formData.marketPartner,
+        selectedRole: formData.selectedRole,
+        dataExchangeReference: formData.dataExchangeReference
+      });
 
+      // Daten für Backend vorbereiten
       const clarificationData: Partial<BilateralClarification> = {
         title: formData.title,
         description: formData.description,

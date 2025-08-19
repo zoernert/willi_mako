@@ -85,7 +85,7 @@ export interface SearchFilters {
 
 class CodeLookupApi {
   /**
-   * Sucht nach BDEW- und EIC-Codes mit optionalen Filtern
+   * Sucht nach BDEW- und EIC-Codes with optional filters
    */
   async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResponse> {
     const params = new URLSearchParams({ q: query });
@@ -163,6 +163,116 @@ class CodeLookupApi {
       found: payload.found ?? payload.data?.found ?? !!(payload.result || payload.data?.result),
       code
     };
+  }
+
+  /**
+   * Findet einen Marktpartner anhand des Codes und bereitet ihn für die UI-Komponenten vor
+   */
+  async findByCode(code: string): Promise<{
+    code: string;
+    name: string;
+    roles: string[];
+    address: {
+      street?: string;
+      postCode?: string;
+      city?: string;
+      country?: string;
+    };
+    contacts: Array<{
+      role: string;
+      roleName: string;
+      contactName?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      isDefault: boolean;
+    }>;
+  } | null> {
+    try {
+      const response = await this.getCodeDetails(code);
+      
+      if (!response.found || !response.result) {
+        return null;
+      }
+      
+      const result = response.result;
+      
+      // Kontakte vorbereiten
+      const contacts: any[] = [];
+      
+      // Legacy-Format unterstützen
+      if (result.contact?.email || result.contact?.name) {
+        contacts.push({
+          role: 'OTHER',
+          roleName: 'Allgemein',
+          contactName: result.contact?.name,
+          contactEmail: result.contact?.email,
+          contactPhone: result.contact?.phone,
+          isDefault: true
+        });
+      }
+      
+      // Neues Format mit mehreren Kontakten
+      if (result.contacts?.length) {
+        result.contacts.forEach((contact: any) => {
+          if (contact.CodeContactEmail || contact.CodeContact) {
+            // Versuche Rolle aus BdewCodeFunction zu extrahieren
+            let role: string = 'OTHER';
+            const roleMapping: Record<string, string> = {
+              'LF': 'LF',
+              'VNB': 'VNB', 
+              'MSB': 'MSB',
+              'UNB': 'UNB',
+              'LIEFERANT': 'LF',
+              'VERTEILNETZBETREIBER': 'VNB',
+              'MESSSTELLENBETREIBER': 'MSB'
+            };
+            
+            if (contact.BdewCodeFunction) {
+              const func = contact.BdewCodeFunction.toUpperCase();
+              role = roleMapping[func] || 'OTHER';
+            }
+            
+            contacts.push({
+              role,
+              roleName: role === 'LF' ? 'Lieferant' : 
+                        role === 'VNB' ? 'Verteilnetzbetreiber' : 
+                        role === 'MSB' ? 'Messstellenbetreiber' : 
+                        role === 'UNB' ? 'Übertragungsnetzbetreiber' : 'Allgemein',
+              contactName: contact.CodeContact,
+              contactEmail: contact.CodeContactEmail,
+              contactPhone: contact.CodeContactPhone,
+              isDefault: contacts.length === 0
+            });
+          }
+        });
+      }
+      
+      // Mindestens einen Standard-Kontakt sicherstellen
+      if (contacts.length === 0) {
+        contacts.push({
+          role: 'OTHER',
+          roleName: 'Allgemein',
+          isDefault: true
+        });
+      }
+      
+      // MarketPartnerInfo für UI vorbereiten
+      return {
+        code: result.code || result.bdewCodes?.[0] || code,
+        name: result.companyName || '',
+        roles: contacts.map((c: any) => c.role).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i),
+        address: {
+          street: result.street,
+          postCode: result.postCode,
+          city: result.city,
+          country: result.country
+        },
+        contacts: contacts
+      };
+    } catch (error) {
+      console.error('Fehler beim Laden des Marktpartners:', error);
+      return null;
+    }
   }
 
   async getAvailableSoftwareSystems(): Promise<{ softwareSystems: string[]; count: number }> {
