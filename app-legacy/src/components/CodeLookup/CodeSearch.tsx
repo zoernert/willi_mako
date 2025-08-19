@@ -462,6 +462,13 @@ const CodeSearch: React.FC = () => {
                           ))}
                         </TableBody>
                       </Table>
+                      
+                      {/* Wenn EIC-Informationen vorhanden sind, anzeigen */}
+                      {result.contacts.some(c => c.EIC_Code) && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          <strong>EIC-Info verfügbar</strong> (siehe Details)
+                        </Typography>
+                      )}
                     </Box>
                   )}
 
@@ -587,6 +594,32 @@ const CodeSearch: React.FC = () => {
                                   {c.BdewCodeStatusBegin && (
                                     <Typography variant="body2"><strong>Status seit:</strong> {new Date(c.BdewCodeStatusBegin).toLocaleDateString('de-DE')}</Typography>
                                   )}
+                                  
+                                  {/* EIC-Informationen */}
+                                  {c.EIC_Code && (
+                                    <Typography variant="body2"><strong>EIC-Code:</strong> {c.EIC_Code}</Typography>
+                                  )}
+                                  {c.EIC_Typ && (
+                                    <Typography variant="body2"><strong>EIC-Typ:</strong> {c.EIC_Typ}</Typography>
+                                  )}
+                                  {c.EIC_Function && (
+                                    <Typography variant="body2"><strong>EIC-Funktion:</strong> {c.EIC_Function}</Typography>
+                                  )}
+                                  {c.EIC_Display_Name && (
+                                    <Typography variant="body2"><strong>EIC-Name:</strong> {c.EIC_Display_Name}</Typography>
+                                  )}
+                                  {c.EIC_Long_Name && (
+                                    <Typography variant="body2"><strong>EIC-Vollname:</strong> {c.EIC_Long_Name}</Typography>
+                                  )}
+                                  {c.Website && (
+                                    <Typography variant="body2"><strong>Website:</strong> {c.Website}</Typography>
+                                  )}
+                                  {c.UstId && (
+                                    <Typography variant="body2"><strong>USt-ID:</strong> {c.UstId}</Typography>
+                                  )}
+                                  
+                                  <Divider sx={{ my: 1 }} />
+                                  
                                   {c.CodeContact && (
                                     <Typography variant="body2"><strong>Ansprechpartner:</strong> {c.CodeContact}</Typography>
                                   )}
