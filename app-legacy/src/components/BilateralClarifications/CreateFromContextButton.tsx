@@ -238,6 +238,13 @@ export const CreateFromContextButton: React.FC<CreateFromContextButtonProps> = (
                 open={true}
                 onClose={handleClose}
                 onSubmit={handleCreate}
+                initialData={{
+                  title: previewContext.suggestedTitle || '',
+                  description: previewContext.suggestedDescription || '',
+                  priority: previewContext.suggestedPriority || 'MEDIUM',
+                  marketPartnerCode: previewContext.suggestedMarketPartner?.code || '',
+                  caseType: previewContext.suggestedCaseType || 'GENERAL'
+                }}
               />
             </>
           )}

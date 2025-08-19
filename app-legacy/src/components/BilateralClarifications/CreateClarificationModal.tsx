@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -20,22 +20,31 @@ import {
 import { BilateralClarification, MarketPartnerInfo, MarketPartnerContact, MarketRole, DataExchangeReference } from '../../types/bilateral';
 import { MarketPartnerSelector } from './MarketPartnerSelector';
 import { DARInput } from './DARInput';
+import codeLookupApi from '../../services/codeLookupApi';
 
 interface CreateClarificationModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: Partial<BilateralClarification>) => Promise<void>;
+  initialData?: {
+    title?: string;
+    description?: string;
+    priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+    marketPartnerCode?: string;
+    caseType?: 'GENERAL' | 'TECHNICAL' | 'B2B' | 'B2C';
+  };
 }
 
 export const CreateClarificationModal: React.FC<CreateClarificationModalProps> = ({
   open,
   onClose,
-  onSubmit
+  onSubmit,
+  initialData
 }) => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM' as any,
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    priority: initialData?.priority || 'MEDIUM' as any,
     status: 'DRAFT' as any, // Neue bilaterale Klärungen starten immer als DRAFT
     assignedTo: '',
     tags: [] as string[],
@@ -49,6 +58,35 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
+  
+  // Automatische Initialisierung des Marktpartners, wenn ein Code vorhanden ist
+  useEffect(() => {
+    async function initializeMarketPartner() {
+      if (initialData?.marketPartnerCode && !formData.marketPartner) {
+        try {
+          const marketPartner = await codeLookupApi.findByCode(initialData.marketPartnerCode);
+          if (marketPartner) {
+            handleInputChange('marketPartner', {
+              code: marketPartner.code,
+              name: marketPartner.name,
+              marketRoles: marketPartner.roles || [],
+              address: marketPartner.address,
+              contacts: marketPartner.contacts || []
+            });
+            
+            // Standard-Rolle setzen
+            if (marketPartner.roles && marketPartner.roles.length > 0) {
+              handleInputChange('selectedRole', marketPartner.roles[0]);
+            }
+          }
+        } catch (err) {
+          console.error("Fehler beim Laden des Marktpartners:", err);
+        }
+      }
+    }
+    
+    initializeMarketPartner();
+  }, [initialData, formData.marketPartner]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -75,11 +113,9 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
         setError('Titel ist erforderlich');
         return;
       }
-      
-
 
       // Neue Validierungen für bilaterale Klärungen
-      if (!formData.marketPartner) {
+      if (!formData.marketPartner || !formData.marketPartner.code) {
         setError('Marktpartner ist erforderlich');
         return;
       }
