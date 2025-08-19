@@ -122,14 +122,21 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
             contactEmail: contact.CodeContactEmail,
             contactPhone: contact.CodeContactPhone,
             isDefault: contacts.length === 0,
-            // Zusätzliche EIC-Informationen, wenn vorhanden
+            // Zusätzliche EIC-Informationen
             EIC_Typ: contact.EIC_Typ,
             EIC_Code: contact.EIC_Code,
             EIC_Display_Name: contact.EIC_Display_Name,
             EIC_Long_Name: contact.EIC_Long_Name,
             Website: contact.Website,
             UstId: contact.UstId,
-            EIC_Function: contact.EIC_Function
+            EIC_Function: contact.EIC_Function,
+            // Deutsche Bezeichnungen
+            Unternehmen: contact.Unternehmen,
+            Strasse: contact.Strasse,
+            PLZ: contact.PLZ,
+            Stadt: contact.Stadt,
+            Land: contact.Land,
+            International: contact.International
           });
         }
       });
@@ -374,10 +381,35 @@ export const MarketPartnerSelector: React.FC<MarketPartnerSelectorProps> = ({
                       <Typography variant="body2">Website: {selectedContact.Website}</Typography>
                     </Box>
                   )}
-                  {selectedContact.UstId && (
+                  {/* Deutsche Bezeichnungen, falls vorhanden */}
+                  {selectedContact.Unternehmen && (
                     <Box display="flex" alignItems="center" gap={1}>
-                      <AssignmentIcon fontSize="small" color="action" />
-                      <Typography variant="body2">USt-ID: {selectedContact.UstId}</Typography>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Unternehmen: {selectedContact.Unternehmen}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.Strasse && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Straße: {selectedContact.Strasse}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.PLZ && selectedContact.Stadt && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">{selectedContact.PLZ} {selectedContact.Stadt}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.Land && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">Land: {selectedContact.Land}</Typography>
+                    </Box>
+                  )}
+                  {selectedContact.International && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <BusinessIcon fontSize="small" color="action" />
+                      <Typography variant="body2">International: {selectedContact.International}</Typography>
                     </Box>
                   )}
                 </Box>

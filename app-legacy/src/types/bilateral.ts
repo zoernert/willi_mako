@@ -56,6 +56,14 @@ export interface MarketPartnerContact {
   Website?: string;
   UstId?: string;
   EIC_Function?: string;
+  
+  // Deutsche Bezeichnungen
+  Unternehmen?: string;
+  Strasse?: string;
+  PLZ?: string;
+  Stadt?: string;
+  Land?: string;
+  International?: string;
 }
 
 export interface MarketPartnerInfo {

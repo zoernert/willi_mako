@@ -18,6 +18,7 @@ export interface ContactEntry {
   CodeContactPhone?: string;
   CodeContactEmail?: string;
   EditedOn?: string;
+  
   // Zusätzliche EIC-Informationen
   EIC_Typ?: string;
   EIC_Code?: string;
@@ -26,6 +27,14 @@ export interface ContactEntry {
   Website?: string;
   UstId?: string;
   EIC_Function?: string;
+  
+  // Deutsche Bezeichnungen
+  Unternehmen?: string;
+  Strasse?: string;
+  PLZ?: string;
+  Stadt?: string;
+  Land?: string;
+  International?: string;
 }
 
 export interface SoftwareSystem {
@@ -244,14 +253,21 @@ class CodeLookupApi {
               contactEmail: contact.CodeContactEmail,
               contactPhone: contact.CodeContactPhone,
               isDefault: contacts.length === 0,
-              // Zusätzliche EIC-Informationen, wenn vorhanden
+              // Zusätzliche EIC-Informationen
               EIC_Typ: contact.EIC_Typ,
               EIC_Code: contact.EIC_Code,
               EIC_Display_Name: contact.EIC_Display_Name,
               EIC_Long_Name: contact.EIC_Long_Name,
               Website: contact.Website,
               UstId: contact.UstId,
-              EIC_Function: contact.EIC_Function
+              EIC_Function: contact.EIC_Function,
+              // Deutsche Bezeichnungen
+              Unternehmen: contact.Unternehmen,
+              Strasse: contact.Strasse,
+              PLZ: contact.PLZ,
+              Stadt: contact.Stadt,
+              Land: contact.Land,
+              International: contact.International
             });
           }
         });

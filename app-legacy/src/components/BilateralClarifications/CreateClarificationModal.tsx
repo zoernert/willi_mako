@@ -105,7 +105,14 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
                   EIC_Long_Name: contactForRole.EIC_Long_Name,
                   Website: contactForRole.Website,
                   UstId: contactForRole.UstId,
-                  EIC_Function: contactForRole.EIC_Function
+                  EIC_Function: contactForRole.EIC_Function,
+                  // Deutsche Bezeichnungen
+                  Unternehmen: contactForRole.Unternehmen,
+                  Strasse: contactForRole.Strasse,
+                  PLZ: contactForRole.PLZ,
+                  Stadt: contactForRole.Stadt,
+                  Land: contactForRole.Land,
+                  International: contactForRole.International
                 };
                 
                 handleInputChange('selectedContact', contactWithEIC);
