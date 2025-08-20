@@ -112,7 +112,8 @@ const FAQDetail: React.FC = () => {
     linkedTerms.forEach((term) => {
       const regex = new RegExp(`\\b${term.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
       const displayText = term.display_text || term.term;
-      const replacement = `<a href="/faqs/${term.target_faq_id}" class="faq-link" title="${term.target_faq_title}">${displayText}</a>`;
+      // Use Markdown link format instead of HTML
+      const replacement = `[${displayText}](/faqs/${term.target_faq_id} "${term.target_faq_title}")`;
       linkedText = linkedText.replace(regex, replacement);
     });
 
@@ -120,8 +121,9 @@ const FAQDetail: React.FC = () => {
   };
 
   const handleLinkClick = (e: React.MouseEvent) => {
+    // Check if target is a link with specific data attribute
     const target = e.target as HTMLElement;
-    if (target.classList.contains('faq-link')) {
+    if (target.tagName === 'A' && target.getAttribute('href')?.startsWith('/faqs/')) {
       e.preventDefault();
       const href = target.getAttribute('href');
       if (href) {
@@ -250,13 +252,10 @@ const FAQDetail: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Antwort
           </Typography>
-          <div className="faq-content answer-content">
-            <div 
-              dangerouslySetInnerHTML={{ 
-                __html: renderLinkedText(faq.answer, faq.linked_terms || [])
-              }}
-              onClick={handleLinkClick}
-            />
+          <div className="faq-content answer-content" onClick={handleLinkClick}>
+            <MarkdownRenderer>
+              {renderLinkedText(faq.answer, faq.linked_terms || [])}
+            </MarkdownRenderer>
           </div>
           
           {faq.additional_info && (
@@ -265,13 +264,10 @@ const FAQDetail: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Zusätzliche Informationen
               </Typography>
-              <div className="faq-content additional-info-content">
-                <div 
-                  dangerouslySetInnerHTML={{ 
-                    __html: renderLinkedText(faq.additional_info, faq.linked_terms || [])
-                  }}
-                  onClick={handleLinkClick}
-                />
+              <div className="faq-content additional-info-content" onClick={handleLinkClick}>
+                <MarkdownRenderer>
+                  {renderLinkedText(faq.additional_info, faq.linked_terms || [])}
+                </MarkdownRenderer>
               </div>
             </>
           )}
