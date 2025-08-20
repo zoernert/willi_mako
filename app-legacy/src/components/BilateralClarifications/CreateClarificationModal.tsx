@@ -195,6 +195,14 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
         dataExchangeReference: formData.dataExchangeReference
       });
 
+      // Sicherstellen, dass marketPartner alle nötigen Daten enthält
+      const marketPartner = {
+        ...formData.marketPartner,
+        code: formData.marketPartner.code,
+        companyName: formData.marketPartner.companyName || '',
+        codeType: formData.marketPartner.codeType || 'bdew'
+      };
+
       // Daten für Backend vorbereiten
       const clarificationData: Partial<BilateralClarification> = {
         title: formData.title,
@@ -203,7 +211,7 @@ export const CreateClarificationModal: React.FC<CreateClarificationModalProps> =
         status: formData.status,
         assignedTo: formData.assignedTo,
         tags: formData.tags,
-        marketPartner: formData.marketPartner,
+        marketPartner: marketPartner,
         selectedRole: formData.selectedRole,
         selectedContact: formData.selectedContact || undefined,
         dataExchangeReference: formData.dataExchangeReference,

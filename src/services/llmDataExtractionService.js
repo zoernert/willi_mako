@@ -490,6 +490,25 @@ Erstelle eine prägnante Zusammenfassung dieser Chat-Interaktion. Fokussiere dic
 
 Erstelle eine Zusammenfassung der wichtigsten Gesprächsinhalte und Erkenntnisse.`;
                 break;
+                
+            case 'create_clarification':
+                prompt += `Bilaterale Klärung aus Chat-Kontext:
+- Chat-ID: ${rawData.chatId || 'Unbekannt'}
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
+- Zeitpunkt: ${rawData.timestamp || new Date().toISOString()}
+- Marktpartner: ${rawData.marketPartner || 'Nicht angegeben'}
+- Chat-Inhalt: ${rawData.content?.substring(0, 4000) || 'Kein Inhalt'}
+
+Erstelle eine ausführliche und fachlich korrekte Zusammenfassung dieses Chats für eine bilaterale Klärung. 
+Die Zusammenfassung sollte einem anderen Marktkommunikations-Experten das Problem präzise vermitteln.
+
+Fokussiere dich auf:
+- Eindeutige Problemstellung und Ausgangssituation
+- Relevante Prozessschritte und EDIFACT-Nachrichten
+- Erkannte technische Details wie Messlokations-IDs, Marktlokations-IDs oder Transaktionsnummern
+- Bisherige Lösungsversuche oder Hindernisse
+- Aktueller Stand und nächste Schritte für die Klärung`;
+                break;
 
             case 'code_lookup':
             case 'search':
@@ -579,6 +598,33 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
                 } else {
                     return 'Chat-Nachricht';
                 }
+                
+            case 'create_clarification':
+                // Für bilaterale Klärungen: Nutze Marktpartner und Chat-Titel
+                let title = 'Bilaterale Klärung';
+                
+                if (rawData.marketPartner) {
+                    title += ` mit ${rawData.marketPartner}`;
+                }
+                
+                if (rawData.content) {
+                    // Versuche das Hauptthema aus dem Inhalt zu extrahieren
+                    const contentPreview = rawData.content.substring(0, 80);
+                    if (contentPreview.includes('UTILMD')) {
+                        title += ': UTILMD-Prozess';
+                    } else if (contentPreview.includes('MSCONS')) {
+                        title += ': MSCONS-Prozess';
+                    } else if (contentPreview.includes('APERAK')) {
+                        title += ': APERAK-Meldung';
+                    } else {
+                        // Nutze die ersten Wörter des Inhalts
+                        const firstLine = rawData.content.split('\n')[0] || '';
+                        const preview = firstLine.substring(0, 40);
+                        title += `: ${preview}${preview.length >= 40 ? '...' : ''}`;
+                    }
+                }
+                
+                return title;
 
             case 'chat_session':
                 if (rawData.chatTitle) {

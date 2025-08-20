@@ -86,6 +86,29 @@ export class BilateralClarificationService {
 
   async create(clarificationData: CreateClarificationRequest): Promise<BilateralClarification> {
     try {
+      // Sicherstellen, dass marketPartner-Daten vollständig sind
+      if (clarificationData.marketPartner) {
+        // Sicherstellen, dass die erforderlichen Eigenschaften vorhanden sind
+        if (!clarificationData.marketPartner.code) {
+          console.error('Fehler: marketPartner.code fehlt in den Daten');
+          throw new Error('Fehler: Marktpartner-Code fehlt');
+        }
+        
+        if (!clarificationData.marketPartner.companyName) {
+          // Falls companyName fehlt, versuchen wir einen Fallback-Wert zu setzen
+          clarificationData.marketPartner.companyName = 'Unbekannter Marktpartner';
+          console.warn('Warnung: marketPartner.companyName wurde auf Fallback-Wert gesetzt');
+        }
+        
+        // Weitere erforderliche Eigenschaften setzen, falls sie fehlen
+        if (!clarificationData.marketPartner.codeType) {
+          clarificationData.marketPartner.codeType = 'bdew';
+        }
+        
+        // Debug-Ausgabe
+        console.log('MarketPartner-Daten für die API-Anfrage:', clarificationData.marketPartner);
+      }
+      
       const data = await apiClient.post<BilateralClarification>(BILATERAL_BASE, clarificationData);
       return data;
     } catch (error) {
@@ -288,6 +311,14 @@ export class BilateralClarificationService {
     clarificationData: Partial<BilateralClarification>
   ): Promise<BilateralClarification> {
     try {
+      // Stellen Sie sicher, dass die chatId korrekt übergeben wird
+      if (!chatContext.chatId) {
+        console.error('Chat context is missing chatId');
+        throw new Error('Chat-ID fehlt - kann keine Klärung erstellen');
+      }
+      
+      console.log('Creating clarification from chat context with ID:', chatContext.chatId);
+      
       const response = await apiClient.post(`${BILATERAL_BASE}/from-chat-context`, {
         context: {
           source: 'chat',
@@ -377,8 +408,12 @@ export class BilateralClarificationService {
       extracted.suggestedDescription = `Automatisch erstellt aus Nachrichten-Analyse:\n\n${analysisResult.summary || ''}\n\nOriginal-Nachricht:\n${content.substring(0, 500)}${content.length > 500 ? '...' : ''}`;
     } else {
       // Chat context
-      extracted.suggestedTitle = `Chat-basierte Klärung: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`;
-      extracted.suggestedDescription = `Automatisch erstellt aus Chat-Konversation:\n\n${content}`;
+      const firstLine = content.split('\n')[0] || '';
+      const preview = firstLine.substring(0, 50) + (firstLine.length > 50 ? '...' : '');
+      extracted.suggestedTitle = `Chat-basierte Klärung: ${preview}`;
+      
+      // Nur einen Hinweis setzen, dass eine ausführliche Zusammenfassung erstellt wird
+      extracted.suggestedDescription = `Automatisch erstellt aus Chat-Konversation.\n\nEs wird eine KI-generierte Zusammenfassung erstellt...\n\n---\nAuszug aus dem Chat:\n${content.substring(0, 300)}${content.length > 300 ? '...' : ''}`;
     }
 
     return extracted;

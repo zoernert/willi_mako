@@ -112,6 +112,7 @@ export const CreateFromContextButton: React.FC<CreateFromContextButtonProps> = (
       let result: BilateralClarification;
 
       if (context.source === 'chat' && context.chatContext) {
+        console.log('Creating clarification from chat context with ID:', context.chatContext.chatId);
         result = await bilateralService.createFromChatContext(
           context.chatContext,
           clarificationData
@@ -125,7 +126,7 @@ export const CreateFromContextButton: React.FC<CreateFromContextButtonProps> = (
         throw new Error('Invalid context configuration');
       }
 
-      showSnackbar('Bilaterale Klärung erfolgreich erstellt!', 'success');
+      showSnackbar('Bilaterale Klärung erfolgreich erstellt! Die KI-Zusammenfassung wird erstellt.', 'success');
       handleClose();
       onSuccess?.(result);
     } catch (error) {

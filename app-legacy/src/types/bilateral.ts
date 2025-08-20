@@ -291,8 +291,12 @@ export interface TeamActivity {
 export interface CreateClarificationRequest {
   title: string;
   description?: string;
-  marketPartnerCode: string;
-  caseType: ClarificationCaseType;
+  marketPartnerCode?: string; // Legacy field
+  marketPartner?: MarketPartnerInfo; // New field for complete market partner data
+  selectedRole?: MarketRole;
+  selectedContact?: MarketPartnerContact;
+  dataExchangeReference?: DataExchangeReference;
+  caseType?: ClarificationCaseType;
   priority?: ClarificationPriority;
   assignedTo?: string;
   dueDate?: string;
