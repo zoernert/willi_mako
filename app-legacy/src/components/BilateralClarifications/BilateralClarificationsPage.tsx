@@ -196,13 +196,18 @@ export const BilateralClarificationsPage: React.FC = () => {
       const createRequest = {
         title: data.title || '',
         description: data.description,
-        marketPartnerCode: 'DEFAULT', // You may want to make this configurable
-        caseType: (data as any).type || 'GENERAL', // Map from simple form field
-        priority: data.priority?.toUpperCase() as any || 'MEDIUM',
+        marketPartnerCode: data.marketPartner?.code || 'DEFAULT', // Use selected market partner code
+        caseType: (data as any).caseType || 'GENERAL', // Get case type from form data
+        priority: data.priority || 'MEDIUM',
         assignedTo: data.assignedTo,
         dueDate: data.dueDate,
         tags: data.tags,
+        // Add DAR reference if available
+        externalCaseId: data.dataExchangeReference?.dar,
+        sourceSystem: 'BILATERAL_FORM'
       };
+      
+      console.log('Sending clarification data:', createRequest);
       
       await bilateralClarificationService.create(createRequest);
       setShowCreateModal(false);
