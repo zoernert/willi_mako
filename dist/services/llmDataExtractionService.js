@@ -423,7 +423,7 @@ ${detailedPrompt}`;
      * Erstellt detaillierte Timeline-spezifische Prompts basierend auf Aktivitätstyp
      */
     buildDetailedTimelinePrompt(activityType, rawData) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
         let prompt = `Aktivitätstyp: ${activityType}\n\n`;
         switch (activityType) {
             case 'message':
@@ -452,13 +452,31 @@ Erstelle eine prägnante Zusammenfassung dieser Chat-Interaktion. Fokussiere dic
 
 Erstelle eine Zusammenfassung der wichtigsten Gesprächsinhalte und Erkenntnisse.`;
                 break;
+            case 'create_clarification':
+                prompt += `Bilaterale Klärung aus Chat-Kontext:
+- Chat-ID: ${rawData.chatId || 'Unbekannt'}
+- Chat-Titel: ${rawData.chatTitle || 'Keine Bezeichnung'}
+- Zeitpunkt: ${rawData.timestamp || new Date().toISOString()}
+- Marktpartner: ${rawData.marketPartner || 'Nicht angegeben'}
+- Chat-Inhalt: ${((_d = rawData.content) === null || _d === void 0 ? void 0 : _d.substring(0, 4000)) || 'Kein Inhalt'}
+
+Erstelle eine ausführliche und fachlich korrekte Zusammenfassung dieses Chats für eine bilaterale Klärung. 
+Die Zusammenfassung sollte einem anderen Marktkommunikations-Experten das Problem präzise vermitteln.
+
+Fokussiere dich auf:
+- Eindeutige Problemstellung und Ausgangssituation
+- Relevante Prozessschritte und EDIFACT-Nachrichten
+- Erkannte technische Details wie Messlokations-IDs, Marktlokations-IDs oder Transaktionsnummern
+- Bisherige Lösungsversuche oder Hindernisse
+- Aktueller Stand und nächste Schritte für die Klärung`;
+                break;
             case 'code_lookup':
             case 'search':
                 prompt += `Marktpartner-Suche:
 - Suchterm: ${rawData.searchTerm || rawData.query || 'unbekannt'}
-- Gesuchte Codes: ${((_d = rawData.searched_codes) === null || _d === void 0 ? void 0 : _d.join(', ')) || 'keine'}
-- Gefundene Marktpartner: ${((_e = rawData.found_partners) === null || _e === void 0 ? void 0 : _e.length) || ((_f = rawData.results) === null || _f === void 0 ? void 0 : _f.length) || 0}
-- Anzahl Treffer: ${rawData.count || ((_g = rawData.results) === null || _g === void 0 ? void 0 : _g.length) || 0}
+- Gesuchte Codes: ${((_e = rawData.searched_codes) === null || _e === void 0 ? void 0 : _e.join(', ')) || 'keine'}
+- Gefundene Marktpartner: ${((_f = rawData.found_partners) === null || _f === void 0 ? void 0 : _f.length) || ((_g = rawData.results) === null || _g === void 0 ? void 0 : _g.length) || 0}
+- Anzahl Treffer: ${rawData.count || ((_h = rawData.results) === null || _h === void 0 ? void 0 : _h.length) || 0}
 - Suchkriterien: ${JSON.stringify(rawData.search_criteria || {})}
 
 Fasse die wichtigsten gefundenen Informationen und deren Relevanz zusammen.`;
@@ -470,7 +488,7 @@ Fasse die wichtigsten gefundenen Informationen und deren Relevanz zusammen.`;
 - Status: ${rawData.status || 'unbekannt'}
 - Thema: ${rawData.subject || 'kein Thema'}
 - Kommentar: ${rawData.comment || 'kein Kommentar'}
-- Beteiligte: ${((_h = rawData.participants) === null || _h === void 0 ? void 0 : _h.join(', ')) || 'keine angegeben'}
+- Beteiligte: ${((_j = rawData.participants) === null || _j === void 0 ? void 0 : _j.join(', ')) || 'keine angegeben'}
 - Erkenntnisse: ${rawData.findings || 'keine'}
 
 Fasse den aktuellen Stand und die wichtigsten Erkenntnisse zusammen.`;
@@ -482,7 +500,7 @@ Fasse den aktuellen Stand und die wichtigsten Erkenntnisse zusammen.`;
 - Extrahierte Texte: ${rawData.extractedText || 'keine'}
 - KI-Analyse: ${rawData.analysis || rawData.analysis_result || 'kein Ergebnis'}
 - Konfidenz: ${rawData.confidence || 'unbekannt'}
-- Erkannte Elemente: ${((_j = rawData.detected_elements) === null || _j === void 0 ? void 0 : _j.join(', ')) || 'keine'}
+- Erkannte Elemente: ${((_k = rawData.detected_elements) === null || _k === void 0 ? void 0 : _k.join(', ')) || 'keine'}
 - Kontext: ${rawData.context || 'kein Kontext'}
 
 Fasse die wichtigsten Erkenntnisse aus der Analyse zusammen.`;
@@ -490,21 +508,21 @@ Fasse die wichtigsten Erkenntnisse aus der Analyse zusammen.`;
             case 'message_analysis':
             case 'analysis':
                 prompt += `Nachrichten-Analyse:
-- Nachricht: ${((_k = rawData.message) === null || _k === void 0 ? void 0 : _k.substring(0, 200)) + (((_l = rawData.message) === null || _l === void 0 ? void 0 : _l.length) > 200 ? '...' : '') || 'keine'}
+- Nachricht: ${((_l = rawData.message) === null || _l === void 0 ? void 0 : _l.substring(0, 200)) + (((_m = rawData.message) === null || _m === void 0 ? void 0 : _m.length) > 200 ? '...' : '') || 'keine'}
 - Nachrichtentyp: ${rawData.message_type || rawData.messageType || 'unbekannt'}
-- Kategorien: ${((_m = rawData.categories) === null || _m === void 0 ? void 0 : _m.join(', ')) || 'keine'}
+- Kategorien: ${((_o = rawData.categories) === null || _o === void 0 ? void 0 : _o.join(', ')) || 'keine'}
 - Sentiment: ${rawData.sentiment || 'unbekannt'}
 - Priorität: ${rawData.priority || 'normal'}
 - Analyseergebnis: ${rawData.analysis_result || 'kein Ergebnis'}
-- Wichtige Punkte: ${((_o = rawData.key_points) === null || _o === void 0 ? void 0 : _o.join(', ')) || 'keine'}
+- Wichtige Punkte: ${((_p = rawData.key_points) === null || _p === void 0 ? void 0 : _p.join(', ')) || 'keine'}
 
 Fasse die wichtigsten Erkenntnisse und Handlungsempfehlungen zusammen.`;
                 break;
             case 'notes':
                 prompt += `Notizen-Aktivität:
 - Anzahl Notizen: ${rawData.note_count || 'unbekannt'}
-- Kategorien: ${((_p = rawData.categories) === null || _p === void 0 ? void 0 : _p.join(', ')) || 'keine'}
-- Wichtige Stichworte: ${((_q = rawData.keywords) === null || _q === void 0 ? void 0 : _q.join(', ')) || 'keine'}
+- Kategorien: ${((_q = rawData.categories) === null || _q === void 0 ? void 0 : _q.join(', ')) || 'keine'}
+- Wichtige Stichworte: ${((_r = rawData.keywords) === null || _r === void 0 ? void 0 : _r.join(', ')) || 'keine'}
 
 Fasse die wichtigsten dokumentierten Informationen zusammen.`;
                 break;
@@ -536,6 +554,32 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
                 else {
                     return 'Chat-Nachricht';
                 }
+            case 'create_clarification':
+                // Für bilaterale Klärungen: Nutze Marktpartner und Chat-Titel
+                let title = 'Bilaterale Klärung';
+                if (rawData.marketPartner) {
+                    title += ` mit ${rawData.marketPartner}`;
+                }
+                if (rawData.content) {
+                    // Versuche das Hauptthema aus dem Inhalt zu extrahieren
+                    const contentPreview = rawData.content.substring(0, 80);
+                    if (contentPreview.includes('UTILMD')) {
+                        title += ': UTILMD-Prozess';
+                    }
+                    else if (contentPreview.includes('MSCONS')) {
+                        title += ': MSCONS-Prozess';
+                    }
+                    else if (contentPreview.includes('APERAK')) {
+                        title += ': APERAK-Meldung';
+                    }
+                    else {
+                        // Nutze die ersten Wörter des Inhalts
+                        const firstLine = rawData.content.split('\n')[0] || '';
+                        const preview = firstLine.substring(0, 40);
+                        title += `: ${preview}${preview.length >= 40 ? '...' : ''}`;
+                    }
+                }
+                return title;
             case 'chat_session':
                 if (rawData.chatTitle) {
                     return `Chat-Session: ${rawData.chatTitle}`;

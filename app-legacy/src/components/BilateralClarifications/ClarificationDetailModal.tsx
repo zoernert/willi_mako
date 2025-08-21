@@ -44,6 +44,7 @@ import { bilateralClarificationService } from '../../services/bilateralClarifica
 import { WorkflowStatusCard } from './WorkflowStatusCard';
 import { EmailComposerDialog, EmailData } from './EmailComposerDialog';
 import { ClarificationTimeline } from './ClarificationTimeline';
+import { ClarificationReferences } from './ClarificationReferences';
 
 interface ClarificationDetailModalProps {
   open: boolean;
@@ -474,9 +475,15 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
                     <Typography variant="h6" gutterBottom>
                       Dokumentation und Zusammenarbeit
                     </Typography>
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      Nutzen Sie Chat und Notizen, um Informationen zu sammeln und die interne Klärung zu dokumentieren.
-                    </Alert>
+                    
+                    {/* Referenzen-Management-Komponente */}
+                    <ClarificationReferences 
+                      clarification={clarification}
+                      onUpdate={() => {
+                        loadClarification();
+                        onUpdate();
+                      }}
+                    />
                   </Box>
                 )}
                 

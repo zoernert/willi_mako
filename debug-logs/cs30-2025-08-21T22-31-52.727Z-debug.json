@@ -1,0 +1,320 @@
+{
+  "timestamp": "2025-08-21T22:31:14.659Z",
+  "query": "Ich arbeite beim Lieferanten und muss den Einzug eines Kunden anlegen mit einem Sondertarif. Was muss ich machen?",
+  "expandedQuery": "Schleupen CS/30 Einzug Lieferantensicht: Anmeldung Lieferbeginn mit Sondertarif/Individualvertrag. Prozess in VVE, GP-Cockpit, Preisfindung.",
+  "commandLineOptions": {
+    "verbose": true,
+    "inspectOnly": false,
+    "lowerThreshold": true,
+    "expandQuery": true,
+    "samplePoints": true
+  },
+  "flow": [
+    {
+      "name": "FLOW_START",
+      "timestamp": "2025-08-21T22:31:14.675Z",
+      "details": {
+        "query": "Ich arbeite beim Lieferanten und muss den Einzug eines Kunden anlegen mit einem Sondertarif. Was muss ich machen?"
+      }
+    },
+    {
+      "name": "CS30_CHECK_START",
+      "timestamp": "2025-08-21T22:31:14.675Z",
+      "details": "Checking CS30 collection availability"
+    },
+    {
+      "name": "CS30_CHECK_COMPLETE",
+      "timestamp": "2025-08-21T22:31:14.705Z",
+      "details": {
+        "isAvailable": true
+      }
+    },
+    {
+      "name": "CS30_COLLECTION_INFO",
+      "timestamp": "2025-08-21T22:31:14.712Z",
+      "details": {
+        "dimensions": 768,
+        "distanceMetric": "Cosine",
+        "hasIndexes": false,
+        "config": {
+          "params": {
+            "vectors": {
+              "size": 768,
+              "distance": "Cosine",
+              "on_disk": true
+            },
+            "shard_number": 1,
+            "replication_factor": 1,
+            "write_consistency_factor": 1,
+            "on_disk_payload": true
+          },
+          "hnsw_config": {
+            "m": 16,
+            "ef_construct": 100,
+            "full_scan_threshold": 10000,
+            "max_indexing_threads": 0,
+            "on_disk": true
+          },
+          "optimizer_config": {
+            "deleted_threshold": 0.2,
+            "vacuum_min_vector_number": 1000,
+            "default_segment_number": 0,
+            "max_segment_size": null,
+            "memmap_threshold": null,
+            "indexing_threshold": 20000,
+            "flush_interval_sec": 50,
+            "max_optimization_threads": null
+          },
+          "wal_config": {
+            "wal_capacity_mb": 32,
+            "wal_segments_ahead": 0
+          },
+          "quantization_config": null
+        }
+      }
+    },
+    {
+      "name": "CS30_SAMPLE_POINTS_START",
+      "timestamp": "2025-08-21T22:31:14.713Z",
+      "details": "Getting sample points from CS30 collection"
+    },
+    {
+      "name": "CS30_SAMPLE_POINTS_COMPLETE",
+      "timestamp": "2025-08-21T22:31:14.721Z",
+      "details": {
+        "count": 5,
+        "sample": {
+          "id": "00003910-f953-4e7f-adb9-430cceccc5d4",
+          "payloadKeys": [
+            "source",
+            "type",
+            "content"
+          ],
+          "payload": {
+            "source": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md",
+            "type": "synthetic_answer",
+            "content": "Der Text besteht nur aus einem Bildlink und einer Aufforderung zur Vergrößerung, ohne weitere Informationen."
+          }
+        }
+      }
+    },
+    {
+      "name": "STANDARD_RESPONSE_GENERATION_START",
+      "timestamp": "2025-08-21T22:31:14.722Z",
+      "details": {
+        "contextLength": 0,
+        "isCs30Response": false
+      }
+    },
+    {
+      "name": "STANDARD_RESPONSE_GENERATION_COMPLETE",
+      "timestamp": "2025-08-21T22:31:35.915Z",
+      "details": {
+        "timeMs": 21193,
+        "responsePreview": "Hallo! Gerne, das ist ein klassischer GPKE/GeLi Gas-Prozess. Ich führe dich durch die notwendigen Schritte, sowohl intern in deinem System als auch in der Marktkommunikation (MaKo).\n\nDer Prozess, den ..."
+      }
+    },
+    {
+      "name": "QUERY_EXPANSION_START",
+      "timestamp": "2025-08-21T22:31:35.915Z",
+      "details": {
+        "originalQuery": "Ich arbeite beim Lieferanten und muss den Einzug eines Kunden anlegen mit einem Sondertarif. Was muss ich machen?"
+      }
+    },
+    {
+      "name": "QUERY_EXPANSION_COMPLETE",
+      "timestamp": "2025-08-21T22:31:52.045Z",
+      "details": {
+        "originalQuery": "Ich arbeite beim Lieferanten und muss den Einzug eines Kunden anlegen mit einem Sondertarif. Was muss ich machen?",
+        "expandedQuery": "Schleupen CS/30 Einzug Lieferantensicht: Anmeldung Lieferbeginn mit Sondertarif/Individualvertrag. Prozess in VVE, GP-Cockpit, Preisfindung."
+      }
+    },
+    {
+      "name": "CS30_SEARCH_START",
+      "timestamp": "2025-08-21T22:31:52.045Z",
+      "details": {
+        "originalQuery": "Ich arbeite beim Lieferanten und muss den Einzug eines Kunden anlegen mit einem Sondertarif. Was muss ich machen?",
+        "searchQuery": "Schleupen CS/30 Einzug Lieferantensicht: Anmeldung Lieferbeginn mit Sondertarif/Individualvertrag. Prozess in VVE, GP-Cockpit, Preisfindung.",
+        "limit": 5,
+        "scoreThreshold": 0.3,
+        "usingExpansion": true
+      }
+    },
+    {
+      "name": "EMBEDDING_GENERATION_START",
+      "timestamp": "2025-08-21T22:31:52.045Z",
+      "details": {
+        "text": "Schleupen CS/30 Einzug Lieferantensicht: Anmeldung Lieferbeginn mit Sondertarif/Individualvertrag. P..."
+      }
+    },
+    {
+      "name": "EMBEDDING_GENERATION_COMPLETE",
+      "timestamp": "2025-08-21T22:31:52.290Z",
+      "details": {
+        "dimensions": 768
+      }
+    },
+    {
+      "name": "CS30_SEARCH_COMPLETE",
+      "timestamp": "2025-08-21T22:31:52.727Z",
+      "details": {
+        "resultsCount": 0,
+        "timeMs": 682
+      }
+    },
+    {
+      "name": "CS30_NO_RELEVANT_RESULTS",
+      "timestamp": "2025-08-21T22:31:52.727Z",
+      "details": "No relevant CS30 results found"
+    },
+    {
+      "name": "FLOW_COMPLETE",
+      "timestamp": "2025-08-21T22:31:52.727Z",
+      "details": {
+        "timeMs": 38052,
+        "hasCs30Response": false
+      }
+    }
+  ],
+  "cs30": {
+    "collection": "cs30",
+    "isAvailable": true,
+    "collectionInfo": {
+      "dimensions": 768,
+      "distanceMetric": "Cosine",
+      "hasIndexes": false,
+      "config": {
+        "params": {
+          "vectors": {
+            "size": 768,
+            "distance": "Cosine",
+            "on_disk": true
+          },
+          "shard_number": 1,
+          "replication_factor": 1,
+          "write_consistency_factor": 1,
+          "on_disk_payload": true
+        },
+        "hnsw_config": {
+          "m": 16,
+          "ef_construct": 100,
+          "full_scan_threshold": 10000,
+          "max_indexing_threads": 0,
+          "on_disk": true
+        },
+        "optimizer_config": {
+          "deleted_threshold": 0.2,
+          "vacuum_min_vector_number": 1000,
+          "default_segment_number": 0,
+          "max_segment_size": null,
+          "memmap_threshold": null,
+          "indexing_threshold": 20000,
+          "flush_interval_sec": 50,
+          "max_optimization_threads": null
+        },
+        "wal_config": {
+          "wal_capacity_mb": 32,
+          "wal_segments_ahead": 0
+        },
+        "quantization_config": null
+      }
+    },
+    "samplePoints": [
+      {
+        "id": "00003910-f953-4e7f-adb9-430cceccc5d4",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md",
+          "type": "synthetic_answer",
+          "content": "Der Text besteht nur aus einem Bildlink und einer Aufforderung zur Vergrößerung, ohne weitere Informationen."
+        }
+      },
+      {
+        "id": "00003ec9-e027-4df5-94f7-036e0e428631",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "messwertmanagement_marktlokationen_schleupen-cs-nnu-mwe-mue-messwertueberwachungflow.md",
+          "type": "synthetic_question",
+          "content": "Was wird durch den Text beschrieben?"
+        }
+      },
+      {
+        "id": "000040b5-9b73-4536-995d-7399808f8722",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "marktkommunikation-edi_schleupen-cs-edi-daa-afi-anwendungsfehleridentflow_anwendungsfehler-verwalten.md",
+          "type": "synthetic_answer",
+          "content": "Der `$sessionToken` ist vermutlich eine Sitzungskennung, die den Kontext des Fehlers genauer spezifiziert.  Weitere Informationen sind benötigt um dies zu präzisieren."
+        }
+      },
+      {
+        "id": "00004272-d15f-4a5f-93f9-1bb7cf88c4dc",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "vertriebs-dashboard_kundenentwicklung_schleupen-cs-ap-bi-dashboard-kundenentwicklung-wechselquote-flow.md",
+          "type": "synthetic_answer",
+          "content": "Die Auswertungen zeigen die prognostizierten Mengen pro Jahr und den dazugehörigen Marktanteil in Prozent."
+        }
+      },
+      {
+        "id": "00004f0f-9771-44b1-b68c-2cded11a4ec0",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "systemstruktur_serviceimplementierungsgruppen-zuordnen.md",
+          "type": "paragraph",
+          "content": "Serviceimplementierungsgruppen zuordnen\n======================================="
+        }
+      }
+    ],
+    "searchResults": [],
+    "searchScores": [],
+    "payloadStructure": {
+      "source": {
+        "type": "string",
+        "length": 50,
+        "sample": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md"
+      },
+      "type": {
+        "type": "string",
+        "length": 16,
+        "sample": "synthetic_answer"
+      },
+      "content": {
+        "type": "string",
+        "length": 108,
+        "sample": "Der Text besteht nur aus einem Bildlink und einer ..."
+      }
+    },
+    "contextUsed": ""
+  },
+  "response": {
+    "final": "Hallo! Gerne, das ist ein klassischer GPKE/GeLi Gas-Prozess. Ich führe dich durch die notwendigen Schritte, sowohl intern in deinem System als auch in der Marktkommunikation (MaKo).\n\nDer Prozess, den du anstoßen musst, ist die **Anmeldung zur Netznutzung** beim zuständigen Verteilnetzbetreiber (VNB).\n\nHier ist eine Schritt-für-Schritt-Anleitung:\n\n### Schritt 1: Interne Vorbereitung (in deinem Lieferantensystem)\n\nBevor du mit dem Netzbetreiber kommunizierst, musst du alle Daten im eigenen System (z.B. SAP IS-U, Schleupen, KVASy) korrekt anlegen.\n\n1.  **Kundendaten erfassen:** Lege den Kunden mit allen Stammdaten an (Name, Adresse, Bankverbindung, etc.).\n2.  **Marktlokation (MaLo) identifizieren:** Du benötigst die eindeutige Marktlokations-ID (beginnt mit \"DE\" und hat 11 Stellen) für den Zählpunkt des Kunden. Oft findest du diese auf alten Rechnungen oder der Kunde kann sie beim VNB oder dem Vormieter erfragen. Manchmal reicht auch die Zählernummer und die Adresse, um die MaLo zu finden.\n3.  **Vertrag anlegen:**\n    *   Erstelle einen neuen Energieliefervertrag für den Kunden.\n    *   Verknüpfe den Vertrag mit der korrekten Marktlokation.\n    *   **Wichtig für dich:** Weise dem Vertrag den vereinbarten **Sondertarif** zu. Dies ist ein rein interner Schritt. Die Details des Tarifs (Preise, Konditionen) werden **nicht** an den Netzbetreiber übermittelt. Für den Netzbetreiber ist nur relevant, *dass* du der neue Lieferant bist.\n    *   Trage das **Einzugsdatum** als Vertragsbeginn ein.\n\n### Schritt 2: Marktkommunikation (MaKo) – Die Anmeldung beim Netzbetreiber\n\nNachdem intern alles angelegt ist, stößt dein System die Marktkommunikation an. Dies geschieht in der Regel automatisiert, aber es ist gut zu wissen, was im Hintergrund passiert.\n\n1.  **Nachrichtentyp:** Dein System erstellt eine **UTILMD-Nachricht** (EDIFACT-Format).\n2.  **Geschäftsprozess:** Der Prozess innerhalb der UTILMD ist die \"Anmeldung zur Netznutzung\" (E_01 bei Einzug gemäß GPKE).\n3.  **Wesentliche Daten in der UTILMD-Nachricht:**\n    *   **Absender:** Deine Marktpartner-ID (MP-ID).\n    *   **Empfänger:** Die MP-ID des zuständigen Verteilnetzbetreibers.\n    *   **Marktlokations-ID (MaLo-ID):** Der Zählpunkt, den du beliefern möchtest.\n    *   **Einzugsdatum:** Das Datum, ab dem die Belieferung starten soll (`DTM+157`).\n    *   **Kundendaten:** Name und Adresse des neuen Kunden.\n    *   **Zählverfahren:** (falls bekannt, z.B. RLM oder SLP).\n    *   **Optional:** Zählernummer zur zusätzlichen Identifikation.\n\nDein System sendet diese UTILMD-Nachricht an den Netzbetreiber.\n\n### Schritt 3: Warten auf die Antwort des",
+    "withoutCs30": "Hallo! Gerne, das ist ein klassischer GPKE/GeLi Gas-Prozess. Ich führe dich durch die notwendigen Schritte, sowohl intern in deinem System als auch in der Marktkommunikation (MaKo).\n\nDer Prozess, den du anstoßen musst, ist die **Anmeldung zur Netznutzung** beim zuständigen Verteilnetzbetreiber (VNB).\n\nHier ist eine Schritt-für-Schritt-Anleitung:\n\n### Schritt 1: Interne Vorbereitung (in deinem Lieferantensystem)\n\nBevor du mit dem Netzbetreiber kommunizierst, musst du alle Daten im eigenen System (z.B. SAP IS-U, Schleupen, KVASy) korrekt anlegen.\n\n1.  **Kundendaten erfassen:** Lege den Kunden mit allen Stammdaten an (Name, Adresse, Bankverbindung, etc.).\n2.  **Marktlokation (MaLo) identifizieren:** Du benötigst die eindeutige Marktlokations-ID (beginnt mit \"DE\" und hat 11 Stellen) für den Zählpunkt des Kunden. Oft findest du diese auf alten Rechnungen oder der Kunde kann sie beim VNB oder dem Vormieter erfragen. Manchmal reicht auch die Zählernummer und die Adresse, um die MaLo zu finden.\n3.  **Vertrag anlegen:**\n    *   Erstelle einen neuen Energieliefervertrag für den Kunden.\n    *   Verknüpfe den Vertrag mit der korrekten Marktlokation.\n    *   **Wichtig für dich:** Weise dem Vertrag den vereinbarten **Sondertarif** zu. Dies ist ein rein interner Schritt. Die Details des Tarifs (Preise, Konditionen) werden **nicht** an den Netzbetreiber übermittelt. Für den Netzbetreiber ist nur relevant, *dass* du der neue Lieferant bist.\n    *   Trage das **Einzugsdatum** als Vertragsbeginn ein.\n\n### Schritt 2: Marktkommunikation (MaKo) – Die Anmeldung beim Netzbetreiber\n\nNachdem intern alles angelegt ist, stößt dein System die Marktkommunikation an. Dies geschieht in der Regel automatisiert, aber es ist gut zu wissen, was im Hintergrund passiert.\n\n1.  **Nachrichtentyp:** Dein System erstellt eine **UTILMD-Nachricht** (EDIFACT-Format).\n2.  **Geschäftsprozess:** Der Prozess innerhalb der UTILMD ist die \"Anmeldung zur Netznutzung\" (E_01 bei Einzug gemäß GPKE).\n3.  **Wesentliche Daten in der UTILMD-Nachricht:**\n    *   **Absender:** Deine Marktpartner-ID (MP-ID).\n    *   **Empfänger:** Die MP-ID des zuständigen Verteilnetzbetreibers.\n    *   **Marktlokations-ID (MaLo-ID):** Der Zählpunkt, den du beliefern möchtest.\n    *   **Einzugsdatum:** Das Datum, ab dem die Belieferung starten soll (`DTM+157`).\n    *   **Kundendaten:** Name und Adresse des neuen Kunden.\n    *   **Zählverfahren:** (falls bekannt, z.B. RLM oder SLP).\n    *   **Optional:** Zählernummer zur zusätzlichen Identifikation.\n\nDein System sendet diese UTILMD-Nachricht an den Netzbetreiber.\n\n### Schritt 3: Warten auf die Antwort des",
+    "onlyCs30": ""
+  },
+  "metrics": {
+    "cs30SearchTime": 682,
+    "cs30GenerationTime": 0,
+    "totalProcessingTime": 38052
+  }
+}

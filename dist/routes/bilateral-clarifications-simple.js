@@ -74,6 +74,15 @@ const initializeTable = async () => {
           reference_data JSONB,                -- Additional context data
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
+      -- Create additional data table for storing additional details
+      CREATE TABLE IF NOT EXISTS clarification_additional_data (
+          id SERIAL PRIMARY KEY,
+          clarification_id INTEGER NOT NULL REFERENCES bilateral_clarifications(id) ON DELETE CASCADE,
+          data_type VARCHAR(50) NOT NULL,       -- 'MARKET_PARTNER', 'DATA_EXCHANGE_REFERENCE', 'SELECTED_ROLE', 'SELECTED_CONTACT'
+          data JSONB NOT NULL,                  -- Die eigentlichen Daten
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
         await database_1.default.query(createTableQuery);
         console.log('✅ bilateral_clarifications table initialized');
@@ -191,6 +200,13 @@ router.post('/', auth_1.authenticateToken, async (req, res) => {
         if (!marketPartner) {
             return res.status(400).json({ error: 'Marktpartner ist erforderlich' });
         }
+        // Sicherstellen, dass marketPartner.code und marketPartner.companyName existieren
+        if (!marketPartner.code) {
+            return res.status(400).json({ error: 'Marktpartner-Code ist erforderlich' });
+        }
+        if (!marketPartner.companyName) {
+            return res.status(400).json({ error: 'Marktpartner-Name ist erforderlich' });
+        }
         if (!selectedRole) {
             return res.status(400).json({ error: 'Marktrolle ist erforderlich' });
         }
@@ -270,9 +286,11 @@ router.get('/:id', async (req, res) => {
 });
 // Context Transfer Endpoints
 router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
     try {
         const { context, clarification } = req.body;
+        const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
+        const llmService = new LLMDataExtractionService();
         console.log('Creating clarification from chat context:', {
             source: context.source,
             chatId: (_a = context.chatContext) === null || _a === void 0 ? void 0 : _a.chatId,
@@ -285,15 +303,49 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
                 priority: context.suggestedPriority
             }
         });
-        // Create actual clarification in the database (no longer a mock)
+        // Verwende LLM-Service, um eine intelligente Zusammenfassung zu erstellen
+        let title = context.suggestedTitle || clarification.title || 'Chat-basierte Klärung';
+        let description = '';
+        try {
+            // Chat-Inhalt für LLM-Analyse vorbereiten
+            const chatContent = ((_e = context.chatContext) === null || _e === void 0 ? void 0 : _e.content) || '';
+            const chatTitle = ((_f = context.chatContext) === null || _f === void 0 ? void 0 : _f.title) || 'Chat-Konversation';
+            console.log(`Generating LLM summary for chat (id: ${(_g = context.chatContext) === null || _g === void 0 ? void 0 : _g.chatId})`);
+            // LLM-Service aufrufen, um Zusammenfassung zu erstellen
+            const llmResult = await llmService.generateTimelineActivitySummary('chat_session', 'create_clarification', {
+                chatId: (_h = context.chatContext) === null || _h === void 0 ? void 0 : _h.chatId,
+                chatTitle: chatTitle,
+                content: chatContent,
+                marketPartner: ((_j = context.suggestedMarketPartner) === null || _j === void 0 ? void 0 : _j.code) || clarification.marketPartnerCode || ''
+            });
+            // LLM-generierte Titel und Beschreibung verwenden, falls verfügbar
+            if (llmResult === null || llmResult === void 0 ? void 0 : llmResult.title) {
+                title = llmResult.title;
+            }
+            if (llmResult === null || llmResult === void 0 ? void 0 : llmResult.summary) {
+                description = llmResult.summary;
+            }
+            else {
+                // Fallback, wenn LLM keine Zusammenfassung erstellen konnte
+                description = context.suggestedDescription || clarification.description || 'Automatisch erstellt aus Chat-Konversation';
+            }
+            console.log('LLM summary generated successfully:', {
+                titleLength: title.length,
+                descriptionLength: description.length
+            });
+        }
+        catch (llmError) {
+            console.error('Error generating LLM summary:', llmError);
+            // Fallback zu einfacher Beschreibung, wenn LLM fehlschlägt
+            description = context.suggestedDescription || clarification.description || '';
+        }
+        // Create actual clarification in the database
         const now = new Date();
-        const title = context.suggestedTitle || clarification.title || 'Chat-basierte Klärung';
-        const description = context.suggestedDescription || clarification.description || '';
-        const marketPartnerCode = ((_e = context.suggestedMarketPartner) === null || _e === void 0 ? void 0 : _e.code) || clarification.marketPartnerCode || '';
-        const marketPartnerName = ((_f = context.suggestedMarketPartner) === null || _f === void 0 ? void 0 : _f.name) || clarification.marketPartnerName || '';
+        const marketPartnerCode = ((_k = context.suggestedMarketPartner) === null || _k === void 0 ? void 0 : _k.code) || clarification.marketPartnerCode || '';
+        const marketPartnerName = ((_l = context.suggestedMarketPartner) === null || _l === void 0 ? void 0 : _l.name) || clarification.marketPartnerName || '';
         const caseType = context.suggestedCaseType || clarification.caseType || 'GENERAL';
         const priority = context.suggestedPriority || clarification.priority || 'MEDIUM';
-        const userId = ((_g = req.user) === null || _g === void 0 ? void 0 : _g.id) || 'system';
+        const userId = ((_m = req.user) === null || _m === void 0 ? void 0 : _m.id) || 'system';
         const assignedTo = clarification.assignedTo || userId; // Assign to creating user by default
         // Sicherstellen, dass tags ein valides Array ist
         let tagsArray = [];
@@ -317,14 +369,14 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
         const insertResult = await database_1.default.query(`INSERT INTO bilateral_clarifications (
         title, description, market_partner_code, market_partner_name, case_type, status,
         priority, created_by, created_at, updated_at, tags, shared_with_team, source_system,
-        version, archived, assigned_to
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16) RETURNING id`, [
+        version, archived, assigned_to, market_partner_data, selected_role, selected_contact, data_exchange_reference, internal_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id`, [
             title,
             description,
             marketPartnerCode,
             marketPartnerName,
             caseType,
-            'OPEN', // Start as OPEN 
+            'DRAFT', // Start as DRAFT anstatt OPEN (um die CHECK-Constraint zu erfüllen)
             priority,
             userId,
             now,
@@ -334,11 +386,16 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
             'CHAT', // Mark source as CHAT
             1,
             false,
-            assignedTo
+            assignedTo,
+            clarification.marketPartner ? JSON.stringify(clarification.marketPartner) : null,
+            clarification.selectedRole ? JSON.stringify(clarification.selectedRole) : null,
+            clarification.selectedContact ? JSON.stringify(clarification.selectedContact) : null,
+            clarification.dataExchangeReference ? JSON.stringify(clarification.dataExchangeReference) : null,
+            'DRAFT' // Internal status muss auch gesetzt werden
         ]);
         const clarificationId = insertResult.rows[0].id;
         // Create reference to chat context
-        if ((_h = context.chatContext) === null || _h === void 0 ? void 0 : _h.chatId) {
+        if ((_o = context.chatContext) === null || _o === void 0 ? void 0 : _o.chatId) {
             await database_1.default.query(`INSERT INTO clarification_references (
           clarification_id, reference_type, reference_id, reference_data
         ) VALUES ($1, $2, $3, $4)`, [

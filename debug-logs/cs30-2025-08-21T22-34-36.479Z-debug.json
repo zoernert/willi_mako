@@ -1,0 +1,320 @@
+{
+  "timestamp": "2025-08-21T22:33:54.270Z",
+  "query": "Wie bearbeite ich einen Anwendungsfehler?",
+  "expandedQuery": "Anwendungsfehler Schleupen CS/30: Klärfallbearbeitung (CS.WF), Fehlerprotokoll analysieren, MaKo-Fehler, Storno, Nachverarbeitung in der Abrechnung (CS.VA).",
+  "commandLineOptions": {
+    "verbose": true,
+    "inspectOnly": false,
+    "lowerThreshold": true,
+    "expandQuery": true,
+    "samplePoints": true
+  },
+  "flow": [
+    {
+      "name": "FLOW_START",
+      "timestamp": "2025-08-21T22:33:54.283Z",
+      "details": {
+        "query": "Wie bearbeite ich einen Anwendungsfehler?"
+      }
+    },
+    {
+      "name": "CS30_CHECK_START",
+      "timestamp": "2025-08-21T22:33:54.283Z",
+      "details": "Checking CS30 collection availability"
+    },
+    {
+      "name": "CS30_CHECK_COMPLETE",
+      "timestamp": "2025-08-21T22:33:54.309Z",
+      "details": {
+        "isAvailable": true
+      }
+    },
+    {
+      "name": "CS30_COLLECTION_INFO",
+      "timestamp": "2025-08-21T22:33:54.326Z",
+      "details": {
+        "dimensions": 768,
+        "distanceMetric": "Cosine",
+        "hasIndexes": false,
+        "config": {
+          "params": {
+            "vectors": {
+              "size": 768,
+              "distance": "Cosine",
+              "on_disk": true
+            },
+            "shard_number": 1,
+            "replication_factor": 1,
+            "write_consistency_factor": 1,
+            "on_disk_payload": true
+          },
+          "hnsw_config": {
+            "m": 16,
+            "ef_construct": 100,
+            "full_scan_threshold": 10000,
+            "max_indexing_threads": 0,
+            "on_disk": true
+          },
+          "optimizer_config": {
+            "deleted_threshold": 0.2,
+            "vacuum_min_vector_number": 1000,
+            "default_segment_number": 0,
+            "max_segment_size": null,
+            "memmap_threshold": null,
+            "indexing_threshold": 20000,
+            "flush_interval_sec": 50,
+            "max_optimization_threads": null
+          },
+          "wal_config": {
+            "wal_capacity_mb": 32,
+            "wal_segments_ahead": 0
+          },
+          "quantization_config": null
+        }
+      }
+    },
+    {
+      "name": "CS30_SAMPLE_POINTS_START",
+      "timestamp": "2025-08-21T22:33:54.326Z",
+      "details": "Getting sample points from CS30 collection"
+    },
+    {
+      "name": "CS30_SAMPLE_POINTS_COMPLETE",
+      "timestamp": "2025-08-21T22:33:54.355Z",
+      "details": {
+        "count": 5,
+        "sample": {
+          "id": "00003910-f953-4e7f-adb9-430cceccc5d4",
+          "payloadKeys": [
+            "source",
+            "type",
+            "content"
+          ],
+          "payload": {
+            "source": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md",
+            "type": "synthetic_answer",
+            "content": "Der Text besteht nur aus einem Bildlink und einer Aufforderung zur Vergrößerung, ohne weitere Informationen."
+          }
+        }
+      }
+    },
+    {
+      "name": "STANDARD_RESPONSE_GENERATION_START",
+      "timestamp": "2025-08-21T22:33:54.355Z",
+      "details": {
+        "contextLength": 0,
+        "isCs30Response": false
+      }
+    },
+    {
+      "name": "STANDARD_RESPONSE_GENERATION_COMPLETE",
+      "timestamp": "2025-08-21T22:34:16.017Z",
+      "details": {
+        "timeMs": 21662,
+        "responsePreview": "Hallo! Gerne, das ist eine Kernaufgabe in der Marktkommunikation (MaKo). Die Bearbeitung eines Anwendungsfehlers ist ein standardisierter Prozess.\n\nEin \"Anwendungsfehler\" wird Ihnen in der Regel durch..."
+      }
+    },
+    {
+      "name": "QUERY_EXPANSION_START",
+      "timestamp": "2025-08-21T22:34:16.017Z",
+      "details": {
+        "originalQuery": "Wie bearbeite ich einen Anwendungsfehler?"
+      }
+    },
+    {
+      "name": "QUERY_EXPANSION_COMPLETE",
+      "timestamp": "2025-08-21T22:34:35.954Z",
+      "details": {
+        "originalQuery": "Wie bearbeite ich einen Anwendungsfehler?",
+        "expandedQuery": "Anwendungsfehler Schleupen CS/30: Klärfallbearbeitung (CS.WF), Fehlerprotokoll analysieren, MaKo-Fehler, Storno, Nachverarbeitung in der Abrechnung (CS.VA)."
+      }
+    },
+    {
+      "name": "CS30_SEARCH_START",
+      "timestamp": "2025-08-21T22:34:35.954Z",
+      "details": {
+        "originalQuery": "Wie bearbeite ich einen Anwendungsfehler?",
+        "searchQuery": "Anwendungsfehler Schleupen CS/30: Klärfallbearbeitung (CS.WF), Fehlerprotokoll analysieren, MaKo-Fehler, Storno, Nachverarbeitung in der Abrechnung (CS.VA).",
+        "limit": 5,
+        "scoreThreshold": 0.3,
+        "usingExpansion": true
+      }
+    },
+    {
+      "name": "EMBEDDING_GENERATION_START",
+      "timestamp": "2025-08-21T22:34:35.954Z",
+      "details": {
+        "text": "Anwendungsfehler Schleupen CS/30: Klärfallbearbeitung (CS.WF), Fehlerprotokoll analysieren, MaKo-Feh..."
+      }
+    },
+    {
+      "name": "EMBEDDING_GENERATION_COMPLETE",
+      "timestamp": "2025-08-21T22:34:36.214Z",
+      "details": {
+        "dimensions": 768
+      }
+    },
+    {
+      "name": "CS30_SEARCH_COMPLETE",
+      "timestamp": "2025-08-21T22:34:36.479Z",
+      "details": {
+        "resultsCount": 0,
+        "timeMs": 525
+      }
+    },
+    {
+      "name": "CS30_NO_RELEVANT_RESULTS",
+      "timestamp": "2025-08-21T22:34:36.479Z",
+      "details": "No relevant CS30 results found"
+    },
+    {
+      "name": "FLOW_COMPLETE",
+      "timestamp": "2025-08-21T22:34:36.479Z",
+      "details": {
+        "timeMs": 42196,
+        "hasCs30Response": false
+      }
+    }
+  ],
+  "cs30": {
+    "collection": "cs30",
+    "isAvailable": true,
+    "collectionInfo": {
+      "dimensions": 768,
+      "distanceMetric": "Cosine",
+      "hasIndexes": false,
+      "config": {
+        "params": {
+          "vectors": {
+            "size": 768,
+            "distance": "Cosine",
+            "on_disk": true
+          },
+          "shard_number": 1,
+          "replication_factor": 1,
+          "write_consistency_factor": 1,
+          "on_disk_payload": true
+        },
+        "hnsw_config": {
+          "m": 16,
+          "ef_construct": 100,
+          "full_scan_threshold": 10000,
+          "max_indexing_threads": 0,
+          "on_disk": true
+        },
+        "optimizer_config": {
+          "deleted_threshold": 0.2,
+          "vacuum_min_vector_number": 1000,
+          "default_segment_number": 0,
+          "max_segment_size": null,
+          "memmap_threshold": null,
+          "indexing_threshold": 20000,
+          "flush_interval_sec": 50,
+          "max_optimization_threads": null
+        },
+        "wal_config": {
+          "wal_capacity_mb": 32,
+          "wal_segments_ahead": 0
+        },
+        "quantization_config": null
+      }
+    },
+    "samplePoints": [
+      {
+        "id": "00003910-f953-4e7f-adb9-430cceccc5d4",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md",
+          "type": "synthetic_answer",
+          "content": "Der Text besteht nur aus einem Bildlink und einer Aufforderung zur Vergrößerung, ohne weitere Informationen."
+        }
+      },
+      {
+        "id": "00003ec9-e027-4df5-94f7-036e0e428631",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "messwertmanagement_marktlokationen_schleupen-cs-nnu-mwe-mue-messwertueberwachungflow.md",
+          "type": "synthetic_question",
+          "content": "Was wird durch den Text beschrieben?"
+        }
+      },
+      {
+        "id": "000040b5-9b73-4536-995d-7399808f8722",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "marktkommunikation-edi_schleupen-cs-edi-daa-afi-anwendungsfehleridentflow_anwendungsfehler-verwalten.md",
+          "type": "synthetic_answer",
+          "content": "Der `$sessionToken` ist vermutlich eine Sitzungskennung, die den Kontext des Fehlers genauer spezifiziert.  Weitere Informationen sind benötigt um dies zu präzisieren."
+        }
+      },
+      {
+        "id": "00004272-d15f-4a5f-93f9-1bb7cf88c4dc",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "vertriebs-dashboard_kundenentwicklung_schleupen-cs-ap-bi-dashboard-kundenentwicklung-wechselquote-flow.md",
+          "type": "synthetic_answer",
+          "content": "Die Auswertungen zeigen die prognostizierten Mengen pro Jahr und den dazugehörigen Marktanteil in Prozent."
+        }
+      },
+      {
+        "id": "00004f0f-9771-44b1-b68c-2cded11a4ec0",
+        "payloadKeys": [
+          "source",
+          "type",
+          "content"
+        ],
+        "payload": {
+          "source": "systemstruktur_serviceimplementierungsgruppen-zuordnen.md",
+          "type": "paragraph",
+          "content": "Serviceimplementierungsgruppen zuordnen\n======================================="
+        }
+      }
+    ],
+    "searchResults": [],
+    "searchScores": [],
+    "payloadStructure": {
+      "source": {
+        "type": "string",
+        "length": 50,
+        "sample": "eeg_eeg-anlagen_biomasse-abrechnung-vorbereiten.md"
+      },
+      "type": {
+        "type": "string",
+        "length": 16,
+        "sample": "synthetic_answer"
+      },
+      "content": {
+        "type": "string",
+        "length": 108,
+        "sample": "Der Text besteht nur aus einem Bildlink und einer ..."
+      }
+    },
+    "contextUsed": ""
+  },
+  "response": {
+    "final": "Hallo! Gerne, das ist eine Kernaufgabe in der Marktkommunikation (MaKo). Die Bearbeitung eines Anwendungsfehlers ist ein standardisierter Prozess.\n\nEin \"Anwendungsfehler\" wird Ihnen in der Regel durch eine **APERAK-Nachricht** (Application Error and Acknowledgement) vom Marktpartner gemeldet. Diese Nachricht signalisiert, dass Ihre ursprüngliche Nachricht (z.B. eine Anmeldung, ein Zählerstand) zwar syntaktisch korrekt war (also die Struktur stimmte), aber inhaltlich nicht verarbeitet werden konnte.\n\nHier ist eine Schritt-für-Schritt-Anleitung, wie Sie einen Anwendungsfehler bearbeiten:\n\n### Schritt 1: Empfang und Identifikation der APERAK\n\nDie APERAK-Nachricht kommt als Antwort auf eine von Ihnen gesendete Nachricht. Das Wichtigste ist, sie dem ursprünglichen Vorgang zuzuordnen. Das geschieht über die **Bezugsnummer (Referenznummer)** der Originalnachricht, die in der APERAK enthalten ist.\n\n*   **Was tun?** Suchen Sie in Ihrem System (z.B. EDM, Abrechnungssystem) den Geschäftsvorfall, auf den sich die APERAK bezieht.\n\n### Schritt 2: Analyse des Fehlercodes\n\nDie APERAK enthält einen oder mehrere Fehlercodes, die genau beschreiben, was das Problem ist. Diese Codes sind standardisiert (z.B. durch den BDEW).\n\n**Typische Fehlerquellen und ihre Codes (Beispiele):**\n\n*   **Datenfehler:**\n    *   `Z01`: \"Zählpunkt unbekannt\" (Die von Ihnen angegebene Zählpunktbezeichnung existiert beim Netzbetreiber nicht).\n    *   `A28`: \"Name des Kunden stimmt nicht überein\".\n    *   `Z13`: \"Datum/Uhrzeit liegt in der Vergangenheit\".\n*   **Prozessfehler:**\n    *   `A01`: \"Der Geschäftsvorfall ist für den Zählpunkt nicht zulässig\" (z.B. Sie versuchen eine Anmeldung für einen Zählpunkt, der bereits von Ihnen beliefert wird).\n    *   `A05`: \"Eine Anmeldung für den Zeitraum liegt bereits vor\".\n*   **Fehlende oder falsche Werte:**\n    *   `B01`: \"Ein Muss-Segment fehlt\" (z.B. die Zählerstandsangaben bei einem Lieferantenwechsel).\n\n*   **Was tun?** Lesen Sie den Fehlercode und die dazugehörige Beschreibung in der APERAK. Die Codelisten des BDEW sind hier die Refer",
+    "withoutCs30": "Hallo! Gerne, das ist eine Kernaufgabe in der Marktkommunikation (MaKo). Die Bearbeitung eines Anwendungsfehlers ist ein standardisierter Prozess.\n\nEin \"Anwendungsfehler\" wird Ihnen in der Regel durch eine **APERAK-Nachricht** (Application Error and Acknowledgement) vom Marktpartner gemeldet. Diese Nachricht signalisiert, dass Ihre ursprüngliche Nachricht (z.B. eine Anmeldung, ein Zählerstand) zwar syntaktisch korrekt war (also die Struktur stimmte), aber inhaltlich nicht verarbeitet werden konnte.\n\nHier ist eine Schritt-für-Schritt-Anleitung, wie Sie einen Anwendungsfehler bearbeiten:\n\n### Schritt 1: Empfang und Identifikation der APERAK\n\nDie APERAK-Nachricht kommt als Antwort auf eine von Ihnen gesendete Nachricht. Das Wichtigste ist, sie dem ursprünglichen Vorgang zuzuordnen. Das geschieht über die **Bezugsnummer (Referenznummer)** der Originalnachricht, die in der APERAK enthalten ist.\n\n*   **Was tun?** Suchen Sie in Ihrem System (z.B. EDM, Abrechnungssystem) den Geschäftsvorfall, auf den sich die APERAK bezieht.\n\n### Schritt 2: Analyse des Fehlercodes\n\nDie APERAK enthält einen oder mehrere Fehlercodes, die genau beschreiben, was das Problem ist. Diese Codes sind standardisiert (z.B. durch den BDEW).\n\n**Typische Fehlerquellen und ihre Codes (Beispiele):**\n\n*   **Datenfehler:**\n    *   `Z01`: \"Zählpunkt unbekannt\" (Die von Ihnen angegebene Zählpunktbezeichnung existiert beim Netzbetreiber nicht).\n    *   `A28`: \"Name des Kunden stimmt nicht überein\".\n    *   `Z13`: \"Datum/Uhrzeit liegt in der Vergangenheit\".\n*   **Prozessfehler:**\n    *   `A01`: \"Der Geschäftsvorfall ist für den Zählpunkt nicht zulässig\" (z.B. Sie versuchen eine Anmeldung für einen Zählpunkt, der bereits von Ihnen beliefert wird).\n    *   `A05`: \"Eine Anmeldung für den Zeitraum liegt bereits vor\".\n*   **Fehlende oder falsche Werte:**\n    *   `B01`: \"Ein Muss-Segment fehlt\" (z.B. die Zählerstandsangaben bei einem Lieferantenwechsel).\n\n*   **Was tun?** Lesen Sie den Fehlercode und die dazugehörige Beschreibung in der APERAK. Die Codelisten des BDEW sind hier die Refer",
+    "onlyCs30": ""
+  },
+  "metrics": {
+    "cs30SearchTime": 525,
+    "cs30GenerationTime": 0,
+    "totalProcessingTime": 42196
+  }
+}
