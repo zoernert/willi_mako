@@ -22,6 +22,7 @@ export interface CodeSearchResult {
     contacts?: ContactEntry[];
     contactSheetUrl?: string;
     markdown?: string;
+    allSoftwareSystems?: SoftwareSystem[];
 }
 export interface SoftwareSystem {
     name: string;
@@ -69,7 +70,6 @@ export interface SearchFilters {
 }
 export interface DetailedCodeResult extends CodeSearchResult {
     findings: MarketPartnerFinding[];
-    allSoftwareSystems: SoftwareSystem[];
 }
 export interface BDEWCode {
     id: number;
