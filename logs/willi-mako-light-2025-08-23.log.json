@@ -1,0 +1,480 @@
+[
+  {
+    "timestamp": "2025-08-23T11:14:46.297Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:14:46.544Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T11:14:46.545Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:14:46.588Z",
+    "type": "error",
+    "message": "Chat-Anfrage fehlgeschlagen",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:17:23.903Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:17:24.140Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T11:17:24.141Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:17:24.174Z",
+    "type": "api",
+    "message": "Endpunkt /api/chat nicht gefunden, versuche /api/chats...",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:17:24.206Z",
+    "type": "error",
+    "message": "Chat-Anfrage fehlgeschlagen",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:21:08.569Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:21:08.672Z",
+    "type": "api",
+    "message": "Endpunkt /api/chat nicht gefunden, versuche /api/chats...",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:21:08.703Z",
+    "type": "error",
+    "message": "Chat-Anfrage fehlgeschlagen",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T12:08:11.846Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:08:12.133Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:08:12.134Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Welche Inhalte sind in einer Invoic Nachricht?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:08:13.233Z",
+    "type": "api",
+    "message": "Neuer Chat erstellt mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:08:29.899Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Welche Inhalte sind in einer Invoic Nachricht?",
+      "metrics": {
+        "responseTime": 17764,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:09:32.620Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:09:32.702Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:09:46.177Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was bedeutet GPKE",
+      "metrics": {
+        "responseTime": 13557,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:09:46.187Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet MaKo 2022?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:09:46.220Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:09:58.322Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was bedeutet MaKo 2022?",
+      "metrics": {
+        "responseTime": 12134,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:10:12.547Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Welche Inhalte sind in einer Invoic Nachricht?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:10:12.639Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:10:32.280Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Welche Inhalte sind in einer Invoic Nachricht?",
+      "metrics": {
+        "responseTime": 19733,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:25:11.202Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was ist ein MSCONS?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:25:11.290Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:25:11.331Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was ist ein MSCONS?",
+      "metrics": {
+        "responseTime": 129,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:41:41.288Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:41:41.533Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:41:41.534Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:41:41.565Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:41:52.243Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was bedeutet GPKE",
+      "metrics": {
+        "responseTime": 10709,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:43:23.076Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:43:23.356Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:43:23.357Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:43:23.400Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:43:34.251Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was bedeutet GPKE",
+      "metrics": {
+        "responseTime": 10894,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:44:53.534Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was ist ein MSCONS?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:44:53.631Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:44:53.672Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was ist ein MSCONS?",
+      "metrics": {
+        "responseTime": 138,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:47:34.941Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:47:35.232Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:47:35.233Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was ist die GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:47:35.266Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:47:35.302Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was ist die GPKE",
+      "metrics": {
+        "responseTime": 68,
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:48:35.030Z",
+    "type": "api",
+    "message": "Authentifiziere Benutzer: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:48:35.253Z",
+    "type": "success",
+    "message": "Authentifizierung erfolgreich",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:48:35.254Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was ist die GPKE\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:48:35.282Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:48:35.319Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was ist die GPKE",
+      "answer": "Für eine präzisere Antwort benötige ich weitere Informationen:\n\n1. Auf welchen Energieträger bezieht sich Ihre Frage?\n   Optionen: Strom, Gas, Beide\n\n2. Aus welcher Sicht möchten Sie die Information?\n   Optionen: Energielieferant, Netzbetreiber, Messstellenbetreiber, Stadtwerke, Endkunde\n\n3. Für welchen Anwendungsbereich benötigen Sie die Information?\n   Optionen: Geschäftsprozesse, Technische Umsetzung, Rechtliche Anforderungen, Kundenbetreuung\n\n\nBegründung: Präzisierung wegen: allgemein formuliert, unklarer Kontext, unklare Perspektive, unklarer Energieträger",
+      "messageType": "clarification",
+      "metrics": {
+        "responseTime": 64,
+        "messageType": "clarification",
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 567
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-23T12:48:44.266Z",
+    "type": "api",
+    "message": "Chat-Anfrage senden: \"Was bedeutet GPKE im Strombereich für einen Netzbetreiber?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:48:44.347Z",
+    "type": "api",
+    "message": "Verwende existierenden Chat mit ID: b4033dd3-febf-49fa-91ee-2465abd46d2d",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T12:49:00.828Z",
+    "type": "success",
+    "message": "Chat-Antwort erhalten",
+    "data": {
+      "query": "Was bedeutet GPKE im Strombereich für einen Netzbetreiber?",
+      "answer": "Für einen Netzbetreiber im Strombereich bedeutet die GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität), dass er sich an standardisierte Prozesse undFristen halten muss, um einen reibungslosen Lieferantenwechsel und die Kundenbelieferungzu gewährleisten. Dies beinhaltet insbesondere:\n\n*   **Bereitstellung von Daten:** Der Netzbetreiber ist verpflichtet, Stammdaten (z.B.Zählpunktbezeichnung, Netzkennzahl) und Verbrauchsdaten (z.B.Zählerstände) fristgerecht an den neuen Lieferanten zu übermitteln.\n*   **Bearbeitung vonAnfragen:** Der Netzbetreiber muss Anfragen zum Lieferantenwechsel zeitnahbearbeiten und bestätigen oder ablehnen (ggf. mit Begründung).\n*   **Koordination desWechsels:** Der Netzbetreiber ist für die technische Durchführung desLieferantenwechsels verantwortlich (z.B. Zählerablesung, Anpassung derZählerstände).\n*   **Kommunikation:** Der Netzbetreiber muss über standardisierteNachrichtenformate (z.B. MSCONS, UTILMD) mit den anderen Marktteilnehmernkommunizieren.\n*   **Einhaltung von Fristen:** Die GPKE legt genaue Fristen für die einzelnenProzessschritte fest, die der Netzbetreiber einhalten muss.\n*   **Anpassung der IT-Systeme:** Der Netzbetreiber muss seine IT-Systeme entsprechend denGPKE-Vorgaben anpassen und regelmäßig aktualisieren.\n\nDie Einhaltung der GPKE ist für den Netzbetreiber essentiell, umDiskriminierungsfreiheit zu gewährleisten, den Wettbewerb im Strommarkt zufördern und Sanktionen durch die Bundesnetzagentur zu vermeiden.\n",
+      "messageType": "normal",
+      "metrics": {
+        "responseTime": 16562,
+        "messageType": "normal",
+        "hasCs30Response": false,
+        "cs30SourceCount": 0,
+        "hasEnhancedQuery": false,
+        "vectorSearchScore": null,
+        "sourceCount": 0,
+        "characterCount": 1487
+      }
+    }
+  }
+]

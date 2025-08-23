@@ -1,0 +1,96 @@
+{
+  "timestamp": "2025-08-22T15:10:22.270Z",
+  "testType": "normal-user",
+  "queries": [
+    {
+      "query": "Erkläre mir den Prozess des Lieferantenwechsels",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.284Z",
+      "success": false
+    },
+    {
+      "query": "Wie lange dauert ein Lieferantenwechsel?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.350Z",
+      "success": false
+    },
+    {
+      "query": "Was muss ich beim Lieferantenwechsel beachten?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.365Z",
+      "success": false
+    },
+    {
+      "query": "Welche Fristen gelten bei der Energieabrechnung?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.370Z",
+      "success": false
+    },
+    {
+      "query": "Wie funktioniert die Netznutzungsabrechnung?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.376Z",
+      "success": false
+    },
+    {
+      "query": "Wann muss ich meinen Zählerstand melden?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.389Z",
+      "success": false
+    },
+    {
+      "query": "Wie berechnen sich die Netzentgelte?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.397Z",
+      "success": false
+    },
+    {
+      "query": "Was bedeutet Grundversorgung?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.401Z",
+      "success": false
+    },
+    {
+      "query": "Wie wird der Arbeitspreis berechnet?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.415Z",
+      "success": false
+    },
+    {
+      "query": "Was ist der Unterschied zwischen Grund- und Ersatzversorgung?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.417Z",
+      "success": false
+    },
+    {
+      "query": "Wann kann mir der Strom abgestellt werden?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.421Z",
+      "success": false
+    },
+    {
+      "query": "Wie oft darf der Preis angepasst werden?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.424Z",
+      "success": false
+    },
+    {
+      "query": "Was ist eine Preisgarantie?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.427Z",
+      "success": false
+    },
+    {
+      "query": "Wie kündige ich meinen Energievertrag?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.437Z",
+      "success": false
+    },
+    {
+      "query": "Was passiert nach Vertragsende?",
+      "error": "Invalid URL",
+      "timestamp": "2025-08-22T15:10:22.474Z",
+      "success": false
+    }
+  ]
+}

@@ -397,11 +397,13 @@ router.post('/from-chat-context', auth_1.authenticateToken, async (req, res) => 
         // Create reference to chat context
         if ((_o = context.chatContext) === null || _o === void 0 ? void 0 : _o.chatId) {
             await database_1.default.query(`INSERT INTO clarification_references (
-          clarification_id, reference_type, reference_id, reference_data
-        ) VALUES ($1, $2, $3, $4)`, [
+          clarification_id, reference_type, reference_id, reference_value, auto_extracted, reference_data
+        ) VALUES ($1, $2, $3, $4, $5, $6)`, [
                 clarificationId,
                 'CHAT',
                 context.chatContext.chatId,
+                context.chatContext.chatId, // Use chatId as reference_value too for compatibility
+                true,
                 JSON.stringify({
                     chatId: context.chatContext.chatId,
                     messageId: context.chatContext.messageId,
@@ -740,6 +742,247 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
         res.status(500).json({
             error: 'Fehler beim Aktualisieren des Klärfalls',
             details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+// Endpunkte für die Verwaltung von Referenzen (Chats, Notizen, etc.)
+// Hinzufügen einer Chat-Referenz zu einem Klärfall
+router.post('/:id/references/chat', auth_1.authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { chatId, chatTitle } = req.body;
+    const userId = req.user.id;
+    try {
+        if (!chatId) {
+            return res.status(400).json({ message: 'Chat-ID ist erforderlich' });
+        }
+        // Prüfen, ob der Klärfall existiert und im Status "INTERNAL" ist
+        const clarificationCheck = await database_1.default.query('SELECT id, status FROM bilateral_clarifications WHERE id = $1', [id]);
+        if (clarificationCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'Klärfall nicht gefunden' });
+        }
+        // Optional: Status prüfen - nur im Status "INTERNAL" erlauben
+        if (clarificationCheck.rows[0].status !== 'INTERNAL') {
+            return res.status(403).json({
+                message: 'Referenzen können nur im Status INTERNAL hinzugefügt werden'
+            });
+        }
+        // Prüfen, ob die Referenz bereits existiert
+        const existingRef = await database_1.default.query('SELECT id FROM clarification_references WHERE clarification_id = $1 AND reference_type = $2 AND reference_id = $3', [id, 'CHAT', chatId]);
+        if (existingRef.rows.length > 0) {
+            return res.status(409).json({ message: 'Diese Chat-Referenz ist bereits verknüpft' });
+        }
+        // Neue Referenz einfügen
+        const reference = await database_1.default.query(`INSERT INTO clarification_references (
+        clarification_id, reference_type, reference_id, reference_value, reference_data
+      ) VALUES ($1, $2, $3, $4, $5) RETURNING id`, [id, 'CHAT', chatId, chatId, JSON.stringify({
+                title: chatTitle,
+                addedBy: userId,
+                addedAt: new Date().toISOString()
+            })]);
+        // Aktivität protokollieren
+        await database_1.default.query(`INSERT INTO clarification_activities (
+        clarification_id, activity_type, activity_data, created_by
+      ) VALUES ($1, $2, $3, $4)`, [id, 'REFERENCE_ADDED', JSON.stringify({
+                referenceType: 'CHAT',
+                referenceId: chatId,
+                title: chatTitle
+            }), userId]);
+        res.status(201).json({
+            success: true,
+            message: 'Chat-Referenz hinzugefügt',
+            referenceId: reference.rows[0].id
+        });
+    }
+    catch (error) {
+        console.error('Error adding chat reference:', error);
+        res.status(500).json({ message: 'Fehler beim Hinzufügen der Chat-Referenz' });
+    }
+});
+// Hinzufügen einer Notiz-Referenz zu einem Klärfall
+router.post('/:id/references/note', auth_1.authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { noteId, noteTitle } = req.body;
+    const userId = req.user.id;
+    try {
+        if (!noteId) {
+            return res.status(400).json({ message: 'Notiz-ID ist erforderlich' });
+        }
+        // Prüfen, ob der Klärfall existiert und im Status "INTERNAL" ist
+        const clarificationCheck = await database_1.default.query('SELECT id, status FROM bilateral_clarifications WHERE id = $1', [id]);
+        if (clarificationCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'Klärfall nicht gefunden' });
+        }
+        // Optional: Status prüfen - nur im Status "INTERNAL" erlauben
+        if (clarificationCheck.rows[0].status !== 'INTERNAL') {
+            return res.status(403).json({
+                message: 'Referenzen können nur im Status INTERNAL hinzugefügt werden'
+            });
+        }
+        // Prüfen, ob die Referenz bereits existiert
+        const existingRef = await database_1.default.query('SELECT id FROM clarification_references WHERE clarification_id = $1 AND reference_type = $2 AND reference_id = $3', [id, 'NOTE', noteId]);
+        if (existingRef.rows.length > 0) {
+            return res.status(409).json({ message: 'Diese Notiz-Referenz ist bereits verknüpft' });
+        }
+        // Neue Referenz einfügen
+        const reference = await database_1.default.query(`INSERT INTO clarification_references (
+        clarification_id, reference_type, reference_id, reference_value, reference_data
+      ) VALUES ($1, $2, $3, $4, $5) RETURNING id`, [id, 'NOTE', noteId, noteId, JSON.stringify({
+                title: noteTitle,
+                addedBy: userId,
+                addedAt: new Date().toISOString()
+            })]);
+        // Aktivität protokollieren
+        await database_1.default.query(`INSERT INTO clarification_activities (
+        clarification_id, activity_type, activity_data, created_by
+      ) VALUES ($1, $2, $3, $4)`, [id, 'REFERENCE_ADDED', JSON.stringify({
+                referenceType: 'NOTE',
+                referenceId: noteId,
+                title: noteTitle
+            }), userId]);
+        res.status(201).json({
+            success: true,
+            message: 'Notiz-Referenz hinzugefügt',
+            referenceId: reference.rows[0].id
+        });
+    }
+    catch (error) {
+        console.error('Error adding note reference:', error);
+        res.status(500).json({ message: 'Fehler beim Hinzufügen der Notiz-Referenz' });
+    }
+});
+// Löschen einer Referenz (Chat oder Notiz)
+router.delete('/:id/references/:referenceId', auth_1.authenticateToken, async (req, res) => {
+    var _a;
+    const { id, referenceId } = req.params;
+    const userId = req.user.id;
+    try {
+        // Prüfen, ob der Klärfall existiert und im Status "INTERNAL" ist
+        const clarificationCheck = await database_1.default.query('SELECT id, status FROM bilateral_clarifications WHERE id = $1', [id]);
+        if (clarificationCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'Klärfall nicht gefunden' });
+        }
+        // Optional: Status prüfen - nur im Status "INTERNAL" erlauben
+        if (clarificationCheck.rows[0].status !== 'INTERNAL') {
+            return res.status(403).json({
+                message: 'Referenzen können nur im Status INTERNAL entfernt werden'
+            });
+        }
+        // Referenz auslesen für Protokollierung
+        const referenceCheck = await database_1.default.query('SELECT reference_type, reference_id, reference_data FROM clarification_references WHERE id = $1 AND clarification_id = $2', [referenceId, id]);
+        if (referenceCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'Referenz nicht gefunden' });
+        }
+        const refData = referenceCheck.rows[0];
+        // Referenz löschen
+        await database_1.default.query('DELETE FROM clarification_references WHERE id = $1 AND clarification_id = $2', [referenceId, id]);
+        // Aktivität protokollieren
+        await database_1.default.query(`INSERT INTO clarification_activities (
+        clarification_id, activity_type, activity_data, created_by
+      ) VALUES ($1, $2, $3, $4)`, [id, 'REFERENCE_REMOVED', JSON.stringify({
+                referenceType: refData.reference_type,
+                referenceId: refData.reference_id,
+                title: ((_a = refData.reference_data) === null || _a === void 0 ? void 0 : _a.title) || 'Unbekannt'
+            }), userId]);
+        res.status(200).json({ success: true, message: 'Referenz entfernt' });
+    }
+    catch (error) {
+        console.error('Error removing reference:', error);
+        res.status(500).json({ message: 'Fehler beim Entfernen der Referenz' });
+    }
+});
+// Abrufen aller Referenzen für einen Klärfall
+router.get('/:id/references', auth_1.authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { type } = req.query;
+    try {
+        let query = `
+      SELECT id, reference_type, reference_id, reference_data, created_at
+      FROM clarification_references
+      WHERE clarification_id = $1
+    `;
+        const params = [id];
+        if (type) {
+            query += ' AND reference_type = $2';
+            params.push(type);
+        }
+        query += ' ORDER BY created_at DESC';
+        const result = await database_1.default.query(query, params);
+        res.json({
+            success: true,
+            references: result.rows
+        });
+    }
+    catch (error) {
+        console.error('Error fetching references:', error);
+        res.status(500).json({ message: 'Fehler beim Abrufen der Referenzen' });
+    }
+});
+// API-Endpunkte für den umgekehrten Blick: Klärfälle zu einer Referenz (Chat oder Notiz) finden
+// Abrufen aller Klärfälle, die mit einem bestimmten Chat verknüpft sind
+router.get('/linked-to-chat/:chatId', auth_1.authenticateToken, async (req, res) => {
+    const { chatId } = req.params;
+    try {
+        const query = `
+      SELECT bc.id, bc.title, bc.status, bc.priority, bc.created_at, bc.market_partner_name,
+             cr.id as reference_id
+      FROM bilateral_clarifications bc
+      JOIN clarification_references cr ON bc.id = cr.clarification_id
+      WHERE cr.reference_type = 'CHAT' AND cr.reference_id = $1
+      ORDER BY bc.updated_at DESC
+    `;
+        const result = await database_1.default.query(query, [chatId]);
+        res.json({
+            success: true,
+            linkedClarifications: result.rows.map(row => ({
+                id: row.id,
+                title: row.title,
+                status: row.status,
+                priority: row.priority,
+                createdAt: row.created_at,
+                marketPartnerName: row.market_partner_name,
+                referenceId: row.reference_id
+            }))
+        });
+    }
+    catch (error) {
+        console.error('Error fetching clarifications linked to chat:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Abrufen der verknüpften Klärfälle'
+        });
+    }
+});
+// Abrufen aller Klärfälle, die mit einer bestimmten Notiz verknüpft sind
+router.get('/linked-to-note/:noteId', auth_1.authenticateToken, async (req, res) => {
+    const { noteId } = req.params;
+    try {
+        const query = `
+      SELECT bc.id, bc.title, bc.status, bc.priority, bc.created_at, bc.market_partner_name,
+             cr.id as reference_id
+      FROM bilateral_clarifications bc
+      JOIN clarification_references cr ON bc.id = cr.clarification_id
+      WHERE cr.reference_type = 'NOTE' AND cr.reference_id = $1
+      ORDER BY bc.updated_at DESC
+    `;
+        const result = await database_1.default.query(query, [noteId]);
+        res.json({
+            success: true,
+            linkedClarifications: result.rows.map(row => ({
+                id: row.id,
+                title: row.title,
+                status: row.status,
+                priority: row.priority,
+                createdAt: row.created_at,
+                marketPartnerName: row.market_partner_name,
+                referenceId: row.reference_id
+            }))
+        });
+    }
+    catch (error) {
+        console.error('Error fetching clarifications linked to note:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Fehler beim Abrufen der verknüpften Klärfälle'
         });
     }
 });

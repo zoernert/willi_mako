@@ -1,0 +1,228 @@
+[
+  {
+    "timestamp": "2025-08-23T11:06:32.758Z",
+    "type": "info",
+    "message": "Starting Willi-Mako Chat Test CLI",
+    "data": {
+      "email": "kontakt+demo@stromdao.com",
+      "password": "willi.mako",
+      "apiUrl": "https://stromhaltig.de/api",
+      "logDir": "/config/Development/willi_mako/logs",
+      "file": "test-queries.json",
+      "verbose": true
+    }
+  },
+  {
+    "timestamp": "2025-08-23T11:06:32.759Z",
+    "type": "api",
+    "message": "Authenticating user: kontakt+demo@stromdao.com",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.009Z",
+    "type": "success",
+    "message": "Authentication successful",
+    "data": {
+      "userId": "1e09b44b-c93b-4d25-b630-0423ba158da2",
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.010Z",
+    "type": "info",
+    "message": "Loading queries from file: /config/Development/willi_mako/test-queries.json",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.010Z",
+    "type": "info",
+    "message": "Loaded 15 queries from file",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.011Z",
+    "type": "api",
+    "message": "Sending chat query: \"Wie lege ich einen neuen Vertrag in CS30 an?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.041Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.043Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was bedeutet GPKE?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.071Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.073Z",
+    "type": "api",
+    "message": "Sending chat query: \"Wie melde ich einen Zählerwechsel?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.108Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.110Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was bedeutet die Fehlermeldung E225?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.157Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.161Z",
+    "type": "api",
+    "message": "Sending chat query: \"Erkläre mir den Prozess des Lieferantenwechsels\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.188Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.189Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was sind die Fristen bei der Marktkommunikation?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.222Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.224Z",
+    "type": "api",
+    "message": "Sending chat query: \"Wie funktioniert die Bilanzkreisabrechnung?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.251Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.252Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was ist ein OBIS-Code?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.338Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.338Z",
+    "type": "api",
+    "message": "Sending chat query: \"Erkläre den UTILMD-Prozess\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.367Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.368Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was bedeutet der MaKo 2022?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.395Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.395Z",
+    "type": "api",
+    "message": "Sending chat query: \"Welche Informationen enthält eine Z01-Nachricht?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.425Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.427Z",
+    "type": "api",
+    "message": "Sending chat query: \"Wie funktioniert die Fallgruppe 1a?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.453Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.454Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was ist ein MSB?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.479Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.480Z",
+    "type": "api",
+    "message": "Sending chat query: \"Wie erfolgt die Meldung eines Einzugs?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.505Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.506Z",
+    "type": "api",
+    "message": "Sending chat query: \"Was sind die Aufgaben eines Netzbetreibers?\"",
+    "data": null
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.534Z",
+    "type": "error",
+    "message": "Chat query failed",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-08-23T11:06:33.534Z",
+    "type": "info",
+    "message": "All queries processed successfully",
+    "data": null
+  }
+]

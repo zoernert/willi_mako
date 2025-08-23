@@ -4,7 +4,204 @@
  * 
  * This script simulates the chat flow of the Willi Mako application,
  * specifically focusing on analyzing issues with the CS30 collection.
- * It captures all reasoning steps, contexts, and responses in a debug.json file.
+ * It captures all reasoning /**
+ * Generate embeddings for text using Gemini
+ */
+async function generateEmbedding(text) {
+  logStep('EMBEDDING_GENERATION_START', { text });
+  
+  try {
+    const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+    const embedResult = await embeddingModel.embedContent(text);
+    const embedding = embedResult.embedding.values;
+    
+    logStep('EMBEDDING_GENERATION_COMPLETE', { dimensions: embedding.length });
+    
+    return embedding;
+  } catch (error) {
+    logStep('EMBEDDING_GENERATION_ERROR', { error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Query analysis for intelligent filtering
+ */
+class QueryAnalysisService {
+  static DOCUMENT_MAPPINGS = {
+    'GPKE': 'GPKE_Geschäftsprozesse',
+    'MaBiS': 'MaBiS_Marktregeln',
+    'WiM': 'WiM_Wechselprozesse',
+    'BDEW': 'BDEW_Marktregeln',
+    'MaKo': 'MaKo_Marktkommunikation',
+    'EDIFACT': 'EDIFACT_Standards',
+    'UTILMD': 'UTILMD_Stammdaten',
+    'MSCONS': 'MSCONS_Verbrauchsdaten'
+  };
+
+  static DEFINITION_PATTERNS = [
+    /was ist\s+/i,
+    /definiere\s+/i,
+    /was bedeutet\s+/i,
+    /definition\s+(von|für)\s+/i,
+    /erklär(e|ung)\s+(mir\s+)?/i,
+    /was versteht man unter\s+/i,
+    /abkürzung\s+/i,
+    /steht.*für/i
+  ];
+
+  static TABLE_PATTERNS = [
+    /liste\s+(der|von|alle)/i,
+    /tabelle\s+(mit|der|von)/i,
+    /fristen\s+(für|von|in)/i,
+    /werte\s+(in|der|aus)\s+(der\s+)?tabelle/i,
+    /übersicht\s+(über|der|von)/i,
+    /aufstellung\s+(der|von)/i,
+    /codes?\s+(für|von|in)/i,
+    /kennzahlen\s+(für|von)/i
+  ];
+
+  /**
+   * Analyzes a user query and extracts filter criteria
+   */
+  static analyzeQuery(query) {
+    const normalizedQuery = query.toLowerCase().trim();
+    let intentType = 'general';
+    let confidence = 0.7;
+    const filterCriteria = {
+      temporal: { requireLatest: true }
+    };
+
+    // 1. Detect intent type
+    if (this.DEFINITION_PATTERNS.some(pattern => pattern.test(normalizedQuery))) {
+      intentType = 'definition';
+      filterCriteria.chunkTypes = ['definition', 'abbreviation'];
+      confidence = 0.9;
+    } else if (this.TABLE_PATTERNS.some(pattern => pattern.test(normalizedQuery))) {
+      intentType = 'table_data';
+      filterCriteria.chunkTypes = ['structured_table'];
+      confidence = 0.85;
+    }
+
+    // 2. Detect document reference
+    let documentReference;
+    for (const [keyword, documentBaseName] of Object.entries(this.DOCUMENT_MAPPINGS)) {
+      const keywordRegex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (keywordRegex.test(query)) {
+        documentReference = keyword;
+        filterCriteria.documentBaseName = documentBaseName;
+        if (intentType === 'general') {
+          intentType = 'document_specific';
+        }
+        confidence = Math.min(confidence + 0.1, 1.0);
+        break;
+      }
+    }
+
+    // 3. Query expansion
+    let expandedQuery = query;
+    
+    // 4. Expand query based on intent
+    if (intentType === 'definition') {
+      expandedQuery = `Definition und Bedeutung: ${expandedQuery}`;
+    } else if (intentType === 'table_data') {
+      expandedQuery = `Tabellarische Daten und Listen: ${expandedQuery}`;
+    }
+
+    return {
+      intentType,
+      documentReference,
+      filterCriteria,
+      expandedQuery,
+      confidence
+    };
+  }
+
+  /**
+   * Creates Qdrant filter based on analysis results
+   */
+  static createQdrantFilter(analysisResult) {
+    const filter = {};
+    const mustFilters = [];
+
+    // Chunk-Type Filter
+    if (analysisResult.filterCriteria.chunkTypes) {
+      mustFilters.push({
+        key: 'chunk_type',
+        match: { 
+          value: analysisResult.filterCriteria.chunkTypes.length === 1 
+            ? analysisResult.filterCriteria.chunkTypes[0]
+            : analysisResult.filterCriteria.chunkTypes 
+        }
+      });
+    }
+
+    // Document-specific filter
+    if (analysisResult.filterCriteria.documentBaseName) {
+      mustFilters.push({
+        key: 'document_metadata.document_base_name',
+        match: { value: analysisResult.filterCriteria.documentBaseName }
+      });
+    }
+
+    if (mustFilters.length > 0) {
+      filter.must = mustFilters;
+    }
+
+    return Object.keys(filter).length > 0 ? filter : null;
+  }
+
+  /**
+   * Creates a summary of applied filters for logging
+   */
+  static createFilterSummary(analysisResult) {
+    const parts = [];
+    
+    parts.push(`Intent: ${analysisResult.intentType}`);
+    
+    if (analysisResult.documentReference) {
+      parts.push(`Dokument: ${analysisResult.documentReference}`);
+    }
+    
+    if (analysisResult.filterCriteria.chunkTypes) {
+      parts.push(`Chunk-Types: ${analysisResult.filterCriteria.chunkTypes.join(', ')}`);
+    }
+    
+    parts.push(`Confidence: ${(analysisResult.confidence * 100).toFixed(1)}%`);
+    
+    return parts.join(' | ');
+  }
+}
+
+/**
+ * Generates a hypothetical answer for HyDE approach
+ */
+async function generateHypotheticalAnswer(query) {
+  logStep('HYDE_GENERATION_START', { query });
+  
+  try {
+    const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Beantworte die folgende Frage prägnant und ausschließlich basierend auf deinem allgemeinen Wissen über die Marktprozesse. Gib nur die Antwort aus, ohne einleitende Sätze.
+
+Frage: ${query}
+
+Antwort:`;
+
+    const generationResult = await model.generateContent(prompt);
+    const result = await generationResult.response;
+    const answer = result.text().trim();
+    
+    logStep('HYDE_GENERATION_COMPLETE', { answer });
+    
+    return answer;
+  } catch (error) {
+    logStep('HYDE_GENERATION_ERROR', { error: error.message });
+    // Fallback to original query
+    return query;
+  }
+}d responses in a debug.json file.
+ * 
+ * Version 2.0: Added support for HyDE, intelligent filtering, and optimized search
+ * to match the production search logic.
  */
 
 require('dotenv').config();
@@ -25,18 +222,28 @@ const INSPECT_ONLY = process.argv.includes('--inspect-only');
 const LOWER_THRESHOLD = process.argv.includes('--lower-threshold') || process.argv.includes('-l');
 const EXPAND_QUERY = process.argv.includes('--expand-query') || process.argv.includes('-e');
 const SAMPLE_POINTS = process.argv.includes('--sample-points') || process.argv.includes('-s');
+const USE_HYDE = process.argv.includes('--hyde') || process.argv.includes('-h');
+const DISABLE_FILTERS = process.argv.includes('--no-filters');
+const DISABLE_OPTIMIZATIONS = process.argv.includes('--no-optimizations');
+const COMPARE_METHODS = process.argv.includes('--compare') || process.argv.includes('-c');
+const SHOW_QUERY = process.argv.includes('--show-query') || process.argv.includes('-q');
 
 // Initialize the debug object
 const debugData = {
   timestamp: new Date().toISOString(),
   query: '',
   expandedQuery: '',
+  hypotheticalAnswer: '',
   commandLineOptions: {
     verbose: VERBOSE,
     inspectOnly: INSPECT_ONLY,
     lowerThreshold: LOWER_THRESHOLD,
     expandQuery: EXPAND_QUERY,
-    samplePoints: SAMPLE_POINTS
+    samplePoints: SAMPLE_POINTS,
+    useHyDE: USE_HYDE,
+    disableFilters: DISABLE_FILTERS,
+    disableOptimizations: DISABLE_OPTIMIZATIONS,
+    compareMethods: COMPARE_METHODS
   },
   flow: [],
   cs30: {

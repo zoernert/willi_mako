@@ -234,6 +234,33 @@ EOF
         exit 1
     fi
     
+    # Light API Service Dateien kopieren
+    if [ -f "willi-mako-light-api.js" ]; then
+        cp willi-mako-light-api.js "$TEMP_DIR/"
+        chmod +x "$TEMP_DIR/willi-mako-light-api.js"
+        echo "✅ Light API Service Datei kopiert"
+        
+        # Light API Unterstützungsdateien kopieren
+        if [ -f "start-willi-mako-light-api.sh" ]; then
+            cp start-willi-mako-light-api.sh "$TEMP_DIR/"
+            chmod +x "$TEMP_DIR/start-willi-mako-light-api.sh"
+        fi
+        
+        if [ -f "test-willi-mako-light-api.sh" ]; then
+            cp test-willi-mako-light-api.sh "$TEMP_DIR/"
+            chmod +x "$TEMP_DIR/test-willi-mako-light-api.sh"
+        fi
+        
+        if [ -f "willi-mako-light-api-README.md" ]; then
+            cp willi-mako-light-api-README.md "$TEMP_DIR/"
+        fi
+        
+        # Logs-Verzeichnis für Light API erstellen
+        mkdir -p "$TEMP_DIR/logs"
+    else
+        echo "⚠️ Light API Service Datei nicht gefunden - Light API wird nicht installiert"
+    fi
+    
     # Migration-Dateien kopieren (falls vorhanden)
     if [ -f "migration-screenshot-support.sql" ]; then
         cp migration-screenshot-support.sql "$TEMP_DIR/"
@@ -270,6 +297,16 @@ FEATURE_COMMUNITY_HUB=true
 ENABLE_M2C_ROLES=true
 EOF
     
+    # .env.light-api für den Light API Service erstellen
+    cat > "$TEMP_DIR/.env.light-api" << EOF
+# Willi-Mako-Light API Konfiguration
+PORT=3719
+API_BASE_URL=https://stromhaltig.de/api
+EMAIL=kontakt+demo@stromdao.com
+PASSWORD=willi.mako
+VERBOSE=true
+EOF
+
     # HINWEIS: lib Verzeichnis ist jetzt in src/lib und wird automatisch mit dist/ kopiert
     
     # server.js für Production kopieren (Next.js-kompatibel)
@@ -339,6 +376,24 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '1G'
+    },
+    {
+      name: 'willi_mako_light_api_3719',
+      script: 'willi-mako-light-api.js',
+      cwd: '$DEPLOY_DIR',
+      instances: 1,
+      exec_mode: 'fork',
+      env: { 
+        NODE_ENV: 'production',
+        DOTENV_CONFIG_PATH: '$DEPLOY_DIR/.env.light-api'
+      },
+      error_file: '$DEPLOY_DIR/logs/light_api_3719_err.log',
+      out_file: '$DEPLOY_DIR/logs/light_api_3719_out.log',
+      log_file: '$DEPLOY_DIR/logs/light_api_3719_combined.log',
+      time: true,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M'
     }
   ]
 };
@@ -529,6 +584,9 @@ curl -s http://localhost:$FRONTEND_PORT/api/health || echo "Frontend Health-Chec
 echo ""
 echo "Backend (Port $BACKEND_PORT, intern):"
 curl -s http://localhost:$BACKEND_PORT/api/health || echo "Backend Health-Check fehlgeschlagen"
+echo ""
+echo "Light API (Port 3719, intern):"
+curl -s http://localhost:3719/ || echo "Light API Health-Check fehlgeschlagen"
 echo ""
 echo "Static Pages Test:"
 curl -s -I http://localhost:$FRONTEND_PORT/ | head -1 || echo "Homepage nicht erreichbar"
