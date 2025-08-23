@@ -28,6 +28,21 @@ REACT_APP_VERSION=1.0.0
 GENERATE_SOURCEMAP=false
 LEGACYENVEOF
 npm run build && cd ..
+
+# Füge Plausible Analytics Tracking Code zur Legacy App hinzu
+echo "📊 Füge Plausible Analytics Tracking Code zur Legacy App hinzu..."
+if [ -f "app-legacy/build/index.html" ]; then
+  # Sichere die originale Datei
+  cp app-legacy/build/index.html app-legacy/build/index.html.bak
+  
+  # Füge den Tracking Code vor dem schließenden </head> Tag ein
+  sed -i 's|</head>|<script defer data-domain="stromhaltig.de" src="https://stats.corrently.cloud/js/script.js"></script></head>|' app-legacy/build/index.html
+  
+  echo "✅ Plausible Analytics Tracking Code zur Legacy App hinzugefügt"
+else
+  echo "❌ Legacy App Build index.html nicht gefunden"
+fi
+
 ls -la app-legacy/build/
 
 # 3. Next.js Pipeline  
@@ -183,6 +198,9 @@ QDRANT_COMMUNITY_COLLECTION=community_content
 
 # Google Gemini Configuration
 GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
+GOOGLE_AI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_VISION_MODEL=gemini-2.5-flash
 
 # SMTP Configuration
 SMTP_HOST=smtp.gmail.com
@@ -298,6 +316,10 @@ NODE_ENV=production
 API_URL=http://127.0.0.1:$BACKEND_PORT
 FEATURE_COMMUNITY_HUB=true
 ENABLE_M2C_ROLES=true
+GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
+GOOGLE_AI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_VISION_MODEL=gemini-2.5-flash
 EOF
     
     # .env.light-api für den Light API Service erstellen
@@ -354,7 +376,9 @@ module.exports = {
         PORT: $BACKEND_PORT,
         FEATURE_COMMUNITY_HUB: 'true',
         ENABLE_M2C_ROLES: 'true',
-        COMMUNITY_ENABLE_PUBLIC_READ: 'true'
+        COMMUNITY_ENABLE_PUBLIC_READ: 'true',
+        GEMINI_MODEL: 'gemini-2.5-flash',
+        GEMINI_VISION_MODEL: 'gemini-2.5-flash'
       },
       env_file: '$DEPLOY_DIR/.env',
       error_file: '$DEPLOY_DIR/logs/backend_4101_err.log',
