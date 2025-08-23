@@ -284,6 +284,79 @@ async function sendChatMessage(token, query, contextSettings = null) {
   }
 }
 
+/**
+ * Codes nach einem Suchbegriff suchen
+ */
+async function searchCodes(token, query, id = null) {
+  const logEntry = log(`Code-Lookup-Anfrage senden: "${query}"${id ? ` (ID: ${id})` : ''}`, null, 'api');
+  
+  try {
+    const startTime = Date.now();
+    
+    let endpoint = `${API_BASE_URL}/v1/codes/search?q=${encodeURIComponent(query)}`;
+    
+    // Falls eine ID angegeben wurde, füge sie zur Anfrage hinzu
+    if (id) {
+      endpoint += `&id=${encodeURIComponent(id)}`;
+    }
+    
+    const response = await axios.get(endpoint, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    // Antwortdaten extrahieren
+    const { data } = response;
+    
+    const metrics = {
+      responseTime,
+      resultCount: Array.isArray(data) ? data.length : (data ? 1 : 0)
+    };
+    
+    const responseLogEntry = log('Code-Lookup-Antwort erhalten', {
+      query,
+      id,
+      results: data,
+      metrics
+    }, 'success');
+    
+    return {
+      data,
+      metrics,
+      requestLog: logEntry,
+      responseLog: responseLogEntry
+    };
+  } catch (error) {
+    const errorDetails = error.response?.data || {};
+    const errorMessage = error.message || 'Unbekannter Fehler';
+    const errorStatus = error.response?.status || 500;
+    
+    const errorLogEntry = log('Code-Lookup-Anfrage fehlgeschlagen', {
+      message: errorMessage,
+      status: errorStatus,
+      details: errorDetails,
+      config: error.config ? {
+        url: error.config.url,
+        method: error.config.method,
+        headers: error.config.headers
+      } : null
+    }, 'error');
+    
+    throw {
+      error: errorMessage,
+      status: errorStatus,
+      details: errorDetails,
+      requestLog: logEntry,
+      errorLog: errorLogEntry
+    };
+  }
+}
+
 // Endpunkte
 
 /**
@@ -299,7 +372,9 @@ app.get('/', (req, res) => {
       '/chat': 'Chat-Anfrage senden (POST)',
       '/chat/query/:query': 'Chat-Anfrage senden (GET)',
       '/logs': 'Logs abrufen (GET)',
-      '/logs/:date': 'Logs eines bestimmten Tages abrufen (GET)'
+      '/logs/:date': 'Logs eines bestimmten Tages abrufen (GET)',
+      '/codes/search': 'Code-Lookup (Suche)',
+      '/codes/:id': 'Code-Lookup (Detail-Ansicht)'
     }
   });
 });
@@ -358,6 +433,85 @@ app.get('/logs/:date', (req, res) => {
       success: false,
       error: 'Fehler beim Abrufen der Logs',
       details: error.message
+    });
+  }
+});
+
+/**
+ * Code-Lookup Endpunkt (Suche)
+ */
+app.get('/codes/search', async (req, res) => {
+  try {
+    const query = req.query.q;
+    
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: 'Kein Suchbegriff angegeben. Bitte geben Sie einen "q"-Parameter an.'
+      });
+    }
+    
+    const token = await authenticate();
+    const result = await searchCodes(token, query);
+    
+    res.json({
+      success: true,
+      query,
+      results: result.data,
+      metrics: result.metrics,
+      logs: {
+        request: result.requestLog,
+        response: result.responseLog
+      }
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.error || 'Interner Serverfehler',
+      logs: {
+        request: error.requestLog,
+        error: error.errorLog
+      }
+    });
+  }
+});
+
+/**
+ * Code-Lookup Endpunkt (Detail-Ansicht)
+ */
+app.get('/codes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = req.query.q || "";
+    
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Keine ID angegeben.'
+      });
+    }
+    
+    const token = await authenticate();
+    const result = await searchCodes(token, query, id);
+    
+    res.json({
+      success: true,
+      id,
+      result: result.data,
+      metrics: result.metrics,
+      logs: {
+        request: result.requestLog,
+        response: result.responseLog
+      }
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.error || 'Interner Serverfehler',
+      logs: {
+        request: error.requestLog,
+        error: error.errorLog
+      }
     });
   }
 });
@@ -478,9 +632,13 @@ app.listen(PORT, () => {
   console.log(`  - \x1b[33mGET  /chat/query/:query\x1b[0m - Chat-Anfrage senden (direkt in URL)`);
   console.log(`  - \x1b[33mGET  /logs\x1b[0m              - Logs abrufen`);
   console.log(`  - \x1b[33mGET  /logs/:date\x1b[0m        - Logs eines bestimmten Tages abrufen`);
+  console.log(`  - \x1b[33mGET  /codes/search\x1b[0m        - Code-Lookup (Suche)`);
+  console.log(`  - \x1b[33mGET  /codes/:id\x1b[0m          - Code-Lookup (Detail-Ansicht)`);
   console.log(`\x1b[34mBeispiele:\x1b[0m`);
   console.log(`  - \x1b[33mcurl http://localhost:${PORT}/chat/query/Was%20bedeutet%20GPKE?\x1b[0m`);
   console.log(`  - \x1b[33mcurl -X POST -H "Content-Type: application/json" -d '{"query":"Was bedeutet GPKE?"}' http://localhost:${PORT}/chat\x1b[0m`);
   console.log(`  - \x1b[33mcurl http://localhost:${PORT}/logs\x1b[0m`);
   console.log(`  - \x1b[33mcurl http://localhost:${PORT}/logs/2023-10-01\x1b[0m`);
+  console.log(`  - \x1b[33mcurl http://localhost:${PORT}/codes/search?q=GPKE\x1b[0m`);
+  console.log(`  - \x1b[33mcurl http://localhost:${PORT}/codes/12345\x1b[0m`);
 });

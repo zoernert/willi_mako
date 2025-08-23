@@ -50,6 +50,11 @@ export declare function generateFAQJSONLD(faq: StaticFAQData): {
             url: string;
         };
     };
+    creator: {
+        "@type": string;
+        name: string;
+        email: string;
+    };
     keywords: string;
     datePublished: string;
     dateModified: string;
@@ -63,6 +68,11 @@ export declare function generateBreadcrumbJSONLD(faq: StaticFAQData, cluster?: s
         name: string;
         item: string;
     }[];
+    creator: {
+        "@type": string;
+        name: string;
+        email: string;
+    };
 };
 export declare function calculateSitemapPriority(viewCount: number, tags: string[]): string;
 export declare function calculateChangeFreq(viewCount: number): string;

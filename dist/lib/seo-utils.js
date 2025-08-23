@@ -65,6 +65,11 @@ function generateFAQJSONLD(faq) {
                 "url": "https://stromhaltig.de"
             }
         },
+        "creator": {
+            "@type": "Person",
+            "name": "Willi Mako (STROMDAO GmbH)",
+            "email": "dev@stromdao.com"
+        },
         "keywords": faq.tags.join(', '),
         "datePublished": faq.created_at,
         "dateModified": faq.updated_at
@@ -103,7 +108,12 @@ function generateBreadcrumbJSONLD(faq, cluster) {
     return {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
-        "itemListElement": breadcrumbs
+        "itemListElement": breadcrumbs,
+        "creator": {
+            "@type": "Person",
+            "name": "Willi Mako (STROMDAO GmbH)",
+            "email": "dev@stromdao.com"
+        }
     };
 }
 // Berechne Sitemap-Priorität basierend auf View Count und Tags
