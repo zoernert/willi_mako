@@ -238,9 +238,12 @@ EOF
     if [ -f "willi-mako-light-api.js" ]; then
         cp willi-mako-light-api.js "$TEMP_DIR/"
         chmod +x "$TEMP_DIR/willi-mako-light-api.js"
-        echo "✅ Light API Service Datei kopiert"
         
-        # Light API Unterstützungsdateien kopieren
+        # Kopiere light-api-package.json für separate Dependency-Installation
+        if [ -f "light-api-package.json" ]; then
+            cp light-api-package.json "$TEMP_DIR/"
+        fi
+        
         if [ -f "start-willi-mako-light-api.sh" ]; then
             cp start-willi-mako-light-api.sh "$TEMP_DIR/"
             chmod +x "$TEMP_DIR/start-willi-mako-light-api.sh"
@@ -552,6 +555,30 @@ start_application() {
     
     ssh $PROD_SERVER << EOF
 cd $DEPLOY_DIR
+
+# Installiere Light API Abhängigkeiten separat
+if [ -f "light-api-package.json" ]; then
+    echo "📦 Installiere Light API Abhängigkeiten..."
+    # Erstelle temporäres Verzeichnis für Light API und installiere Abhängigkeiten
+    mkdir -p light-api-deps
+    cp light-api-package.json light-api-deps/package.json
+    cd light-api-deps
+    npm install --production
+    cd ..
+    # Kopiere node_modules zurück ins Hauptverzeichnis
+    cp -r light-api-deps/node_modules/dotenv node_modules/
+    cp -r light-api-deps/node_modules/express node_modules/
+    cp -r light-api-deps/node_modules/axios node_modules/
+    cp -r light-api-deps/node_modules/morgan node_modules/
+    cp -r light-api-deps/node_modules/body-parser node_modules/
+    echo "✅ Light API Abhängigkeiten installiert"
+else
+    # Fallback: Nur dotenv neu installieren
+    echo "📦 Reinstalliere dotenv und andere Light API Abhängigkeiten..."
+    npm install dotenv express axios morgan body-parser
+    echo "✅ dotenv und andere Abhängigkeiten reinstalliert"
+fi
+
 pm2 start ecosystem_4100.config.js
 pm2 save
 pm2 describe willi_mako_backend_4101 | grep cwd || true
