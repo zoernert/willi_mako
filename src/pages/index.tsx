@@ -71,6 +71,11 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
                 "name": "STROMDAO GmbH",
                 "url": "https://stromdao.de"
               },
+              "creator": {
+                "@type": "Person",
+                "name": "Willi Mako (STROMDAO GmbH)",
+                "email": "dev@stromdao.com"
+              },
               "potentialAction": {
                 "@type": "SearchAction",
                 "target": "https://stromhaltig.de/wissen?search={search_term_string}",

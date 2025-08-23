@@ -79,6 +79,11 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
                 "@type": "Thing",
                 "name": "Energiewirtschaft Marktkommunikation"
               },
+              "creator": {
+                "@type": "Person",
+                "name": "Willi Mako (STROMDAO GmbH)",
+                "email": "dev@stromdao.com"
+              },
               "mentions": tags.slice(0, 10).map(tag => ({
                 "@type": "Thing",
                 "name": tag.tag

@@ -130,6 +130,30 @@ const CommunityPage: React.FC = () => {
       <Head>
         <title>Community Hub - Kollaboratives Wissensmanagement</title>
         <meta name="description" content="Gemeinsam Lösungen für komplexe Probleme in der Marktkommunikation entwickeln" />
+        
+        {/* Schema.org JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              "name": "Community Hub - Kollaboratives Wissensmanagement",
+              "description": "Gemeinsam Lösungen für komplexe Probleme in der Marktkommunikation entwickeln",
+              "url": "https://stromhaltig.de/community",
+              "creator": {
+                "@type": "Person",
+                "name": "Willi Mako (STROMDAO GmbH)",
+                "email": "dev@stromdao.com"
+              },
+              "publisher": {
+                "@type": "Organization",
+                "name": "STROMDAO GmbH",
+                "url": "https://stromdao.de"
+              }
+            })
+          }}
+        />
       </Head>
       
       <div className="min-h-screen bg-gray-50" data-context="community">

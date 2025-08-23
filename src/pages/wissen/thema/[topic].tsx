@@ -80,6 +80,11 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
                     "item": `https://stromhaltig.de/wissen/thema/${topic}`
                   }
                 ]
+              },
+              "creator": {
+                "@type": "Person",
+                "name": "Willi Mako (STROMDAO GmbH)",
+                "email": "dev@stromdao.com"
               }
             })
           }}

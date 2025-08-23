@@ -29,6 +29,11 @@ export default function FAQStructuredData({ faq, relatedFAQs = [] }: FAQStructur
         "url": "https://stromhaltig.de"
       }
     },
+    "creator": {
+      "@type": "Person",
+      "name": "Willi Mako (STROMDAO GmbH)",
+      "email": "dev@stromdao.com"
+    },
     "mentions": relatedFAQs.map(rf => ({
       "@type": "Question",
       "name": rf.title,
