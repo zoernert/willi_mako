@@ -20,6 +20,8 @@ export interface CodeSearchResult {
     editedOn?: string;
     bdewCodes?: string[];
     contacts?: ContactEntry[];
+    contactSheetUrl?: string;
+    markdown?: string;
 }
 export interface SoftwareSystem {
     name: string;
@@ -38,6 +40,8 @@ export interface MarketPartnerDocument {
     findings?: MarketPartnerFinding[];
     processed_at?: Date | string;
     bdewCodes?: string[];
+    contactSheetUrl?: string;
+    markdown?: string;
     partner?: {
         "﻿BdewCode": string;
         BdewCodeType: string;
@@ -101,5 +105,20 @@ export interface ContactEntry {
     CodeContactPhone?: string;
     CodeContactEmail?: string;
     EditedOn?: string;
+    contactSheetUrl?: string;
+    markdown?: string;
+    EIC_Typ?: string;
+    EIC_Code?: string;
+    EIC_Display_Name?: string;
+    EIC_Long_Name?: string;
+    Website?: string;
+    UstId?: string;
+    EIC_Function?: string;
+    Unternehmen?: string;
+    Strasse?: string;
+    PLZ?: string;
+    Stadt?: string;
+    Land?: string;
+    International?: string;
 }
 //# sourceMappingURL=codelookup.interface.d.ts.map

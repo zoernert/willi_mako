@@ -88,25 +88,17 @@ class MongoCodeLookupRepository {
         const companyName = partner.CompanyName || doc.companyName || partner.Name || '';
         const codeValue = bdewCode || (partner.EICCode ? partner.EICCode : (idString ? `mp:${idString}` : companyName || 'unbekannt'));
         return {
-            code: codeValue,
-            companyName,
-            codeType: partner.BdewCodeType || partner.EICType || (bdewCode ? 'BDEW' : (partner.EICCode ? 'EIC' : 'Unternehmen')),
-            source: (bdewCode || partner.BdewCodeType) ? 'bdew' : 'bdew',
-            companyUID: partner.CompanyUID,
-            postCode: partner.PostCode,
-            city: partner.City,
-            street: partner.Street,
-            country: partner.Country,
-            contact: {
-                name: partner.CodeContact,
-                phone: partner.CodeContactPhone,
-                email: partner.CodeContactEmail
-            },
-            softwareSystems: allSoftwareSystems,
-            editedOn: partner.EditedOn,
-            validFrom: partner.BdewCodeStatusBegin,
-            contacts,
-            bdewCodes
+            code: bdewCodes[0] || '',
+            companyName: doc.companyName || partner.CompanyName || '',
+            codeType: (partner.BdewCodeType || 'BDEW Code'),
+            validFrom: partner.BdewCodeStatusBegin || '',
+            validTo: '',
+            source: 'bdew',
+            contacts: contacts,
+            bdewCodes: bdewCodes,
+            contactSheetUrl: doc.contactSheetUrl || '',
+            markdown: doc.markdown || '',
+            allSoftwareSystems: allSoftwareSystems,
         };
     }
     buildSearchQuery(query, filters) {

@@ -25,6 +25,8 @@ export interface CodeSearchResult {
   // Neue Felder für Kontaktdatenblatt
   contactSheetUrl?: string;
   markdown?: string;
+  // Gesammelte Software-Systeme aus allen Findings
+  allSoftwareSystems?: SoftwareSystem[];
 }
 
 export interface SoftwareSystem {
@@ -80,7 +82,6 @@ export interface SearchFilters {
 
 export interface DetailedCodeResult extends CodeSearchResult {
   findings: MarketPartnerFinding[];
-  allSoftwareSystems: SoftwareSystem[];
 }
 
 // Legacy Interfaces für Backward Compatibility
