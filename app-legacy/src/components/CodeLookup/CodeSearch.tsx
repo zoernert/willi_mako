@@ -30,7 +30,8 @@ import {
   ListItemIcon,
   Link as MuiLink,
   Table, TableHead, TableRow, TableCell, TableBody,
-  Snackbar
+  Snackbar,
+  Paper
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -44,9 +45,13 @@ import {
   Close as CloseIcon,
   FilterList as FilterIcon,
   Clear as ClearIcon,
-  Report as ReportIcon
+  Report as ReportIcon,
+  Description as DescriptionIcon,
+  FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import codeLookupApi, { UnifiedCodeSearchResult as ApiCodeSearchResult, DetailedCodeResult as ApiDetailedCodeResult, SearchFilters as ApiSearchFilters, ContactEntry } from '../../services/codeLookupApi';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Local types compatible with API
 interface SoftwareSystem {
@@ -635,6 +640,37 @@ const CodeSearch: React.FC = () => {
 {formatPostalAddress(c)}
                                     </Typography>
                                   )}
+                                  
+                                  {/* Neue Felder: Kontaktdatenblatt-Link */}
+                                  {c.contactSheetUrl && (
+                                    <Box sx={{ mt: 1 }}>
+                                      <MuiLink 
+                                        href={c.contactSheetUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          textDecoration: 'none',
+                                          color: 'primary.main' 
+                                        }}
+                                      >
+                                        <FileDownloadIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                                        <Typography variant="body2">Kontaktdatenblatt herunterladen</Typography>
+                                      </MuiLink>
+                                    </Box>
+                                  )}
+                                  
+                                  {/* Markdown Kontaktdatenblatt pro Kontakt */}
+                                  {c.markdown && (
+                                    <Box sx={{ mt: 2 }}>
+                                      <Typography variant="body2"><strong>Kontaktdatenblatt:</strong></Typography>
+                                      <Paper elevation={0} variant="outlined" sx={{ p: 1, mt: 1, maxHeight: '200px', overflow: 'auto' }}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{c.markdown}</ReactMarkdown>
+                                      </Paper>
+                                    </Box>
+                                  )}
+                                  
                                   {c.EditedOn && (
                                     <Typography variant="caption" color="text.secondary">Bearbeitet: {new Date(c.EditedOn).toLocaleDateString('de-DE')}</Typography>
                                   )}
@@ -649,6 +685,39 @@ const CodeSearch: React.FC = () => {
                     )}
                   </Stack>
                 </Box>
+
+                {/* Markdown Kontaktdatenblatt */}
+                {detailDialog.markdown && (
+                  <Box sx={{ gridColumn: 'span 12', mt: 3 }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <DescriptionIcon sx={{ mr: 1 }} />
+                      Kontaktdatenblatt
+                    </Typography>
+                    <Paper elevation={1} sx={{ p: 2, maxHeight: '400px', overflow: 'auto' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailDialog.markdown}</ReactMarkdown>
+                    </Paper>
+                  </Box>
+                )}
+                
+                {/* Contact Sheet URL at Document level (outside of contacts) */}
+                {detailDialog.contactSheetUrl && !detailDialog.contacts?.some(c => c.contactSheetUrl) && (
+                  <Box sx={{ gridColumn: 'span 12', mt: 2 }}>
+                    <MuiLink 
+                      href={detailDialog.contactSheetUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        textDecoration: 'none',
+                        color: 'primary.main' 
+                      }}
+                    >
+                      <FileDownloadIcon sx={{ mr: 0.5 }} />
+                      <Typography>Kontaktdatenblatt herunterladen</Typography>
+                    </MuiLink>
+                  </Box>
+                )}
 
                 {(detailDialog.allSoftwareSystems && detailDialog.allSoftwareSystems.length > 0) && (
                   <Box sx={{ gridColumn: 'span 12' }}>
@@ -722,6 +791,43 @@ const CodeSearch: React.FC = () => {
                         </ListItem>
                       ))}
                     </List>
+                  </Box>
+                )}
+
+                {/* Contact Sheet URL */}
+                {detailDialog.contacts && detailDialog.contacts.length > 0 && detailDialog.contacts[0].contactSheetUrl && (
+                  <Box sx={{ gridColumn: 'span 12' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Kontaktblatt
+                    </Typography>
+                    <MuiLink 
+                      href={detailDialog.contacts[0].contactSheetUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{ display: 'inline-block', mb: 2 }}
+                    >
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        startIcon={<FileDownloadIcon />}
+                      >
+                        Kontaktblatt herunterladen
+                      </Button>
+                    </MuiLink>
+                  </Box>
+                )}
+
+                {/* Markdown Fields */}
+                {detailDialog.contacts && detailDialog.contacts.length > 0 && detailDialog.contacts[0].markdown && (
+                  <Box sx={{ gridColumn: 'span 12' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Zusätzliche Informationen
+                    </Typography>
+                    <Paper sx={{ p: 2, bgcolor: 'grey.100' }}>
+                      <ReactMarkdown>
+                        {detailDialog.contacts[0].markdown}
+                      </ReactMarkdown>
+                    </Paper>
                   </Box>
                 )}
               </Box>

@@ -22,6 +22,9 @@ export interface CodeSearchResult {
   editedOn?: string;
   bdewCodes?: string[]; // neue Sammlung aller zugeordneten BDEW Codes
   contacts?: ContactEntry[]; // komplette Kontaktliste / Marktrollen
+  // Neue Felder für Kontaktdatenblatt
+  contactSheetUrl?: string;
+  markdown?: string;
 }
 
 export interface SoftwareSystem {
@@ -44,6 +47,9 @@ export interface MarketPartnerDocument {
   findings?: MarketPartnerFinding[];
   processed_at?: Date | string;
   bdewCodes?: string[]; // Array von Codes laut Discovery (fallback)
+  // Neue Felder für Kontaktdatenblatt
+  contactSheetUrl?: string;
+  markdown?: string;
   // Optionaler Partner-Block (BDEW-Daten) - Legacy-Support
   partner?: {
     "﻿BdewCode": string;
@@ -114,4 +120,21 @@ export interface ContactEntry {
   CodeContactPhone?: string;
   CodeContactEmail?: string;
   EditedOn?: string;
+  // Neue Felder für Kontaktdatenblatt
+  contactSheetUrl?: string;
+  markdown?: string;
+  // Zusätzliche Felder
+  EIC_Typ?: string;
+  EIC_Code?: string;
+  EIC_Display_Name?: string;
+  EIC_Long_Name?: string;
+  Website?: string;
+  UstId?: string;
+  EIC_Function?: string;
+  Unternehmen?: string;
+  Strasse?: string;
+  PLZ?: string;
+  Stadt?: string;
+  Land?: string;
+  International?: string;
 }

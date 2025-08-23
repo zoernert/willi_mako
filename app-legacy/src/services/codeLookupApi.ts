@@ -35,6 +35,10 @@ export interface ContactEntry {
   Stadt?: string;
   Land?: string;
   International?: string;
+  
+  // Neue Felder für Kontaktdatenblatt
+  contactSheetUrl?: string;
+  markdown?: string;
 }
 
 export interface SoftwareSystem {
@@ -57,6 +61,10 @@ export interface UnifiedCodeSearchResult {
   }>;
   processed_at?: { $date: string } | string;
   allSoftwareSystems?: SoftwareSystem[];
+  
+  // Neue Felder für Kontaktdatenblatt
+  contactSheetUrl?: string;
+  markdown?: string;
 
   // Legacy fields (still optional for backward compatibility)
   code?: string;
