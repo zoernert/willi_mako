@@ -39,6 +39,13 @@ export interface ContactEntry {
   // Neue Felder für Kontaktdatenblatt
   contactSheetUrl?: string;
   markdown?: string;
+  
+  // Downloads
+  downloads?: Array<{
+    url: string;
+    text: string;
+    lastChecked?: Date | string;
+  }>;
 }
 
 export interface SoftwareSystem {

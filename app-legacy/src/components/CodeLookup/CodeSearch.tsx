@@ -794,6 +794,67 @@ const CodeSearch: React.FC = () => {
                   </Box>
                 )}
 
+                {/* Downloads Section */}
+                {detailDialog.contacts && detailDialog.contacts.some(c => c.downloads && c.downloads.length > 0) && (
+                  <Box sx={{ gridColumn: 'span 12' }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                      <FileDownloadIcon sx={{ mr: 1 }} />
+                      Verfügbare Downloads
+                    </Typography>
+                    <Paper elevation={1} sx={{ p: 2 }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Dokument</TableCell>
+                            <TableCell>Zuletzt geprüft</TableCell>
+                            <TableCell>Download</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {detailDialog.contacts
+                            .filter(contact => contact.downloads && contact.downloads.length > 0)
+                            .flatMap(contact => contact.downloads || [])
+                            // Remove duplicate URLs
+                            .filter((download, index, self) => 
+                              index === self.findIndex(d => d.url === download.url)
+                            )
+                            .map((download, index) => (
+                              <TableRow key={index} hover>
+                                <TableCell>
+                                  <Typography variant="body2">
+                                    {download.text || 'Dokument'}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {download.lastChecked 
+                                      ? new Date(download.lastChecked).toLocaleDateString('de-DE') 
+                                      : 'Unbekannt'}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <MuiLink 
+                                    href={download.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Button 
+                                      variant="outlined" 
+                                      size="small" 
+                                      startIcon={<FileDownloadIcon />}
+                                    >
+                                      PDF
+                                    </Button>
+                                  </MuiLink>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                  </Box>
+                )}
+
                 {/* Contact Sheet URL */}
                 {detailDialog.contacts && detailDialog.contacts.length > 0 && detailDialog.contacts[0].contactSheetUrl && (
                   <Box sx={{ gridColumn: 'span 12' }}>
