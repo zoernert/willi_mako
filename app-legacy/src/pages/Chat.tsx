@@ -173,6 +173,57 @@ const Chat: React.FC = () => {
     }
   }, [currentChat, showSnackbar]);
 
+  // Helper function to open bilateral clarification for the entire chat
+  const openBilateralClarificationForEntireChat = useCallback(() => {
+    // Collect all relevant assistant messages
+    const relevantMessages = messages.filter(m => m.role === 'assistant' && m.content.length > 50);
+    // Combine content from all relevant messages
+    const combinedContent = relevantMessages.map(m => m.content).join('\n\n---\n\n');
+    
+    // Create a temporary div to render the CreateFromContextButton
+    const tempDiv = document.createElement('div');
+    tempDiv.style.display = 'none';
+    tempDiv.setAttribute('id', `temp-bilateral-chat-${chatId}`);
+    document.body.appendChild(tempDiv);
+    
+    // Use ReactDOM createRoot to render a button that we can click
+    const root = createRoot(tempDiv);
+    root.render(
+      <CreateFromContextButton
+        variant="button"
+        size="medium"
+        context={{
+          source: 'chat',
+          chatContext: {
+            chatId: currentChat?.id || '',
+            messageId: 'complete-chat', // Special ID for the entire chat
+            content: combinedContent,
+            timestamp: new Date().toISOString(), // Current time
+            role: 'assistant',
+            metadata: { isCompleteChat: true } // Flag indicating it's the complete chat
+          }
+        }}
+        onSuccess={() => {
+          showSnackbar('Klärfall erfolgreich erstellt und zur Bearbeitung weitergeleitet.', 'success');
+          // Clean up after successful creation
+          root.unmount();
+          document.body.removeChild(tempDiv);
+        }}
+      />
+    );
+    
+    // Find and click the button
+    const buttonToClick = tempDiv.querySelector('button');
+    if (buttonToClick) {
+      buttonToClick.click();
+    } else {
+      console.error('Could not find button to trigger bilateral clarification');
+      showSnackbar('Fehler beim Öffnen der bilateralen Klärung', 'error');
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    }
+  }, [chatId, currentChat, messages, showSnackbar]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -928,23 +979,6 @@ const Chat: React.FC = () => {
                           >
                             {formatTime(message.created_at)}
                           </Typography>
-                          
-                          {/* Legal Hammer Icon for Bilateral Clarification */}
-                          <Tooltip title="Bilaterale Klärung">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => openBilateralClarification(message)}
-                              sx={{ 
-                                p: 0.5,
-                                '&:hover': {
-                                  color: 'primary.main',
-                                  backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                                }
-                              }}
-                            >
-                              <GavelIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
                         </Box>
                       </Paper>
                     </ListItem>
@@ -1058,7 +1092,7 @@ const Chat: React.FC = () => {
 
               {/* Community Escalation Button */}
               {messages.length > 0 && (
-                <Box sx={{ mb: 1, textAlign: 'center' }}>
+                <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>
                   <Button
                     size="small"
                     startIcon={<CommunityIcon />}
@@ -1074,6 +1108,24 @@ const Chat: React.FC = () => {
                     }}
                   >
                     In Community analysieren
+                  </Button>
+                  
+                  {/* Bilaterale Klärung Button */}
+                  <Button
+                    size="small"
+                    startIcon={<GavelIcon />}
+                    onClick={openBilateralClarificationForEntireChat}
+                    sx={{
+                      color: 'text.secondary',
+                      textTransform: 'none',
+                      fontSize: '0.8rem',
+                      '&:hover': {
+                        backgroundColor: '#2196f3', // Blue theme
+                        color: 'white',
+                      }
+                    }}
+                  >
+                    Bilaterale Klärung
                   </Button>
                 </Box>
               )}

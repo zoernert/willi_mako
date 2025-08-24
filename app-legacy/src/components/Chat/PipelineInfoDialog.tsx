@@ -40,6 +40,15 @@ interface ReasoningStep {
   result?: any; // Contains the actual step results with various structures
 }
 
+interface QAAnalysis {
+  mainIntent?: string;
+  complexityLevel?: 'easy' | 'medium' | 'hard';
+  marketCommunicationRelevance?: number;
+  semanticConcepts?: string[];
+  domainKeywords?: string[];
+  confidence?: number;
+}
+
 interface PipelineInfo {
   contextSources?: number;
   userContextUsed?: boolean;
@@ -51,7 +60,7 @@ interface PipelineInfo {
   qdrantResults?: number;
   semanticClusters?: number;
   pipelineDecisions?: any;
-  qaAnalysis?: any;
+  qaAnalysis?: QAAnalysis;
   contextAnalysis?: any;
   type?: string;
   sources?: Array<{
@@ -157,7 +166,7 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
     return uniqueQueries;
   };
 
-  const extractQAAnalysis = () => {
+  const extractQAAnalysis = (): QAAnalysis | null => {
     // Debug logging
     console.log('Pipeline Info - qaAnalysis:', pipelineInfo.qaAnalysis);
     console.log('Pipeline Info - reasoningSteps:', pipelineInfo.reasoningSteps);
@@ -310,11 +319,33 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                     <TableBody>
                       <TableRow>
                         <TableCell>QDrant-Abfragen</TableCell>
-                        <TableCell>{pipelineInfo.qdrantQueries || 0}</TableCell>
+                        <TableCell>
+                          {pipelineInfo.qdrantQueries || 0}
+                          {pipelineInfo.qdrantQueries === 0 && (
+                            <Chip 
+                              label="Keine Abfragen" 
+                              size="small" 
+                              color="warning" 
+                              variant="outlined"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Gefundene Quellen</TableCell>
-                        <TableCell>{pipelineInfo.qdrantResults || 0}</TableCell>
+                        <TableCell>
+                          {pipelineInfo.qdrantResults || 0}
+                          {pipelineInfo.qdrantResults === 0 && (
+                            <Chip 
+                              label="Keine Ergebnisse" 
+                              size="small" 
+                              color="error" 
+                              variant="outlined"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Semantische Cluster</TableCell>
@@ -355,69 +386,124 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
             </AccordionDetails>
           </Accordion>
 
-          {/* Frageanalyse */}
-          {extractQAAnalysis() && (
-            <Accordion 
-              expanded={expandedAccordion === 'qa'} 
-              onChange={handleAccordionChange('qa')}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          {/* Frageanalyse - wird nur angezeigt, wenn Daten verfügbar sind */}
+          <Accordion 
+            expanded={expandedAccordion === 'qa'} 
+            onChange={handleAccordionChange('qa')}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="h6">Frageanalyse</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Hauptintention
-                    </Typography>
-                    <Typography variant="body2" paragraph>
-                      {extractQAAnalysis()?.mainIntent || 'N/A'}
-                    </Typography>
-                    
-                    <Typography variant="subtitle2" gutterBottom>
-                      Komplexitätslevel
-                    </Typography>
-                    <Chip 
-                      label={extractQAAnalysis()?.complexityLevel || 'N/A'} 
-                      color={
-                        extractQAAnalysis()?.complexityLevel === 'hard' ? 'error' :
-                        extractQAAnalysis()?.complexityLevel === 'medium' ? 'warning' : 'success'
-                      }
-                      size="small"
-                    />
-                    
-                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
-                      Marktkommunikations-Relevanz
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(extractQAAnalysis()?.marketCommunicationRelevance || 0) * 100}
-                      sx={{ mt: 1 }}
-                    />
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Semantische Konzepte
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                      {extractQAAnalysis()?.semanticConcepts?.map((concept: string, index: number) => (
-                        <Chip key={index} label={concept} size="small" variant="outlined" />
-                      )) || <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>}
-                    </Box>
-                    
-                    <Typography variant="subtitle2" gutterBottom>
-                      Domain-Keywords
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {extractQAAnalysis()?.domainKeywords?.map((keyword: string, index: number) => (
-                        <Chip key={index} label={keyword} size="small" color="primary" variant="outlined" />
-                      )) || <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>}
-                    </Box>
-                  </Box>
+                {!extractQAAnalysis() && (
+                  <Chip 
+                    label="Nicht verfügbar" 
+                    size="small" 
+                    color="default" 
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              {!extractQAAnalysis() ? (
+                <Box sx={{ p: 3, bgcolor: '#f9f9f9', borderRadius: 1, textAlign: 'center' }}>
+                  <PsychologyIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
+                  <Typography variant="body1" color="text.secondary" gutterBottom>
+                    Für diese Anfrage sind keine Frageanalyse-Daten verfügbar.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Die Frageanalyse ist ein Feature, das hauptsächlich im Kontext der FAQ-Erstellung und -Verwaltung 
+                    durch Administratoren verwendet wird. Für normale Chat-Antworten sind diese detaillierten 
+                    Analysedaten üblicherweise nicht verfügbar.
+                  </Typography>
                 </Box>
-              </AccordionDetails>
-            </Accordion>
-          )}
+              ) : (
+                <>
+                  {(() => {
+                    // Sichere Typenzuweisung für TypeScript
+                    const qaAnalysis = extractQAAnalysis() as QAAnalysis;
+                    
+                    return (
+                      <>
+                        <Box sx={{ p: 2, bgcolor: '#f0f7ff', borderRadius: 1, mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Die Frageanalyse-Funktion ist ein Feature, das hauptsächlich im Kontext der FAQ-Erstellung und -Verwaltung 
+                            verwendet wird. Für normale Chat-Antworten sind diese detaillierten Analysedaten üblicherweise 
+                            nicht verfügbar.
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Hauptintention
+                            </Typography>
+                            <Typography variant="body2" paragraph>
+                              {qaAnalysis.mainIntent || 'Keine Information verfügbar'}
+                            </Typography>
+                            
+                            <Typography variant="subtitle2" gutterBottom>
+                              Komplexitätslevel
+                            </Typography>
+                            {qaAnalysis.complexityLevel ? (
+                              <Chip 
+                                label={qaAnalysis.complexityLevel} 
+                                color={
+                                  qaAnalysis.complexityLevel === 'hard' ? 'error' :
+                                  qaAnalysis.complexityLevel === 'medium' ? 'warning' : 'success'
+                                }
+                                size="small"
+                              />
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Keine Information verfügbar</Typography>
+                            )}
+                            
+                            <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+                              Marktkommunikations-Relevanz
+                            </Typography>
+                            {typeof qaAnalysis.marketCommunicationRelevance === 'number' ? (
+                              <LinearProgress
+                                variant="determinate"
+                                value={(qaAnalysis.marketCommunicationRelevance || 0) * 100}
+                                sx={{ mt: 1 }}
+                              />
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Keine Information verfügbar</Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Semantische Konzepte
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                              {qaAnalysis.semanticConcepts && qaAnalysis.semanticConcepts.length > 0 ? 
+                                qaAnalysis.semanticConcepts.map((concept: string, index: number) => (
+                                  <Chip key={index} label={concept} size="small" variant="outlined" />
+                                )) : 
+                                <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>
+                              }
+                            </Box>
+                            
+                            <Typography variant="subtitle2" gutterBottom>
+                              Domain-Keywords
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {qaAnalysis.domainKeywords && qaAnalysis.domainKeywords.length > 0 ? 
+                                qaAnalysis.domainKeywords.map((keyword: string, index: number) => (
+                                  <Chip key={index} label={keyword} size="small" color="primary" variant="outlined" />
+                                )) : 
+                                <Typography variant="caption" color="text.secondary">Keine verfügbar</Typography>
+                              }
+                            </Box>
+                          </Box>
+                        </Box>
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+            </AccordionDetails>
+          </Accordion>
 
           {/* Sources Section - For CS30 Additional responses */}
           {pipelineInfo.sources && pipelineInfo.sources.length > 0 && (
@@ -681,18 +767,19 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
         <DialogActions>
           {pipelineInfo.reasoningSteps && pipelineInfo.reasoningSteps.length === 1 && 
            pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' && (
-            <Tooltip title="Startet eine neue Suche mit mehr Iterationen, um eine höhere Antwortqualität zu erzielen">
+            <Tooltip title="Diese Antwort wurde mit minimalem Aufwand generiert. Eine gründlichere Suche könnte bessere Ergebnisse liefern.">
               <Button 
                 variant="outlined" 
                 color="primary" 
                 onClick={() => {
                   // TODO: Hier die Logik für die gründlichere Suche implementieren
-                  alert("Diese Funktionalität wird in einem kommenden Update implementiert. Die gründlichere Suche wird mehr Iterationen nutzen und möglicherweise bessere Ergebnisse liefern.");
+                  alert("Diese Funktionalität wird in einem kommenden Update implementiert. Eine gründlichere Suche würde mehr Iterationen nutzen und möglicherweise bessere Ergebnisse liefern, indem sie semantische Konzepte in der Anfrage eingehender analysiert.");
+                  setOpen(false);
                 }}
                 startIcon={<SearchIcon />}
                 sx={{ mr: 'auto' }}
               >
-                Gründlichere Suche
+                Gründlichere Suche durchführen
               </Button>
             </Tooltip>
           )}
