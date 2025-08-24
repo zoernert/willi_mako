@@ -74,6 +74,8 @@ async function generateCs30AdditionalResponse(
       cs30Sources: cs30Results.map(r => ({
         source_document: r.payload?.source || 'Schleupen Dokumentation',
         content_type: r.payload?.type || 'N/A',
+        document_name: r.payload?.document_name || null,
+        chunk_type: r.payload?.chunk_type || null,
         score: r.score
       }))
     };

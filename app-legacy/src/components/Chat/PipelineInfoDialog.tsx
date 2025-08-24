@@ -18,6 +18,7 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  Tooltip,
 } from '@mui/material';
 import {
   Info as InfoIcon,
@@ -57,6 +58,8 @@ interface PipelineInfo {
     score: number;
     content_type: string;
     source_document: string;
+    document_name?: string;
+    chunk_type?: string;
   }>;
   sourceCount?: number;
 }
@@ -239,13 +242,50 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         <TableCell>Pipeline-Typ</TableCell>
                         <TableCell>
                           {pipelineInfo.type === 'cs30_additional' ? 'CS30 Additional' : 
-                           pipelineInfo.pipelineDecisions?.reason || 'Standard'}
+                           pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' ? (
+                             <Tooltip title="Schnelle Antwort mit nur einer Iteration. Möglicherweise nicht optimal.">
+                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                 <Typography variant="body2">
+                                   {pipelineInfo.pipelineDecisions?.reason || 'Standard'}
+                                 </Typography>
+                                 {pipelineInfo.iterationsUsed === 1 && (
+                                   <Chip 
+                                     label="Einfache Suche" 
+                                     size="small" 
+                                     color="warning" 
+                                     variant="outlined"
+                                   />
+                                 )}
+                               </Box>
+                             </Tooltip>
+                           ) : (
+                             pipelineInfo.pipelineDecisions?.reason || 'Standard'
+                           )}
                         </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Iterationen</TableCell>
                         <TableCell>
-                          {pipelineInfo.iterationsUsed || 1} / {pipelineInfo.pipelineDecisions?.maxIterations || 1}
+                          <Tooltip 
+                            title={
+                              pipelineInfo.iterationsUsed === 1 && pipelineInfo.pipelineDecisions?.maxIterations === 1 
+                                ? "Nur eine Iteration wurde verwendet. Mehr Iterationen könnten bessere Ergebnisse liefern."
+                                : "Anzahl der durchgeführten Iterationen und maximale konfigurierte Iterationen"
+                            }
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              {pipelineInfo.iterationsUsed || 1} / {pipelineInfo.pipelineDecisions?.maxIterations || 1}
+                              {pipelineInfo.iterationsUsed === 1 && pipelineInfo.pipelineDecisions?.maxIterations === 1 && (
+                                <Chip 
+                                  label="Minimal" 
+                                  size="small" 
+                                  color="warning" 
+                                  variant="outlined"
+                                  sx={{ ml: 1 }}
+                                />
+                              )}
+                            </Box>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                       <TableRow>
@@ -386,25 +426,45 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
               onChange={handleAccordionChange('sources')}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">Quellen ({pipelineInfo.sourceCount || pipelineInfo.sources.length})</Typography>
+                <Typography variant="h6">Quellen & Dokumententypen ({pipelineInfo.sourceCount || pipelineInfo.sources.length})</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Diese Nachricht basiert auf den folgenden Quellen:
+                    Diese Antwort basiert auf folgenden Quellen und Dokumententypen:
                   </Typography>
                   
                   <Table size="small">
                     <TableBody>
                       {pipelineInfo.sources.map((source, index) => (
                         <TableRow key={index}>
-                          <TableCell width="70%">{source.source_document}</TableCell>
+                          <TableCell width="60%">
+                            {source.source_document}
+                            {source.document_name && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Dokument: {source.document_name}
+                              </Typography>
+                            )}
+                            {source.chunk_type && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Typ: {source.chunk_type}
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Chip
                               label={`Relevanz: ${Math.round(source.score * 100)}%`}
                               color={source.score > 0.65 ? 'success' : source.score > 0.5 ? 'warning' : 'default'}
                               size="small"
                             />
+                            {source.content_type && source.content_type !== 'N/A' && (
+                              <Chip
+                                label={source.content_type}
+                                size="small"
+                                variant="outlined"
+                                sx={{ mt: 1 }}
+                              />
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -424,6 +484,16 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6">
                   Reasoning-Schritte ({pipelineInfo.reasoningSteps.length})
+                  {pipelineInfo.reasoningSteps.length === 1 && 
+                   pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' && (
+                    <Chip 
+                      label="Einfacher Prozess" 
+                      size="small" 
+                      color="warning" 
+                      variant="outlined"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -461,15 +531,49 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                     
                     {step.qdrantQueries && step.qdrantQueries.length > 0 && (
                       <Box sx={{ ml: 4, mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          QDrant-Abfragen: {step.qdrantQueries.join(', ')}
+                        <Typography variant="subtitle2" gutterBottom>
+                          Suchabfragen:
                         </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                          {step.qdrantQueries.map((query, qIndex) => (
+                            <Chip
+                              key={qIndex}
+                              label={query}
+                              size="small"
+                              variant="outlined"
+                              color="info"
+                            />
+                          ))}
+                        </Box>
                       </Box>
                     )}
                     
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                      {step.timestamp ? new Date(step.timestamp).toLocaleTimeString('de-DE') : 'N/A'}
-                    </Typography>
+                    <Box sx={{ ml: 4, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                      {step.duration !== undefined && (
+                        <Typography variant="caption" color="text.secondary">
+                          Dauer: {(step.duration / 1000).toFixed(2)}s
+                        </Typography>
+                      )}
+                      {step.qdrantResults !== undefined && (
+                        <Typography variant="caption" color="text.secondary">
+                          Gefundene Ergebnisse: {step.qdrantResults}
+                          {step.qdrantResults === 0 && (
+                            <Chip 
+                              label="Keine Ergebnisse" 
+                              size="small" 
+                              color="error" 
+                              variant="outlined"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </Typography>
+                      )}
+                      {step.timestamp ? (
+                        <Typography variant="caption" color="text.secondary">
+                          Zeit: {new Date(step.timestamp).toLocaleTimeString('de-DE')}
+                        </Typography>
+                      ) : null}
+                    </Box>
                     
                     {index < (pipelineInfo.reasoningSteps?.length || 0) - 1 && (
                       <Divider sx={{ mt: 2 }} />
@@ -501,6 +605,19 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       color={getQualityColor(pipelineInfo.contextAnalysis.contextQuality)}
                       sx={{ mb: 2 }}
                     />
+                    
+                    {pipelineInfo.contextAnalysis.topicsIdentified && pipelineInfo.contextAnalysis.topicsIdentified.length > 0 && (
+                      <>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Identifizierte Themen
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                          {pipelineInfo.contextAnalysis.topicsIdentified.map((topic: string, index: number) => (
+                            <Chip key={index} label={topic} size="small" color="primary" variant="outlined" />
+                          ))}
+                        </Box>
+                      </>
+                    )}
                     
                     <Typography variant="subtitle2" gutterBottom>
                       Primäre Konzepte
@@ -562,6 +679,23 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
         </DialogContent>
 
         <DialogActions>
+          {pipelineInfo.reasoningSteps && pipelineInfo.reasoningSteps.length === 1 && 
+           pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' && (
+            <Tooltip title="Startet eine neue Suche mit mehr Iterationen, um eine höhere Antwortqualität zu erzielen">
+              <Button 
+                variant="outlined" 
+                color="primary" 
+                onClick={() => {
+                  // TODO: Hier die Logik für die gründlichere Suche implementieren
+                  alert("Diese Funktionalität wird in einem kommenden Update implementiert. Die gründlichere Suche wird mehr Iterationen nutzen und möglicherweise bessere Ergebnisse liefern.");
+                }}
+                startIcon={<SearchIcon />}
+                sx={{ mr: 'auto' }}
+              >
+                Gründlichere Suche
+              </Button>
+            </Tooltip>
+          )}
           <Button onClick={() => setOpen(false)}>Schließen</Button>
         </DialogActions>
       </Dialog>
