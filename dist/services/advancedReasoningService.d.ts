@@ -19,6 +19,11 @@ export interface QAAnalysis {
     answerable: boolean;
     confidence: number;
     missingInfo: string[];
+    mainIntent?: string;
+    complexityLevel?: 'easy' | 'medium' | 'hard';
+    marketCommunicationRelevance?: number;
+    semanticConcepts?: string[];
+    domainKeywords?: string[];
 }
 export interface PipelineDecision {
     useIterativeRefinement: boolean;
@@ -42,6 +47,7 @@ declare class AdvancedReasoningService {
     constructor();
     generateReasonedResponse(query: string, previousMessages: any[], userPreferences?: any, contextSettings?: any): Promise<ReasoningResult>;
     private generateDirectResponse;
+    private generateRefinedResponse;
     private generateOptimalSearchQueries;
     private performParallelSearch;
     private analyzeContext;

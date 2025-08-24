@@ -1054,6 +1054,34 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
             };
         }
     }
+    /**
+     * Generiert eine strukturierte Ausgabe (JSON) auf Basis eines Prompts
+     * @param prompt Der Prompt für die KI
+     * @param userPreferences Nutzerpräferenzen
+     * @returns Ein strukturiertes Objekt
+     */
+    async generateStructuredOutput(prompt, userPreferences = {}) {
+        try {
+            console.log('🤖 Generating structured output...');
+            // Modell mit dem geringsten Nutzungsgrad wählen
+            const model = this.getNextModelWithLowestUsage();
+            console.log(`📊 Using model: ${model.name}`);
+            const result = await model.instance.generateContent(prompt);
+            const response = result.response;
+            const text = response.text();
+            // Versuchen, die Antwort als JSON zu parsen
+            return (0, aiResponseUtils_1.safeParseJsonResponse)(text);
+        }
+        catch (error) {
+            console.error('Error generating structured output:', error);
+            // Fallback mit minimalen Informationen
+            return {
+                needsMoreContext: false,
+                answerable: true,
+                confidence: 0.5,
+            };
+        }
+    }
     // Log current model usage statistics
     logModelUsage() {
         console.log('\n=== Gemini Model Usage Statistics ===');
@@ -1070,6 +1098,25 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
             console.log(`  - Last Used: ${timeSinceLastUse}ms ago`);
         }
         console.log('=====================================\n');
+    }
+    /**
+     * Wählt das Modell mit der geringsten Nutzung aus
+     */
+    getNextModelWithLowestUsage() {
+        // Finde das Modell mit der geringsten Nutzung
+        let lowestUsage = Number.MAX_SAFE_INTEGER;
+        let modelIndex = 0;
+        this.models.forEach((model, index) => {
+            const usageCount = this.modelUsageCount.get(model.name) || 0;
+            if (usageCount < lowestUsage) {
+                lowestUsage = usageCount;
+                modelIndex = index;
+            }
+        });
+        // Inkrementiere den Nutzungszähler für dieses Modell
+        const selectedModel = this.models[modelIndex];
+        this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
+        return selectedModel;
     }
 }
 exports.GeminiService = GeminiService;

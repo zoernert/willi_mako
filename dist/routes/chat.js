@@ -361,7 +361,10 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         semanticClusters: ((_a = reasoningResult.contextAnalysis.semanticClusters) === null || _a === void 0 ? void 0 : _a.length) || 0,
         pipelineDecisions: reasoningResult.pipelineDecisions,
         qaAnalysis: reasoningResult.qaAnalysis,
-        contextAnalysis: reasoningResult.contextAnalysis
+        contextAnalysis: reasoningResult.contextAnalysis,
+        assistantMetadata: {
+            usedDetailedIntentAnalysis: (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useDetailedIntentAnalysis) === true
+        }
     };
     // Check if we need to enhance with user context (fallback to existing logic if needed)
     let userContext = null;

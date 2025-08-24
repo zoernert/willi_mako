@@ -105,7 +105,18 @@ export declare class GeminiService {
         response: string;
         sources: any[];
     }>;
+    /**
+     * Generiert eine strukturierte Ausgabe (JSON) auf Basis eines Prompts
+     * @param prompt Der Prompt für die KI
+     * @param userPreferences Nutzerpräferenzen
+     * @returns Ein strukturiertes Objekt
+     */
+    generateStructuredOutput(prompt: string, userPreferences?: any): Promise<any>;
     logModelUsage(): void;
+    /**
+     * Wählt das Modell mit der geringsten Nutzung aus
+     */
+    private getNextModelWithLowestUsage;
 }
 declare const _default: GeminiService;
 export default _default;
