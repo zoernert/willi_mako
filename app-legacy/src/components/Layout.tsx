@@ -41,6 +41,7 @@ import {
   ReportProblem as ReportProblemIcon,
   Analytics as AnalyticsIcon,
   Timeline as TimelineIcon,
+  Gavel as GavelIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
@@ -82,7 +83,7 @@ const Layout: React.FC = () => {
     { text: 'Timelines', icon: <TimelineIcon />, path: '/timelines' },
     { text: 'Chat', icon: <ChatIcon />, path: '/chat' },
     { text: 'Marktpartner Suche', icon: <SearchIcon />, path: '/code-lookup' },
-    { text: 'Bilaterale Klärung', icon: <RuleIcon />, path: '/bilateral-clarifications' },
+    { text: 'Bilaterale Klärung', icon: <GavelIcon />, path: '/bilateral-clarifications' },
     { text: 'Nachrichten-Analyzer', icon: <AnalyticsIcon />, path: '/message-analyzer' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },

@@ -23,6 +23,7 @@ import {
   Add as AddIcon,
   Groups as CommunityIcon,
   PhotoCamera as PhotoCameraIcon,
+  Gavel as GavelIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -625,6 +626,7 @@ const Chat: React.FC = () => {
                           {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
                         </Avatar>
                         <Paper
+                          data-message-id={message.id}
                           sx={{
                             p: 2,
                             maxWidth: '70%',
@@ -855,7 +857,7 @@ const Chat: React.FC = () => {
                         
                         {/* Bilaterale Klärung Button für längere Assistant-Nachrichten - moved outside message box */}
                         {message.role === 'assistant' && message.content.length > 100 && (
-                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }} className="bilateral-clarification-button">
                             <CreateFromContextButton
                               variant="chip"
                               size="small"
@@ -878,16 +880,44 @@ const Chat: React.FC = () => {
                           </Box>
                         )}
                         
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: 'block',
-                            mt: 1,
-                            opacity: 0.7,
-                          }}
-                        >
-                          {formatTime(message.created_at)}
-                        </Typography>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          mt: 1
+                        }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              opacity: 0.7,
+                            }}
+                          >
+                            {formatTime(message.created_at)}
+                          </Typography>
+                          
+                          {/* Legal Hammer Icon for Bilateral Clarification */}
+                          <Tooltip title="Bilaterale Klärung">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => {
+                                // Trigger the same action as the CreateFromContextButton
+                                const contextButton = document.querySelector(
+                                  `[data-message-id="${message.id}"] .bilateral-clarification-button button`
+                                ) as HTMLButtonElement;
+                                if (contextButton) contextButton.click();
+                              }}
+                              sx={{ 
+                                p: 0.5,
+                                '&:hover': {
+                                  color: 'primary.main',
+                                  backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                }
+                              }}
+                            >
+                              <GavelIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </Paper>
                     </ListItem>
                     ))

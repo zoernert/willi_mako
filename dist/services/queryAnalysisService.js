@@ -79,7 +79,10 @@ class QueryAnalysisService {
                 match: {
                     value: analysisResult.filterCriteria.chunkTypes.length === 1
                         ? analysisResult.filterCriteria.chunkTypes[0]
-                        : analysisResult.filterCriteria.chunkTypes
+                        : undefined,
+                    any: analysisResult.filterCriteria.chunkTypes.length > 1
+                        ? analysisResult.filterCriteria.chunkTypes
+                        : undefined
                 }
             });
         }
@@ -94,7 +97,7 @@ class QueryAnalysisService {
             // Filter für aktuellste Versionen
             mustFilters.push({
                 key: 'document_metadata.document_base_name',
-                match: { value: latestDocumentVersions }
+                match: { any: latestDocumentVersions }
             });
         }
         if (mustFilters.length > 0) {
