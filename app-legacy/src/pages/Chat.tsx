@@ -16,6 +16,8 @@ import {
   CircularProgress,
   Alert,
   Tooltip,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -25,6 +27,7 @@ import {
   Groups as CommunityIcon,
   PhotoCamera as PhotoCameraIcon,
   Gavel as GavelIcon,
+  Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -102,6 +105,7 @@ const Chat: React.FC = () => {
     includeUserNotes: true,
     includeSystemKnowledge: true,
     includeM2CRoles: true,
+    useDetailedIntentAnalysis: false, // Standardmäßig deaktiviert
   });
   const [contextPanelOpen, setContextPanelOpen] = useState(false);
   
@@ -363,6 +367,11 @@ const Chat: React.FC = () => {
     try {
       let response;
       
+      // Hinweis anzeigen, wenn detaillierte Intent-Analyse aktiviert ist
+      if (contextSettings.useDetailedIntentAnalysis) {
+        showSnackbar('Detaillierte Intent-Analyse aktiviert - Antwort kann etwas länger dauern', 'info');
+      }
+      
       if (screenshotFile) {
         // Send message with screenshot
         response = await chatApi.sendMessageWithScreenshot(
@@ -482,6 +491,13 @@ const Chat: React.FC = () => {
       setIsTyping(false);
     }
   };
+
+  const toggleDetailedIntentAnalysis = useCallback(() => {
+    setContextSettings(prev => ({
+      ...prev,
+      useDetailedIntentAnalysis: !prev.useDetailedIntentAnalysis
+    }));
+  }, []);
 
   const handleClarificationPreferenceSubmit = async (responses: { questionId: string; answer: string }[]) => {
     try {
@@ -1131,6 +1147,37 @@ const Chat: React.FC = () => {
               )}
               
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                {/* Intent-Analyse Toggle */}
+                <Tooltip title={contextSettings.useDetailedIntentAnalysis 
+                  ? "Detaillierte Intent-Analyse aktiviert (Antworten können länger dauern, sind aber präziser)" 
+                  : "Standard-Intent-Analyse (schnellere Antworten)"}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={contextSettings.useDetailedIntentAnalysis}
+                        onChange={toggleDetailedIntentAnalysis}
+                        disabled={loading}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <PsychologyIcon fontSize="small" />
+                        <Typography variant="caption">
+                          {contextSettings.useDetailedIntentAnalysis ? "Tiefe Analyse" : "Schnell"}
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ 
+                      mr: 1,
+                      opacity: 0.8,
+                      '&:hover': { opacity: 1 },
+                      '.MuiFormControlLabel-label': { fontSize: '0.8rem' }
+                    }}
+                  />
+                </Tooltip>
+                
                 <Box sx={{ flex: 1 }}>
                   <TextField
                     fullWidth

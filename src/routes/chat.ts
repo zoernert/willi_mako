@@ -418,6 +418,10 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     pipelineDecisions?: any;
     qaAnalysis?: any;
     contextAnalysis?: any;
+    assistantMetadata?: {
+      usedDetailedIntentAnalysis?: boolean;
+      [key: string]: any;
+    };
   } = { 
     contextSources: reasoningResult.reasoningSteps.filter((step: any) => step.step === 'context_analysis').length,
     userContextUsed: false,
@@ -430,7 +434,10 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     semanticClusters: reasoningResult.contextAnalysis.semanticClusters?.length || 0,
     pipelineDecisions: reasoningResult.pipelineDecisions,
     qaAnalysis: reasoningResult.qaAnalysis,
-    contextAnalysis: reasoningResult.contextAnalysis
+    contextAnalysis: reasoningResult.contextAnalysis,
+    assistantMetadata: {
+      usedDetailedIntentAnalysis: contextSettings?.useDetailedIntentAnalysis === true
+    }
   };
 
   // Check if we need to enhance with user context (fallback to existing logic if needed)

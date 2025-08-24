@@ -47,6 +47,9 @@ interface QAAnalysis {
   semanticConcepts?: string[];
   domainKeywords?: string[];
   confidence?: number;
+  needsMoreContext?: boolean;
+  answerable?: boolean;
+  missingInfo?: string[];
 }
 
 interface PipelineInfo {
@@ -63,6 +66,10 @@ interface PipelineInfo {
   qaAnalysis?: QAAnalysis;
   contextAnalysis?: any;
   type?: string;
+  assistantMetadata?: {
+    usedDetailedIntentAnalysis?: boolean;
+    [key: string]: any;
+  };
   sources?: Array<{
     score: number;
     content_type: string;
@@ -393,29 +400,104 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h6">Frageanalyse</Typography>
+                <Typography variant="h6">Frageanalyse & Intent</Typography>
                 {!extractQAAnalysis() && (
                   <Chip 
-                    label="Nicht verfügbar" 
+                    label="Basis-Intent" 
                     size="small" 
-                    color="default" 
+                    color="info" 
                     variant="outlined"
                   />
+                )}
+                {extractQAAnalysis() && pipelineInfo.assistantMetadata?.usedDetailedIntentAnalysis && (
+                  <Tooltip title="Detaillierte Intent-Analyse wurde für diese Anfrage durchgeführt">
+                    <Chip 
+                      label="Detaillierte Analyse" 
+                      size="small" 
+                      color="success" 
+                      variant="outlined"
+                    />
+                  </Tooltip>
+                )}
+                {pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' && (
+                  <Tooltip title="Schnellmodus für einfache Antworten aktiviert">
+                    <Chip 
+                      label="Speed-Modus" 
+                      size="small" 
+                      color="warning" 
+                      variant="outlined"
+                    />
+                  </Tooltip>
                 )}
               </Box>
             </AccordionSummary>
             <AccordionDetails>
               {!extractQAAnalysis() ? (
-                <Box sx={{ p: 3, bgcolor: '#f9f9f9', borderRadius: 1, textAlign: 'center' }}>
-                  <PsychologyIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
-                  <Typography variant="body1" color="text.secondary" gutterBottom>
-                    Für diese Anfrage sind keine Frageanalyse-Daten verfügbar.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Die Frageanalyse ist ein Feature, das hauptsächlich im Kontext der FAQ-Erstellung und -Verwaltung 
-                    durch Administratoren verwendet wird. Für normale Chat-Antworten sind diese detaillierten 
-                    Analysedaten üblicherweise nicht verfügbar.
-                  </Typography>
+                <Box>
+                  <Box sx={{ p: 3, bgcolor: '#f9f9f9', borderRadius: 1, mb: 2 }}>
+                    <Typography variant="body1" gutterBottom>
+                      <strong>Basis-Intent-Erkennung</strong>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      Für diese Anfrage wurde die Basis-Intent-Erkennung verwendet. Eine detailliertere semantische Analyse
+                      kann durch Aktivierung des Schalters "Detaillierte Intent-Analyse" im Chat angefordert werden.
+                    </Typography>
+                    
+                    {pipelineInfo.qaAnalysis && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Basis-Analyse:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Benötigt mehr Kontext:</Typography>
+                            <Chip 
+                              label={pipelineInfo.qaAnalysis?.needsMoreContext ? "Ja" : "Nein"} 
+                              size="small" 
+                              color={pipelineInfo.qaAnalysis?.needsMoreContext ? "warning" : "success"}
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Beantwortbar:</Typography>
+                            <Chip 
+                              label={pipelineInfo.qaAnalysis?.answerable ? "Ja" : "Nein"} 
+                              size="small" 
+                              color={pipelineInfo.qaAnalysis?.answerable ? "success" : "error"}
+                            />
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Konfidenz:</Typography>
+                            <Typography variant="body2">
+                              {pipelineInfo.qaAnalysis?.confidence 
+                                ? `${Math.round(pipelineInfo.qaAnalysis.confidence * 100)}%` 
+                                : 'N/A'}
+                            </Typography>
+                          </Box>
+                          {pipelineInfo.qaAnalysis?.mainIntent && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body2">Erkannter Intent:</Typography>
+                              <Typography variant="body2" fontStyle="italic">
+                                {pipelineInfo.qaAnalysis.mainIntent}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<SearchIcon />}
+                      onClick={() => {
+                        alert("Für die nächste Frage können Sie die detaillierte Intent-Analyse aktivieren, indem Sie den Schalter 'Detaillierte Intent-Analyse' im Chat-Eingabefeld umschalten. Dies wird eine tiefergehende semantische Analyse der Anfrage durchführen.");
+                      }}
+                    >
+                      Detaillierte Intent-Analyse aktivieren
+                    </Button>
+                  </Box>
                 </Box>
               ) : (
                 <>
@@ -427,9 +509,9 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       <>
                         <Box sx={{ p: 2, bgcolor: '#f0f7ff', borderRadius: 1, mb: 2 }}>
                           <Typography variant="body2" color="text.secondary">
-                            Die Frageanalyse-Funktion ist ein Feature, das hauptsächlich im Kontext der FAQ-Erstellung und -Verwaltung 
-                            verwendet wird. Für normale Chat-Antworten sind diese detaillierten Analysedaten üblicherweise 
-                            nicht verfügbar.
+                            Die Frageanalyse-Funktion bietet detaillierte Informationen zur Intent-Erkennung und semantischen Analyse.
+                            Im Standardchat sind diese Daten in vereinfachter Form verfügbar, werden aber bei aktivierter 
+                            "detaillierter Intent-Analyse" umfassender bereitgestellt.
                           </Typography>
                         </Box>
 
@@ -767,19 +849,18 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
         <DialogActions>
           {pipelineInfo.reasoningSteps && pipelineInfo.reasoningSteps.length === 1 && 
            pipelineInfo.pipelineDecisions?.reason === 'Direct response for speed' && (
-            <Tooltip title="Diese Antwort wurde mit minimalem Aufwand generiert. Eine gründlichere Suche könnte bessere Ergebnisse liefern.">
+            <Tooltip title="Diese Antwort wurde mit dem schnellen Basis-Modus generiert. Eine gründlichere Suche mit Intent-Erkennung könnte bessere Ergebnisse liefern.">
               <Button 
                 variant="outlined" 
                 color="primary" 
                 onClick={() => {
-                  // TODO: Hier die Logik für die gründlichere Suche implementieren
-                  alert("Diese Funktionalität wird in einem kommenden Update implementiert. Eine gründlichere Suche würde mehr Iterationen nutzen und möglicherweise bessere Ergebnisse liefern, indem sie semantische Konzepte in der Anfrage eingehender analysiert.");
+                  alert("Für die nächste Frage können Sie die detaillierte Intent-Analyse aktivieren, indem Sie den Schalter 'Detaillierte Intent-Analyse' im Chat-Eingabefeld umschalten. Dies wird eine tiefergehende semantische Analyse der Anfrage durchführen.");
                   setOpen(false);
                 }}
                 startIcon={<SearchIcon />}
                 sx={{ mr: 'auto' }}
               >
-                Gründlichere Suche durchführen
+                Detaillierte Intent-Analyse aktivieren
               </Button>
             </Tooltip>
           )}

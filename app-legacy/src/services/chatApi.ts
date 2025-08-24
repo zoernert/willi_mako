@@ -42,6 +42,7 @@ export interface ContextSettings {
   includeUserNotes: boolean;
   includeSystemKnowledge: boolean;
   includeM2CRoles: boolean;
+  useDetailedIntentAnalysis?: boolean; // Neue Option für tiefere Intent-Analyse
 }
 
 export interface SendMessageRequest {
