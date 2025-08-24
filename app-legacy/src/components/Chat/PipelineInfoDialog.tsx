@@ -76,8 +76,19 @@ interface PipelineInfo {
     source_document: string;
     document_name?: string;
     chunk_type?: string;
+    message_format?: string; // Nachrichtenformat-Kontext für die Gruppierung
+    document_metadata?: {
+      message_format?: string;
+      document_name?: string;
+      document_base_name?: string;
+      version?: string;
+      publication_date?: string;
+      [key: string]: any; // Andere Metadaten-Felder
+    };
   }>;
   sourceCount?: number;
+  hybridSearchUsed?: boolean; // Zeigt an, ob Hybrid-Suche verwendet wurde
+  hybridSearchAlpha?: number; // Alpha-Parameter für Hybrid-Suche (Gewichtung zwischen Vektor- und Keyword-Suche)
 }
 
 interface PipelineInfoDialogProps {
@@ -367,6 +378,44 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                           }
                         </TableCell>
                       </TableRow>
+                      {pipelineInfo.hybridSearchUsed !== undefined && (
+                        <TableRow>
+                          <TableCell>
+                            <Tooltip title="Hybrid-Suche kombiniert Vektor- und Keyword-basierte Suche für bessere Ergebnisse">
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                Hybrid-Suche
+                              </Box>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell>
+                            {pipelineInfo.hybridSearchUsed ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip 
+                                  label="Aktiviert" 
+                                  size="small" 
+                                  color="success" 
+                                  variant="outlined"
+                                />
+                                {pipelineInfo.hybridSearchAlpha !== undefined && (
+                                  <Tooltip title={`Alpha-Parameter: ${pipelineInfo.hybridSearchAlpha} (Gewichtung zwischen Vektor- und Keyword-Suche)`}>
+                                    <Chip 
+                                      label={`α=${pipelineInfo.hybridSearchAlpha}`} 
+                                      size="small" 
+                                      variant="outlined"
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Box>
+                            ) : (
+                              <Chip 
+                                label="Nicht verwendet" 
+                                size="small" 
+                                variant="outlined"
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </Box>
@@ -602,42 +651,196 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                     Diese Antwort basiert auf folgenden Quellen und Dokumententypen:
                   </Typography>
                   
-                  <Table size="small">
-                    <TableBody>
-                      {pipelineInfo.sources.map((source, index) => (
-                        <TableRow key={index}>
-                          <TableCell width="60%">
-                            {source.source_document}
-                            {source.document_name && (
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                Dokument: {source.document_name}
-                              </Typography>
-                            )}
-                            {source.chunk_type && (
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                Typ: {source.chunk_type}
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={`Relevanz: ${Math.round(source.score * 100)}%`}
-                              color={source.score > 0.65 ? 'success' : source.score > 0.5 ? 'warning' : 'default'}
+                  {/* Verbesserte Gruppierung der Quellen nach Nachrichtenformat */}
+                  {(() => {
+                    // Quellen nach message_format gruppieren
+                    const groupedSources: Record<string, typeof pipelineInfo.sources> = {};
+                    
+                    pipelineInfo.sources?.forEach(source => {
+                      // Das message_format kann entweder direkt im source-Objekt oder in document_metadata sein
+                      const messageFormat = source.message_format || source.document_metadata?.message_format || 'Unbekanntes Format';
+                      
+                      if (!groupedSources[messageFormat]) {
+                        groupedSources[messageFormat] = [];
+                      }
+                      
+                      groupedSources[messageFormat]?.push(source);
+                    });
+                    
+                    const messageFormats = Object.keys(groupedSources);
+                    
+                    // Wenn mehr als ein Format vorhanden ist, gruppierte Anzeige verwenden
+                    return messageFormats.length > 1 ? (
+                      <Box>
+                        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle2">Verfügbare Kontexte:</Typography>
+                          {messageFormats.map(format => (
+                            <Chip 
+                              key={format}
+                              label={format} 
+                              color="primary" 
                               size="small"
+                              variant="outlined"
                             />
-                            {source.content_type && source.content_type !== 'N/A' && (
-                              <Chip
-                                label={source.content_type}
+                          ))}
+                        </Box>
+                        
+                        {messageFormats.map(format => (
+                          <Box key={format} sx={{ mb: 4, bgcolor: '#f8f9fa', p: 2, borderRadius: 1 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                              <Chip 
+                                label={format}
+                                color="primary"
                                 size="small"
-                                variant="outlined"
-                                sx={{ mt: 1 }}
+                                sx={{ mr: 1 }}
                               />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              <span>Quellen: {groupedSources[format]?.length || 0}</span>
+                            </Typography>
+                            <Table size="small">
+                              <TableBody>
+                                {groupedSources[format]?.map((source, index) => (
+                                  <TableRow key={index} sx={{ 
+                                    '&:nth-of-type(odd)': { bgcolor: 'rgba(0, 0, 0, 0.03)' },
+                                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' } 
+                                  }}>
+                                    <TableCell width="60%">
+                                      <Box sx={{ mb: 0.5 }}>
+                                        <Typography variant="body2">
+                                          {source.source_document}
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                        {source.document_name && (
+                                          <Typography variant="caption" color="text.secondary" 
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <strong>Dokument:</strong> {source.document_name}
+                                          </Typography>
+                                        )}
+                                        {source.document_metadata?.document_base_name && source.document_metadata.document_base_name !== source.document_name && (
+                                          <Typography variant="caption" color="text.secondary" 
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <strong>Basis:</strong> {source.document_metadata.document_base_name}
+                                          </Typography>
+                                        )}
+                                        {source.document_metadata?.version && (
+                                          <Typography variant="caption" color="text.secondary" 
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <strong>Version:</strong> {source.document_metadata.version}
+                                          </Typography>
+                                        )}
+                                        {source.document_metadata?.publication_date && (
+                                          <Typography variant="caption" color="text.secondary" 
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <strong>Datum:</strong> {source.document_metadata.publication_date}
+                                          </Typography>
+                                        )}
+                                        {source.chunk_type && (
+                                          <Typography variant="caption" color="text.secondary" 
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <strong>Typ:</strong> {source.chunk_type}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        <Chip
+                                          label={`Relevanz: ${Math.round(source.score * 100)}%`}
+                                          color={source.score > 0.8 ? 'success' : source.score > 0.6 ? 'warning' : 'default'}
+                                          size="small"
+                                        />
+                                        {source.content_type && source.content_type !== 'N/A' && (
+                                          <Chip
+                                            label={source.content_type}
+                                            size="small"
+                                            variant="outlined"
+                                          />
+                                        )}
+                                      </Box>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : (
+                      // Standardanzeige wenn nur ein Format oder keine Gruppierung möglich
+                      <Table size="small">
+                        <TableBody>
+                          {pipelineInfo.sources?.map((source, index) => (
+                            <TableRow key={index} sx={{ 
+                              '&:nth-of-type(odd)': { bgcolor: 'rgba(0, 0, 0, 0.03)' },
+                              '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' } 
+                            }}>
+                              <TableCell width="60%">
+                                <Box sx={{ mb: 0.5 }}>
+                                  <Typography variant="body2">
+                                    {source.source_document}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                  {source.document_name && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Dokument:</strong> {source.document_name}
+                                    </Typography>
+                                  )}
+                                  {source.document_metadata?.document_base_name && source.document_metadata.document_base_name !== source.document_name && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Basis:</strong> {source.document_metadata.document_base_name}
+                                    </Typography>
+                                  )}
+                                  {source.document_metadata?.version && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Version:</strong> {source.document_metadata.version}
+                                    </Typography>
+                                  )}
+                                  {source.document_metadata?.publication_date && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Datum:</strong> {source.document_metadata.publication_date}
+                                    </Typography>
+                                  )}
+                                  {source.chunk_type && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Typ:</strong> {source.chunk_type}
+                                    </Typography>
+                                  )}
+                                  {(source.message_format || source.document_metadata?.message_format) && (
+                                    <Typography variant="caption" color="text.secondary" 
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <strong>Format:</strong> {source.message_format || source.document_metadata?.message_format}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <Chip
+                                    label={`Relevanz: ${Math.round(source.score * 100)}%`}
+                                    color={source.score > 0.8 ? 'success' : source.score > 0.6 ? 'warning' : 'default'}
+                                    size="small"
+                                  />
+                                  {source.content_type && source.content_type !== 'N/A' && (
+                                    <Chip
+                                      label={source.content_type}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  )}
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    );
+                  })()}
                 </Box>
               </AccordionDetails>
             </Accordion>
@@ -829,18 +1032,67 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
           )}
 
           {/* QDrant-Erkenntnisse */}
-          {pipelineInfo.pipelineDecisions?.qdrantInsights && (
+          {(pipelineInfo.pipelineDecisions?.qdrantInsights || pipelineInfo.hybridSearchUsed) && (
             <Accordion 
               expanded={expandedAccordion === 'qdrant'} 
               onChange={handleAccordionChange('qdrant')}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">QDrant-Erkenntnisse</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6">QDrant-Erkenntnisse</Typography>
+                  {pipelineInfo.hybridSearchUsed && (
+                    <Tooltip title="Hybrid-Suche kombiniert semantische Vektorsuche mit Keyword-Matching für präzisere Ergebnisse">
+                      <Chip 
+                        label="Hybrid-Suche" 
+                        size="small" 
+                        color="info" 
+                        variant="outlined"
+                      />
+                    </Tooltip>
+                  )}
+                </Box>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {pipelineInfo.pipelineDecisions.qdrantInsights}
-                </Typography>
+                {pipelineInfo.hybridSearchUsed && (
+                  <Box sx={{ mb: 3, p: 2, bgcolor: '#f0f7ff', borderRadius: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Hybrid-Suche Information
+                    </Typography>
+                    <Typography variant="body2" paragraph>
+                      Diese Anfrage wurde mit QDrant's Hybrid-Suche beantwortet, die semantische Vektorsuche mit 
+                      Keyword-Matching kombiniert. Dies verbessert die Genauigkeit der Ergebnisse, besonders bei 
+                      Fachtermini und spezifischen Bezeichnern.
+                    </Typography>
+                    
+                    {pipelineInfo.hybridSearchAlpha !== undefined && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2">Alpha-Parameter:</Typography>
+                        <Chip 
+                          label={`α=${pipelineInfo.hybridSearchAlpha}`} 
+                          size="small" 
+                          color="primary"
+                          variant="outlined"
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          (Gewichtung zwischen Vektor- und Keyword-Suche)
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                
+                {pipelineInfo.pipelineDecisions?.qdrantInsights && (
+                  <>
+                    {pipelineInfo.hybridSearchUsed && (
+                      <Typography variant="subtitle2" gutterBottom>
+                        Zusätzliche QDrant-Erkenntnisse:
+                      </Typography>
+                    )}
+                    <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {pipelineInfo.pipelineDecisions.qdrantInsights}
+                    </Typography>
+                  </>
+                )}
               </AccordionDetails>
             </Accordion>
           )}

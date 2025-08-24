@@ -87,8 +87,8 @@ class AdvancedReasoningService {
                     missingInfo: []
                 };
             }
-            // Step 2: Quick Context Retrieval (1 API call max)
-            const step2Start = Date.now();
+            // Step 2: Quick Context Retrieval
+            const retrievalStart = Date.now();
             // Simple search first for speed
             const quickResults = await this.qdrantService.search('system', query, 10);
             if (quickResults.length === 0) {
@@ -99,8 +99,8 @@ class AdvancedReasoningService {
                 reasoningSteps.push({
                     step: 'enhanced_search',
                     description: `Enhanced search with ${searchQueries.length} queries found ${allResults.length} results`,
-                    timestamp: step1Start,
-                    duration: Date.now() - step1Start,
+                    timestamp: retrievalStart,
+                    duration: Date.now() - retrievalStart,
                     qdrantQueries: searchQueries,
                     qdrantResults: allResults.length
                 });
@@ -111,13 +111,13 @@ class AdvancedReasoningService {
             reasoningSteps.push({
                 step: 'quick_retrieval',
                 description: `Quick search found ${quickResults.length} relevant documents`,
-                timestamp: step1Start,
-                duration: Date.now() - step1Start,
+                timestamp: retrievalStart,
+                duration: Date.now() - retrievalStart,
                 qdrantResults: quickResults.length,
                 result: { documentsFound: quickResults.length, quality: contextAnalysis.contextQuality }
             });
-            // Step 2: Fast Response Generation (1 API call)
-            const step2Start = Date.now();
+            // Response Generation
+            const responseStart = Date.now();
             // Check if we have enough context for a direct response
             if (contextAnalysis.contextQuality > 0.5 || quickResults.length >= 5) {
                 console.log('✅ Sufficient context found, generating direct response');
@@ -132,8 +132,8 @@ class AdvancedReasoningService {
             reasoningSteps.push({
                 step: 'enhanced_retrieval',
                 description: `Enhanced search with ${searchQueries.length} queries`,
-                timestamp: step2Start,
-                duration: Date.now() - step2Start,
+                timestamp: responseStart,
+                duration: Date.now() - responseStart,
                 qdrantQueries: searchQueries,
                 qdrantResults: enhancedResults.length
             });

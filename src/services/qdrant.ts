@@ -13,6 +13,8 @@ const CS30_COLLECTION_NAME = process.env.CS30_COLLECTION || 'cs30';
 export class QdrantService {
   private client: QdrantClient;
   private abbreviationIndex: Map<string, string> = new Map();
+  // Add flag for hybrid search capability
+  private hybridSearchSupported: boolean = false;
 
   constructor() {
     this.client = new QdrantClient({ 
@@ -24,6 +26,11 @@ export class QdrantService {
     // CR-CS30: Ensure cs30 collection exists
     this.ensureCs30Collection();
     this.initializeAbbreviationIndex();
+    
+    // Default to assuming hybrid search is available in newer QDrant versions
+    // This can be configured via env variable
+    this.hybridSearchSupported = process.env.QDRANT_HYBRID_SEARCH === 'true';
+    console.log(`Hybrid search support: ${this.hybridSearchSupported ? 'ENABLED' : 'DISABLED'}`);
   }
 
   // Static method for initialization
@@ -518,6 +525,60 @@ export class QdrantService {
     } catch (error) {
       console.error('Error checking CS30 availability:', error);
       return false;
+    }
+  }
+
+  // Add hybrid search method
+  async searchWithHybrid(
+    query: string, 
+    limit: number = 10, 
+    scoreThreshold: number = 0.5,
+    alpha: number = 0.5  // Balances between vector and keyword search (0.0: only vector, 1.0: only keyword)
+  ) {
+    try {
+      console.log(`🔍 Performing hybrid search with alpha=${alpha}`);
+      
+      // Generate embedding for the query
+      const queryVector = await geminiService.generateEmbedding(query);
+      
+      // Set up search parameters for hybrid search
+      const searchParams: any = {
+        vector: queryVector,
+        limit,
+        score_threshold: scoreThreshold,
+      };
+      
+      // Add hybrid search parameters if supported
+      if (this.hybridSearchSupported) {
+        // Add hybrid search parameters
+        searchParams.query = query;  // Text query for keyword matching
+        searchParams.alpha = alpha;  // Weight between vector and keyword search
+      }
+      
+      // Perform search
+      const results = await this.client.search(QDRANT_COLLECTION_NAME, searchParams);
+      
+      // Add metadata to indicate hybrid search was used
+      return {
+        results,
+        hybridSearchUsed: this.hybridSearchSupported,
+        hybridSearchAlpha: alpha
+      };
+    } catch (error) {
+      console.error('Error in hybrid search:', error);
+      // Fall back to regular vector search
+      console.log('Falling back to regular vector search');
+      const queryVector = await geminiService.generateEmbedding(query);
+      const fallbackResults = await this.client.search(QDRANT_COLLECTION_NAME, {
+        vector: queryVector,
+        limit,
+        score_threshold: scoreThreshold,
+      });
+      
+      return {
+        results: fallbackResults,
+        hybridSearchUsed: false
+      };
     }
   }
 }

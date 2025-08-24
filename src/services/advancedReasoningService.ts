@@ -47,6 +47,8 @@ export interface ReasoningResult {
   qaAnalysis: QAAnalysis;
   pipelineDecisions: PipelineDecision;
   apiCallsUsed: number;
+  hybridSearchUsed?: boolean;
+  hybridSearchAlpha?: number;
 }
 
 class AdvancedReasoningService {
@@ -363,6 +365,11 @@ class AdvancedReasoningService {
     );
     apiCallsUsed++;
     
+    // Extract hybrid search metadata if available
+    const hybridSearchMetadata = results.find((r: any) => r.hybridSearchMetadata)?.hybridSearchMetadata;
+    const usedHybridSearch = hybridSearchMetadata?.hybridSearchUsed || false;
+    const hybridSearchAlpha = hybridSearchMetadata?.hybridSearchAlpha;
+    
     // Bei nur einer Iteration: direkt zurückgeben
     if (pipelineDecisions.maxIterations <= 1) {
       reasoningSteps.push({
@@ -370,7 +377,12 @@ class AdvancedReasoningService {
         description: 'Antwort in einem Schritt generiert',
         timestamp: refinementStart,
         duration: Date.now() - refinementStart,
-        result: { response: initialResponse, confidence: 0.8 }
+        result: { 
+          response: initialResponse, 
+          confidence: 0.8,
+          usedHybridSearch,
+          hybridSearchAlpha
+        }
       });
       
       return {
@@ -381,7 +393,9 @@ class AdvancedReasoningService {
         contextAnalysis,
         qaAnalysis,
         pipelineDecisions,
-        apiCallsUsed
+        apiCallsUsed,
+        hybridSearchUsed: usedHybridSearch,
+        hybridSearchAlpha
       };
     }
     
@@ -444,21 +458,86 @@ class AdvancedReasoningService {
   }
 
   private async performParallelSearch(queries: string[]): Promise<any[]> {
-    // Perform all QDrant searches in parallel
-    const searchPromises = queries.map(query => 
-      this.qdrantService.searchWithOptimizations(query, 10, 0.3, true)
-    );
-    
-    const results = await Promise.all(searchPromises);
-    
-    // Flatten and deduplicate results
-    const allResults = results.flat();
-    const seen = new Set();
-    return allResults.filter(result => {
-      if (seen.has(result.id)) return false;
-      seen.add(result.id);
-      return true;
-    }).slice(0, 20); // Limit to top 20 results
+    try {
+      // Perform searches with hybrid capabilities
+      console.log(`🔍 Performing parallel searches for ${queries.length} queries with hybrid search capability`);
+      
+      // Track hybrid search metadata
+      let hybridSearchUsed = false;
+      let hybridSearchAlpha = 0.5; // Default alpha value
+      
+      // Perform all searches in parallel using our available search methods
+      const searchPromises = queries.map(query => {
+        // Use searchWithHybrid if available, otherwise fallback to standard search
+        if (typeof this.qdrantService.searchWithHybrid === 'function') {
+          return this.qdrantService.searchWithHybrid(query, 10, 0.3, 0.5);
+        } else {
+          // Need to include userId parameter (using 'system' as default user)
+          return this.qdrantService.search('system', query, 10);
+        }
+      });
+      
+      const searchResults = await Promise.all(searchPromises);
+      
+      // Process results and collect metadata
+      let allResults: any[] = [];
+      
+      searchResults.forEach((result: any) => {
+        // Handle both standard search results and hybrid search results
+        // Use any type to avoid TypeScript errors with the experimental hybrid search
+        const results = (result as any).results || result; // Hybrid search returns {results, hybridSearchUsed}, standard search returns results directly
+        
+        if ((result as any).hybridSearchUsed) {
+          hybridSearchUsed = true;
+          hybridSearchAlpha = (result as any).hybridSearchAlpha;
+        }
+        
+        allResults = [...allResults, ...(Array.isArray(results) ? results : [results])];
+      });
+      
+      // Remove duplicates based on ID
+      const seen = new Set();
+      const uniqueResults = allResults.filter(result => {
+        const id = result.id || (result.payload && result.payload.id);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      
+      // Sort by score descending
+      uniqueResults.sort((a, b) => b.score - a.score);
+      
+      // Store hybrid search metadata in the first result for later retrieval
+      if (uniqueResults.length > 0 && hybridSearchUsed) {
+        uniqueResults[0].hybridSearchMetadata = {
+          hybridSearchUsed,
+          hybridSearchAlpha
+        };
+      }
+      
+      console.log(`✅ Found ${uniqueResults.length} unique results across ${queries.length} queries`);
+      return uniqueResults.slice(0, 20); // Limit to top 20 results
+    } catch (error) {
+      console.error('❌ Error in parallel search:', error);
+      
+      // Fallback to most basic search if all else fails
+      const fallbackPromises = queries.map(query => 
+        this.qdrantService.search('system', query, 10)
+      );
+      
+      const fallbackResults = await Promise.all(fallbackPromises);
+      const flattenedResults = fallbackResults.flat();
+      
+      // Remove duplicates
+      const seen = new Set();
+      const uniqueResults = flattenedResults.filter(result => {
+        if (seen.has(result.id)) return false;
+        seen.add(result.id);
+        return true;
+      });
+      
+      return uniqueResults.slice(0, 20); // Limit to top 20 results
+    }
   }
 
   private analyzeContext(results: any[], query: string): ContextAnalysis {

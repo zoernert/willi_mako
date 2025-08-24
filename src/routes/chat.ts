@@ -76,7 +76,17 @@ async function generateCs30AdditionalResponse(
         content_type: r.payload?.type || 'N/A',
         document_name: r.payload?.document_name || null,
         chunk_type: r.payload?.chunk_type || null,
-        score: r.score
+        score: r.score,
+        document_metadata: {
+          message_format: r.payload?.message_format || 
+                          (r.payload?.type === 'BDEW' ? 'BDEW' : 
+                           r.payload?.type === 'BNetzA' ? 'BNetzA' : 
+                           r.payload?.type === 'FAQ' ? 'FAQ' : 'Allgemein'),
+          document_name: r.payload?.document_name || null,
+          document_base_name: r.payload?.document_base_name || r.payload?.source || null,
+          version: r.payload?.version || null,
+          publication_date: r.payload?.publication_date || null
+        }
       }))
     };
   } catch (error) {
@@ -418,6 +428,8 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     pipelineDecisions?: any;
     qaAnalysis?: any;
     contextAnalysis?: any;
+    hybridSearchUsed?: boolean;
+    hybridSearchAlpha?: number;
     assistantMetadata?: {
       usedDetailedIntentAnalysis?: boolean;
       [key: string]: any;
@@ -435,6 +447,8 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     pipelineDecisions: reasoningResult.pipelineDecisions,
     qaAnalysis: reasoningResult.qaAnalysis,
     contextAnalysis: reasoningResult.contextAnalysis,
+    hybridSearchUsed: reasoningResult.hybridSearchUsed || false,
+    hybridSearchAlpha: reasoningResult.hybridSearchAlpha,
     assistantMetadata: {
       usedDetailedIntentAnalysis: contextSettings?.useDetailedIntentAnalysis === true
     }
