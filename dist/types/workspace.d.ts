@@ -14,6 +14,10 @@ export interface UserDocument {
     tags: string[];
     created_at: Date;
     updated_at: Date;
+    is_public?: boolean;
+    team_id?: string | null;
+    shared_with_users?: string[];
+    access_control?: string;
 }
 export interface UserNote {
     id: string;

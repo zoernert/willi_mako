@@ -89,7 +89,7 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
             hasCs30Response: true,
             cs30Response: cs30Response,
             cs30Sources: cs30Results.map(r => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
                 return ({
                     source_document: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.source) || 'Schleupen Dokumentation',
                     content_type: ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.type) || 'N/A',
@@ -100,11 +100,15 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
                         message_format: ((_e = r.payload) === null || _e === void 0 ? void 0 : _e.message_format) ||
                             (((_f = r.payload) === null || _f === void 0 ? void 0 : _f.type) === 'BDEW' ? 'BDEW' :
                                 ((_g = r.payload) === null || _g === void 0 ? void 0 : _g.type) === 'BNetzA' ? 'BNetzA' :
-                                    ((_h = r.payload) === null || _h === void 0 ? void 0 : _h.type) === 'FAQ' ? 'FAQ' : 'Allgemein'),
-                        document_name: ((_j = r.payload) === null || _j === void 0 ? void 0 : _j.document_name) || null,
-                        document_base_name: ((_k = r.payload) === null || _k === void 0 ? void 0 : _k.document_base_name) || ((_l = r.payload) === null || _l === void 0 ? void 0 : _l.source) || null,
-                        version: ((_m = r.payload) === null || _m === void 0 ? void 0 : _m.version) || null,
-                        publication_date: ((_o = r.payload) === null || _o === void 0 ? void 0 : _o.publication_date) || null
+                                    ((_h = r.payload) === null || _h === void 0 ? void 0 : _h.type) === 'FAQ' ? 'FAQ' :
+                                        ((_j = r.payload) === null || _j === void 0 ? void 0 : _j.is_user_document) ? 'Mein Workspace' : 'Allgemein'),
+                        document_name: ((_k = r.payload) === null || _k === void 0 ? void 0 : _k.document_name) || null,
+                        document_base_name: ((_l = r.payload) === null || _l === void 0 ? void 0 : _l.document_base_name) || ((_m = r.payload) === null || _m === void 0 ? void 0 : _m.source) || null,
+                        version: ((_o = r.payload) === null || _o === void 0 ? void 0 : _o.version) || null,
+                        publication_date: ((_p = r.payload) === null || _p === void 0 ? void 0 : _p.publication_date) || null,
+                        is_user_document: ((_q = r.payload) === null || _q === void 0 ? void 0 : _q.is_user_document) || false,
+                        owner_id: ((_r = r.payload) === null || _r === void 0 ? void 0 : _r.user_id) || null,
+                        access_control: ((_s = r.payload) === null || _s === void 0 ? void 0 : _s.access_control) || null
                     }
                 });
             })

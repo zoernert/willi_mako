@@ -100,7 +100,9 @@ export declare class QdrantService {
     }[]>;
     searchCs30(query: string, limit?: number, scoreThreshold?: number): Promise<any[]>;
     isCs30Available(): Promise<boolean>;
-    searchWithHybrid(query: string, limit?: number, scoreThreshold?: number, alpha?: number): Promise<{
+    searchWithHybrid(query: string, limit?: number, scoreThreshold?: number, alpha?: number, // Balances between vector and keyword search (0.0: only vector, 1.0: only keyword)
+    userId?: string, // Optional user ID to filter by access control
+    teamId?: string): Promise<{
         results: {
             id: string | number;
             version: number;

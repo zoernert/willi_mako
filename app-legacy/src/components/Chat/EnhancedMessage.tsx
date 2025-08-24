@@ -12,6 +12,12 @@ import {
   IconButton,
   Chip,
   Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -23,6 +29,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: string;
@@ -233,6 +240,7 @@ const EnhancedMessage: React.FC<EnhancedMessageProps> = ({ message, formatTime }
             <Box>
               <div className="chat-message assistant-message">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     p: ({ children }) => (
                       <Typography variant="body1" sx={{ mb: 1 }}>
@@ -282,6 +290,21 @@ const EnhancedMessage: React.FC<EnhancedMessageProps> = ({ message, formatTime }
                         {children}
                       </Box>
                     ),
+                    // Tabellen-Komponenten
+                    table: ({ children }) => (
+                      <TableContainer component={Paper} sx={{ mb: 2, overflow: 'auto' }}>
+                        <Table size="small">{children}</Table>
+                      </TableContainer>
+                    ),
+                    thead: ({ children }) => <TableHead>{children}</TableHead>,
+                    tbody: ({ children }) => <TableBody>{children}</TableBody>,
+                    tr: ({ children }) => <TableRow>{children}</TableRow>,
+                    th: ({ children }) => (
+                      <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.light', color: 'primary.contrastText' }}>
+                        {children}
+                      </TableCell>
+                    ),
+                    td: ({ children }) => <TableCell>{children}</TableCell>,
                   }}
                 >
                   {message.content}
