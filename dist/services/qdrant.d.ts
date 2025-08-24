@@ -2,6 +2,7 @@ import { UserDocument } from '../types/workspace';
 export declare class QdrantService {
     private client;
     private abbreviationIndex;
+    private hybridSearchSupported;
     constructor();
     static createCollection(): Promise<void>;
     static searchByText(query: string, limit?: number, scoreThreshold?: number): Promise<{
@@ -99,5 +100,44 @@ export declare class QdrantService {
     }[]>;
     searchCs30(query: string, limit?: number, scoreThreshold?: number): Promise<any[]>;
     isCs30Available(): Promise<boolean>;
+    searchWithHybrid(query: string, limit?: number, scoreThreshold?: number, alpha?: number): Promise<{
+        results: {
+            id: string | number;
+            version: number;
+            score: number;
+            payload?: Record<string, unknown> | {
+                [key: string]: unknown;
+            } | null | undefined;
+            vector?: Record<string, unknown> | number[] | number[][] | {
+                [key: string]: number[] | number[][] | {
+                    indices: number[];
+                    values: number[];
+                } | undefined;
+            } | null | undefined;
+            shard_key?: string | number | Record<string, unknown> | null | undefined;
+            order_value?: number | Record<string, unknown> | null | undefined;
+        }[];
+        hybridSearchUsed: boolean;
+        hybridSearchAlpha: number;
+    } | {
+        results: {
+            id: string | number;
+            version: number;
+            score: number;
+            payload?: Record<string, unknown> | {
+                [key: string]: unknown;
+            } | null | undefined;
+            vector?: Record<string, unknown> | number[] | number[][] | {
+                [key: string]: number[] | number[][] | {
+                    indices: number[];
+                    values: number[];
+                } | undefined;
+            } | null | undefined;
+            shard_key?: string | number | Record<string, unknown> | null | undefined;
+            order_value?: number | Record<string, unknown> | null | undefined;
+        }[];
+        hybridSearchUsed: boolean;
+        hybridSearchAlpha?: undefined;
+    }>;
 }
 //# sourceMappingURL=qdrant.d.ts.map

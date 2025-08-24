@@ -15,6 +15,11 @@ export interface UserDocument {
   tags: string[];
   created_at: Date;
   updated_at: Date;
+  // Felder für Teamfunktionen und Dokumentenfreigabe
+  is_public?: boolean;
+  team_id?: string | null;
+  shared_with_users?: string[];
+  access_control?: string;
 }
 
 export interface UserNote {

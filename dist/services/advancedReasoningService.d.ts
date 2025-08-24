@@ -40,6 +40,8 @@ export interface ReasoningResult {
     qaAnalysis: QAAnalysis;
     pipelineDecisions: PipelineDecision;
     apiCallsUsed: number;
+    hybridSearchUsed?: boolean;
+    hybridSearchAlpha?: number;
 }
 declare class AdvancedReasoningService {
     private qdrantService;

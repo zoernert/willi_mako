@@ -660,11 +660,27 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       // Das message_format kann entweder direkt im source-Objekt oder in document_metadata sein
                       const messageFormat = source.message_format || source.document_metadata?.message_format || 'Unbekanntes Format';
                       
-                      if (!groupedSources[messageFormat]) {
-                        groupedSources[messageFormat] = [];
+                      // Spezialfall für Benutzerdokumente mit angepasstem Label
+                      if (source.document_metadata?.is_user_document || 
+                          source.document_metadata?.access_control || 
+                          source.content_type === 'user_document' ||
+                          messageFormat === 'user_document' ||
+                          messageFormat === 'Mein Workspace') {
+                        
+                        // Benutzerdokumente in eigene Kategorie einordnen
+                        if (!groupedSources['Mein Workspace']) {
+                          groupedSources['Mein Workspace'] = [];
+                        }
+                        
+                        groupedSources['Mein Workspace']?.push(source);
+                      } else {
+                        // Normale Systemdokumente nach message_format gruppieren
+                        if (!groupedSources[messageFormat]) {
+                          groupedSources[messageFormat] = [];
+                        }
+                        
+                        groupedSources[messageFormat]?.push(source);
                       }
-                      
-                      groupedSources[messageFormat]?.push(source);
                     });
                     
                     const messageFormats = Object.keys(groupedSources);
@@ -690,11 +706,22 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                             <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                               <Chip 
                                 label={format}
-                                color="primary"
+                                color={format === 'Mein Workspace' ? 'secondary' : 'primary'}
                                 size="small"
                                 sx={{ mr: 1 }}
                               />
                               <span>Quellen: {groupedSources[format]?.length || 0}</span>
+                              {format === 'Mein Workspace' && (
+                                <Tooltip title="Diese Dokumente wurden von Benutzern hochgeladen">
+                                  <Chip 
+                                    label="Benutzerdokumente" 
+                                    size="small" 
+                                    variant="outlined"
+                                    color="secondary"
+                                    sx={{ ml: 1 }}
+                                  />
+                                </Tooltip>
+                              )}
                             </Typography>
                             <Table size="small">
                               <TableBody>

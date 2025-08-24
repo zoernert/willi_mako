@@ -89,13 +89,23 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
             hasCs30Response: true,
             cs30Response: cs30Response,
             cs30Sources: cs30Results.map(r => {
-                var _a, _b, _c, _d;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
                 return ({
                     source_document: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.source) || 'Schleupen Dokumentation',
                     content_type: ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.type) || 'N/A',
                     document_name: ((_c = r.payload) === null || _c === void 0 ? void 0 : _c.document_name) || null,
                     chunk_type: ((_d = r.payload) === null || _d === void 0 ? void 0 : _d.chunk_type) || null,
-                    score: r.score
+                    score: r.score,
+                    document_metadata: {
+                        message_format: ((_e = r.payload) === null || _e === void 0 ? void 0 : _e.message_format) ||
+                            (((_f = r.payload) === null || _f === void 0 ? void 0 : _f.type) === 'BDEW' ? 'BDEW' :
+                                ((_g = r.payload) === null || _g === void 0 ? void 0 : _g.type) === 'BNetzA' ? 'BNetzA' :
+                                    ((_h = r.payload) === null || _h === void 0 ? void 0 : _h.type) === 'FAQ' ? 'FAQ' : 'Allgemein'),
+                        document_name: ((_j = r.payload) === null || _j === void 0 ? void 0 : _j.document_name) || null,
+                        document_base_name: ((_k = r.payload) === null || _k === void 0 ? void 0 : _k.document_base_name) || ((_l = r.payload) === null || _l === void 0 ? void 0 : _l.source) || null,
+                        version: ((_m = r.payload) === null || _m === void 0 ? void 0 : _m.version) || null,
+                        publication_date: ((_o = r.payload) === null || _o === void 0 ? void 0 : _o.publication_date) || null
+                    }
                 });
             })
         };
@@ -362,6 +372,8 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         pipelineDecisions: reasoningResult.pipelineDecisions,
         qaAnalysis: reasoningResult.qaAnalysis,
         contextAnalysis: reasoningResult.contextAnalysis,
+        hybridSearchUsed: reasoningResult.hybridSearchUsed || false,
+        hybridSearchAlpha: reasoningResult.hybridSearchAlpha,
         assistantMetadata: {
             usedDetailedIntentAnalysis: (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useDetailedIntentAnalysis) === true
         }

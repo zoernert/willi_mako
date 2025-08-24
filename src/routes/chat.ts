@@ -81,11 +81,15 @@ async function generateCs30AdditionalResponse(
           message_format: r.payload?.message_format || 
                           (r.payload?.type === 'BDEW' ? 'BDEW' : 
                            r.payload?.type === 'BNetzA' ? 'BNetzA' : 
-                           r.payload?.type === 'FAQ' ? 'FAQ' : 'Allgemein'),
+                           r.payload?.type === 'FAQ' ? 'FAQ' : 
+                           r.payload?.is_user_document ? 'Mein Workspace' : 'Allgemein'),
           document_name: r.payload?.document_name || null,
           document_base_name: r.payload?.document_base_name || r.payload?.source || null,
           version: r.payload?.version || null,
-          publication_date: r.payload?.publication_date || null
+          publication_date: r.payload?.publication_date || null,
+          is_user_document: r.payload?.is_user_document || false,
+          owner_id: r.payload?.user_id || null,
+          access_control: r.payload?.access_control || null
         }
       }))
     };

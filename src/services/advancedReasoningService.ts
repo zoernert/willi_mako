@@ -167,7 +167,16 @@ class AdvancedReasoningService {
         // If no results, try one enhanced search
         const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
         apiCallsUsed++;
-        const allResults = await this.performParallelSearch(searchQueries.slice(0, 3)); // Limit to 3 queries
+        
+        // Benutzer-ID aus userPreferences extrahieren, falls vorhanden
+        const userId = userPreferences?.user_id;
+        const teamId = userPreferences?.team_id;
+        
+        const allResults = await this.performParallelSearch(
+          searchQueries.slice(0, 3), // Limit to 3 queries
+          userId,
+          teamId
+        );
         
         reasoningSteps.push({
           step: 'enhanced_search',
@@ -457,7 +466,7 @@ class AdvancedReasoningService {
     }
   }
 
-  private async performParallelSearch(queries: string[]): Promise<any[]> {
+  private async performParallelSearch(queries: string[], userId?: string, teamId?: string): Promise<any[]> {
     try {
       // Perform searches with hybrid capabilities
       console.log(`🔍 Performing parallel searches for ${queries.length} queries with hybrid search capability`);
@@ -470,10 +479,10 @@ class AdvancedReasoningService {
       const searchPromises = queries.map(query => {
         // Use searchWithHybrid if available, otherwise fallback to standard search
         if (typeof this.qdrantService.searchWithHybrid === 'function') {
-          return this.qdrantService.searchWithHybrid(query, 10, 0.3, 0.5);
+          return this.qdrantService.searchWithHybrid(query, 10, 0.3, 0.5, userId, teamId);
         } else {
-          // Need to include userId parameter (using 'system' as default user)
-          return this.qdrantService.search('system', query, 10);
+          // Need to include userId parameter (using provided userId or 'system' as default)
+          return this.qdrantService.search(userId || 'system', query, 10);
         }
       });
       

@@ -129,6 +129,15 @@ export class QdrantService {
             title: document.title,
             created_at: document.created_at,
             text_content_sample: text.substring(0, 200),
+            is_user_document: true,
+            message_format: 'Mein Workspace',
+            content_type: 'user_document',
+            access_control: document.is_public ? 'public' : document.access_control || 'private',
+            access_control_users: document.shared_with_users || [],
+            access_control_teams: document.team_id ? [document.team_id] : [],
+            team_id: document.team_id || null,
+            document_name: document.title,
+            document_base_name: document.original_name || document.title
           },
         },
       ],
@@ -533,7 +542,9 @@ export class QdrantService {
     query: string, 
     limit: number = 10, 
     scoreThreshold: number = 0.5,
-    alpha: number = 0.5  // Balances between vector and keyword search (0.0: only vector, 1.0: only keyword)
+    alpha: number = 0.5,  // Balances between vector and keyword search (0.0: only vector, 1.0: only keyword)
+    userId?: string,     // Optional user ID to filter by access control
+    teamId?: string      // Optional team ID for team-shared documents
   ) {
     try {
       console.log(`🔍 Performing hybrid search with alpha=${alpha}`);
@@ -553,6 +564,59 @@ export class QdrantService {
         // Add hybrid search parameters
         searchParams.query = query;  // Text query for keyword matching
         searchParams.alpha = alpha;  // Weight between vector and keyword search
+      }
+      
+      // Add filter for user documents if userId is provided
+      if (userId || teamId) {
+        searchParams.filter = {
+          should: [
+            // Public documents accessible to everyone
+            {
+              must_not: [
+                { key: "is_user_document", match: { value: true } }
+              ]
+            }
+          ]
+        };
+        
+        // Add user-specific filters if userId is provided
+        if (userId) {
+          // Add user's own documents
+          searchParams.filter.should.push({
+            must: [
+              { key: "is_user_document", match: { value: true } },
+              { key: "user_id", match: { value: userId } }
+            ]
+          });
+          
+          // Add documents shared with the user
+          searchParams.filter.should.push({
+            must: [
+              { key: "is_user_document", match: { value: true } },
+              { key: "access_control", match: { value: "public" } }
+            ]
+          });
+          
+          // Add documents where user is explicitly listed in access_control_users array
+          if (userId) {
+            searchParams.filter.should.push({
+              must: [
+                { key: "is_user_document", match: { value: true } },
+                { key: "access_control_users", match: { value: userId } }
+              ]
+            });
+          }
+        }
+        
+        // Add team-specific filters if teamId is provided
+        if (teamId) {
+          searchParams.filter.should.push({
+            must: [
+              { key: "is_user_document", match: { value: true } },
+              { key: "access_control_teams", match: { value: teamId } }
+            ]
+          });
+        }
       }
       
       // Perform search
