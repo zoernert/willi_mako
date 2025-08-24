@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -125,6 +126,52 @@ const Chat: React.FC = () => {
     containerId: 'chat-messages-container',
     ready: !chatLoading && messages.length > 0 // Wait for chat to load and have messages
   });
+
+  // Helper function to open bilateral clarification for a message
+  const openBilateralClarification = useCallback((message: Message) => {
+    // Create a temporary div to render the CreateFromContextButton
+    const tempDiv = document.createElement('div');
+    tempDiv.style.display = 'none';
+    tempDiv.setAttribute('id', `temp-bilateral-${message.id}`);
+    document.body.appendChild(tempDiv);
+    
+    // Use ReactDOM createRoot to render a button that we can click
+    const root = createRoot(tempDiv);
+    root.render(
+      <CreateFromContextButton
+        variant="chip"
+        size="small"
+        context={{
+          source: 'chat',
+          chatContext: {
+            chatId: currentChat?.id || '',
+            messageId: message.id,
+            content: message.content,
+            timestamp: message.created_at,
+            role: message.role,
+            metadata: message.metadata
+          }
+        }}
+        onSuccess={() => {
+          showSnackbar('Klärfall erfolgreich erstellt und zur Bearbeitung weitergeleitet.', 'success');
+          // Clean up after successful creation
+          root.unmount();
+          document.body.removeChild(tempDiv);
+        }}
+      />
+    );
+    
+    // Find and click the button
+    const buttonToClick = tempDiv.querySelector('button');
+    if (buttonToClick) {
+      buttonToClick.click();
+    } else {
+      console.error('Could not find button to trigger bilateral clarification');
+      showSnackbar('Fehler beim Öffnen der bilateralen Klärung', 'error');
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    }
+  }, [currentChat, showSnackbar]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -865,30 +912,7 @@ const Chat: React.FC = () => {
                           />
                         )}
                         
-                        {/* Bilaterale Klärung Button für längere Assistant-Nachrichten - moved outside message box */}
-                        {message.role === 'assistant' && message.content.length > 100 && (
-                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }} className="bilateral-clarification-button">
-                            <CreateFromContextButton
-                              variant="chip"
-                              size="small"
-                              context={{
-                                source: 'chat',
-                                chatContext: {
-                                  chatId: currentChat?.id || '',
-                                  messageId: message.id,
-                                  content: message.content,
-                                  timestamp: message.created_at,
-                                  role: message.role,
-                                  metadata: message.metadata
-                                }
-                              }}
-                              onSuccess={() => {
-                                // Optional: Add logic to refresh data or show a confirmation
-                                showSnackbar('Klärfall erfolgreich erstellt und zur Bearbeitung weitergeleitet.', 'success');
-                              }}
-                            />
-                          </Box>
-                        )}
+                        {/* Bilaterale Klärung Button removed, using only the icon button in the message header */}
                         
                         <Box sx={{ 
                           display: 'flex', 
@@ -909,13 +933,7 @@ const Chat: React.FC = () => {
                           <Tooltip title="Bilaterale Klärung">
                             <IconButton 
                               size="small" 
-                              onClick={() => {
-                                // Trigger the same action as the CreateFromContextButton
-                                const contextButton = document.querySelector(
-                                  `[data-message-id="${message.id}"] .bilateral-clarification-button button`
-                                ) as HTMLButtonElement;
-                                if (contextButton) contextButton.click();
-                              }}
+                              onClick={() => openBilateralClarification(message)}
                               sx={{ 
                                 p: 0.5,
                                 '&:hover': {

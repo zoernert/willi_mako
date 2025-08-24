@@ -89,10 +89,12 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
             hasCs30Response: true,
             cs30Response: cs30Response,
             cs30Sources: cs30Results.map(r => {
-                var _a, _b;
+                var _a, _b, _c, _d;
                 return ({
                     source_document: ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.source) || 'Schleupen Dokumentation',
                     content_type: ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.type) || 'N/A',
+                    document_name: ((_c = r.payload) === null || _c === void 0 ? void 0 : _c.document_name) || null,
+                    chunk_type: ((_d = r.payload) === null || _d === void 0 ? void 0 : _d.chunk_type) || null,
                     score: r.score
                 });
             })
