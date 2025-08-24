@@ -31,20 +31,18 @@ import {
 
 interface ReasoningStep {
   step: string;
-  input: string;
-  output: string;
-  confidence?: number;
-  iteration: number;
-  timestamp: Date;
+  description?: string;
+  duration?: number;
+  timestamp?: number;
   qdrantQueries?: string[];
   qdrantResults?: number;
   result?: any; // Contains the actual step results with various structures
 }
 
 interface PipelineInfo {
-  contextSources: number;
-  userContextUsed: boolean;
-  contextReason: string;
+  contextSources?: number;
+  userContextUsed?: boolean;
+  contextReason?: string;
   reasoningSteps?: ReasoningStep[];
   finalQuality?: number;
   iterationsUsed?: number;
@@ -54,6 +52,13 @@ interface PipelineInfo {
   pipelineDecisions?: any;
   qaAnalysis?: any;
   contextAnalysis?: any;
+  type?: string;
+  sources?: Array<{
+    score: number;
+    content_type: string;
+    source_document: string;
+  }>;
+  sourceCount?: number;
 }
 
 interface PipelineInfoDialogProps {
@@ -71,10 +76,12 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
   const getStepIcon = (stepName: string) => {
     switch (stepName) {
       case 'question_analysis':
-        return <PsychologyIcon />;
+      case 'enhanced_search':
+        return <SearchIcon />;
       case 'context_analysis':
         return <SearchIcon />;
       case 'preliminary_answer':
+      case 'direct_response':
         return <AssessmentIcon />;
       case 'answer_validation':
         return <CheckCircleIcon />;
@@ -94,7 +101,9 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
       'preliminary_answer': 'Vorläufige Antwort',
       'answer_validation': 'Antwortvalidierung',
       'enhanced_context_retrieval': 'Erweiterte Kontextsuche',
-      'final_answer_generation': 'Finale Antwort'
+      'final_answer_generation': 'Finale Antwort',
+      'enhanced_search': 'Erweiterte Suche',
+      'direct_response': 'Direkte Antwort'
     };
     return titles[stepName] || stepName;
   };
@@ -107,18 +116,7 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
   };
 
   const getConfidenceValue = (step: ReasoningStep): number => {
-    // Debug logging for confidence
-    console.log('Step confidence values:', {
-      step: step.step,
-      stepConfidence: step.confidence,
-      resultConfidence: step.result?.confidence,
-      fullStep: step
-    });
-    
-    // Try to get confidence from various sources
-    if (step.confidence !== undefined && !isNaN(step.confidence)) {
-      return step.confidence;
-    }
+    // Try to get confidence from result
     if (step.result?.confidence !== undefined && !isNaN(step.result.confidence)) {
       return step.result.confidence;
     }
@@ -240,24 +238,26 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                       <TableRow>
                         <TableCell>Pipeline-Typ</TableCell>
                         <TableCell>
-                          {pipelineInfo.pipelineDecisions?.pipelineType || 'Standard'}
+                          {pipelineInfo.type === 'cs30_additional' ? 'CS30 Additional' : 
+                           pipelineInfo.pipelineDecisions?.reason || 'Standard'}
                         </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Iterationen</TableCell>
                         <TableCell>
-                          {pipelineInfo.iterationsUsed || 1} / {pipelineInfo.pipelineDecisions?.maxIterations || 10}
+                          {pipelineInfo.iterationsUsed || 1} / {pipelineInfo.pipelineDecisions?.maxIterations || 1}
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell>Chat-Fokus</TableCell>
+                        <TableCell>Minimale Konfidenz</TableCell>
                         <TableCell>
-                          {pipelineInfo.pipelineDecisions?.chatFocus || 'Allgemein'}
+                          {pipelineInfo.pipelineDecisions?.confidenceThreshold ? 
+                            `${Math.round(pipelineInfo.pipelineDecisions.confidenceThreshold * 100)}%` : 'N/A'}
                         </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Kontextquellen</TableCell>
-                        <TableCell>{pipelineInfo.contextSources}</TableCell>
+                        <TableCell>{pipelineInfo.contextSources || pipelineInfo.sourceCount || 0}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -379,6 +379,42 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
             </Accordion>
           )}
 
+          {/* Sources Section - For CS30 Additional responses */}
+          {pipelineInfo.sources && pipelineInfo.sources.length > 0 && (
+            <Accordion 
+              expanded={expandedAccordion === 'sources'} 
+              onChange={handleAccordionChange('sources')}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">Quellen ({pipelineInfo.sourceCount || pipelineInfo.sources.length})</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Diese Nachricht basiert auf den folgenden Quellen:
+                  </Typography>
+                  
+                  <Table size="small">
+                    <TableBody>
+                      {pipelineInfo.sources.map((source, index) => (
+                        <TableRow key={index}>
+                          <TableCell width="70%">{source.source_document}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={`Relevanz: ${Math.round(source.score * 100)}%`}
+                              color={source.score > 0.65 ? 'success' : source.score > 0.5 ? 'warning' : 'default'}
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          )}
+
           {/* Reasoning-Schritte */}
           {pipelineInfo.reasoningSteps && pipelineInfo.reasoningSteps.length > 0 && (
             <Accordion 
@@ -399,7 +435,7 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         {getStepTitle(step.step)}
                       </Typography>
                       <Chip 
-                        label={`Iteration ${step.iteration}`} 
+                        label={step.step} 
                         size="small" 
                         variant="outlined" 
                       />
@@ -408,25 +444,31 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         size="small"
                         color={getConfidenceValue(step) >= 0.7 ? 'success' : getConfidenceValue(step) >= 0.5 ? 'warning' : 'error'}
                       />
-                      {getStepQueries(step).length > 0 && (
+                      {step.qdrantQueries && step.qdrantQueries.length > 0 && (
                         <Chip
-                          label={`${getStepQueries(step).length} QDrant-Abfragen`}
+                          label={`${step.qdrantQueries.length} QDrant-Abfragen`}
                           size="small"
                           color="info"
                         />
                       )}
                     </Box>
                     
-                    {getStepQueries(step).length > 0 && (
+                    {step.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mb: 1 }}>
+                        {step.description}
+                      </Typography>
+                    )}
+                    
+                    {step.qdrantQueries && step.qdrantQueries.length > 0 && (
                       <Box sx={{ ml: 4, mb: 1 }}>
                         <Typography variant="caption" color="text.secondary">
-                          QDrant-Abfragen: {getStepQueries(step).join(', ')}
+                          QDrant-Abfragen: {step.qdrantQueries.join(', ')}
                         </Typography>
                       </Box>
                     )}
                     
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-                      {new Date(step.timestamp).toLocaleTimeString('de-DE')}
+                      {step.timestamp ? new Date(step.timestamp).toLocaleTimeString('de-DE') : 'N/A'}
                     </Typography>
                     
                     {index < (pipelineInfo.reasoningSteps?.length || 0) - 1 && (

@@ -818,21 +818,31 @@ const Chat: React.FC = () => {
                               </Box>
                               
                               {/* Pipeline Info Button for assistant messages */}
-                              {message.metadata && (message.metadata.reasoningSteps || message.metadata.pipelineDecisions) && (
+                              {message.metadata && (
+                                message.metadata.reasoningSteps || 
+                                message.metadata.pipelineDecisions || 
+                                message.metadata.type === 'cs30_additional' || 
+                                message.metadata.qaAnalysis
+                              ) && (
                                 <PipelineInfoDialog 
                                   pipelineInfo={{
-                                    contextSources: message.metadata.contextSources || 0,
-                                    userContextUsed: message.metadata.userContextUsed || false,
-                                    contextReason: message.metadata.contextReason || '',
-                                    reasoningSteps: message.metadata.reasoningSteps || [],
-                                    finalQuality: message.metadata.finalQuality || 0,
-                                    iterationsUsed: message.metadata.iterationsUsed || 0,
-                                    qdrantQueries: message.metadata.qdrantQueries || 0,
-                                    qdrantResults: message.metadata.qdrantResults || 0,
-                                    semanticClusters: message.metadata.semanticClusters || 0,
-                                    pipelineDecisions: message.metadata.pipelineDecisions || {},
-                                    qaAnalysis: message.metadata.qaAnalysis || {},
-                                    contextAnalysis: message.metadata.contextAnalysis || {}
+                                    // CS30 Pipeline details
+                                    contextSources: message.metadata.contextSources,
+                                    userContextUsed: message.metadata.userContextUsed,
+                                    contextReason: message.metadata.contextReason,
+                                    reasoningSteps: message.metadata.reasoningSteps,
+                                    finalQuality: message.metadata.finalQuality,
+                                    iterationsUsed: message.metadata.iterationsUsed,
+                                    qdrantQueries: message.metadata.qdrantQueries,
+                                    qdrantResults: message.metadata.qdrantResults,
+                                    semanticClusters: message.metadata.semanticClusters,
+                                    pipelineDecisions: message.metadata.pipelineDecisions,
+                                    qaAnalysis: message.metadata.qaAnalysis,
+                                    contextAnalysis: message.metadata.contextAnalysis,
+                                    // CS30 Additional sources
+                                    type: message.metadata.type,
+                                    sources: message.metadata.sources,
+                                    sourceCount: message.metadata.sourceCount
                                   }}
                                 />
                               )}
