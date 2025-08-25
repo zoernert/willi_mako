@@ -52,6 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
+    { text: 'Beratung', icon: <InfoIcon />, path: '/beratung' },
   ];
 
   const isActivePath = (path: string) => {
