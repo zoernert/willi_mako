@@ -67,8 +67,9 @@ export const chatApi = {
     return apiClient.get(`${API_ENDPOINTS.chat.search}?q=${encodeURIComponent(query)}`)
       .then((response: any) => {
         console.log('API-Antwort Suche:', response);
-        if (response && response.data) {
-          return response.data;
+        // Fix: API gibt die Ergebnisse in response.data.data zurück
+        if (response && response.data && response.data.data) {
+          return response.data.data;
         }
         return [];
       });
