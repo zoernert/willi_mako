@@ -50,10 +50,28 @@ export interface SendMessageRequest {
   contextSettings?: ContextSettings;
 }
 
+export interface ChatSearchResult extends ChatSession {
+  message_count: number;
+  matching_snippets?: string;
+}
+
 export const chatApi = {
   // Get all user's chats
   getChats: (): Promise<ChatSession[]> => {
     return apiClient.get(API_ENDPOINTS.chat.list);
+  },
+
+  // Search user's chats
+  searchChats: (query: string): Promise<ChatSearchResult[]> => {
+    console.log('API-Anfrage: Suche nach', query);
+    return apiClient.get(`${API_ENDPOINTS.chat.search}?q=${encodeURIComponent(query)}`)
+      .then((response: any) => {
+        console.log('API-Antwort Suche:', response);
+        if (response && response.data) {
+          return response.data;
+        }
+        return [];
+      });
   },
 
   // Get specific chat with messages

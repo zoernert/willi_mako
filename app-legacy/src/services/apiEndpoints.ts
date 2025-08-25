@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
   // Chat
   chat: {
     list: '/chat/chats',
+    search: '/chat/chats/search',
     detail: (chatId: string) => `/chat/chats/${chatId}`,
     create: '/chat/chats',
     sendMessage: (chatId: string) => `/chat/chats/${chatId}/messages`,

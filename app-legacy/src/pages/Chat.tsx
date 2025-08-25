@@ -28,6 +28,7 @@ import {
   PhotoCamera as PhotoCameraIcon,
   Gavel as GavelIcon,
   Psychology as PsychologyIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -39,7 +40,7 @@ import CreateFromContextButton from '../components/BilateralClarifications/Creat
 import CommunityEscalationModal from '../components/Community/CommunityEscalationModal';
 import ScreenshotUpload from '../components/Chat/ScreenshotUpload';
 import { useTimelineCapture } from '../hooks/useTimelineCapture'; // NEU: Timeline-Integration
-import { chatApi, ContextSettings } from '../services/chatApi';
+import { chatApi, ContextSettings, ChatSearchResult } from '../services/chatApi';
 import { userApi } from '../services/userApi';
 import { useTextSelection } from '../hooks/useTextSelection';
 
@@ -83,6 +84,11 @@ const Chat: React.FC = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { showSnackbar } = useSnackbar();
   const { captureActivity } = useTimelineCapture(); // NEU: Timeline-Integration
+  
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [currentChat, setCurrentChat] = useState<ChatSession | null>(null);
@@ -557,6 +563,47 @@ const Chat: React.FC = () => {
     });
   };
 
+  // Error handling function
+  const handleError = (error: any) => {
+    setError(error.message || 'Ein Fehler ist aufgetreten');
+    setLoading(false);
+    setClarificationLoading(false);
+  };
+
+  // Ergebnisse-Status für die Suche
+  const [searchResultsOutdated, setSearchResultsOutdated] = useState(false);
+
+  // Erweiterte Suchfunktion für Chats
+  const handleSearchChats = async () => {
+    if (!chatSearchQuery.trim()) {
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setError(null);
+      setSearchResultsOutdated(false); // Zurücksetzen beim Suchen
+      console.log('Starte Suche nach:', chatSearchQuery);
+      const results = await chatApi.searchChats(chatSearchQuery);
+      console.log('Suchergebnisse erhalten:', results);
+      setSearchResults(results);
+      setShowSearchResults(true);
+    } catch (error: any) {
+      console.error('Fehler bei der Suche:', error);
+      handleError(error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Funktion zum Zurücksetzen der Suche
+  const resetSearch = () => {
+    setChatSearchQuery('');
+    setSearchResults([]);
+    setShowSearchResults(false);
+    setSearchResultsOutdated(false);
+  };
+
   return (
     <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', gap: 2 }}>
       {/* Chat List Sidebar */}
@@ -567,9 +614,108 @@ const Chat: React.FC = () => {
             <AddIcon />
           </IconButton>
         </Box>
-        <Divider sx={{ mb: 2 }} />
-        <List>
-          {chats.map((chat) => (
+        
+        {/* Suchleiste für Chats */}
+        <Box sx={{ display: 'flex', mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Chats durchsuchen... (Enter oder Lupe klicken)"
+            fullWidth
+            value={chatSearchQuery}
+            onChange={(e) => {
+              setChatSearchQuery(e.target.value);
+              if (showSearchResults && searchResults.length > 0) {
+                setSearchResultsOutdated(true);
+              }
+            }}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearchChats()}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSearchChats}
+            disabled={isSearching || !chatSearchQuery.trim()}
+            sx={{ ml: 1, minWidth: 'auto' }}
+            aria-label="Suchen"
+          >
+            {isSearching ? <CircularProgress size={24} /> : <SearchIcon />}
+          </Button>
+        </Box>
+        
+        {/* Suchergebnisse anzeigen */}
+        {showSearchResults && (
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle2">
+                {searchResults.length} Ergebnis{searchResults.length !== 1 ? 'se' : ''}
+              </Typography>
+              <Button size="small" onClick={resetSearch}>Zurücksetzen</Button>
+            </Box>
+            
+            {/* Hinweis bei veralteten Suchergebnissen */}
+            {searchResultsOutdated && (
+              <Alert severity="warning" sx={{ mb: 1, py: 0.5 }} size="small">
+                Bitte auf Suchen klicken, um Ergebnisse zu aktualisieren.
+              </Alert>
+            )}
+            
+            {searchResults.length > 0 ? (
+              <List dense>
+                {searchResults.map((chat) => (
+                  <ListItem 
+                    key={chat.id}
+                    sx={{
+                      cursor: 'pointer',
+                      borderLeft: '3px solid',
+                      borderColor: currentChat?.id === chat.id ? 'primary.main' : 'transparent',
+                      mb: 1,
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'action.hover' },
+                      borderRadius: 1,
+                    }}
+                    onClick={() => {
+                      fetchChat(chat.id);
+                      window.history.pushState({}, '', `/chat/${chat.id}`);
+                      resetSearch();
+                    }}
+                  >
+                    <Box sx={{ width: '100%' }}>
+                      <Typography variant="subtitle2" noWrap>{chat.title}</Typography>
+                      {chat.matching_snippets && (
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: 'text.secondary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            display: '-webkit-box'
+                          }}
+                        >
+                          {chat.matching_snippets}
+                        </Typography>
+                      )}
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Alert severity="info" sx={{ mt: 1 }}>
+                Keine Ergebnisse gefunden.
+              </Alert>
+            )}
+          </Box>
+        )}
+        
+        {!showSearchResults && (
+          <Divider sx={{ mb: 2 }} />
+        )}
+        
+        {/* Chat-Liste anzeigen, wenn keine Suche aktiv ist */}
+        {!showSearchResults && (
+          <List>
+            {chats.map((chat) => (
             <ListItem
               key={chat.id}
               sx={{
@@ -609,7 +755,8 @@ const Chat: React.FC = () => {
               </Box>
             </ListItem>
           ))}
-        </List>
+          </List>
+        )}
       </Paper>
 
       {/* Chat Area */}
