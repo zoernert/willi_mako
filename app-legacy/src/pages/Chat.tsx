@@ -654,7 +654,7 @@ const Chat: React.FC = () => {
             
             {/* Hinweis bei veralteten Suchergebnissen */}
             {searchResultsOutdated && (
-              <Alert severity="warning" sx={{ mb: 1, py: 0.5 }} size="small">
+              <Alert severity="warning" sx={{ mb: 1, py: 0.5, fontSize: '0.875rem' }}>
                 Bitte auf Suchen klicken, um Ergebnisse zu aktualisieren.
               </Alert>
             )}

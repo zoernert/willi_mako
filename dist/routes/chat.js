@@ -256,6 +256,36 @@ router.get('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
         data: chats.rows
     });
 }));
+// Search user's chats
+router.get('/chats/search', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const userId = req.user.id;
+    const query = req.query.q;
+    if (!query || query.trim() === '') {
+        throw new errorHandler_1.AppError('Search query is required', 400);
+    }
+    // Suche in Chat-Titeln und Nachrichteninhalten
+    const searchResults = await database_1.default.query(`SELECT c.id, c.title, c.created_at, c.updated_at,
+            (SELECT COUNT(*) FROM messages WHERE chat_id = c.id) as message_count,
+            (
+              SELECT STRING_AGG(SUBSTRING(content, 1, 100), '... ') 
+              FROM messages 
+              WHERE chat_id = c.id AND content ILIKE $2
+              LIMIT 3
+            ) as matching_snippets
+     FROM chats c
+     WHERE c.user_id = $1 AND (
+       c.title ILIKE $2 OR
+       EXISTS (
+         SELECT 1 FROM messages m 
+         WHERE m.chat_id = c.id AND m.content ILIKE $2
+       )
+     )
+     ORDER BY c.updated_at DESC`, [userId, `%${query}%`]);
+    res.json({
+        success: true,
+        data: searchResults.rows
+    });
+}));
 // Get specific chat with messages
 router.get('/chats/:chatId', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { chatId } = req.params;
