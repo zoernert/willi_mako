@@ -52,6 +52,7 @@ import {
   Forum as ForumIcon,
   Email as EmailIcon,
   List as BulkIcon,
+  Visibility,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSnackbar } from '../contexts/SnackbarContext';
@@ -213,6 +214,9 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userDetailsOpen, setUserDetailsOpen] = useState(false);
+  const [userDetails, setUserDetails] = useState<any>(null);
+  const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [userForm, setUserForm] = useState({
     id: '',
     email: '',
@@ -292,6 +296,20 @@ const AdminUsers = () => {
     }
   };
 
+  const handleViewUserDetails = async (userId: string) => {
+    try {
+      setUserDetailsLoading(true);
+      const response = await apiClient.get(`/admin/users/${userId}/details`) as any;
+      setUserDetails(response);
+      setUserDetailsOpen(true);
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      showSnackbar('Fehler beim Laden der Benutzerdetails', 'error');
+    } finally {
+      setUserDetailsLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -353,6 +371,11 @@ const AdminUsers = () => {
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
+                    <Tooltip title="Details anzeigen">
+                      <IconButton onClick={() => handleViewUserDetails(user.id)}>
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -406,6 +429,180 @@ const AdminUsers = () => {
           <Button variant="contained" onClick={handleUpdateUser}>
             Speichern
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User Details Dialog */}
+      <Dialog open={userDetailsOpen} onClose={() => setUserDetailsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Benutzerdetails
+          {userDetailsLoading && <CircularProgress size={20} sx={{ ml: 2 }} />}
+        </DialogTitle>
+        <DialogContent>          {userDetails ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              {/* Erste Zeile: Persönliche und System-Informationen */}
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                {/* Persönliche Informationen */}
+                <Box sx={{ flex: 1 }}>
+                  <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Persönliche Informationen
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+                      <Typography variant="body1">{userDetails.full_name || userDetails.name || '-'}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">E-Mail</Typography>
+                      <Typography variant="body1">{userDetails.email}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Firma</Typography>
+                      <Typography variant="body1">{userDetails.company || '-'}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Registriert am</Typography>
+                      <Typography variant="body1">{formatDate(userDetails.created_at)}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Letztes Login</Typography>
+                      <Typography variant="body1">{userDetails.last_login ? formatDate(userDetails.last_login) : 'Nie'}</Typography>
+                    </Box>
+                  </Paper>
+                </Box>
+                
+                {/* System-Informationen */}
+                <Box sx={{ flex: 1 }}>
+                  <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                    <Typography variant="h6" gutterBottom>
+                      System-Informationen
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Rolle</Typography>
+                      <Chip 
+                        label={userDetails.role} 
+                        color={userDetails.role === 'admin' ? 'primary' : 'default'}
+                        size="small"
+                      />
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                      <Chip 
+                        label={userDetails.is_active !== false ? 'Aktiv' : 'Inaktiv'} 
+                        color={userDetails.is_active !== false ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">CS30-Zugriff</Typography>
+                      <Chip 
+                        label={userDetails.can_access_cs30 ? 'Ja' : 'Nein'} 
+                        color={userDetails.can_access_cs30 ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </Box>
+                  </Paper>
+                </Box>
+              </Box>
+              
+              {/* M2C Rollen */}
+              <Box>
+                <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                  <Typography variant="h6" gutterBottom>
+                    M2C Rollen
+                  </Typography>
+                  {userDetails.m2c_roles && userDetails.m2c_roles.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {userDetails.m2c_roles.map((role: string, index: number) => (
+                        <Chip key={index} label={role} color="info" size="small" />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Keine M2C Rollen zugewiesen
+                    </Typography>
+                  )}
+                </Paper>
+              </Box>
+              
+              {/* Zweite Zeile: Chat- und Quiz-Aktivität */}
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                {/* Chat-Aktivität */}
+                <Box sx={{ flex: 1 }}>
+                  <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Chat-Aktivität
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Anzahl Chats</Typography>
+                      <Typography variant="body1">{userDetails.chat_count || 0}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Anzahl Nachrichten</Typography>
+                      <Typography variant="body1">{userDetails.message_count || 0}</Typography>
+                    </Box>
+                  </Paper>
+                </Box>
+                
+                {/* Quiz-Aktivität */}
+                <Box sx={{ flex: 1 }}>
+                  <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Quiz-Aktivität
+                    </Typography>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Absolvierte Quizzes</Typography>
+                      <Typography variant="body1">{userDetails.completed_quizzes || 0}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Durchschnittliche Punktzahl</Typography>
+                      <Typography variant="body1">
+                        {userDetails.avg_quiz_score ? `${userDetails.avg_quiz_score}%` : '-'}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                </Box>
+              </Box>
+              
+              {/* Letzte Chats */}
+              <Box>
+                <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                  <Typography variant="h6" gutterBottom>
+                    Letzte Chats
+                  </Typography>
+                  {userDetails.recent_chats && userDetails.recent_chats.length > 0 ? (
+                    <List>
+                      {userDetails.recent_chats.map((chat: any) => (
+                        <ListItem key={chat.id} divider>
+                          <Box sx={{ width: '100%' }}>
+                            <Typography variant="subtitle2">
+                              {chat.title}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDate(chat.created_at)} • {chat.message_count} Nachrichten
+                            </Typography>
+                          </Box>
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Keine Chats vorhanden
+                    </Typography>
+                  )}
+                </Paper>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <Typography variant="body1" color="text.secondary">
+                Keine Daten verfügbar
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUserDetailsOpen(false)}>Schließen</Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -907,7 +1104,7 @@ const AdminFAQ = () => {
       additionalInfo: faq.additional_info || '',
       tags: faq.tags || [],
       isActive: faq.is_active !== false,
-      isPublic: faq.is_public || false
+      isPublic: faq.is_public !== false
     });
     setEditFAQOpen(true);
   };

@@ -44,6 +44,9 @@ export const API_ENDPOINTS = {
     questions: (quizId: string) => `/admin/quizzes/${quizId}/questions`,
     question: (questionId: string) => `/admin/quizzes/questions/${questionId}`,
     createIntelligent: '/admin/quizzes/create-intelligent',
+    // Neue Endpunkte für Benutzerverwaltung
+    users: '/admin/users',
+    userDetails: (userId: string) => `/admin/users/${userId}/details`,
   },
 
   // Documents
