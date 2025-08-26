@@ -110,54 +110,77 @@ class GeminiService {
         }, 60000); // Reset every minute
     }
     async generateResponse(messages, context = '', userPreferences = {}, isEnhancedQuery = false, contextMode) {
-        try {
-            // Select best available model
-            const selectedModel = this.getNextAvailableModel();
-            // Prepare system prompt with context
-            const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
-            // Format conversation history for function calling
-            const conversationHistory = messages.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.content }]
-            }));
-            // Add system prompt as first message
-            const messagesWithSystem = [
-                { role: 'user', parts: [{ text: systemPrompt }] },
-                ...conversationHistory
-            ];
-            const chat = selectedModel.instance.startChat({
-                history: messagesWithSystem
-            });
-            const result = await chat.sendMessage(messages[messages.length - 1].content);
-            const response = result.response;
-            // Handle function calls
-            const functionCalls = response.functionCalls();
-            if (functionCalls && functionCalls.length > 0) {
-                const functionCall = functionCalls[0]; // Get the first function call
-                const functionResponse = await this.handleFunctionCall(functionCall);
-                // Send function response back to the model
-                const followUpResult = await chat.sendMessage([
-                    {
-                        functionResponse: {
-                            name: functionCall.name,
-                            response: functionResponse
-                        }
-                    }
-                ]);
-                return followUpResult.response.text();
-            }
-            return response.text();
-        }
-        catch (error) {
-            console.error('Error generating response:', error);
-            if (error instanceof Error) {
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
+        let attemptCount = 0;
+        const maxAttempts = 3; // Try up to 3 different models
+        let lastError = undefined;
+        let lastModel = null;
+        while (attemptCount < maxAttempts) {
+            attemptCount++;
+            try {
+                // Select best available model accounting for quota limits
+                const selectedModel = await this.getQuotaAwareModel(lastModel, lastError);
+                lastModel = selectedModel;
+                // Update the model's usage tracking
+                selectedModel.lastUsed = Date.now();
+                this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
+                // Prepare system prompt with context
+                const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
+                // Format conversation history for function calling
+                const conversationHistory = messages.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: msg.content }]
+                }));
+                // Add system prompt as first message
+                const messagesWithSystem = [
+                    { role: 'user', parts: [{ text: systemPrompt }] },
+                    ...conversationHistory
+                ];
+                const chat = selectedModel.instance.startChat({
+                    history: messagesWithSystem
                 });
+                const result = await chat.sendMessage(messages[messages.length - 1].content);
+                const response = result.response; // Handle function calls
+                const functionCalls = response.functionCalls();
+                if (functionCalls && functionCalls.length > 0) {
+                    const functionCall = functionCalls[0]; // Get the first function call
+                    const functionResponse = await this.handleFunctionCall(functionCall);
+                    // Send function response back to the model
+                    const followUpResult = await chat.sendMessage([
+                        {
+                            functionResponse: {
+                                name: functionCall.name,
+                                response: functionResponse
+                            }
+                        }
+                    ]);
+                    return followUpResult.response.text();
+                }
+                return response.text();
             }
-            throw new Error('Failed to generate response from Gemini');
+            catch (error) {
+                console.error(`Error generating response (attempt ${attemptCount}/${maxAttempts}):`, error);
+                if (error instanceof Error) {
+                    console.error('Error details:', {
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    lastError = error;
+                    // Check if this is a quota error
+                    if (error.message && (error.message.includes('429 Too Many Requests') ||
+                        error.message.includes('quota') ||
+                        error.message.includes('rate limit'))) {
+                        console.warn(`⚠️ Quota error detected, trying next model...`);
+                        continue; // Try next model
+                    }
+                }
+                // If we've tried all attempts or it's not a quota error, rethrow
+                if (attemptCount >= maxAttempts) {
+                    throw new Error('Failed to generate response from Gemini');
+                }
+            }
         }
+        // If we've exhausted all attempts
+        throw new Error('Failed to generate response from Gemini after multiple attempts');
     }
     async handleFunctionCall(functionCall) {
         const { name, args } = functionCall;
@@ -283,10 +306,10 @@ Deine Antworten sollen:
     }
     async textToVector(text) {
         // Simple hash-based embedding (replace with proper embedding service)
-        const vector = new Array(1536).fill(0);
+        const vector = new Array(768).fill(0);
         for (let i = 0; i < text.length; i++) {
             const char = text.charCodeAt(i);
-            vector[i % 1536] = (vector[i % 1536] + char) % 1000;
+            vector[i % 768] = (vector[i % 768] + char) % 1000;
         }
         // Normalize the vector
         const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
@@ -351,27 +374,54 @@ Antworte nur mit dem Titel, ohne weitere Erklärungen oder Anführungszeichen.`;
             const conversationText = messages
                 .map(msg => `${msg.role}: ${msg.content}`)
                 .join('\n');
-            const prompt = `Basierend auf dem folgenden Chat-Verlauf, erstelle einen strukturierten FAQ-Eintrag für die Energiewirtschaft:
+            // PHASE 1: Deep Thinking - Führe eine tiefere Analyse des Chat-Verlaufs durch
+            const deepThinkingPrompt = `Du bist ein Experte für die deutsche Energiewirtschaft und Marktkommunikation. Analysiere sorgfältig den folgenden Chat-Verlauf und identifiziere:
+
+1. Das Kernthema und die wesentlichen Fragen
+2. Fachbegriffe und deren korrekte Definition im Kontext der Energiewirtschaft
+3. Relevante Prozesse, Standards und rechtliche Grundlagen
+4. Zusammenhänge zwischen verschiedenen Aspekten des Themas
+5. Wichtige Details und Fakten, die für ein vollständiges Verständnis notwendig sind
 
 Chat-Verlauf:
 ${conversationText}
 
-Erstelle eine strukturierte Antwort als JSON mit folgenden Feldern:
+Führe einen strukturierten Denkprozess durch und notiere deine Erkenntnisse. Nimm dir Zeit, systematisch alle Aspekte zu analysieren.`;
+            console.log('Starting deep thinking phase for FAQ generation');
+            const deepThinkingResult = await this.generateWithRetry(deepThinkingPrompt);
+            const deepThinkingResponse = await deepThinkingResult.response;
+            const deepAnalysis = deepThinkingResponse.text().trim();
+            console.log('Deep thinking analysis completed, generating structured FAQ');
+            // PHASE 2: Strukturierte FAQ-Generierung mit der erweiterten Analyse
+            const prompt = `Basierend auf dem folgenden Chat-Verlauf und der detaillierten Analyse, erstelle einen hochwertigen, strukturierten FAQ-Eintrag für die Energiewirtschaft:
 
-1. "title": Ein prägnanter Titel für den FAQ-Eintrag (max. 60 Zeichen)
-2. "description": Eine kurze Beschreibung der Frage/des Themas (1-2 Sätze)
-3. "context": Erkläre den Zusammenhang und Hintergrund der Frage (2-3 Sätze)
-4. "answer": Eine präzise, fachliche Antwort auf die Frage (1-2 Absätze)
-5. "additionalInfo": Ergänzende Details oder weiterführende Hinweise (1-2 Absätze)
+Chat-Verlauf:
+${conversationText}
+
+Tiefe Analyse des Themas:
+${deepAnalysis}
+
+Erstelle einen präzisen, fachlich korrekten FAQ-Eintrag als JSON mit folgenden Feldern:
+
+1. "title": Ein prägnanter, aussagekräftiger Titel für den FAQ-Eintrag (max. 60 Zeichen)
+2. "description": Eine klare Beschreibung der Kernfrage/des Hauptthemas (1-2 Sätze)
+3. "context": Erkläre den fachlichen Zusammenhang und Hintergrund der Frage inkl. relevanter Normen/Standards (2-3 Sätze)
+4. "answer": Eine detaillierte, fachlich fundierte Antwort mit konkreten Beispielen und technischen Details (2-3 Absätze)
+5. "additionalInfo": Weiterführende Informationen, rechtliche Grundlagen und Best Practices (1-2 Absätze)
 6. "tags": Array mit 3-5 relevanten Tags/Schlagwörtern (z.B. ["Energiemarkt", "Regulierung", "Marktkommunikation", "Geschäftsprozesse", "Technische Standards"])
 
-Die Tags sollen die Hauptthemen der Frage widerspiegeln und für die Kategorisierung verwendet werden.
+WICHTIG:
+- Verwende präzise Fachbegriffe der Energiewirtschaft
+- Beziehe alle relevanten technischen Details und Prozesse ein
+- Nenne konkrete Standards, Formate oder Kennzahlen, wo sinnvoll
+- Strukturiere die Antwort logisch und leicht verständlich
+- Stelle sicher, dass alle Informationen fachlich korrekt sind
 
 Antwort ausschließlich im JSON-Format:`;
             const result = await this.generateWithRetry(prompt);
             const response = await result.response;
             const responseText = response.text().trim();
-            console.log('Raw AI response:', responseText);
+            console.log('Raw AI response for structured FAQ:', responseText);
             // Use the safe JSON parser utility
             const parsedResponse = (0, aiResponseUtils_1.safeParseJsonResponse)(responseText);
             if (!parsedResponse) {
@@ -408,11 +458,12 @@ Antwort ausschließlich im JSON-Format:`;
     }
     async enhanceFAQWithContext(faqData, searchContext) {
         try {
-            const prompt = `Du bist ein Experte für Energiewirtschaft und Marktkommunikation. 
+            // PHASE 1: Deep Thinking über den zusätzlichen Kontext
+            const deepThinkingPrompt = `Du bist ein Experte für die deutsche Energiewirtschaft und Marktkommunikation. 
+      
+Analysiere sorgfältig den folgenden FAQ-Eintrag und den zusätzlichen Kontext aus der Wissensdatenbank:
 
-Basierend auf den folgenden Informationen, erstelle einen ausführlichen, gut verständlichen FAQ-Eintrag:
-
-URSPRÜNGLICHE FAQ-DATEN:
+FAQ-EINTRAG:
 - Titel: ${faqData.title}
 - Beschreibung: ${faqData.description}
 - Kontext: ${faqData.context}
@@ -423,22 +474,54 @@ URSPRÜNGLICHE FAQ-DATEN:
 ZUSÄTZLICHER KONTEXT AUS DER WISSENSDATENBANK:
 ${searchContext}
 
-AUFGABE:
-Erstelle einen umfassenden, professionellen FAQ-Eintrag, der:
-1. Fachlich korrekt und präzise ist
-2. Für Fachkräfte in der Energiewirtschaft verständlich ist
-3. Praktische Beispiele und Anwendungsfälle enthält
-4. Relevante Gesetze, Verordnungen oder Standards erwähnt
-5. Gut strukturiert und lesbar ist
+Führe eine tiefgehende Analyse durch und identifiziere:
+1. Relevante fachliche Konzepte, die im FAQ-Eintrag fehlen oder unvollständig erklärt sind
+2. Technische Details, Standards oder Prozesse, die für ein umfassendes Verständnis wichtig sind
+3. Rechtliche Grundlagen oder regulatorische Anforderungen, die berücksichtigt werden sollten
+4. Praktische Anwendungsfälle oder Beispiele, die den FAQ-Eintrag bereichern würden
+5. Mögliche Verbesserungen in Bezug auf Präzision, Klarheit und fachliche Korrektheit
 
-Verwende die ursprünglichen Daten als Grundlage, aber erweitere und verbessere sie mit dem zusätzlichen Kontext aus der Wissensdatenbank.
+Nehme dir Zeit für einen gründlichen, strukturierten Denkprozess.`;
+            console.log('Starting deep thinking phase for FAQ enhancement');
+            const deepThinkingResult = await this.generateWithRetry(deepThinkingPrompt);
+            const deepThinkingResponse = await deepThinkingResult.response;
+            const deepAnalysis = deepThinkingResponse.text().trim();
+            console.log('Deep thinking analysis completed, enhancing FAQ with additional context');
+            // PHASE 2: Verbesserte FAQ-Generierung mit Deep-Thinking-Analyse
+            const prompt = `Du bist ein Experte für Energiewirtschaft und Marktkommunikation. 
+
+Basierend auf den folgenden Informationen, erstelle einen ausführlichen, fachlich präzisen FAQ-Eintrag:
+
+URSPRÜNGLICHE FAQ-DATEN:
+- Titel: ${faqData.title}
+- Beschreibung: ${faqData.description}
+- Kontext: ${faqData.context}
+- Antwort: ${faqData.answer}
+- Zusätzliche Informationen: ${faqData.additionalInfo}
+- Tags: ${faqData.tags.join(', ')}
+
+TIEFGEHENDE ANALYSE DES THEMAS:
+${deepAnalysis}
+
+ZUSÄTZLICHER KONTEXT AUS DER WISSENSDATENBANK:
+${searchContext}
+
+AUFGABE:
+Erstelle einen hochwertigen, umfassenden FAQ-Eintrag, der:
+1. Fachlich präzise und korrekt ist mit exakten Definitionen von Fachbegriffen
+2. Für Fachkräfte in der Energiewirtschaft verständlich und relevant ist
+3. Konkrete Beispiele, Prozessschritte und Anwendungsfälle enthält
+4. Relevante Gesetze, Verordnungen, Standards und technische Spezifikationen nennt
+5. Strukturiert, übersichtlich und praxisorientiert gestaltet ist
+
+Nutze alle verfügbaren Informationen, um einen inhaltlich optimalen FAQ-Eintrag zu erstellen.
 
 Gib die Antwort als JSON zurück mit folgenden Feldern:
-- "title": Verbesserter, prägnanter Titel
-- "description": Kurze, klare Beschreibung (1-2 Sätze)
-- "context": Ausführlicher Kontext und Hintergrundinformationen (2-3 Absätze)
-- "answer": Detaillierte, fachliche Antwort mit Beispielen (3-4 Absätze)
-- "additionalInfo": Weiterführende Informationen, Gesetze, Standards, Best Practices (2-3 Absätze)
+- "title": Prägnanter, fachlich korrekter Titel
+- "description": Präzise Beschreibung (1-2 Sätze)
+- "context": Ausführlicher fachlicher Kontext mit relevanten Standards und Grundlagen (2-3 Absätze)
+- "answer": Detaillierte, technisch korrekte Antwort mit Beispielen und Prozessschritten (3-4 Absätze)
+- "additionalInfo": Weiterführende Informationen, Hinweise zu rechtlichen Grundlagen und Best Practices (2-3 Absätze)
 - "tags": Relevante Tags für die Kategorisierung (3-6 Tags)
 
 Antwort nur als JSON ohne Markdown-Formatierung:`;
@@ -1117,6 +1200,65 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
         const selectedModel = this.models[modelIndex];
         this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
         return selectedModel;
+    }
+    async getQuotaAwareModel(previousModel, quotaExceededError) {
+        // If there was a quota exceeded error, mark the model as unavailable
+        if (previousModel && quotaExceededError) {
+            const isQuotaError = quotaExceededError.message &&
+                (quotaExceededError.message.includes('429 Too Many Requests') ||
+                    quotaExceededError.message.includes('quota') ||
+                    quotaExceededError.message.includes('rate limit'));
+            if (isQuotaError) {
+                console.warn(`⚠️ Quota exceeded for model ${previousModel.name}. Marking as unavailable for the day.`);
+                // Add a special flag to indicate this model has hit its daily quota
+                previousModel.dailyQuotaExceeded = true;
+                // Log which models are still available
+                const availableModels = this.models.filter(m => !m.dailyQuotaExceeded);
+                console.log(`Available models: ${availableModels.map(m => m.name).join(', ') || 'NONE'}`);
+                if (availableModels.length === 0) {
+                    console.error('❌ All models have exceeded their daily quota!');
+                    throw new Error('All Gemini models have exceeded their daily quota');
+                }
+            }
+        }
+        // Filter out models that have exceeded their daily quota
+        const availableModels = this.models.filter(m => !m.dailyQuotaExceeded);
+        // If we have no available models, throw an error
+        if (availableModels.length === 0) {
+            throw new Error('All Gemini models have exceeded their daily quota');
+        }
+        // Copy the original getNextAvailableModel logic but only consider available models
+        const now = Date.now();
+        let bestModel = availableModels[0];
+        let bestScore = -Infinity;
+        for (const model of availableModels) {
+            const timeSinceLastUse = now - model.lastUsed;
+            const usageCount = this.modelUsageCount.get(model.name) || 0;
+            const intervalRequired = (60 * 1000) / model.rpmLimit;
+            let score = 0;
+            // Priority 1: Is the model immediately available?
+            const isImmediatelyAvailable = timeSinceLastUse >= intervalRequired;
+            if (isImmediatelyAvailable) {
+                score += 1000;
+            }
+            else {
+                const waitTime = intervalRequired - timeSinceLastUse;
+                score -= waitTime / 100;
+            }
+            // Priority 2: Favor models with higher RPM limits
+            score += model.rpmLimit * 10;
+            // Priority 3: Favor models with lower current usage
+            const usageRatio = usageCount / model.rpmLimit;
+            score -= usageRatio * 100;
+            // Priority 4: Add some randomness to distribute load
+            score += Math.random() * 10;
+            if (score > bestScore) {
+                bestScore = score;
+                bestModel = model;
+            }
+        }
+        console.log(`Selected model: ${bestModel.name} (RPM: ${bestModel.rpmLimit}, Score: ${bestScore.toFixed(2)}, Usage: ${this.modelUsageCount.get(bestModel.name) || 0})`);
+        return bestModel;
     }
 }
 exports.GeminiService = GeminiService;

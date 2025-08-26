@@ -117,6 +117,7 @@ export declare class GeminiService {
      * Wählt das Modell mit der geringsten Nutzung aus
      */
     private getNextModelWithLowestUsage;
+    private getQuotaAwareModel;
 }
 declare const _default: GeminiService;
 export default _default;

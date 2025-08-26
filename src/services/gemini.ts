@@ -7,7 +7,8 @@ import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Importing the GoogleAIKeyManager for efficient key management
+const googleAIKeyManager = require('./googleAIKeyManager');
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -29,7 +30,88 @@ export class GeminiService {
       'gemini-2.5-pro'         // 5 RPM
     ];
 
-    this.models = modelConfigs.map(modelName => ({
+    // Initialize with empty array that will be populated asynchronously
+    this.models = [];
+    
+    // Initialize usage tracking
+    modelConfigs.forEach(model => this.modelUsageCount.set(model, 0));
+    
+    // Start usage counter reset timer
+    this.resetUsageCounters();
+    
+    // Initialize code lookup service
+    const codeLookupRepository = new PostgresCodeLookupRepository(pool);
+    this.codeLookupService = new CodeLookupService(codeLookupRepository);
+    
+    // Start async initialization of models
+    this.initializeModels(modelConfigs).catch(err => {
+      console.error('Failed to initialize models with key manager:', err);
+    });
+  }
+
+  /**
+   * Asynchronously initializes models using the googleAIKeyManager for efficient key usage
+   * @param modelNames Array of model names to initialize
+   */
+  private async initializeModels(modelNames: string[]): Promise<void> {
+    try {
+      // Create empty array to hold model configurations
+      const newModels = [];
+      
+      for (const modelName of modelNames) {
+        // For each model, get a model instance from the key manager
+        const modelInstance = await googleAIKeyManager.getGenerativeModel({ 
+          model: modelName,
+          tools: [
+            {
+              functionDeclarations: [
+                {
+                  name: 'lookup_energy_code',
+                  description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
+                  parameters: {
+                    type: FunctionDeclarationSchemaType.OBJECT,
+                    properties: {
+                      code: {
+                        type: FunctionDeclarationSchemaType.STRING,
+                        description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.'
+                      }
+                    },
+                    required: ['code']
+                  }
+                }
+              ]
+            }
+          ]
+        });
+        
+        // Add the configured model to our array
+        newModels.push({
+          name: modelName,
+          instance: modelInstance,
+          rpmLimit: this.getRpmLimit(modelName),
+          lastUsed: 0
+        });
+      }
+      
+      // Replace the models array with our newly initialized models
+      this.models = newModels;
+      
+      console.log('All Gemini models initialized with key management');
+    } catch (error) {
+      console.error('Error initializing Gemini models:', error);
+      // Fall back to direct API key usage if there's an issue with the key manager
+      this.initializeFallbackModels(modelNames);
+    }
+  }
+  
+  /**
+   * Fallback initialization method using direct API key if key manager fails
+   */
+  private initializeFallbackModels(modelNames: string[]): void {
+    console.log('Using fallback model initialization with direct API key');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    
+    this.models = modelNames.map(modelName => ({
       name: modelName,
       instance: genAI.getGenerativeModel({ 
         model: modelName,
@@ -57,18 +139,7 @@ export class GeminiService {
       rpmLimit: this.getRpmLimit(modelName),
       lastUsed: 0
     }));
-
-    // Initialize usage tracking
-    modelConfigs.forEach(model => this.modelUsageCount.set(model, 0));
-    
-    // Start usage counter reset timer
-    this.resetUsageCounters();
-    
-    // Initialize code lookup service
-    const codeLookupRepository = new PostgresCodeLookupRepository(pool);
-    this.codeLookupService = new CodeLookupService(codeLookupRepository);
   }
-
   private getRpmLimit(modelName: string): number {
     const limits: Record<string, number> = {
       'gemini-2.0-flash': 15,
@@ -343,8 +414,8 @@ Deine Antworten sollen:
 
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // Use Google's embedding model
-      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      // Use Google's embedding model via key manager
+      const embeddingModel = await googleAIKeyManager.getGenerativeModel({ model: "text-embedding-004" });
       
       const result = await embeddingModel.embedContent(text);
       
@@ -1359,18 +1430,65 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
     try {
       console.log('🤖 Generating structured output...');
       
-      // Modell mit dem geringsten Nutzungsgrad wählen
-      const model = this.getNextModelWithLowestUsage();
-      console.log(`📊 Using model: ${model.name}`);
+      let attemptCount = 0;
+      const maxAttempts = 3; // Gleiche Anzahl von Versuchen wie bei generateResponse
+      let lastError: Error | undefined = undefined;
+      let selectedModel: any = null;
       
-      const result = await model.instance.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          // Modell mit dem geringsten Nutzungsgrad wählen und Quota-Checks durchführen
+          selectedModel = await this.getQuotaAwareModel(selectedModel, lastError);
+          
+          if (!selectedModel) {
+            throw new Error('No available model found for structured output generation');
+          }
+          
+          console.log(`📊 Using model: ${selectedModel.name}`);
+          
+          // Update Nutzungsstatistik
+          selectedModel.lastUsed = Date.now();
+          this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
+          
+          const result = await selectedModel.instance.generateContent(prompt);
+          const response = result.response;
+          const text = response.text();
+          
+          // Versuchen, die Antwort als JSON zu parsen
+          return safeParseJsonResponse(text) || {
+            needsMoreContext: false,
+            answerable: true,
+            confidence: 0.5,
+          };
+        } catch (error) {
+          if (error instanceof Error) {
+            lastError = error;
+            console.error(`Error generating structured output (attempt ${attempt}/${maxAttempts}):`, error);
+            
+            // Überprüfe auf Quota-Überschreitung
+            if (error.message && (
+              error.message.includes('429 Too Many Requests') ||
+              error.message.includes('quota') ||
+              error.message.includes('rate limit')
+            )) {
+              console.warn(`⚠️ Quota error detected, trying next model...`);
+              // Fahre mit dem nächsten Versuch fort - getQuotaAwareModel wird dieses Modell überspringen
+              continue;
+            }
+          } else {
+            console.error(`Error generating structured output (attempt ${attempt}/${maxAttempts}):`, error);
+          }
+          
+          // Wenn wir alle Versuche ausgeschöpft haben oder es kein Quota-Fehler ist
+          if (attempt >= maxAttempts) {
+            throw error; // Wirf den Fehler, um zum Fallback überzugehen
+          }
+        }
+      }
       
-      // Versuchen, die Antwort als JSON zu parsen
-      return safeParseJsonResponse(text);
+      throw new Error('All model attempts failed for structured output generation');
     } catch (error) {
-      console.error('Error generating structured output:', error);
+      console.error('Error generating structured output after all attempts:', error);
       // Fallback mit minimalen Informationen
       return {
         needsMoreContext: false,
@@ -1404,17 +1522,33 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
    * Wählt das Modell mit der geringsten Nutzung aus
    */
   private getNextModelWithLowestUsage() {
-    // Finde das Modell mit der geringsten Nutzung
+    // Finde das Modell mit der geringsten Nutzung unter den verfügbaren Modellen
     let lowestUsage = Number.MAX_SAFE_INTEGER;
-    let modelIndex = 0;
+    let modelIndex = -1;
     
-    this.models.forEach((model, index) => {
+    // Verfügbare Modelle filtern (keine mit überschrittener Tagesquota)
+    const availableModels = this.models.filter(model => !model.dailyQuotaExceeded);
+    
+    // Wenn keine Modelle verfügbar sind, gib einen Fehler aus
+    if (availableModels.length === 0) {
+      console.error('❌ All models have exceeded their daily quota!');
+      throw new Error('All Gemini models have exceeded their daily quota');
+    }
+    
+    // Unter den verfügbaren Modellen das mit der geringsten Nutzung finden
+    availableModels.forEach((model, indexInFiltered) => {
       const usageCount = this.modelUsageCount.get(model.name) || 0;
       if (usageCount < lowestUsage) {
         lowestUsage = usageCount;
-        modelIndex = index;
+        modelIndex = this.models.findIndex(m => m.name === model.name);
       }
     });
+    
+    // Sicherheitsprüfung, falls kein Modell gefunden wurde
+    if (modelIndex === -1) {
+      console.warn('⚠️ Could not find model with lowest usage, using first available model');
+      modelIndex = this.models.findIndex(model => !model.dailyQuotaExceeded);
+    }
     
     // Inkrementiere den Nutzungszähler für dieses Modell
     const selectedModel = this.models[modelIndex];
@@ -1424,6 +1558,9 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
   }
 
   private async getQuotaAwareModel(previousModel?: any, quotaExceededError?: Error | undefined): Promise<any> {
+    // Ensure models are initialized before proceeding
+    await this.ensureModelsInitialized();
+    
     // If there was a quota exceeded error, mark the model as unavailable
     if (previousModel && quotaExceededError) {
       const isQuotaError = quotaExceededError.message && 
@@ -1495,6 +1632,25 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
     
     console.log(`Selected model: ${bestModel.name} (RPM: ${bestModel.rpmLimit}, Score: ${bestScore.toFixed(2)}, Usage: ${this.modelUsageCount.get(bestModel.name) || 0})`);
     return bestModel;
+  }
+
+  /**
+   * Ensures models are initialized before use
+   * @returns Promise that resolves when models are ready
+   */
+  private async ensureModelsInitialized(): Promise<void> {
+    // If models array is empty or first model is not initialized, initialize again
+    if (!this.models || this.models.length === 0 || !this.models[0].instance) {
+      console.log('Models not initialized yet, initializing now...');
+      
+      const modelConfigs = [
+        'gemini-2.0-flash',
+        'gemini-2.5-flash',
+        'gemini-2.5-pro'
+      ];
+      
+      await this.initializeModels(modelConfigs);
+    }
   }
 }
 

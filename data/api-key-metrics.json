@@ -1,0 +1,16 @@
+{
+  "free": {
+    "dailyUsage": {
+      "2025-7-26": 20
+    },
+    "totalUsage": 20,
+    "lastReset": null
+  },
+  "paid": {
+    "dailyUsage": {
+      "2025-7-26": 40
+    },
+    "totalUsage": 40,
+    "lastReset": null
+  }
+}

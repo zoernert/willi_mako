@@ -1,15 +1,29 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pool } = require('pg');
+const googleAIKeyManager = require('./googleAIKeyManager');
 
 class LLMDataExtractionService {
     constructor() {
-        this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
         // Use model from environment variable for better configuration management
         const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
-        this.model = this.genAI.getGenerativeModel({ model: modelName });
+        // Use the key manager to get the model with appropriate API key
+        this.initializeModel(modelName);
         this.pool = new Pool({
             connectionString: process.env.DATABASE_URL,
         });
+    }
+
+    /**
+     * Initializes the LLM model using the key manager to handle API key selection
+     * @param {string} modelName - Name of the model to use
+     */
+    async initializeModel(modelName) {
+        try {
+            this.model = await googleAIKeyManager.getGenerativeModel({ model: modelName });
+            console.log(`LLMDataExtractionService initialized with model ${modelName}`);
+        } catch (error) {
+            console.error('Error initializing LLM model:', error);
+            throw new Error('Failed to initialize LLM model');
+        }
     }
 
     /**
@@ -35,8 +49,8 @@ class LLMDataExtractionService {
             // LLM-Prompt für Datenextraktion erstellen
             const prompt = this.buildExtractionPrompt(email, teamContext);
             
-            // LLM-Analyse durchführen
-            const result = await this.model.generateContent(prompt);
+            // LLM-Analyse durchführen mit sicherer Generierung und Keymanagement
+            const result = await this.safeGenerateContent(prompt);
             const response = await result.response;
             const extractedData = this.parseExtractionResponse(response.text());
 
@@ -292,7 +306,7 @@ Verfügbare Teams und ihre Zuständigkeiten:
 Antworte nur mit dem Team-Namen oder "MANUAL" für manuelle Zuordnung.
             `;
 
-            const result = await this.model.generateContent(routingPrompt);
+            const result = await this.safeGenerateContent(routingPrompt);
             const response = await result.response;
             const teamSuggestion = response.text().trim();
 
@@ -337,7 +351,7 @@ Die Antwort soll:
 Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
             `;
 
-            const result = await this.model.generateContent(responsePrompt);
+            const result = await this.safeGenerateContent(responsePrompt);
             const response = await result.response;
 
             return {
@@ -367,7 +381,7 @@ Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
                 ...options.generationConfig
             };
 
-            const result = await this.model.generateContent([{
+            const result = await this.safeGenerateContent([{
                 text: prompt
             }], { generationConfig: config });
             
@@ -383,6 +397,38 @@ Schreibe nur die E-Mail-Antwort, ohne zusätzliche Erklärungen.
         } catch (error) {
             console.error('Error in generic LLM content generation:', error);
             throw new Error(`LLM content generation failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Safely generate content with automatic retry and key management
+     * @param {string|object} prompt - The prompt to send to the LLM
+     * @returns {Promise<Object>} - The LLM response
+     */
+    async safeGenerateContent(prompt) {
+        try {
+            // First try with current model (which might be using the free key)
+            return await this.model.generateContent(prompt);
+        } catch (error) {
+            // Check for quota/rate limiting specific errors
+            const isQuotaError = 
+                error.message.includes('quota') || 
+                error.message.includes('rate') || 
+                error.message.includes('limit') ||
+                error.message.includes('429');
+                
+            if (isQuotaError) {
+                console.log('API quota or rate limit reached, switching to paid key:', error.message);
+            } else {
+                console.log('Error in content generation, retrying with updated model:', error.message);
+            }
+            
+            // If error occurs, try to re-initialize the model (potentially switching to paid key)
+            const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+            await this.initializeModel(modelName);
+            
+            // Retry with potentially new API key
+            return await this.model.generateContent(prompt);
         }
     }
 
@@ -611,11 +657,11 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
                     // Versuche das Hauptthema aus dem Inhalt zu extrahieren
                     const contentPreview = rawData.content.substring(0, 80);
                     if (contentPreview.includes('UTILMD')) {
-                        title += ': UTILMD-Prozess';
+                        title += `: UTILMD-Prozess`;
                     } else if (contentPreview.includes('MSCONS')) {
-                        title += ': MSCONS-Prozess';
+                        title += `: MSCONS-Prozess`;
                     } else if (contentPreview.includes('APERAK')) {
-                        title += ': APERAK-Meldung';
+                        title += `: APERAK-Meldung`;
                     } else {
                         // Nutze die ersten Wörter des Inhalts
                         const firstLine = rawData.content.split('\n')[0] || '';
@@ -685,7 +731,7 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
     async healthCheck() {
         try {
             // Test LLM-Verbindung
-            const testResult = await this.model.generateContent('Test connection. Respond with: OK');
+            const testResult = await this.safeGenerateContent('Test connection. Respond with: OK');
             const response = await testResult.response;
             
             // Test DB-Verbindung

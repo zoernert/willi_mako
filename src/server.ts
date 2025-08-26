@@ -226,7 +226,10 @@ app.listen(PORT, '0.0.0.0', async () => {
   }
 });
 
-export default app;
+// Initialisiere API-Schlüssel-Manager (beim Server-Start)
+import './services/googleAIKeyManager';
 
 // Importiere den Timeline-Processor
 import { timelineProcessor } from './workers/timelineProcessor';
+
+export default app;

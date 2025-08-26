@@ -54,18 +54,19 @@ const upload = multer({
 });
 
 class ScreenshotAnalysisService {
-  private genAI: GoogleGenerativeAI;
   private model: any;
   private pool: Pool;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY ist nicht in den Umgebungsvariablen gesetzt');
-    }
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    // Import the googleAIKeyManager
+    const googleAIKeyManager = require('../services/googleAIKeyManager');
+    
     // Use model from environment variable for better configuration management
     const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
-    this.model = this.genAI.getGenerativeModel({ model: modelName });
+    
+    // Initialize model asynchronously
+    this.initializeModel(googleAIKeyManager, modelName);
+    
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
@@ -88,7 +89,7 @@ class ScreenshotAnalysisService {
       const prompt = this.buildExtractionPrompt();
 
       // LLM-Analyse durchführen
-      const result = await this.model.generateContent([prompt, imagePart]);
+      const result = await this.safeGenerateContent([prompt, imagePart]);
       const response = await result.response;
       const extractedData = this.parseExtractionResponse(response.text());
 
@@ -266,6 +267,41 @@ Führe jetzt die Analyse durch:`;
     } catch (error) {
       console.error('Fehler beim Laden der BDEW-Partner-Info:', error);
       return null;
+    }
+  }
+
+  /**
+   * Asynchronously initializes the model with the key manager
+   */
+  private async initializeModel(keyManager: any, modelName: string) {
+    try {
+      this.model = await keyManager.getGenerativeModel({ 
+        model: modelName
+      });
+    } catch (error) {
+      console.error('Error initializing screenshot analysis model:', error);
+      throw new Error('Failed to initialize model');
+    }
+  }
+
+  /**
+   * Safely generate content with automatic retry in case of API quota issues
+   */
+  private async safeGenerateContent(prompt: any) {
+    const googleAIKeyManager = require('../services/googleAIKeyManager');
+    
+    try {
+      // First try with the current model
+      return await this.model.generateContent(prompt);
+    } catch (error: any) {
+      console.log('Error in screenshot analysis, reinitializing model and retrying:', error.message || 'Unknown error');
+      
+      // If model isn't ready or encounters an error, try reinitializing
+      const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+      await this.initializeModel(googleAIKeyManager, modelName);
+      
+      // Retry with the potentially new API key
+      return await this.model.generateContent(prompt);
     }
   }
 }
