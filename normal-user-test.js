@@ -158,12 +158,12 @@ async function getEmbedding(text) {
     
     // This is a simplified embedding approach - in production, you'd use a proper embedding API
     // For simulation purposes, we're creating a random vector
-    const dimension = 1536; // Match your collection's vector dimension
+    const dimension = 768; // Match your collection's vector dimension
     return Array.from({ length: dimension }, () => Math.random() * 2 - 1);
   } catch (error) {
     console.error(`Error generating embedding: ${error.message}`);
     // Return random vector as fallback
-    const dimension = 1536;
+    const dimension = 768;
     return Array.from({ length: dimension }, () => Math.random() * 2 - 1);
   }
 }

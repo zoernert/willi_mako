@@ -9,8 +9,8 @@ import axios from 'axios';
 
 // Cache für collection dimensions
 const collectionDimensions = {
-  'cs30': 1536,    // Standard für text-embedding-004
-  'willi_mako': 1536
+  'cs30': 768,    // Korrektur für Kompatibilität mit Hauptanwendung
+  'willi_mako': 768
 };
 
 /**
@@ -65,7 +65,7 @@ export async function fetchCollectionDimension(collection) {
   } catch (error) {
     console.error(`Error fetching dimension for ${collection}:`, error);
     // Behalte den Standardwert bei
-    return collectionDimensions[collection] || 1536;
+    return collectionDimensions[collection] || 768;
   }
 }
 

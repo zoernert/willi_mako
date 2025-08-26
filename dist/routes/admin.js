@@ -564,5 +564,72 @@ router.post('/settings/test-smtp', requireAdmin, (0, errorHandler_1.asyncHandler
         throw new errors_1.AppError(error instanceof Error ? error.message : 'Failed to send test email', 500);
     }
 }));
+/**
+ * GET /admin/users/:userId/details
+ * Get detailed user information including M2C roles, chat stats, and recent activity
+ */
+router.get('/users/:userId/details', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // Get basic user information
+        const user = await database_1.DatabaseHelper.executeQuerySingle(`
+      SELECT id, email, full_name, name, role, company, 
+        selected_m2c_role_ids, can_access_cs30, created_at, updated_at
+      FROM users 
+      WHERE id = $1
+    `, [userId]);
+        if (!user) {
+            throw new errors_1.AppError('User not found', 404);
+        }
+        // Get M2C role names based on the selected_m2c_role_ids array
+        const m2cRoles = await database_1.DatabaseHelper.executeQuery(`
+      SELECT role_name
+      FROM m2c_roles
+      WHERE id = ANY($1::uuid[])
+    `, [user.selected_m2c_role_ids]);
+        // Get chat statistics
+        const chatStats = await database_1.DatabaseHelper.executeQuerySingle(`
+      SELECT 
+        (SELECT COUNT(*) FROM chats WHERE user_id = $1) AS chat_count,
+        (SELECT COUNT(*) FROM messages WHERE chat_id IN (SELECT id FROM chats WHERE user_id = $1)) AS message_count
+    `, [userId]);
+        // Get recent chats
+        const recentChats = await database_1.DatabaseHelper.executeQuery(`
+      SELECT c.id, c.title, c.created_at, c.updated_at,
+        (SELECT COUNT(*) FROM messages WHERE chat_id = c.id) AS message_count
+      FROM chats c
+      WHERE c.user_id = $1
+      ORDER BY c.updated_at DESC
+      LIMIT 5
+    `, [userId]);
+        // Get quiz statistics
+        const quizStats = await database_1.DatabaseHelper.executeQuerySingle(`
+      SELECT 
+        COUNT(*) AS completed_quizzes,
+        AVG(percentage) AS avg_quiz_score
+      FROM user_quiz_attempts
+      WHERE user_id = $1 AND is_completed = true
+    `, [userId]);
+        // Combine all data
+        const userDetails = {
+            ...user,
+            is_active: true, // Assuming all users in the database are active
+            m2c_roles: m2cRoles.map(role => role.role_name),
+            chat_count: parseInt((chatStats === null || chatStats === void 0 ? void 0 : chatStats.chat_count) || '0'),
+            message_count: parseInt((chatStats === null || chatStats === void 0 ? void 0 : chatStats.message_count) || '0'),
+            recent_chats: recentChats.map(chat => ({
+                ...chat,
+                message_count: parseInt(chat.message_count)
+            })),
+            completed_quizzes: parseInt((quizStats === null || quizStats === void 0 ? void 0 : quizStats.completed_quizzes) || '0'),
+            avg_quiz_score: (quizStats === null || quizStats === void 0 ? void 0 : quizStats.avg_quiz_score) ? Math.round(quizStats.avg_quiz_score) : null
+        };
+        response_1.ResponseUtils.success(res, userDetails, 'User details retrieved successfully');
+    }
+    catch (error) {
+        console.error('Error fetching user details:', error);
+        throw new errors_1.AppError('Failed to fetch user details', 500);
+    }
+}));
 exports.default = router;
 //# sourceMappingURL=admin.js.map
