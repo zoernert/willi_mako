@@ -30,12 +30,22 @@ class GoogleAIKeyManager {
       free: {
         dailyUsage: {},  // Format: { "2025-08-26": 42 }
         totalUsage: 0,
-        lastReset: null
+        lastReset: null,
+        currentDayUsage: 0
       },
       paid: {
         dailyUsage: {},  // Format: { "2025-08-26": 17 }
         totalUsage: 0,
-        lastReset: null
+        lastReset: null,
+        currentDayUsage: 0
+      },
+      summary: {
+        currentDay: this.getCurrentDay(),
+        costSavings: {
+          totalFreeRequests: 0,
+          costSavingsUSD: "0.00",
+          costSavingsEUR: "0.00"
+        }
       }
     };
     
@@ -275,20 +285,50 @@ class GoogleAIKeyManager {
    * @returns {Object} The usage metrics for both API keys
    */
   getUsageMetrics() {
+    const currentDay = this.getCurrentDay();
+    
+    // Ensure metrics objects exist with defaults
+    if (!this.usageMetrics) {
+      this.usageMetrics = {
+        free: {
+          dailyUsage: {},
+          totalUsage: 0,
+          lastReset: null
+        },
+        paid: {
+          dailyUsage: {},
+          totalUsage: 0,
+          lastReset: null
+        }
+      };
+    }
+    
+    // Ensure the daily usage objects exist
+    if (!this.usageMetrics.free) this.usageMetrics.free = { dailyUsage: {}, totalUsage: 0 };
+    if (!this.usageMetrics.paid) this.usageMetrics.paid = { dailyUsage: {}, totalUsage: 0 };
+    
+    // Ensure dailyUsage properties exist
+    if (!this.usageMetrics.free.dailyUsage) this.usageMetrics.free.dailyUsage = {};
+    if (!this.usageMetrics.paid.dailyUsage) this.usageMetrics.paid.dailyUsage = {};
+    
+    // Get current day usage with defaults
+    const freeDayUsage = this.usageMetrics.free.dailyUsage[currentDay] || 0;
+    const paidDayUsage = this.usageMetrics.paid.dailyUsage[currentDay] || 0;
+    
     return {
       free: {
-        dailyUsage: this.usageMetrics.free.dailyUsage,
-        totalUsage: this.usageMetrics.free.totalUsage,
-        currentDayUsage: this.usageMetrics.free.dailyUsage[this.getCurrentDay()] || 0,
+        dailyUsage: this.usageMetrics.free.dailyUsage || {},
+        totalUsage: this.usageMetrics.free.totalUsage || 0,
+        currentDayUsage: freeDayUsage,
         quotaLimit: this.usageCounter.free.dailyLimit
       },
       paid: {
-        dailyUsage: this.usageMetrics.paid.dailyUsage,
-        totalUsage: this.usageMetrics.paid.totalUsage,
-        currentDayUsage: this.usageMetrics.paid.dailyUsage[this.getCurrentDay()] || 0
+        dailyUsage: this.usageMetrics.paid.dailyUsage || {},
+        totalUsage: this.usageMetrics.paid.totalUsage || 0,
+        currentDayUsage: paidDayUsage
       },
       summary: {
-        currentDay: this.getCurrentDay(),
+        currentDay: currentDay,
         costSavings: this.calculateCostSavings()
       }
     };
@@ -302,8 +342,9 @@ class GoogleAIKeyManager {
     // Approximate cost per 1000 requests (in USD)
     const costPer1000Requests = 0.35;
     
-    // Calculate total free tier usage
-    const totalFreeUsage = this.usageMetrics.free.totalUsage;
+    // Calculate total free tier usage (with defaults)
+    const totalFreeUsage = (this.usageMetrics && this.usageMetrics.free) ? 
+      (this.usageMetrics.free.totalUsage || 0) : 0;
     
     // Calculate cost savings
     const costSavings = (totalFreeUsage / 1000) * costPer1000Requests;

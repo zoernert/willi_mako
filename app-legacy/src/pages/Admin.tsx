@@ -63,6 +63,7 @@ import FAQLinkManager from '../components/admin/FAQLinkManager';
 import CommunityAdminManager from '../components/admin/CommunityAdminManager';
 import TeamEmailConfig from '../components/admin/TeamEmailConfig';
 import BulkClarificationManager from '../components/admin/BulkClarificationManager';
+import APIKeyUsageMetricsLegacy from '../components/admin/APIKeyUsageMetricsLegacy';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -1817,6 +1818,7 @@ const AdminStats = () => {
   });
   const [loading, setLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     fetchStats();
@@ -1853,119 +1855,138 @@ const AdminStats = () => {
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Detaillierte Einblicke in die Nutzung und Performance des Systems.
       </Typography>
+      
+      <Paper sx={{ mb: 3 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="System-Metriken" />
+          <Tab label="API-Schlüssel" />
+        </Tabs>
+      </Paper>
 
-      {loading ? (
-        <Box display="flex" justifyContent="center" p={3}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
-          {/* Main Stats Grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Benutzer-Statistiken
-                </Typography>
-                <Typography variant="h4" color="primary">
-                  {stats.totalUsers}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Gesamt registrierte Benutzer
-                </Typography>
-                <Typography variant="body2" color="success.main">
-                  +{stats.recentUsers} neue in den letzten 30 Tagen
-                </Typography>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Content-Statistiken
-                </Typography>
-                <Typography variant="h4" color="primary">
-                  {stats.totalDocuments}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Hochgeladene Dokumente
-                </Typography>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Chat-Aktivität
-                </Typography>
-                <Typography variant="h4" color="primary">
-                  {stats.totalChats}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Gesamt erstellte Chats
-                </Typography>
-                <Typography variant="body2" color="success.main">
-                  +{stats.recentChats} neue in den letzten 30 Tagen
-                </Typography>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Nachrichten
-                </Typography>
-                <Typography variant="h4" color="primary">
-                  {stats.totalMessages}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Gesamt ausgetauschte Nachrichten
-                </Typography>
-                <Typography variant="body2" color="info.main">
-                  ⌀ {stats.totalChats > 0 ? Math.round(stats.totalMessages / stats.totalChats) : 0} Nachrichten pro Chat
-                </Typography>
-              </CardContent>
-            </Card>
-          </Box>
-
-          {/* Detailed Stats */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 2 }}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Benutzer nach Rollen
-              </Typography>
-              <List>
-                {detailedStats.usersByRole.map((role: any, index) => (
-                  <ListItem key={index}>
-                    <Typography variant="body1">
-                      {role.role === 'admin' ? 'Administratoren' : 'Benutzer'}: {role.count}
+      {activeTab === 0 && (
+        <React.Fragment>
+          {loading ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <React.Fragment>
+              {/* Main Stats Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Benutzer-Statistiken
                     </Typography>
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
+                    <Typography variant="h4" color="primary">
+                      {stats.totalUsers}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Gesamt registrierte Benutzer
+                    </Typography>
+                    <Typography variant="body2" color="success.main">
+                      +{stats.recentUsers} neue in den letzten 30 Tagen
+                    </Typography>
+                  </CardContent>
+                </Card>
 
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Beliebteste FAQs
-              </Typography>
-              <List>
-                {detailedStats.popularFAQs.map((faq: any, index) => (
-                  <ListItem key={index}>
-                    <Box>
-                      <Typography variant="body1">
-                        {faq.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {faq.view_count} Aufrufe
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </Box>
-        </>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Content-Statistiken
+                    </Typography>
+                    <Typography variant="h4" color="primary">
+                      {stats.totalDocuments}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Hochgeladene Dokumente
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Chat-Aktivität
+                    </Typography>
+                    <Typography variant="h4" color="primary">
+                      {stats.totalChats}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Gesamt erstellte Chats
+                    </Typography>
+                    <Typography variant="body2" color="success.main">
+                      +{stats.recentChats} neue in den letzten 30 Tagen
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Nachrichten
+                    </Typography>
+                    <Typography variant="h4" color="primary">
+                      {stats.totalMessages}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Gesamt ausgetauschte Nachrichten
+                    </Typography>
+                    <Typography variant="body2" color="info.main">
+                      ⌀ {stats.totalChats > 0 ? Math.round(stats.totalMessages / stats.totalChats) : 0} Nachrichten pro Chat
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Box>
+
+              {/* Detailed Stats */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 2 }}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Benutzer nach Rollen
+                  </Typography>
+                  <List>
+                    {detailedStats.usersByRole.map((role: any, index) => (
+                      <ListItem key={index}>
+                        <Typography variant="body1">
+                          {role.role === 'admin' ? 'Administratoren' : 'Benutzer'}: {role.count}
+                        </Typography>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Beliebteste FAQs
+                  </Typography>
+                  <List>
+                    {detailedStats.popularFAQs.map((faq: any, index) => (
+                      <ListItem key={index}>
+                        <Box>
+                          <Typography variant="body1">
+                            {faq.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {faq.view_count} Aufrufe
+                          </Typography>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              </Box>
+            </React.Fragment>
+          )}
+        </React.Fragment>
+      )}
+      
+      {activeTab === 1 && (
+        <APIKeyUsageMetricsLegacy />
       )}
     </Box>
   );

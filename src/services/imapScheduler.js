@@ -1,5 +1,5 @@
 const { ImapEmailService } = require('./imapEmailService');
-const LLMDataExtractionService = require('./llmDataExtractionService');
+const llmDataExtractionService = require('./llmDataExtractionService');
 const AutoKlärfallService = require('./autoKlärfallService');
 const { Pool } = require('pg');
 
@@ -9,7 +9,7 @@ class ImapScheduler {
             connectionString: process.env.DATABASE_URL,
         });
         this.imapService = new ImapEmailService();
-        this.llmService = new LLMDataExtractionService();
+        this.llmService = llmDataExtractionService(); // Verwenden des Singleton
         this.autoKlärfallService = new AutoKlärfallService();
         this.isRunning = false;
         this.intervals = new Map();
