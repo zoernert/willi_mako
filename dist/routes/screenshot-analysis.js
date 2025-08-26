@@ -38,7 +38,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
-const generative_ai_1 = require("@google/generative-ai");
 const pg_1 = require("pg");
 const router = express_1.default.Router();
 // Multer konfigurieren für Datei-Upload
@@ -58,13 +57,12 @@ const upload = (0, multer_1.default)({
 });
 class ScreenshotAnalysisService {
     constructor() {
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error('GEMINI_API_KEY ist nicht in den Umgebungsvariablen gesetzt');
-        }
-        this.genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        // Import the googleAIKeyManager
+        const googleAIKeyManager = require('../services/googleAIKeyManager');
         // Use model from environment variable for better configuration management
         const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
-        this.model = this.genAI.getGenerativeModel({ model: modelName });
+        // Initialize model asynchronously
+        this.initializeModel(googleAIKeyManager, modelName);
         this.pool = new pg_1.Pool({
             connectionString: process.env.DATABASE_URL,
         });
@@ -84,7 +82,7 @@ class ScreenshotAnalysisService {
             // Prompt für die Code-Extraktion erstellen
             const prompt = this.buildExtractionPrompt();
             // LLM-Analyse durchführen
-            const result = await this.model.generateContent([prompt, imagePart]);
+            const result = await this.safeGenerateContent([prompt, imagePart]);
             const response = await result.response;
             const extractedData = this.parseExtractionResponse(response.text());
             // Für BDEW-Codes zusätzliche Informationen aus der Datenbank laden
@@ -249,6 +247,38 @@ Führe jetzt die Analyse durch:`;
         catch (error) {
             console.error('Fehler beim Laden der BDEW-Partner-Info:', error);
             return null;
+        }
+    }
+    /**
+     * Asynchronously initializes the model with the key manager
+     */
+    async initializeModel(keyManager, modelName) {
+        try {
+            this.model = await keyManager.getGenerativeModel({
+                model: modelName
+            });
+        }
+        catch (error) {
+            console.error('Error initializing screenshot analysis model:', error);
+            throw new Error('Failed to initialize model');
+        }
+    }
+    /**
+     * Safely generate content with automatic retry in case of API quota issues
+     */
+    async safeGenerateContent(prompt) {
+        const googleAIKeyManager = require('../services/googleAIKeyManager');
+        try {
+            // First try with the current model
+            return await this.model.generateContent(prompt);
+        }
+        catch (error) {
+            console.log('Error in screenshot analysis, reinitializing model and retrying:', error.message || 'Unknown error');
+            // If model isn't ready or encounters an error, try reinitializing
+            const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+            await this.initializeModel(googleAIKeyManager, modelName);
+            // Retry with the potentially new API key
+            return await this.model.generateContent(prompt);
         }
     }
 }

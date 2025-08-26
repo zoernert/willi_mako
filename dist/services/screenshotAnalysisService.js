@@ -1,31 +1,55 @@
 "use strict";
 /**
  * Screenshot Analysis Service
- * Analyzes uploaded screenshots to detect UI elements, errors, and application context
+ * Analyzes uploaded screenshots to detect UI ele      const prompt = this.createAnalysisPrompt();
+      
+      // Generate analysis using Gemini Vision with safe content generation
+      const result = await this.safeGenerateContent([
+        prompt,
+        {
+          inlineData: {
+            data: imageData.toString('base64'),
+            mimeType: 'image/png'
+          }
+        }
+      ]);s, and application context
  */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const generative_ai_1 = require("@google/generative-ai");
 const sharp_1 = __importDefault(require("sharp"));
 const path_1 = __importDefault(require("path"));
 const promises_1 = __importDefault(require("fs/promises"));
 class ScreenshotAnalysisService {
     constructor() {
-        if (!process.env.GOOGLE_API_KEY) {
-            throw new Error('Google API Key is required for screenshot analysis');
+        // Import the googleAIKeyManager using require since we're in TypeScript and it's a JS module
+        const googleAIKeyManager = require('./googleAIKeyManager');
+        if (!process.env.GOOGLE_API_KEY && !process.env.GOOGLE_AI_API_KEY_FREE && !process.env.GOOGLE_AI_API_KEY) {
+            throw new Error('No API Key available for screenshot analysis');
         }
         const visionModel = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
         console.log(`Initializing Screenshot Analysis with model: ${visionModel}`);
-        this.genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-        this.model = this.genAI.getGenerativeModel({
-            model: visionModel,
-            generationConfig: {
-                temperature: 0.1, // Low temperature for consistent analysis
-                maxOutputTokens: 2048,
-            }
-        });
+        // Initialize model asynchronously - will be ready before first use
+        this.initializeModel(googleAIKeyManager, visionModel);
+    }
+    /**
+     * Asynchronously initializes the model with the key manager
+     */
+    async initializeModel(keyManager, modelName) {
+        try {
+            this.model = await keyManager.getGenerativeModel({
+                model: modelName,
+                generationConfig: {
+                    temperature: 0.1, // Low temperature for consistent analysis
+                    maxOutputTokens: 2048,
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error initializing screenshot analysis model:', error);
+            throw new Error('Failed to initialize vision model');
+        }
     }
     /**
      * Main analysis method - processes a screenshot and extracts relevant information
@@ -40,7 +64,7 @@ class ScreenshotAnalysisService {
             // Create analysis prompt
             const prompt = this.createAnalysisPrompt();
             // Generate analysis using Gemini Vision
-            const result = await this.model.generateContent([
+            const result = await this.safeGenerateContent([
                 prompt,
                 {
                     inlineData: {
@@ -248,6 +272,24 @@ Bitte nutze die oben stehenden Informationen aus dem Screenshot, um eine präzis
         await promises_1.default.writeFile(filepath, file.buffer);
         console.log(`Screenshot saved: ${filepath}`);
         return filepath;
+    }
+    /**
+     * Safely generate content with automatic retry in case of API quota issues
+     */
+    async safeGenerateContent(prompt) {
+        const googleAIKeyManager = require('./googleAIKeyManager');
+        try {
+            // First try with the current model
+            return await this.model.generateContent(prompt);
+        }
+        catch (error) {
+            console.log('Error in screenshot analysis, reinitializing model and retrying:', error.message || 'Unknown error');
+            // If model isn't ready or encounters an error, try reinitializing
+            const visionModel = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
+            await this.initializeModel(googleAIKeyManager, visionModel);
+            // Retry with the potentially new API key
+            return await this.model.generateContent(prompt);
+        }
     }
 }
 exports.default = new ScreenshotAnalysisService();

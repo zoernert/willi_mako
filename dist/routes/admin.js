@@ -48,6 +48,8 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const chatConfig_1 = __importDefault(require("./admin/chatConfig"));
+// Import API-Schlüssel-Admin-Route
+const apiKeysRouter = require('./admin-api-keys');
 const router = (0, express_1.Router)();
 // Admin middleware - require admin role
 const requireAdmin = (req, res, next) => {
@@ -62,6 +64,8 @@ router.use(auth_1.authenticateToken);
 router.use(requireAdmin);
 // Mount chat configuration routes
 router.use('/chat-config', chatConfig_1.default);
+// Mount API-Schlüssel-Routes
+router.use('/', apiKeysRouter);
 // Initialize and mount community admin routes (needs to be done in server.ts with db pool)
 // router.use('/community', initializeCommunityAdminRoutes(db)); // This will be done in server.ts
 // Configure multer for admin document uploads

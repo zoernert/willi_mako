@@ -9,6 +9,15 @@ export declare class GeminiService {
     private codeLookupService;
     private modelUsageCount;
     constructor();
+    /**
+     * Asynchronously initializes models using the googleAIKeyManager for efficient key usage
+     * @param modelNames Array of model names to initialize
+     */
+    private initializeModels;
+    /**
+     * Fallback initialization method using direct API key if key manager fails
+     */
+    private initializeFallbackModels;
     private getRpmLimit;
     private getNextAvailableModel;
     private resetUsageCounters;
@@ -118,6 +127,11 @@ export declare class GeminiService {
      */
     private getNextModelWithLowestUsage;
     private getQuotaAwareModel;
+    /**
+     * Ensures models are initialized before use
+     * @returns Promise that resolves when models are ready
+     */
+    private ensureModelsInitialized;
 }
 declare const _default: GeminiService;
 export default _default;

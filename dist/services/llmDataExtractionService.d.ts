@@ -1,8 +1,12 @@
 export = LLMDataExtractionService;
 declare class LLMDataExtractionService {
-    genAI: GoogleGenerativeAI;
-    model: import("@google/generative-ai").GenerativeModel;
     pool: Pool;
+    /**
+     * Initializes the LLM model using the key manager to handle API key selection
+     * @param {string} modelName - Name of the model to use
+     */
+    initializeModel(modelName: string): Promise<void>;
+    model: any;
     /**
      * Extrahiert strukturierte Daten aus einer E-Mail
      * @param {Object} email - E-Mail-Objekt mit subject, text, html, from
@@ -74,7 +78,7 @@ declare class LLMDataExtractionService {
      * Analysiert E-Mail für automatische Weiterleitung
      */
     analyzeForRouting(email: any, extractedData: any): Promise<{
-        suggestedTeam: string;
+        suggestedTeam: any;
         confidence: any;
         reasoning: string;
     }>;
@@ -83,7 +87,7 @@ declare class LLMDataExtractionService {
      */
     suggestStandardResponse(email: any, extractedData: any): Promise<{
         subject: string;
-        body: string;
+        body: any;
         confidence: number;
         suggestedAt: string;
     }>;
@@ -94,6 +98,12 @@ declare class LLMDataExtractionService {
      * @returns {Promise<string>} Generierter Content
      */
     generateContent(prompt: string, options?: any): Promise<string>;
+    /**
+     * Safely generate content with automatic retry and key management
+     * @param {string|object} prompt - The prompt to send to the LLM
+     * @returns {Promise<Object>} - The LLM response
+     */
+    safeGenerateContent(prompt: string | object): Promise<any>;
     /**
      * Timeline-spezifische Aktivitätszusammenfassung
      * @param {string} featureType - Art des Features (chat, code_lookup, etc.)
@@ -130,6 +140,5 @@ declare class LLMDataExtractionService {
         database?: undefined;
     }>;
 }
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Pool } from "pg";
 //# sourceMappingURL=llmDataExtractionService.d.ts.map

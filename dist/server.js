@@ -197,7 +197,9 @@ app.listen(PORT, '0.0.0.0', async () => {
         console.log('📈 Timeline background processor started');
     }
 });
-exports.default = app;
+// Initialisiere API-Schlüssel-Manager (beim Server-Start)
+require("./services/googleAIKeyManager");
 // Importiere den Timeline-Processor
 const timelineProcessor_1 = require("./workers/timelineProcessor");
+exports.default = app;
 //# sourceMappingURL=server.js.map
