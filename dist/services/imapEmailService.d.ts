@@ -6,7 +6,7 @@ export class ImapEmailService {
     pool: Pool;
     activeConnections: Map<any, any>;
     processignInterval: NodeJS.Timeout;
-    llmService: LLMDataExtractionService;
+    llmService: any;
     autoKlärfallService: AutoKlärfallService;
     /**
      * Startet die IMAP-Überwachung für alle konfigurierten Teams
@@ -78,6 +78,5 @@ export class ImapEmailService {
     };
 }
 import { Pool } from "pg";
-import LLMDataExtractionService = require("./llmDataExtractionService");
 import AutoKlärfallService = require("./autoKl\u00E4rfallService");
 //# sourceMappingURL=imapEmailService.d.ts.map

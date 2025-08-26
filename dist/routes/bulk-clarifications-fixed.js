@@ -14,7 +14,7 @@ const pool = new pg_1.Pool({
     connectionString: process.env.DATABASE_URL,
 });
 const autoKlärfallService = new autoKl_rfallService_js_1.default();
-const llmService = new llmDataExtractionService_js_1.default();
+const llmService = (0, llmDataExtractionService_js_1.default)(); // Verwenden des Singleton
 // Hilfsfunktion: Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
 async function updateBulkClarificationStatus(clarificationId, client) {
     try {

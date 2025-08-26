@@ -1,7 +1,7 @@
 export = AutoKlärfallService;
 declare class AutoKlärfallService {
     pool: Pool;
-    llmService: LLMDataExtractionService;
+    llmService: any;
     /**
      * Erstellt automatisch einen Klärfall basierend auf E-Mail und LLM-Extraktion
      * @param {Object} email - E-Mail-Objekt
@@ -61,7 +61,7 @@ declare class AutoKlärfallService {
     healthCheck(): Promise<{
         status: string;
         database: string;
-        llmService: string;
+        llmService: any;
         timestamp: string;
         error?: undefined;
     } | {
@@ -73,5 +73,4 @@ declare class AutoKlärfallService {
     }>;
 }
 import { Pool } from "pg";
-import LLMDataExtractionService = require("./llmDataExtractionService");
 //# sourceMappingURL=autoKl%C3%A4rfallService.d.ts.map

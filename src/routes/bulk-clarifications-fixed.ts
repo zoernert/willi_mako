@@ -1,7 +1,7 @@
 import express from 'express';
 import { Pool } from 'pg';
 import AutoKlärfallService from '../services/autoKlärfallService.js';
-import LLMDataExtractionService from '../services/llmDataExtractionService.js';
+import llmDataExtractionService from '../services/llmDataExtractionService.js';
 import { TeamService } from '../services/teamService.js';
 
 const router = express.Router();
@@ -12,7 +12,7 @@ const pool = new Pool({
 });
 
 const autoKlärfallService = new AutoKlärfallService();
-const llmService = new LLMDataExtractionService();
+const llmService = llmDataExtractionService(); // Verwenden des Singleton
 
 // Hilfsfunktion: Aktualisiert den Gesamt-Status einer Bulk-Klärung basierend auf Einträgen
 async function updateBulkClarificationStatus(clarificationId: string, client: any) {

@@ -1,11 +1,11 @@
 const { Pool } = require('pg');
-const LLMDataExtractionService = require('./llmDataExtractionService');
+const llmDataExtractionService = require('./llmDataExtractionService');
 class AutoKlärfallService {
     constructor() {
         this.pool = new Pool({
             connectionString: process.env.DATABASE_URL,
         });
-        this.llmService = new LLMDataExtractionService();
+        this.llmService = llmDataExtractionService(); // Verwenden des Singleton
     }
     /**
      * Erstellt automatisch einen Klärfall basierend auf E-Mail und LLM-Extraktion

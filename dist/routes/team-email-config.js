@@ -15,7 +15,7 @@ const pool = new pg_1.Pool({
     connectionString: process.env.DATABASE_URL,
 });
 const imapService = new imapEmailService_js_1.ImapEmailService();
-const llmService = new llmDataExtractionService_js_1.default();
+const llmService = (0, llmDataExtractionService_js_1.default)(); // Verwenden des Singleton
 const autoKlärfallService = new autoKl_rfallService_js_1.default();
 /**
  * GET /api/team-email-config/:teamId

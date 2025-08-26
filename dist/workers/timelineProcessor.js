@@ -38,7 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.timelineProcessor = void 0;
 // Use central LLM service instead of direct Gemini integration
-const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
+const llmDataExtractionService = require('../services/llmDataExtractionService.js');
 const logger_1 = require("../lib/logger");
 const database_1 = __importDefault(require("../config/database"));
 const dotenv = __importStar(require("dotenv"));
@@ -50,7 +50,7 @@ class TimelineProcessor {
         this.isProcessing = false;
         this.processingInterval = null;
         this.db = database_1.default; // Verwende die bereits konfigurierte Pool-Instanz
-        this.llmService = new LLMDataExtractionService();
+        this.llmService = llmDataExtractionService(); // Verwenden des Singleton
     }
     /**
      * Startet den Background Worker

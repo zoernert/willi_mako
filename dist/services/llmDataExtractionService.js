@@ -698,5 +698,13 @@ Fasse die wichtigsten Aspekte dieser Aktivität zusammen.`;
         }
     }
 }
-module.exports = LLMDataExtractionService;
+// Singleton-Instanz
+let instance = null;
+module.exports = function getInstance() {
+    if (!instance) {
+        console.log('Creating singleton instance of LLMDataExtractionService');
+        instance = new LLMDataExtractionService();
+    }
+    return instance;
+};
 //# sourceMappingURL=llmDataExtractionService.js.map

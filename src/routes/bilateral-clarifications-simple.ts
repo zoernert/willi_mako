@@ -318,8 +318,8 @@ router.get('/:id', async (req, res) => {
 router.post('/from-chat-context', authenticateToken, async (req, res) => {
   try {
     const { context, clarification } = req.body;
-    const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
-    const llmService = new LLMDataExtractionService();
+    const llmDataExtractionService = require('../services/llmDataExtractionService.js');
+    const llmService = llmDataExtractionService(); // Verwenden des Singleton
     
     console.log('Creating clarification from chat context:', {
       source: context.source,

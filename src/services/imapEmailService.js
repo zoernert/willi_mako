@@ -7,7 +7,7 @@ const { simpleParser } = require('mailparser');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 const { logger } = require('../utils/logger');
-const LLMDataExtractionService = require('./llmDataExtractionService');
+const llmDataExtractionService = require('./llmDataExtractionService');
 const AutoKlärfallService = require('./autoKlärfallService');
 
 class ImapEmailService {
@@ -18,7 +18,7 @@ class ImapEmailService {
     });
     this.activeConnections = new Map();
     this.processignInterval = null;
-    this.llmService = new LLMDataExtractionService();
+    this.llmService = llmDataExtractionService(); // Verwenden des Singleton
     this.autoKlärfallService = new AutoKlärfallService();
   }
 

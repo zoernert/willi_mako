@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 // Use central LLM service instead of direct Gemini integration
-const LLMDataExtractionService = require('./llmDataExtractionService.js');
+const llmDataExtractionService = require('./llmDataExtractionService.js');
 
 export interface Timeline {
   id: string;
@@ -41,7 +41,7 @@ export class TimelineActivityService {
   private llmService: any;
 
   constructor(private db: Pool) {
-    this.llmService = new LLMDataExtractionService();
+    this.llmService = llmDataExtractionService(); // Verwenden des Singleton
   }
 
   /**

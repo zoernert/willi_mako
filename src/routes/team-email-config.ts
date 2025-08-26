@@ -1,7 +1,7 @@
 import express from 'express';
 import { Pool } from 'pg';
 import { ImapEmailService } from '../services/imapEmailService.js';
-import LLMDataExtractionService from '../services/llmDataExtractionService.js';
+import llmDataExtractionService from '../services/llmDataExtractionService.js';
 import AutoKlärfallService from '../services/autoKlärfallService.js';
 import { TeamService } from '../services/teamService.js';
 
@@ -13,7 +13,7 @@ const pool = new Pool({
 });
 
 const imapService = new ImapEmailService();
-const llmService = new LLMDataExtractionService();
+const llmService = llmDataExtractionService(); // Verwenden des Singleton
 const autoKlärfallService = new AutoKlärfallService();
 
 /**

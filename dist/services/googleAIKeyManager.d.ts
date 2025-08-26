@@ -23,11 +23,21 @@ declare class GoogleAIKeyManager {
             dailyUsage: {};
             totalUsage: number;
             lastReset: any;
+            currentDayUsage: number;
         };
         paid: {
             dailyUsage: {};
             totalUsage: number;
             lastReset: any;
+            currentDayUsage: number;
+        };
+        summary: {
+            currentDay: string;
+            costSavings: {
+                totalFreeRequests: number;
+                costSavingsUSD: string;
+                costSavingsEUR: string;
+            };
         };
     };
     backoffTimes: number[];

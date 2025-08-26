@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const AutoKlärfallService = require('../services/autoKlärfallService');
-const LLMDataExtractionService = require('../services/llmDataExtractionService');
+const llmDataExtractionService = require('../services/llmDataExtractionService');
 
 // Team service functions - simplified for direct use
 const teamService = {
@@ -24,7 +24,7 @@ const pool = new Pool({
 });
 
 const autoKlärfallService = new AutoKlärfallService();
-const llmService = new LLMDataExtractionService();
+const llmService = llmDataExtractionService(); // Verwenden des Singleton
 
 /**
  * POST /api/clarifications/bulk

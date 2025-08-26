@@ -2,11 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimelineActivityService = void 0;
 // Use central LLM service instead of direct Gemini integration
-const LLMDataExtractionService = require('./llmDataExtractionService.js');
+const llmDataExtractionService = require('./llmDataExtractionService.js');
 class TimelineActivityService {
     constructor(db) {
         this.db = db;
-        this.llmService = new LLMDataExtractionService();
+        this.llmService = llmDataExtractionService(); // Verwenden des Singleton
     }
     /**
      * Zentrale Methode für Timeline-Activity-Capture

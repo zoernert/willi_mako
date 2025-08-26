@@ -2,7 +2,7 @@ export = ImapScheduler;
 declare class ImapScheduler {
     pool: Pool;
     imapService: ImapEmailService;
-    llmService: LLMDataExtractionService;
+    llmService: any;
     autoKlärfallService: AutoKlärfallService;
     isRunning: boolean;
     intervals: Map<any, any>;
@@ -53,6 +53,5 @@ declare class ImapScheduler {
 }
 import { Pool } from "pg";
 import { ImapEmailService } from "./imapEmailService";
-import LLMDataExtractionService = require("./llmDataExtractionService");
 import AutoKlärfallService = require("./autoKl\u00E4rfallService");
 //# sourceMappingURL=imapScheduler.d.ts.map

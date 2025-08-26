@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 // Use central LLM service instead of direct Gemini integration
-const LLMDataExtractionService = require('../services/llmDataExtractionService.js');
+const llmDataExtractionService = require('../services/llmDataExtractionService.js');
 import { logger } from '../lib/logger';
 import pool from '../config/database';
 import * as dotenv from 'dotenv';
@@ -33,7 +33,7 @@ class TimelineProcessor {
 
   constructor() {
     this.db = pool; // Verwende die bereits konfigurierte Pool-Instanz
-    this.llmService = new LLMDataExtractionService();
+    this.llmService = llmDataExtractionService(); // Verwenden des Singleton
   }
 
   /**
