@@ -25,6 +25,7 @@ import TimelineDashboard from './pages/TimelineDashboard';
 import QuizDashboard from './components/Quiz/QuizDashboard';
 import QuizPlayer from './components/Quiz/QuizPlayer';
 import ProtectedRoute from './components/ProtectedRoute';
+import NotFound from './components/NotFound';
 import Teams from './pages/Teams';
 import InvitationAcceptance from './pages/InvitationAcceptance';
 import TeamInvitationPage from './pages/TeamInvitationPage';
@@ -117,6 +118,7 @@ function App() {
               <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/invitation/:token" element={<InvitationAcceptance />} />
               <Route path="/team-invitation/:token" element={<TeamInvitationPage />} />
+              <Route path="/not-found" element={<NotFound />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
@@ -141,6 +143,8 @@ function App() {
                 <Route path="invitation-acceptance" element={<InvitationAcceptance />} />
                 <Route path="bilateral-clarifications" element={<ProtectedRoute><BilateralClarificationsPage /></ProtectedRoute>} />
               </Route>
+              {/* Catch-all route for 404 and expired token cases */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Router>
         </SnackbarProvider>

@@ -167,9 +167,18 @@ axios.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('activeTimelineId');
+      
       // Nur umleiten wenn wir nicht bereits auf der Login-Seite sind
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/app/login';
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/login')) {
+        // Bei Seiten-Reload (F5) oder direktem Zugriff können wir nicht immer zur Login-Seite umleiten
+        // Da React Router nicht initialisiert sein könnte
+        if (currentPath === '/app/' || currentPath.startsWith('/app/login')) {
+          window.location.href = '/app/login';
+        } else {
+          // Für andere Seiten, leiten wir zur NotFound-Komponente um, die einen Login-Hinweis enthält
+          window.location.href = '/app/not-found';
+        }
       }
     }
     return Promise.reject(error);

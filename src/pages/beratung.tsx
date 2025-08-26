@@ -158,7 +158,7 @@ export default function BeratungAnfrage() {
       // If there's an authentication error, suggest alternative contact method
       if (errorMsg.includes('Authentifizierung') || errorMsg.includes('Email-Server')) {
         setErrorMessage(
-          `${errorMsg} Sie können uns alternativ direkt per E-Mail an thorsten.zoerner@stromdao.com kontaktieren.`
+          `${errorMsg} Sie können uns alternativ direkt per E-Mail an kontakt@stromdao.com kontaktieren.`
         );
       }
     } finally {
@@ -209,13 +209,13 @@ export default function BeratungAnfrage() {
                 variant="outlined" 
                 size="small"
                 component="a" 
-                href="mailto:thorsten.zoerner@stromdao.com"
+                href="mailto:kontakt@stromdao.com"
                 sx={{ 
                   textTransform: 'none',
                   whiteSpace: 'nowrap'
                 }}
               >
-                thorsten.zoerner@stromdao.com
+                kontakt@stromdao.com
               </Button>
             </Box>
           </Box>
