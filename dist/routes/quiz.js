@@ -8,12 +8,10 @@ const express_1 = __importDefault(require("express"));
 const auth_1 = require("../middleware/auth");
 const quizService_1 = require("../services/quizService");
 const gamification_1 = require("../services/gamification");
-const gemini_1 = require("../services/gemini");
 const router = express_1.default.Router();
 function createQuizRoutes(db) {
-    const geminiService = new gemini_1.GeminiService();
     const gamificationService = new gamification_1.GamificationService(db);
-    const quizService = new quizService_1.QuizService(db, geminiService, gamificationService);
+    const quizService = new quizService_1.QuizService(db, gamificationService);
     // Get available quizzes
     router.get('/quizzes', auth_1.authenticateToken, async (req, res) => {
         var _a;

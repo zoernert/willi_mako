@@ -1,7 +1,7 @@
 import { CommunityVectorPoint } from '../types/community';
 export declare class CommunityQdrantService {
-    private collectionName;
     private client;
+    private collectionName;
     constructor(collectionName?: string);
     /**
      * Ensure the community collection exists

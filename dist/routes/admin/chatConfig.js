@@ -8,7 +8,8 @@ const errorHandler_1 = require("../../middleware/errorHandler");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
 const database_1 = require("../../utils/database");
-const gemini_1 = __importDefault(require("../../services/gemini"));
+// import geminiService from '../../services/gemini';
+const llmProvider_1 = __importDefault(require("../../services/llmProvider"));
 const qdrant_1 = require("../../services/qdrant");
 const contextManager_1 = require("../../services/contextManager");
 const chatConfigurationService_1 = __importDefault(require("../../services/chatConfigurationService"));
@@ -492,7 +493,7 @@ async function executeTestWithConfiguration(testQuery, config, contextSettings) 
                 const stepStartTime = Date.now();
                 try {
                     if (config.vectorSearch.useQueryExpansion) {
-                        searchQueries = await gemini_1.default.generateSearchQueries(currentQuery);
+                        searchQueries = await llmProvider_1.default.generateSearchQueries(currentQuery);
                         searchQueries = searchQueries.slice(0, config.vectorSearch.maxQueries);
                     }
                     const stepEndTime = Date.now();
@@ -584,7 +585,7 @@ async function executeTestWithConfiguration(testQuery, config, contextSettings) 
                                 const rawContext = relevantContent.join('\n\n');
                                 if (config.contextSynthesis.enabled && rawContext.length > config.contextSynthesis.maxLength) {
                                     // Synthesize context for complex queries
-                                    contextUsed = await gemini_1.default.synthesizeContext(currentQuery, uniqueResults);
+                                    contextUsed = await llmProvider_1.default.synthesizeContext(currentQuery, uniqueResults);
                                     // Ensure synthesis produced meaningful content
                                     if (contextUsed.length < 200) {
                                         // If synthesis failed, use raw content (truncated if necessary)
@@ -673,7 +674,7 @@ async function executeTestWithConfiguration(testQuery, config, contextSettings) 
                 const stepStartTime = Date.now();
                 try {
                     const messages = [{ role: 'user', content: currentQuery }];
-                    generatedResponse = await gemini_1.default.generateResponse(messages, contextUsed, {}, false, (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useWorkspaceOnly) ? 'workspace-only' : 'standard');
+                    generatedResponse = await llmProvider_1.default.generateResponse(messages, contextUsed, {}, false, (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useWorkspaceOnly) ? 'workspace-only' : 'standard');
                     // Calculate confidence based on response quality
                     confidence = calculateResponseConfidence(generatedResponse, contextUsed);
                     const stepEndTime = Date.now();

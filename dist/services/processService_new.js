@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProcessService = void 0;
 const qdrant_1 = require("./qdrant");
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 class ProcessService {
     /**
      * Searches for Mermaid diagrams in the Qdrant collection based on a natural language query
@@ -112,7 +112,7 @@ REGELN:
 - Nutze passende Pfeil-Typen und Node-Formen
 
 Gib nur den verbesserten Mermaid-Code zurück, ohne zusätzliche Erklärungen oder Markdown-Blöcke:`;
-            const improvedCode = await gemini_1.default.generateText(prompt);
+            const improvedCode = await llmProvider_1.default.generateText(prompt);
             if (improvedCode && improvedCode.trim()) {
                 // Clean the response to ensure it's just the code
                 const cleanedCode = improvedCode
@@ -171,7 +171,7 @@ Erstelle eine prägnante Erklärung (2-3 Sätze), die:
 3. Praktische Hinweise für die Anwendung gibt
 
 Antwort auf Deutsch:`;
-            const response = await gemini_1.default.generateText(prompt);
+            const response = await llmProvider_1.default.generateText(prompt);
             return response || 'Eine detaillierte Analyse der gefundenen Prozesse konnte nicht erstellt werden.';
         }
         catch (error) {
@@ -198,7 +198,7 @@ Jeder Punkt sollte maximal 15 Wörter haben.
 Verwende Fachbegriffe der Energiewirtschaft korrekt.
 
 Format: Einfache Liste ohne Nummerierung.`;
-            const response = await gemini_1.default.generateText(prompt);
+            const response = await llmProvider_1.default.generateText(prompt);
             if (response) {
                 return response
                     .split('\n')

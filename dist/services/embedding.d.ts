@@ -1,5 +1,5 @@
 /**
- * Generates a vector embedding for the given text using Google's embedding model.
+ * Generates a vector embedding for the given text using the configured provider.
  * @param text The text to embed.
  * @returns A promise that resolves to a vector (an array of numbers).
  */

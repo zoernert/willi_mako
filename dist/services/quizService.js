@@ -1,10 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QuizService = void 0;
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 class QuizService {
-    constructor(db, geminiService, gamificationService) {
+    constructor(db, gamificationService) {
         this.db = db;
-        this.geminiService = geminiService;
         this.gamificationService = gamificationService;
     }
     async createQuiz(quiz) {
@@ -162,7 +165,7 @@ class QuizService {
                 if (questions.length > 0) {
                     await this.delay(1000); // 1 second delay between questions
                 }
-                const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(enhancedContext, difficulty, topicArea || 'Allgemein');
+                const generatedQuestion = await llmProvider_1.default.generateMultipleChoiceQuestion(enhancedContext, difficulty, topicArea || 'Allgemein');
                 questions.push({
                     id: '', // Will be set when saved to DB
                     quiz_id: '',
@@ -203,7 +206,7 @@ class QuizService {
             try {
                 if (!chat.answer)
                     continue; // Skip if no assistant response
-                const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(`Titel: ${chat.title}\nFrage: ${chat.question}\nAntwort: ${chat.answer}`, 'medium', 'Persönlich');
+                const generatedQuestion = await llmProvider_1.default.generateMultipleChoiceQuestion(`Titel: ${chat.title}\nFrage: ${chat.question}\nAntwort: ${chat.answer}`, 'medium', 'Persönlich');
                 questions.push({
                     id: '',
                     quiz_id: '',
@@ -726,7 +729,7 @@ class QuizService {
         
         Antworten Sie nur mit "JA" oder "NEIN" und einer kurzen Begründung (max. 20 Wörter).
       `;
-            const response = await this.geminiService.generateText(validationPrompt);
+            const response = await llmProvider_1.default.generateText(validationPrompt);
             const isRelevant = response.toUpperCase().includes('JA');
             console.log(`LLM Validation - Topic: ${topicArea}, FAQ: ${faq.title}, Relevant: ${isRelevant}, Response: ${response.substring(0, 100)}...`);
             return isRelevant;
@@ -750,7 +753,7 @@ class QuizService {
         - Für "APERAK - Arbeiten mit Anwendungsfehlern" -> "APERAK, Anwendungsfehler, Fehlerbehebung"
         - Für "EDI Nachrichten im Energiebereich" -> "EDI, Energiebereich, Nachrichten"
       `;
-            const topicKeywords = await this.geminiService.generateText(topicExtractionPrompt);
+            const topicKeywords = await llmProvider_1.default.generateText(topicExtractionPrompt);
             const extractedTopics = topicKeywords.split(',').map(t => t.trim()).filter(t => t.length > 0);
             console.log(`Extracted topics for quiz "${title}": ${extractedTopics.join(', ')}`);
             // Find relevant FAQs for each topic
@@ -807,7 +810,7 @@ class QuizService {
             3. Praxisrelevant und präzise ist
             4. Eindeutig beantwortbar ist
           `;
-                    const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(enhancedContext, difficulty, title);
+                    const generatedQuestion = await llmProvider_1.default.generateMultipleChoiceQuestion(enhancedContext, difficulty, title);
                     questions.push({
                         id: '', // Will be set when saved to DB
                         quiz_id: quiz.id,

@@ -5,10 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotesService = void 0;
 const database_1 = __importDefault(require("../config/database"));
-const gemini_1 = require("./gemini");
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 class NotesService {
+    // Use provider-agnostic LLM via llmProvider
     constructor() {
-        this.geminiService = new gemini_1.GeminiService();
+        // no-op
     }
     /**
      * Create a new note
@@ -339,7 +340,7 @@ class NotesService {
     async generateTags(content, title) {
         try {
             const text = title ? `${title}\n\n${content}` : content;
-            const tags = await this.geminiService.generateTagsForNote(text);
+            const tags = await llmProvider_1.default.generateTagsForNote(text);
             return tags;
         }
         catch (error) {

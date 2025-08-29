@@ -1,26 +1,22 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEmbedding = getEmbedding;
-const gemini_1 = __importDefault(require("./gemini"));
+const embeddingProvider_1 = require("./embeddingProvider");
 /**
- * Generates a vector embedding for the given text using Google's embedding model.
+ * Generates a vector embedding for the given text using the configured provider.
  * @param text The text to embed.
  * @returns A promise that resolves to a vector (an array of numbers).
  */
 async function getEmbedding(text) {
     try {
-        // Use Google's embedding model via Gemini service
-        const embedding = await gemini_1.default.generateEmbedding(text);
+        const embedding = await (0, embeddingProvider_1.generateEmbedding)(text);
         return embedding;
     }
     catch (error) {
         console.error('Error generating embedding:', error);
-        // Fallback to basic hash-based embedding
-        const EMBEDDING_DIMENSION = 768;
-        const vector = Array.from({ length: EMBEDDING_DIMENSION }, () => Math.random() * 2 - 1);
+        // Fallback to basic hash-based embedding with provider dimension
+        const DEFAULT_DIM = (0, embeddingProvider_1.getEmbeddingDimension)();
+        const vector = Array.from({ length: DEFAULT_DIM }, () => Math.random() * 2 - 1);
         return vector;
     }
 }

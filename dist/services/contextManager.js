@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextManager = void 0;
 const workspaceService_1 = require("./workspaceService");
 const notesService_1 = require("./notesService");
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 const aiResponseUtils_1 = require("../utils/aiResponseUtils");
 class ContextManager {
     constructor() {
@@ -193,7 +193,7 @@ Consider:
 - Would personal documents or notes likely contain relevant information?
 - Is this a general question that wouldn't benefit from personal context?
 `;
-            const response = await gemini_1.default.generateResponse([{ role: 'user', content: prompt }], '', {}, false);
+            const response = await llmProvider_1.default.generateResponse([{ role: 'user', content: prompt }], '', {}, false);
             const analysis = (0, aiResponseUtils_1.safeParseJsonResponse)(response);
             if (analysis) {
                 return {

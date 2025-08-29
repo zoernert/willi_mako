@@ -31,6 +31,18 @@ declare class GoogleAIKeyManager {
             lastReset: any;
             currentDayUsage: number;
         };
+        providers: {
+            gemini: {
+                dailyUsage: {};
+                totalUsage: number;
+                currentDayUsage: number;
+            };
+            mistral: {
+                dailyUsage: {};
+                totalUsage: number;
+                currentDayUsage: number;
+            };
+        };
         summary: {
             currentDay: string;
             costSavings: {
@@ -93,6 +105,11 @@ declare class GoogleAIKeyManager {
      * @param {string} keyType - Either 'free' or 'paid'
      */
     trackKeyUsage(keyType: string): void;
+    /**
+     * Track LLM provider usage (gemini | mistral)
+     * @param {string} provider
+     */
+    trackProviderUsage(provider: string): void;
     /**
      * Get usage metrics for admin dashboard
      * @returns {Object} The usage metrics for both API keys

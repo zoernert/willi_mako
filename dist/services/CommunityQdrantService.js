@@ -3,19 +3,18 @@
 // CR-COMMUNITY-HUB-001
 // Autor: AI Assistant
 // Datum: 2025-08-09
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommunityQdrantService = void 0;
 const js_client_rest_1 = require("@qdrant/js-client-rest");
-const gemini_1 = __importDefault(require("./gemini"));
+const embeddingProvider_1 = require("./embeddingProvider");
+const embeddingProvider_2 = require("./embeddingProvider");
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const QDRANT_COMMUNITY_COLLECTION = process.env.QDRANT_COMMUNITY_COLLECTION || 'community_content';
+const BASE_COMMUNITY_COLLECTION = process.env.QDRANT_COMMUNITY_COLLECTION || 'community_content';
 class CommunityQdrantService {
-    constructor(collectionName = QDRANT_COMMUNITY_COLLECTION) {
-        this.collectionName = collectionName;
+    constructor(collectionName = BASE_COMMUNITY_COLLECTION) {
+        // Always derive provider-aware collection name
+        this.collectionName = (0, embeddingProvider_2.getCollectionName)(collectionName);
         this.client = new js_client_rest_1.QdrantClient({
             url: QDRANT_URL,
             apiKey: QDRANT_API_KEY,
@@ -32,7 +31,7 @@ class CommunityQdrantService {
             const collectionExists = result.collections.some((collection) => collection.name === this.collectionName);
             if (!collectionExists) {
                 await this.client.createCollection(this.collectionName, {
-                    vectors: { size: 768, distance: 'Cosine' },
+                    vectors: { size: (0, embeddingProvider_2.getEmbeddingDimension)(), distance: 'Cosine' },
                 });
                 console.log(`Community collection ${this.collectionName} created.`);
             }
@@ -46,7 +45,7 @@ class CommunityQdrantService {
      */
     async upsertVector(content, payload) {
         try {
-            const embedding = await gemini_1.default.generateEmbedding(content);
+            const embedding = await (0, embeddingProvider_1.generateEmbedding)(content);
             // Create a deterministic UUID for this vector point using crypto
             const crypto = require('crypto');
             const uniqueString = `${payload.thread_id}_${payload.section_key}_${payload.proposal_id || 'main'}`;
@@ -84,7 +83,7 @@ class CommunityQdrantService {
      */
     async searchByText(query, limit = 10, scoreThreshold = 0.5) {
         try {
-            const queryVector = await gemini_1.default.generateEmbedding(query);
+            const queryVector = await (0, embeddingProvider_1.generateEmbedding)(query);
             const results = await this.client.search(this.collectionName, {
                 vector: queryVector,
                 limit,
@@ -139,7 +138,7 @@ class CommunityQdrantService {
      */
     async searchWithFilters(query, filters = {}, limit = 10) {
         try {
-            const queryVector = await gemini_1.default.generateEmbedding(query);
+            const queryVector = await (0, embeddingProvider_1.generateEmbedding)(query);
             const filterConditions = [];
             if (filters.thread_ids && filters.thread_ids.length > 0) {
                 filterConditions.push({

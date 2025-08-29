@@ -40,7 +40,7 @@ const express_1 = require("express");
 const errorHandler_1 = require("../middleware/errorHandler");
 const auth_1 = require("../middleware/auth");
 const database_1 = __importDefault(require("../config/database"));
-const gemini_1 = __importDefault(require("../services/gemini"));
+const llmProvider_1 = __importDefault(require("../services/llmProvider"));
 const qdrant_1 = require("../services/qdrant");
 const faqLinkingService_1 = require("../services/faqLinkingService");
 const router = (0, express_1.Router)();
@@ -289,7 +289,7 @@ router.post('/admin/chats/:chatId/create-faq', auth_1.authenticateToken, require
     console.log('Calling generateFAQContent with messages:', messages.length);
     let faqContent;
     try {
-        faqContent = await gemini_1.default.generateFAQContent(messages);
+        faqContent = await llmProvider_1.default.generateFAQContent(messages);
         console.log('Generated FAQ content successfully');
         // Validate the FAQ content structure
         if (!faqContent || typeof faqContent !== 'object') {
@@ -436,7 +436,7 @@ router.put('/admin/faqs/:id', auth_1.authenticateToken, requireAdminForFaq, (0, 
                 searchContext = searchResults.map((result) => result.payload.text).join('\n\n');
             }
             // Enhance FAQ with LLM using the search context
-            const enhancedFAQ = await gemini_1.default.enhanceFAQWithContext(finalFAQData, searchContext);
+            const enhancedFAQ = await llmProvider_1.default.enhanceFAQWithContext(finalFAQData, searchContext);
             finalFAQData = enhancedFAQ;
         }
         catch (error) {

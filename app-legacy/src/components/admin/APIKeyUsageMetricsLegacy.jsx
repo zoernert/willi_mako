@@ -126,6 +126,19 @@ const APIKeyUsageMetricsLegacy = () => {
             totalUsage: metricsObject.paid?.totalUsage || 0,
             currentDayUsage: metricsObject.paid?.currentDayUsage || 0
           },
+          // New: providers (Gemini/Mistral)
+          providers: {
+            gemini: {
+              dailyUsage: metricsObject.providers?.gemini?.dailyUsage || {},
+              totalUsage: metricsObject.providers?.gemini?.totalUsage || 0,
+              currentDayUsage: metricsObject.providers?.gemini?.currentDayUsage || 0
+            },
+            mistral: {
+              dailyUsage: metricsObject.providers?.mistral?.dailyUsage || {},
+              totalUsage: metricsObject.providers?.mistral?.totalUsage || 0,
+              currentDayUsage: metricsObject.providers?.mistral?.currentDayUsage || 0
+            }
+          },
           summary: {
             currentDay: metricsObject.summary?.currentDay || new Date().toISOString().split('T')[0],
             costSavings: {
@@ -164,6 +177,10 @@ const APIKeyUsageMetricsLegacy = () => {
                   totalUsage: 0,
                   currentDayUsage: 0
                 },
+                providers: {
+                  gemini: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 },
+                  mistral: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 }
+                },
                 summary: {
                   currentDay: new Date().toISOString().split('T')[0],
                   costSavings: {
@@ -177,6 +194,7 @@ const APIKeyUsageMetricsLegacy = () => {
               // Try to populate with any data we can find
               if (responseData.data.free) fallbackMetrics.free = {...fallbackMetrics.free, ...responseData.data.free};
               if (responseData.data.paid) fallbackMetrics.paid = {...fallbackMetrics.paid, ...responseData.data.paid};
+              if (responseData.data.providers) fallbackMetrics.providers = {...fallbackMetrics.providers, ...responseData.data.providers};
               if (responseData.data.summary) fallbackMetrics.summary = {...fallbackMetrics.summary, ...responseData.data.summary};
               
               console.log('Using fallback metrics:', fallbackMetrics);
@@ -260,6 +278,18 @@ const APIKeyUsageMetricsLegacy = () => {
             dailyUsage: response.data.currentMetrics.paid?.dailyUsage || {},
             totalUsage: response.data.currentMetrics.paid?.totalUsage || 0,
             currentDayUsage: response.data.currentMetrics.paid?.currentDayUsage || 0
+          },
+          providers: {
+            gemini: {
+              dailyUsage: response.data.currentMetrics.providers?.gemini?.dailyUsage || {},
+              totalUsage: response.data.currentMetrics.providers?.gemini?.totalUsage || 0,
+              currentDayUsage: response.data.currentMetrics.providers?.gemini?.currentDayUsage || 0
+            },
+            mistral: {
+              dailyUsage: response.data.currentMetrics.providers?.mistral?.dailyUsage || {},
+              totalUsage: response.data.currentMetrics.providers?.mistral?.totalUsage || 0,
+              currentDayUsage: response.data.currentMetrics.providers?.mistral?.currentDayUsage || 0
+            }
           },
           summary: {
             currentDay: response.data.currentMetrics.summary?.currentDay || new Date().toISOString().split('T')[0],
@@ -386,7 +416,7 @@ const APIKeyUsageMetricsLegacy = () => {
   }, []);
   
   // Farbpalette für Diagramme
-  const COLORS = ['#4CAF50', '#FFC107', '#F44336'];
+  const PROVIDER_COLORS = ['#1976D2', '#9C27B0'];
   
   // Berechne Prozentsatz der Verwendung des kostenlosen Schlüssels
   const calculateFreeKeyPercentage = () => {
@@ -400,24 +430,18 @@ const APIKeyUsageMetricsLegacy = () => {
     return total > 0 ? Math.round((freeUsage / total) * 100) : 0;
   };
   
-  // Pie-Chart-Daten
-  const getPieData = () => {
-    if (!metrics) {
-      console.log('No metrics data available for pie chart');
-      return [];
-    }
-    
-    // Safe access with defaults
-    const freeUsage = metrics.free?.totalUsage || 0;
-    const paidUsage = metrics.paid?.totalUsage || 0;
-    
-    // Only include items with non-zero values
+  // New: Provider Pie-Chart-Daten (Gemini vs Mistral)
+  const getProviderPieData = () => {
+    if (!metrics || !metrics.providers) return [];
+    const gemini = metrics.providers.gemini?.totalUsage || 0;
+    const mistral = metrics.providers.mistral?.totalUsage || 0;
     const data = [];
-    if (freeUsage > 0) data.push({ name: 'Kostenlos', value: freeUsage });
-    if (paidUsage > 0) data.push({ name: 'Bezahlt', value: paidUsage });
-    
-    console.log('Pie chart data:', data);
-    return data;
+    if (gemini > 0) data.push({ name: 'Gemini', value: gemini });
+    if (mistral > 0) data.push({ name: 'Mistral', value: mistral });
+    return data.length ? data : [
+      { name: 'Gemini', value: 0 },
+      { name: 'Mistral', value: 0 }
+    ];
   };
   
   return (
@@ -511,6 +535,51 @@ const APIKeyUsageMetricsLegacy = () => {
             </Grid>
           </Grid>
 
+          {/* LLM Provider Zusammenfassung */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                LLM-Provider Nutzung
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Gemini
+                  </Typography>
+                  <Typography variant="h4" sx={{ color: '#1976D2' }}>
+                    {metrics?.providers?.gemini?.totalUsage || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Gesamte Anfragen
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Heute: {metrics?.providers?.gemini?.currentDayUsage || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Mistral
+                  </Typography>
+                  <Typography variant="h4" sx={{ color: '#9C27B0' }}>
+                    {metrics?.providers?.mistral?.totalUsage || 0}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Gesamte Anfragen
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Heute: {metrics?.providers?.mistral?.currentDayUsage || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
           {/* Diagramme */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={8}>
@@ -540,23 +609,23 @@ const APIKeyUsageMetricsLegacy = () => {
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" gutterBottom>
-                  Verteilung
+                  Verteilung LLM-Provider
                 </Typography>
-                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {getPieData().length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+                  {getProviderPieData().length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                         <Pie
-                          data={getPieData()}
+                          data={getProviderPieData()}
                           cx="50%"
                           cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
+                          outerRadius={75}
+                          paddingAngle={2}
                           dataKey="value"
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         >
-                          {getPieData().map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          {getProviderPieData().map((entry, index) => (
+                            <Cell key={`provider-cell-${index}`} fill={PROVIDER_COLORS[index % PROVIDER_COLORS.length]} />
                           ))}
                         </Pie>
                         <RechartsTooltip />

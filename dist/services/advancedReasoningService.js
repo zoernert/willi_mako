@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const qdrant_1 = require("./qdrant");
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 class AdvancedReasoningService {
     constructor() {
         this.maxApiCalls = 10;
@@ -41,7 +41,7 @@ class AdvancedReasoningService {
           
           Formatiere die Antwort als JSON-Objekt.
         `;
-                const intentAnalysisResult = await gemini_1.default.generateStructuredOutput(intentAnalysisPrompt, userPreferences);
+                const intentAnalysisResult = await llmProvider_1.default.generateStructuredOutput(intentAnalysisPrompt, userPreferences);
                 apiCallsUsed++;
                 // Erweiterte Abfragen generieren basierend auf der Intent-Analyse
                 const queryGenerationPrompt = `
@@ -53,7 +53,7 @@ class AdvancedReasoningService {
           
           Formatiere die Antwort als JSON-Array mit Strings.
         `;
-                enhancedSearchQueries = await gemini_1.default.generateStructuredOutput(queryGenerationPrompt, userPreferences);
+                enhancedSearchQueries = await llmProvider_1.default.generateStructuredOutput(queryGenerationPrompt, userPreferences);
                 apiCallsUsed++;
                 // QA-Analyse erstellen
                 qaAnalysis = {
@@ -150,7 +150,7 @@ class AdvancedReasoningService {
             try {
                 const fallbackResults = await this.qdrantService.search('system', query, 5);
                 const contextText = fallbackResults.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
-                const fallbackResponse = await gemini_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), contextText, userPreferences);
+                const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), contextText, userPreferences);
                 console.log('✅ Fallback response generated successfully');
                 return {
                     response: fallbackResponse,
@@ -208,7 +208,7 @@ class AdvancedReasoningService {
         // Synthesize context efficiently
         const context = results.map(r => { var _a, _b; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.content) || ''; }).join('\n\n');
         // Generate response directly
-        const response = await gemini_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
+        const response = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
         // Record the step
         reasoningSteps.push({
             step: 'direct_response',
@@ -241,7 +241,7 @@ class AdvancedReasoningService {
         // Synthesize context efficiently
         const context = results.map(r => { var _a, _b; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.content) || ''; }).join('\n\n');
         // Erste Antwortgenerierung
-        const initialResponse = await gemini_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
+        const initialResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
         apiCallsUsed++;
         // Extract hybrid search metadata if available
         const hybridSearchMetadata = (_a = results.find((r) => r.hybridSearchMetadata)) === null || _a === void 0 ? void 0 : _a.hybridSearchMetadata;
@@ -299,7 +299,7 @@ class AdvancedReasoningService {
         try {
             // Fast search query generation with reduced complexity
             const simplePrompt = `Generate 3 search terms for: "${query}". Return only JSON array like ["term1", "term2", "term3"]:`;
-            const result = await gemini_1.default.generateText(simplePrompt);
+            const result = await llmProvider_1.default.generateText(simplePrompt);
             // Extract JSON array from response
             let queries = [];
             try {
@@ -425,7 +425,7 @@ Required JSON format:
   "missingInfo": ["missing aspect 1", "missing aspect 2"]
 }`;
         try {
-            const result = await gemini_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt);
             const jsonMatch = result.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const analysis = JSON.parse(jsonMatch[0]);
@@ -455,7 +455,7 @@ Required JSON format:
             const iterationStart = Date.now();
             if (i === 0) {
                 // First iteration: Generate initial response
-                currentResponse = await gemini_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences, true);
+                currentResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences, true);
                 apiCallsUsed++;
             }
             else {
@@ -467,7 +467,7 @@ Current Response: ${currentResponse}
 Additional Context: ${context.slice(0, 1000)}
 
 Provide an improved version:`;
-                currentResponse = await gemini_1.default.generateText(refinementPrompt);
+                currentResponse = await llmProvider_1.default.generateText(refinementPrompt);
                 apiCallsUsed++;
             }
             steps.push({
@@ -499,7 +499,7 @@ Available Context: ${context.slice(0, 500)}...
 Consider: relevance, completeness, accuracy, clarity.
 Respond with only a number between 0 and 1:`;
         try {
-            const result = await gemini_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt);
             const score = parseFloat(result.trim());
             return isNaN(score) ? 0.7 : Math.max(0, Math.min(1, score));
         }

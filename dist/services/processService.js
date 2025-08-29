@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProcessService = void 0;
 const qdrant_1 = require("./qdrant");
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 class ProcessService {
     /**
      * Generates structured process data from diagram metadata using LLM
@@ -64,7 +64,7 @@ Beispiel-Output:
     {"from": "reject", "to": "end"}
   ]
 }`;
-            const response = await gemini_1.default.generateText(prompt);
+            const response = await llmProvider_1.default.generateText(prompt);
             if (response && response.trim()) {
                 try {
                     // Clean the response to ensure it's valid JSON
@@ -277,7 +277,7 @@ Erstelle eine prägnante Erklärung (2-3 Sätze), die:
 3. Praktische Hinweise für die Anwendung gibt
 
 Antwort auf Deutsch:`;
-            const response = await gemini_1.default.generateText(prompt);
+            const response = await llmProvider_1.default.generateText(prompt);
             return response || 'Eine detaillierte Analyse der gefundenen Prozesse konnte nicht erstellt werden.';
         }
         catch (error) {
@@ -304,7 +304,7 @@ Jeder Punkt sollte maximal 15 Wörter haben.
 Verwende Fachbegriffe der Energiewirtschaft korrekt.
 
 Format: Einfache Liste ohne Nummerierung.`;
-            const response = await gemini_1.default.generateText(prompt);
+            const response = await llmProvider_1.default.generateText(prompt);
             if (response) {
                 return response
                     .split('\n')

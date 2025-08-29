@@ -1,6 +1,5 @@
 import { UserNote, CreateNoteData, UpdateNoteData, NoteFilters, SearchResult } from '../types/workspace';
 export declare class NotesService {
-    private geminiService;
     constructor();
     /**
      * Create a new note

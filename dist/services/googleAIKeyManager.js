@@ -36,6 +36,19 @@ class GoogleAIKeyManager {
                 lastReset: null,
                 currentDayUsage: 0
             },
+            // New: LLM Provider usage (Gemini vs Mistral)
+            providers: {
+                gemini: {
+                    dailyUsage: {},
+                    totalUsage: 0,
+                    currentDayUsage: 0
+                },
+                mistral: {
+                    dailyUsage: {},
+                    totalUsage: 0,
+                    currentDayUsage: 0
+                }
+            },
             summary: {
                 currentDay: this.getCurrentDay(),
                 costSavings: {
@@ -186,8 +199,22 @@ class GoogleAIKeyManager {
             try {
                 const data = await fs.readFile(metricsPath, 'utf8');
                 const savedMetrics = JSON.parse(data);
-                if (savedMetrics && savedMetrics.free && savedMetrics.paid) {
+                if (savedMetrics) {
                     this.usageMetrics = savedMetrics;
+                    // Ensure providers structure exists after load
+                    if (!this.usageMetrics.providers) {
+                        this.usageMetrics.providers = {
+                            gemini: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 },
+                            mistral: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 }
+                        };
+                    }
+                    else {
+                        // Ensure keys present
+                        if (!this.usageMetrics.providers.gemini)
+                            this.usageMetrics.providers.gemini = { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 };
+                        if (!this.usageMetrics.providers.mistral)
+                            this.usageMetrics.providers.mistral = { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 };
+                    }
                     console.log('Loaded API key metrics from storage');
                 }
             }
@@ -242,6 +269,27 @@ class GoogleAIKeyManager {
         }
     }
     /**
+     * Track LLM provider usage (gemini | mistral)
+     * @param {string} provider
+     */
+    trackProviderUsage(provider) {
+        try {
+            const normalized = (provider || 'gemini').toLowerCase() === 'mistral' ? 'mistral' : 'gemini';
+            const today = this.getCurrentDay();
+            if (!this.usageMetrics.providers[normalized].dailyUsage[today]) {
+                this.usageMetrics.providers[normalized].dailyUsage[today] = 0;
+            }
+            this.usageMetrics.providers[normalized].dailyUsage[today]++;
+            this.usageMetrics.providers[normalized].totalUsage++;
+            if (this.usageMetrics.providers[normalized].totalUsage % 10 === 0) {
+                this.saveMetrics();
+            }
+        }
+        catch (e) {
+            console.warn('trackProviderUsage failed:', e);
+        }
+    }
+    /**
      * Get usage metrics for admin dashboard
      * @returns {Object} The usage metrics for both API keys
      */
@@ -259,6 +307,10 @@ class GoogleAIKeyManager {
                     dailyUsage: {},
                     totalUsage: 0,
                     lastReset: null
+                },
+                providers: {
+                    gemini: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 },
+                    mistral: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 }
                 }
             };
         }
@@ -267,14 +319,22 @@ class GoogleAIKeyManager {
             this.usageMetrics.free = { dailyUsage: {}, totalUsage: 0 };
         if (!this.usageMetrics.paid)
             this.usageMetrics.paid = { dailyUsage: {}, totalUsage: 0 };
+        if (!this.usageMetrics.providers)
+            this.usageMetrics.providers = { gemini: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 }, mistral: { dailyUsage: {}, totalUsage: 0, currentDayUsage: 0 } };
         // Ensure dailyUsage properties exist
         if (!this.usageMetrics.free.dailyUsage)
             this.usageMetrics.free.dailyUsage = {};
         if (!this.usageMetrics.paid.dailyUsage)
             this.usageMetrics.paid.dailyUsage = {};
+        if (!this.usageMetrics.providers.gemini.dailyUsage)
+            this.usageMetrics.providers.gemini.dailyUsage = {};
+        if (!this.usageMetrics.providers.mistral.dailyUsage)
+            this.usageMetrics.providers.mistral.dailyUsage = {};
         // Get current day usage with defaults
         const freeDayUsage = this.usageMetrics.free.dailyUsage[currentDay] || 0;
         const paidDayUsage = this.usageMetrics.paid.dailyUsage[currentDay] || 0;
+        const geminiDayUsage = this.usageMetrics.providers.gemini.dailyUsage[currentDay] || 0;
+        const mistralDayUsage = this.usageMetrics.providers.mistral.dailyUsage[currentDay] || 0;
         return {
             free: {
                 dailyUsage: this.usageMetrics.free.dailyUsage || {},
@@ -286,6 +346,18 @@ class GoogleAIKeyManager {
                 dailyUsage: this.usageMetrics.paid.dailyUsage || {},
                 totalUsage: this.usageMetrics.paid.totalUsage || 0,
                 currentDayUsage: paidDayUsage
+            },
+            providers: {
+                gemini: {
+                    dailyUsage: this.usageMetrics.providers.gemini.dailyUsage || {},
+                    totalUsage: this.usageMetrics.providers.gemini.totalUsage || 0,
+                    currentDayUsage: geminiDayUsage
+                },
+                mistral: {
+                    dailyUsage: this.usageMetrics.providers.mistral.dailyUsage || {},
+                    totalUsage: this.usageMetrics.providers.mistral.totalUsage || 0,
+                    currentDayUsage: mistralDayUsage
+                }
             },
             summary: {
                 currentDay: currentDay,

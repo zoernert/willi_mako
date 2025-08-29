@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatConfigurationService = exports.SearchType = void 0;
 const database_1 = require("../utils/database");
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 const qdrant_1 = require("./qdrant");
 const m2cRoleService_1 = __importDefault(require("./m2cRoleService"));
 var SearchType;
@@ -70,7 +70,7 @@ class ChatConfigurationService {
                     prompt: step === null || step === void 0 ? void 0 : step.prompt
                 });
                 if (config.config.vectorSearch.useQueryExpansion) {
-                    searchQueries = await gemini_1.default.generateSearchQueries(query);
+                    searchQueries = await llmProvider_1.default.generateSearchQueries(query);
                     searchQueries = searchQueries.slice(0, config.config.vectorSearch.maxQueries);
                 }
                 processingSteps[processingSteps.length - 1].endTime = Date.now();
@@ -200,12 +200,12 @@ class ChatConfigurationService {
                                     }
                                 };
                             });
-                            contextUsed = await gemini_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
+                            contextUsed = await llmProvider_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
                         }
                         else {
                             // Standard-Kontext-Synthese
                             if (config.config.contextSynthesis.enabled) {
-                                contextUsed = await gemini_1.default.synthesizeContext(query, uniqueResults);
+                                contextUsed = await llmProvider_1.default.synthesizeContext(query, uniqueResults);
                             }
                             else {
                                 // Extract content from results, prioritizing relevant information
@@ -352,7 +352,7 @@ class ChatConfigurationService {
                     enhancedContext = roleContext + '\n\n' + contextUsed;
                     roleContextAppliedToContext = true;
                 }
-                response = await gemini_1.default.generateResponse(messages, enhancedContext, userPreferences, false, contextMode);
+                response = await llmProvider_1.default.generateResponse(messages, enhancedContext, userPreferences, false, contextMode);
                 processingSteps[processingSteps.length - 1].endTime = Date.now();
                 processingSteps[processingSteps.length - 1].output = {
                     responseLength: response.length,
@@ -375,7 +375,7 @@ class ChatConfigurationService {
                 // Fallback to standard generation
                 const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
                 messages.push({ role: 'user', content: query });
-                response = await gemini_1.default.generateResponse(messages, contextUsed, userPreferences);
+                response = await llmProvider_1.default.generateResponse(messages, contextUsed, userPreferences);
             }
             // Step 5: Response Validation (if enabled)
             if (this.isStepEnabled(config, 'response_validation')) {
@@ -421,7 +421,7 @@ class ChatConfigurationService {
             // Fallback to standard generation
             const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
             messages.push({ role: 'user', content: query });
-            const fallbackResponse = await gemini_1.default.generateResponse(messages, '', userPreferences);
+            const fallbackResponse = await llmProvider_1.default.generateResponse(messages, '', userPreferences);
             return {
                 response: fallbackResponse,
                 contextUsed: '',

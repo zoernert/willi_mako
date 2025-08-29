@@ -1,12 +1,10 @@
 import { Pool } from 'pg';
 import { Quiz, QuizQuestion, UserQuizAttempt, UserAnswer, QuizResult, QuizSuggestion } from '../types/quiz';
-import { GeminiService } from './gemini';
 import { GamificationService } from './gamification';
 export declare class QuizService {
     private db;
-    private geminiService;
     private gamificationService;
-    constructor(db: Pool, geminiService: GeminiService, gamificationService: GamificationService);
+    constructor(db: Pool, gamificationService: GamificationService);
     createQuiz(quiz: Omit<Quiz, 'id' | 'created_at' | 'updated_at'>): Promise<Quiz>;
     getQuizById(id: string): Promise<Quiz | null>;
     getAvailableQuizzes(userId: string, limit?: number): Promise<Quiz[]>;

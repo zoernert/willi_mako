@@ -8,7 +8,7 @@ exports.messageAnalyzerRoutes = void 0;
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const message_analyzer_service_1 = require("../modules/message-analyzer/services/message-analyzer.service");
-const gemini_1 = __importDefault(require("../services/gemini"));
+const llmProvider_1 = __importDefault(require("../services/llmProvider"));
 const errors_1 = require("../utils/errors");
 const router = (0, express_1.Router)();
 exports.messageAnalyzerRoutes = router;
@@ -42,7 +42,7 @@ Bitte erkläre:
 3. Welche Akteure betroffen sind
 4. Was die praktischen Auswirkungen sind
 5. Eventuell vorhandene Besonderheiten oder Auffälligkeiten`;
-        const explanation = await gemini_1.default.generateText(prompt);
+        const explanation = await llmProvider_1.default.generateText(prompt);
         res.status(200).json({
             success: true,
             data: {

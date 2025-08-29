@@ -1,14 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.quizService = exports.QuizService = void 0;
 const database_1 = require("../../utils/database");
 const errors_1 = require("../../utils/errors");
-const gemini_1 = require("../../services/gemini");
 const gamification_service_1 = require("./gamification.service");
 const qdrant_1 = require("../../services/qdrant");
+const llmProvider_1 = __importDefault(require("../../services/llmProvider"));
 class QuizService {
     constructor() {
-        this.geminiService = new gemini_1.GeminiService();
+        // Removed direct Gemini dependency to enable provider switching
         this.gamificationService = new gamification_service_1.GamificationService();
         this.qdrantService = new qdrant_1.QdrantService();
     }
@@ -361,8 +364,8 @@ class QuizService {
             throw new errors_1.AppError(`No content found for topic: ${topic}`, 404);
         }
         const sourceContent = searchResults.map((r) => r.payload.text);
-        // 2. Generate questions using Gemini
-        const generatedQuestionsRaw = await this.geminiService.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);
+        // 2. Generate questions using selected LLM provider
+        const generatedQuestionsRaw = await llmProvider_1.default.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);
         // 3. Map the raw questions to the QuizQuestion format
         const generatedQuestions = generatedQuestionsRaw.map(q => ({
             question_text: q.question,

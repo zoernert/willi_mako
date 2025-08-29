@@ -1,6 +1,5 @@
 import { IMessageAnalyzerService, AnalysisResult } from '../interfaces/message-analyzer.interface';
 export declare class MessageAnalyzerService implements IMessageAnalyzerService {
-    private geminiService;
     private qdrantService;
     private codeLookupService;
     constructor();

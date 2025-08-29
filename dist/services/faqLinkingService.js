@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.faqLinkingService = exports.FAQLinkingService = void 0;
 const database_1 = __importDefault(require("../config/database"));
-const gemini_1 = __importDefault(require("./gemini"));
+const llmProvider_1 = __importDefault(require("./llmProvider"));
 const aiResponseUtils_1 = require("../utils/aiResponseUtils");
 class FAQLinkingService {
     /**
@@ -201,7 +201,7 @@ Gib nur die 5-10 wichtigsten Fachbegriffe zurück, getrennt durch Kommas.
 Beispiel: Marktkommunikation, Netzbetreiber, BDEW, EDIFACT, Messstellenbetreiber, Bilanzkreis, Marktlokation
 
 ANTWORT (nur Begriffe, keine Erklärungen):`;
-            const result = await gemini_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt);
             console.log('Raw semantic terms AI response:', result.substring(0, 100) + '...');
             // Parse die Antwort und extrahiere die Begriffe
             return result
@@ -269,7 +269,7 @@ Antworte ausschließlich mit sauberem JSON ohne Markdown-Formatierung oder Code-
 }
 
 WICHTIG: Keine \`\`\`json oder \`\`\` Blöcke verwenden, nur das reine JSON-Objekt!`;
-            const result = await gemini_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt);
             console.log('Raw semantic similarity AI response:', result.substring(0, 200) + '...');
             const parsed = this.parseAIJsonResponse(result);
             if (!parsed) {

@@ -1,6 +1,5 @@
 import { Quiz, QuizQuestion, UserQuizAttempt, UserAnswer, QuizResult, QuizSuggestion } from './quiz.interface';
 export declare class QuizService {
-    private geminiService;
     private gamificationService;
     private qdrantService;
     constructor();

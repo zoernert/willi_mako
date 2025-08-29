@@ -5,14 +5,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageAnalyzerService = void 0;
 const edifact_definitions_1 = require("./edifact-definitions");
-const gemini_1 = require("../../../services/gemini");
+const llmProvider_1 = __importDefault(require("../../../services/llmProvider"));
 const qdrant_1 = require("../../../services/qdrant");
 const database_1 = __importDefault(require("../../../config/database"));
 const postgres_codelookup_repository_1 = require("../../codelookup/repositories/postgres-codelookup.repository");
 const codelookup_service_1 = require("../../codelookup/services/codelookup.service");
 class MessageAnalyzerService {
     constructor() {
-        this.geminiService = new gemini_1.GeminiService();
         this.qdrantService = new qdrant_1.QdrantService();
         // Initialize code lookup service
         const codeLookupRepository = new postgres_codelookup_repository_1.PostgresCodeLookupRepository(database_1.default);
@@ -62,7 +61,7 @@ class MessageAnalyzerService {
     async analyzeXml(message) {
         // This is where XML parsing and analysis would be implemented.
         // For now, we'll return a placeholder response.
-        const summary = await this.geminiService.generateText(`Bitte fasse die folgende XML-Nachricht zusammen und prüfe sie auf Plausibilität im Kontext der deutschen Energiemarkt-Kommunikation. Antworte auf Deutsch:\n\n${message}`);
+        const summary = await llmProvider_1.default.generateText(`Bitte fasse die folgende XML-Nachricht zusammen und prüfe sie auf Plausibilität im Kontext der deutschen Energiemarkt-Kommunikation. Antworte auf Deutsch:\n\n${message}`);
         return {
             summary: summary,
             plausibilityChecks: ["XML-Plausibilitätsprüfung noch nicht implementiert."],
@@ -87,7 +86,7 @@ class MessageAnalyzerService {
             console.log('🔍 Building analysis prompt...');
             const prompt = this.buildEnrichedAnalysisPrompt(parsedMessage, enrichedContext);
             console.log('🔍 Calling Gemini API...');
-            const rawAnalysis = await this.geminiService.generateText(prompt);
+            const rawAnalysis = await llmProvider_1.default.generateText(prompt);
             console.log('✅ Gemini response length:', (rawAnalysis === null || rawAnalysis === void 0 ? void 0 : rawAnalysis.length) || 0);
             if (!rawAnalysis || rawAnalysis.trim().length === 0) {
                 console.warn('⚠️ Empty response from Gemini API');
@@ -518,7 +517,7 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
         PRÜFUNG: [Geschäftslogik-Bewertung]
         PRÜFUNG: [Empfehlungen und Hinweise]
       `;
-            const rawAnalysis = await this.geminiService.generateText(prompt);
+            const rawAnalysis = await llmProvider_1.default.generateText(prompt);
             const { summary, plausibilityChecks } = this.parseAnalysisResponse(rawAnalysis);
             return {
                 summary,

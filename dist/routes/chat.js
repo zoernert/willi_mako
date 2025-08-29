@@ -40,7 +40,7 @@ const express_1 = require("express");
 const uuid_1 = require("uuid");
 const errorHandler_1 = require("../middleware/errorHandler");
 const database_1 = __importDefault(require("../config/database"));
-const gemini_1 = __importDefault(require("../services/gemini"));
+const llmProvider_1 = __importDefault(require("../services/llmProvider"));
 const qdrant_1 = require("../services/qdrant");
 const flip_mode_1 = __importDefault(require("../services/flip-mode"));
 const contextManager_1 = __importDefault(require("../services/contextManager"));
@@ -82,7 +82,7 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
         }).join('\n\n');
         console.log('🔍 CS30: Generating response with context length:', cs30Context.length);
         // Generate cs30-specific response
-        const cs30Response = await gemini_1.default.generateResponse([{ role: 'user', content: userQuery }], cs30Context, {}, false // not enhanced query
+        const cs30Response = await llmProvider_1.default.generateResponse([{ role: 'user', content: userQuery }], cs30Context, {}, false // not enhanced query
         );
         console.log(`✅ CS30: Generated response with ${cs30Results.length} sources`);
         return {
@@ -131,7 +131,7 @@ class AdvancedRetrieval {
             );
             if (optimizedResults.length === 0) {
                 // Fallback zur normalen Suche
-                const searchQueries = await gemini_1.default.generateSearchQueries(query);
+                const searchQueries = await llmProvider_1.default.generateSearchQueries(query);
                 const allResults = [];
                 for (const q of searchQueries) {
                     const results = await qdrantService.search('system', q, limit);
@@ -142,7 +142,7 @@ class AdvancedRetrieval {
                     return [];
                 }
                 // Context Synthesis für Fallback
-                const synthesizedContext = await gemini_1.default.synthesizeContext(query, uniqueResults);
+                const synthesizedContext = await llmProvider_1.default.synthesizeContext(query, uniqueResults);
                 return [
                     {
                         payload: {
@@ -158,7 +158,7 @@ class AdvancedRetrieval {
             // 3. Intelligente Post-Processing basierend auf chunk_type
             const contextualizedResults = this.enhanceResultsWithChunkTypeContext(uniqueResults);
             // 4. Context Synthesis mit verbessertem Kontext
-            const synthesizedContext = await gemini_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
+            const synthesizedContext = await llmProvider_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
             // Return the synthesized context in the expected format
             return [
                 {
@@ -372,7 +372,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
             // Fallback to simple response
             const fallbackContext = await retrieval.getContextualCompressedResults(content, userPreferences.rows[0] || {}, 5);
             const contextText = fallbackContext.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
-            const fallbackResponse = await gemini_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, userPreferences.rows[0] || {});
+            const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, userPreferences.rows[0] || {});
             reasoningResult = {
                 response: fallbackResponse,
                 reasoningSteps: [{
@@ -430,7 +430,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
             else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
                 contextMode = 'system-only';
             }
-            aiResponse = await gemini_1.default.generateResponseWithUserContext(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), reasoningResult.response, // Use reasoning result as enhanced context
+            aiResponse = await llmProvider_1.default.generateResponseWithUserContext(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), reasoningResult.response, // Use reasoning result as enhanced context
             userContext.userDocuments, userContext.userNotes, userPreferences.rows[0] || {}, contextMode);
             responseMetadata = {
                 ...responseMetadata,
@@ -463,7 +463,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     let updatedChatTitle = null;
     if (parseInt(messageCountResult.rows[0].count) === 1) {
         try {
-            const generatedTitle = await gemini_1.default.generateChatTitle(userMessage.rows[0].content, aiResponse);
+            const generatedTitle = await llmProvider_1.default.generateChatTitle(userMessage.rows[0].content, aiResponse);
             await database_1.default.query('UPDATE chats SET title = $1 WHERE id = $2', [generatedTitle, chatId]);
             updatedChatTitle = generatedTitle;
         }
@@ -602,7 +602,7 @@ router.post('/chats/:chatId/generate', (0, errorHandler_1.asyncHandler)(async (r
     // Add the enhanced query as the current user turn
     messagesForGeneration.push({ role: 'user', content: enhancedQuery });
     // Generate enhanced AI response
-    const aiResponse = await gemini_1.default.generateResponse(messagesForGeneration, context, userPreferences.rows[0] || {}, true // isEnhancedQuery = true
+    const aiResponse = await llmProvider_1.default.generateResponse(messagesForGeneration, context, userPreferences.rows[0] || {}, true // isEnhancedQuery = true
     );
     // Save AI response
     const assistantMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', aiResponse, JSON.stringify({
