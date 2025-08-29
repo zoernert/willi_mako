@@ -1,5 +1,5 @@
 import { DatabaseHelper } from '../utils/database';
-import geminiService from './gemini';
+import llm from './llmProvider';
 import { QdrantService } from './qdrant';
 import m2cRoleService from './m2cRoleService';
 
@@ -120,7 +120,7 @@ export class ChatConfigurationService {
         });
 
         if (config.config.vectorSearch.useQueryExpansion) {
-          searchQueries = await geminiService.generateSearchQueries(query);
+          searchQueries = await llm.generateSearchQueries(query);
           searchQueries = searchQueries.slice(0, config.config.vectorSearch.maxQueries);
         }
 
@@ -267,11 +267,11 @@ export class ChatConfigurationService {
                 };
               });
 
-              contextUsed = await geminiService.synthesizeContextWithChunkTypes(query, contextualizedResults);
+              contextUsed = await llm.synthesizeContextWithChunkTypes(query, contextualizedResults);
             } else {
               // Standard-Kontext-Synthese
               if (config.config.contextSynthesis.enabled) {
-                contextUsed = await geminiService.synthesizeContext(query, uniqueResults);
+                contextUsed = await llm.synthesizeContext(query, uniqueResults);
               } else {
                 // Extract content from results, prioritizing relevant information
                 const relevantContent = uniqueResults.map((r: any) => {
@@ -426,7 +426,7 @@ export class ChatConfigurationService {
           roleContextAppliedToContext = true;
         }
 
-        response = await geminiService.generateResponse(
+        response = await llm.generateResponse(
           messages,
           enhancedContext,
           userPreferences,
@@ -456,7 +456,7 @@ export class ChatConfigurationService {
         // Fallback to standard generation
         const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
         messages.push({ role: 'user', content: query });
-        response = await geminiService.generateResponse(messages, contextUsed, userPreferences);
+        response = await llm.generateResponse(messages, contextUsed, userPreferences);
       }
 
       // Step 5: Response Validation (if enabled)
@@ -509,7 +509,7 @@ export class ChatConfigurationService {
       // Fallback to standard generation
       const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
       messages.push({ role: 'user', content: query });
-      const fallbackResponse = await geminiService.generateResponse(messages, '', userPreferences);
+      const fallbackResponse = await llm.generateResponse(messages, '', userPreferences);
       
       return {
         response: fallbackResponse,

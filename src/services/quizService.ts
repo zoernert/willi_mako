@@ -1,16 +1,14 @@
 import { Pool } from 'pg';
 import { Quiz, QuizQuestion, UserQuizAttempt, UserAnswer, QuizResult, QuizSuggestion } from '../types/quiz';
-import { GeminiService } from './gemini';
 import { GamificationService } from './gamification';
+import llm from './llmProvider';
 
 export class QuizService {
   private db: Pool;
-  private geminiService: GeminiService;
   private gamificationService: GamificationService;
 
-  constructor(db: Pool, geminiService: GeminiService, gamificationService: GamificationService) {
+  constructor(db: Pool, gamificationService: GamificationService) {
     this.db = db;
-    this.geminiService = geminiService;
     this.gamificationService = gamificationService;
   }
 
@@ -192,7 +190,7 @@ export class QuizService {
           await this.delay(1000); // 1 second delay between questions
         }
         
-        const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(
+        const generatedQuestion = await llm.generateMultipleChoiceQuestion(
           enhancedContext,
           difficulty,
           topicArea || 'Allgemein'
@@ -244,7 +242,7 @@ export class QuizService {
       try {
         if (!chat.answer) continue; // Skip if no assistant response
         
-        const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(
+        const generatedQuestion = await llm.generateMultipleChoiceQuestion(
           `Titel: ${chat.title}\nFrage: ${chat.question}\nAntwort: ${chat.answer}`,
           'medium',
           'Persönlich'
@@ -871,7 +869,7 @@ export class QuizService {
         Antworten Sie nur mit "JA" oder "NEIN" und einer kurzen Begründung (max. 20 Wörter).
       `;
       
-      const response = await this.geminiService.generateText(validationPrompt);
+      const response = await llm.generateText(validationPrompt);
       const isRelevant = response.toUpperCase().includes('JA');
       
       console.log(`LLM Validation - Topic: ${topicArea}, FAQ: ${faq.title}, Relevant: ${isRelevant}, Response: ${response.substring(0, 100)}...`);
@@ -899,7 +897,7 @@ export class QuizService {
         - Für "EDI Nachrichten im Energiebereich" -> "EDI, Energiebereich, Nachrichten"
       `;
       
-      const topicKeywords = await this.geminiService.generateText(topicExtractionPrompt);
+      const topicKeywords = await llm.generateText(topicExtractionPrompt);
       const extractedTopics = topicKeywords.split(',').map(t => t.trim()).filter(t => t.length > 0);
       
       console.log(`Extracted topics for quiz "${title}": ${extractedTopics.join(', ')}`);
@@ -971,7 +969,7 @@ export class QuizService {
             4. Eindeutig beantwortbar ist
           `;
           
-          const generatedQuestion = await this.geminiService.generateMultipleChoiceQuestion(
+          const generatedQuestion = await llm.generateMultipleChoiceQuestion(
             enhancedContext,
             difficulty,
             title

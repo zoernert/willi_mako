@@ -28,6 +28,7 @@ import {
   validateCreateCommentRequest
 } from '../utils/communityValidation';
 import { isFeatureEnabled, getCommunityConfig } from '../utils/featureFlags';
+import llm from './llmProvider';
 
 export class CommunityService {
   private repository: CommunityRepository;
@@ -767,13 +768,10 @@ export class CommunityService {
     request: CreateInitiativeRequest
   ): Promise<string> {
     try {
-      // Import Gemini service dynamically to avoid circular dependencies
-      const geminiService = (await import('./gemini')).default;
-      
       const promptText = this.buildInitiativePrompt(thread, request);
       // Convert prompt to message format
       const messages = [{ role: 'user' as const, content: promptText }];
-      const response = await geminiService.generateResponse(messages);
+      const response = await llm.generateResponse(messages);
       
       return response.trim();
     } catch (error) {

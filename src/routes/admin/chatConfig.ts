@@ -5,7 +5,8 @@ import { ResponseUtils } from '../../utils/response';
 import { AppError } from '../../utils/errors';
 import { DatabaseHelper } from '../../utils/database';
 import { v4 as uuidv4 } from 'uuid';
-import geminiService from '../../services/gemini';
+// import geminiService from '../../services/gemini';
+import llm from '../../services/llmProvider';
 import { QdrantService } from '../../services/qdrant';
 import { ContextManager } from '../../services/contextManager';
 import chatConfigurationService from '../../services/chatConfigurationService';
@@ -615,7 +616,7 @@ async function executeTestWithConfiguration(
         
         try {
           if (config.vectorSearch.useQueryExpansion) {
-            searchQueries = await geminiService.generateSearchQueries(currentQuery);
+            searchQueries = await llm.generateSearchQueries(currentQuery);
             searchQueries = searchQueries.slice(0, config.vectorSearch.maxQueries);
           }
 
@@ -720,7 +721,7 @@ async function executeTestWithConfiguration(
 
                 if (config.contextSynthesis.enabled && rawContext.length > config.contextSynthesis.maxLength) {
                   // Synthesize context for complex queries
-                  contextUsed = await geminiService.synthesizeContext(currentQuery, uniqueResults);
+                  contextUsed = await llm.synthesizeContext(currentQuery, uniqueResults);
                   
                   // Ensure synthesis produced meaningful content
                   if (contextUsed.length < 200) {
@@ -808,7 +809,7 @@ async function executeTestWithConfiguration(
         try {
           const messages = [{ role: 'user' as const, content: currentQuery }];
           
-          generatedResponse = await geminiService.generateResponse(
+          generatedResponse = await llm.generateResponse(
             messages,
             contextUsed,
             {},
@@ -864,7 +865,7 @@ async function executeTestWithConfiguration(
         const stepStartTime = Date.now();
         
         try {
-          let validationIssues = [];
+          let validationIssues: string[] = [];
 
           if (config.qualityChecks.enabled) {
             if (generatedResponse.length < config.qualityChecks.minResponseLength) {

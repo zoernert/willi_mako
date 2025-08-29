@@ -1,5 +1,3 @@
-import geminiService from './gemini';
-import { QdrantService } from './qdrant';
 import UserPreferencesService from '../modules/user/user.service';
 import { FlipModePreferences } from '../modules/user/user.types';
 

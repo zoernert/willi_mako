@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import pool from '../config/database';
-import geminiService from '../services/gemini';
+import llm from '../services/llmProvider';
 import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
@@ -59,7 +59,7 @@ async function generateCs30AdditionalResponse(
     console.log('🔍 CS30: Generating response with context length:', cs30Context.length);
     
     // Generate cs30-specific response
-    const cs30Response = await geminiService.generateResponse(
+    const cs30Response = await llm.generateResponse(
       [{ role: 'user', content: userQuery }],
       cs30Context,
       {},
@@ -117,8 +117,8 @@ class AdvancedRetrieval {
 
       if (optimizedResults.length === 0) {
         // Fallback zur normalen Suche
-        const searchQueries = await geminiService.generateSearchQueries(query);
-        const allResults = [];
+        const searchQueries = await llm.generateSearchQueries(query);
+        const allResults: any[] = [];
         for (const q of searchQueries) {
           const results = await qdrantService.search('system', q, limit);
           allResults.push(...results);
@@ -130,7 +130,7 @@ class AdvancedRetrieval {
         }
 
         // Context Synthesis für Fallback
-        const synthesizedContext = await geminiService.synthesizeContext(query, uniqueResults);
+        const synthesizedContext = await llm.synthesizeContext(query, uniqueResults);
         return [
           {
             payload: {
@@ -149,7 +149,7 @@ class AdvancedRetrieval {
       const contextualizedResults = this.enhanceResultsWithChunkTypeContext(uniqueResults);
 
       // 4. Context Synthesis mit verbessertem Kontext
-      const synthesizedContext = await geminiService.synthesizeContextWithChunkTypes(query, contextualizedResults);
+      const synthesizedContext = await llm.synthesizeContextWithChunkTypes(query, contextualizedResults);
 
       // Return the synthesized context in the expected format
       return [
@@ -427,7 +427,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
         5
       );
       const contextText = fallbackContext.map(r => r.payload?.text || '').join('\n');
-      const fallbackResponse = await geminiService.generateResponse(
+      const fallbackResponse = await llm.generateResponse(
         previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
         contextText,
         userPreferences.rows[0] || {}
@@ -518,7 +518,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
         contextMode = 'system-only';
       }
 
-      aiResponse = await geminiService.generateResponseWithUserContext(
+      aiResponse = await llm.generateResponseWithUserContext(
         previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
         reasoningResult.response, // Use reasoning result as enhanced context
         userContext.userDocuments,
@@ -564,7 +564,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   let updatedChatTitle = null;
   if (parseInt(messageCountResult.rows[0].count) === 1) {
     try {
-      const generatedTitle = await geminiService.generateChatTitle(userMessage.rows[0].content, aiResponse);
+      const generatedTitle = await llm.generateChatTitle(userMessage.rows[0].content, aiResponse);
       await pool.query('UPDATE chats SET title = $1 WHERE id = $2', [generatedTitle, chatId]);
       updatedChatTitle = generatedTitle;
     } catch (error) {
@@ -738,7 +738,7 @@ router.post('/chats/:chatId/generate', asyncHandler(async (req: AuthenticatedReq
     messagesForGeneration.push({ role: 'user', content: enhancedQuery });
 
     // Generate enhanced AI response
-    const aiResponse = await geminiService.generateResponse(
+    const aiResponse = await llm.generateResponse(
         messagesForGeneration,
         context,
         userPreferences.rows[0] || {},
@@ -807,7 +807,7 @@ router.put('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res:
   if (result.rows.length === 0) {
     throw new AppError('Chat not found', 404);
   }
-  
+
   res.json({
     success: true,
     data: result.rows[0]

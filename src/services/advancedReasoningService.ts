@@ -1,5 +1,5 @@
 import { QdrantService } from './qdrant';
-import geminiService from './gemini';
+import llm from './llmProvider';
 
 export interface ReasoningStep {
   step: string;
@@ -101,7 +101,7 @@ class AdvancedReasoningService {
           Formatiere die Antwort als JSON-Objekt.
         `;
         
-        const intentAnalysisResult = await geminiService.generateStructuredOutput(
+        const intentAnalysisResult = await llm.generateStructuredOutput(
           intentAnalysisPrompt,
           userPreferences
         );
@@ -118,7 +118,7 @@ class AdvancedReasoningService {
           Formatiere die Antwort als JSON-Array mit Strings.
         `;
         
-        enhancedSearchQueries = await geminiService.generateStructuredOutput(
+        enhancedSearchQueries = await llm.generateStructuredOutput(
           queryGenerationPrompt,
           userPreferences
         );
@@ -238,7 +238,7 @@ class AdvancedReasoningService {
       try {
         const fallbackResults = await this.qdrantService.search('system', query, 5);
         const contextText = fallbackResults.map(r => r.payload?.text || '').join('\n');
-        const fallbackResponse = await geminiService.generateResponse(
+        const fallbackResponse = await llm.generateResponse(
           previousMessages.concat([{ role: 'user', content: query }]),
           contextText,
           userPreferences
@@ -315,7 +315,7 @@ class AdvancedReasoningService {
     const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
     
     // Generate response directly
-    const response = await geminiService.generateResponse(
+    const response = await llm.generateResponse(
       previousMessages.concat([{ role: 'user', content: query }]),
       context,
       userPreferences
@@ -367,7 +367,7 @@ class AdvancedReasoningService {
     const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
     
     // Erste Antwortgenerierung
-    const initialResponse = await geminiService.generateResponse(
+    const initialResponse = await llm.generateResponse(
       previousMessages.concat([{ role: 'user', content: query }]),
       context,
       userPreferences
@@ -437,7 +437,7 @@ class AdvancedReasoningService {
       // Fast search query generation with reduced complexity
       const simplePrompt = `Generate 3 search terms for: "${query}". Return only JSON array like ["term1", "term2", "term3"]:`;
       
-      const result = await geminiService.generateText(simplePrompt);
+      const result = await llm.generateText(simplePrompt);
       
       // Extract JSON array from response
       let queries: string[] = [];
@@ -583,7 +583,7 @@ Required JSON format:
 }`;
 
     try {
-      const result = await geminiService.generateText(prompt);
+      const result = await llm.generateText(prompt);
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const analysis = JSON.parse(jsonMatch[0]);
@@ -628,7 +628,7 @@ Required JSON format:
       
       if (i === 0) {
         // First iteration: Generate initial response
-        currentResponse = await geminiService.generateResponse(
+        currentResponse = await llm.generateResponse(
           previousMessages.concat([{ role: 'user', content: query }]),
           context,
           userPreferences,
@@ -645,7 +645,7 @@ Additional Context: ${context.slice(0, 1000)}
 
 Provide an improved version:`;
 
-        currentResponse = await geminiService.generateText(refinementPrompt);
+        currentResponse = await llm.generateText(refinementPrompt);
         apiCallsUsed++;
       }
 
@@ -682,7 +682,7 @@ Consider: relevance, completeness, accuracy, clarity.
 Respond with only a number between 0 and 1:`;
 
     try {
-      const result = await geminiService.generateText(prompt);
+      const result = await llm.generateText(prompt);
       const score = parseFloat(result.trim());
       return isNaN(score) ? 0.7 : Math.max(0, Math.min(1, score));
     } catch (error) {

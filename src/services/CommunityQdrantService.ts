@@ -4,17 +4,21 @@
 // Datum: 2025-08-09
 
 import { QdrantClient } from '@qdrant/js-client-rest';
-import geminiService from './gemini';
+import { generateEmbedding as providerEmbedding } from './embeddingProvider';
+import { getEmbeddingDimension, getCollectionName } from './embeddingProvider';
 import { CommunityVectorPoint } from '../types/community';
 
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const QDRANT_COMMUNITY_COLLECTION = process.env.QDRANT_COMMUNITY_COLLECTION || 'community_content';
+const BASE_COMMUNITY_COLLECTION = process.env.QDRANT_COMMUNITY_COLLECTION || 'community_content';
 
 export class CommunityQdrantService {
   private client: QdrantClient;
+  private collectionName: string;
 
-  constructor(private collectionName: string = QDRANT_COMMUNITY_COLLECTION) {
+  constructor(collectionName: string = BASE_COMMUNITY_COLLECTION) {
+    // Always derive provider-aware collection name
+    this.collectionName = getCollectionName(collectionName);
     this.client = new QdrantClient({ 
       url: QDRANT_URL,
       apiKey: QDRANT_API_KEY,
@@ -35,7 +39,7 @@ export class CommunityQdrantService {
 
       if (!collectionExists) {
         await this.client.createCollection(this.collectionName, {
-          vectors: { size: 768, distance: 'Cosine' },
+          vectors: { size: getEmbeddingDimension(), distance: 'Cosine' },
         });
         console.log(`Community collection ${this.collectionName} created.`);
       }
@@ -49,7 +53,7 @@ export class CommunityQdrantService {
    */
   async upsertVector(content: string, payload: CommunityVectorPoint): Promise<void> {
     try {
-      const embedding = await geminiService.generateEmbedding(content);
+      const embedding = await providerEmbedding(content);
       
       // Create a deterministic UUID for this vector point using crypto
       const crypto = require('crypto');
@@ -90,7 +94,7 @@ export class CommunityQdrantService {
    */
   async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5): Promise<any[]> {
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       const results = await this.client.search(this.collectionName, {
         vector: queryVector,
         limit,
@@ -155,7 +159,7 @@ export class CommunityQdrantService {
     limit: number = 10
   ): Promise<any[]> {
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       
       const filterConditions: any[] = [];
 

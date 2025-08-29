@@ -1,17 +1,16 @@
 import { DatabaseHelper } from '../../utils/database';
 import { Quiz, QuizQuestion, UserQuizAttempt, UserAnswer, QuizResult, QuizSuggestion } from './quiz.interface';
 import { AppError } from '../../utils/errors';
-import { GeminiService } from '../../services/gemini';
 import { GamificationService } from './gamification.service';
 import { QdrantService } from '../../services/qdrant';
+import llm from '../../services/llmProvider';
 
 export class QuizService {
-  private geminiService: GeminiService;
   private gamificationService: GamificationService;
   private qdrantService: QdrantService;
 
   constructor() {
-    this.geminiService = new GeminiService();
+    // Removed direct Gemini dependency to enable provider switching
     this.gamificationService = new GamificationService();
     this.qdrantService = new QdrantService();
   }
@@ -422,8 +421,8 @@ export class QuizService {
     }
     const sourceContent = searchResults.map((r: any) => r.payload.text);
 
-    // 2. Generate questions using Gemini
-    const generatedQuestionsRaw = await this.geminiService.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);
+    // 2. Generate questions using selected LLM provider
+    const generatedQuestionsRaw = await llm.generateQuizQuestions(sourceContent, numQuestions, difficulty, topic);
 
     // 3. Map the raw questions to the QuizQuestion format
     const generatedQuestions: Omit<QuizQuestion, 'id' | 'quiz_id' | 'created_at'>[] = generatedQuestionsRaw.map(q => ({

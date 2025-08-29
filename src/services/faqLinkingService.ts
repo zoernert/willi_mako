@@ -1,6 +1,6 @@
 import pool from '../config/database';
 import { FAQ, FAQLink, LinkedTerm, CreateFAQLinkRequest } from '../types/faq';
-import geminiService from './gemini';
+import llm from './llmProvider';
 import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 export class FAQLinkingService {
@@ -241,7 +241,7 @@ Beispiel: Marktkommunikation, Netzbetreiber, BDEW, EDIFACT, Messstellenbetreiber
 
 ANTWORT (nur Begriffe, keine Erklärungen):`;
 
-      const result = await geminiService.generateText(prompt);
+      const result = await llm.generateText(prompt);
       console.log('Raw semantic terms AI response:', result.substring(0, 100) + '...');
       
       // Parse die Antwort und extrahiere die Begriffe
@@ -316,7 +316,7 @@ Antworte ausschließlich mit sauberem JSON ohne Markdown-Formatierung oder Code-
 
 WICHTIG: Keine \`\`\`json oder \`\`\` Blöcke verwenden, nur das reine JSON-Objekt!`;
 
-      const result = await geminiService.generateText(prompt);
+      const result = await llm.generateText(prompt);
       console.log('Raw semantic similarity AI response:', result.substring(0, 200) + '...');
       
       const parsed = this.parseAIJsonResponse(result);

@@ -9,7 +9,6 @@ import { CommunityService } from '../../services/CommunityService';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
 import { requireCommunityFeature } from '../../utils/featureFlags';
 import pool from '../../config/database';
-import geminiService from '../../services/gemini';
 
 const router = express.Router();
 

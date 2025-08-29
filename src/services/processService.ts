@@ -1,5 +1,5 @@
 import { QdrantService } from './qdrant';
-import geminiService from './gemini';
+import llm from './llmProvider';
 
 interface MermaidDiagram {
   id: string;
@@ -92,7 +92,7 @@ Beispiel-Output:
   ]
 }`;
 
-      const response = await geminiService.generateText(prompt);
+      const response = await llm.generateText(prompt);
       
       if (response && response.trim()) {
         try {
@@ -347,7 +347,7 @@ Erstelle eine prägnante Erklärung (2-3 Sätze), die:
 
 Antwort auf Deutsch:`;
 
-      const response = await geminiService.generateText(prompt);
+      const response = await llm.generateText(prompt);
       return response || 'Eine detaillierte Analyse der gefundenen Prozesse konnte nicht erstellt werden.';
     } catch (error) {
       console.error('Error generating process explanation:', error);
@@ -377,7 +377,7 @@ Verwende Fachbegriffe der Energiewirtschaft korrekt.
 
 Format: Einfache Liste ohne Nummerierung.`;
 
-      const response = await geminiService.generateText(prompt);
+      const response = await llm.generateText(prompt);
       
       if (response) {
         return response

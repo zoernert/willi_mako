@@ -40,7 +40,8 @@
     "timeline:worker": "npx tsx workers/timelineProcessor.ts",
     "timeline:worker:dev": "nodemon --exec \"npx tsx workers/timelineProcessor.ts\"",
     "timeline:migrate": "psql $DATABASE_URL -f migrations/timeline_system.sql",
-    "timeline:stats": "node -e \"require('./workers/timelineProcessor.ts').timelineProcessor.getQueueStats().then(console.log)\""
+    "timeline:stats": "node -e \"require('./workers/timelineProcessor.ts').timelineProcessor.getQueueStats().then(console.log)\"",
+    "reindex:providers": "npx tsx scripts/reindex-providers.ts"
   },
   "repository": {
     "type": "git",
@@ -56,6 +57,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@google/generative-ai": "^0.15.0",
+    "@mistralai/mistralai": "^0.4.0",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@qdrant/js-client-rest": "^1.15.0",
@@ -87,6 +89,7 @@
     "next": "15.4.5",
     "nodemailer": "^7.0.5",
     "notistack": "^3.0.2",
+    "openai": "^4.57.3",
     "pdf-parse": "^1.1.1",
     "pg": "^8.11.3",
     "puppeteer": "^24.16.2",

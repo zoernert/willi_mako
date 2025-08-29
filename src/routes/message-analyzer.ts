@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { MessageAnalyzerService } from '../modules/message-analyzer/services/message-analyzer.service';
-import geminiService from '../services/gemini';
+import llm from '../services/llmProvider';
 import { AppError } from '../utils/errors';
 
 const router = Router();
@@ -49,7 +49,7 @@ Bitte erkläre:
 4. Was die praktischen Auswirkungen sind
 5. Eventuell vorhandene Besonderheiten oder Auffälligkeiten`;
 
-      const explanation = await geminiService.generateText(prompt);
+      const explanation = await llm.generateText(prompt);
       
       res.status(200).json({ 
         success: true, 

@@ -1,7 +1,7 @@
 // src/modules/message-analyzer/services/message-analyzer.service.ts
 import { EdiSegment, IMessageAnalyzerService, AnalysisResult, ParsedEdiMessage } from '../interfaces/message-analyzer.interface';
 import { edifactSegmentDefinitions } from './edifact-definitions';
-import { GeminiService } from '../../../services/gemini';
+import llm from '../../../services/llmProvider';
 import { QdrantService } from '../../../services/qdrant';
 import { AppError } from '../../../utils/errors';
 import pool from '../../../config/database';
@@ -9,12 +9,10 @@ import { PostgresCodeLookupRepository } from '../../codelookup/repositories/post
 import { CodeLookupService } from '../../codelookup/services/codelookup.service';
 
 export class MessageAnalyzerService implements IMessageAnalyzerService {
-  private geminiService: GeminiService;
   private qdrantService: QdrantService;
   private codeLookupService: CodeLookupService;
 
   constructor() {
-    this.geminiService = new GeminiService();
     this.qdrantService = new QdrantService();
     
     // Initialize code lookup service
@@ -70,7 +68,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
   private async analyzeXml(message: string): Promise<AnalysisResult> {
     // This is where XML parsing and analysis would be implemented.
     // For now, we'll return a placeholder response.
-    const summary = await this.geminiService.generateText(
+    const summary = await llm.generateText(
       `Bitte fasse die folgende XML-Nachricht zusammen und prüfe sie auf Plausibilität im Kontext der deutschen Energiemarkt-Kommunikation. Antworte auf Deutsch:\n\n${message}`
     );
 
@@ -105,7 +103,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       const prompt = this.buildEnrichedAnalysisPrompt(parsedMessage, enrichedContext);
       
       console.log('🔍 Calling Gemini API...');
-      const rawAnalysis = await this.geminiService.generateText(prompt);
+      const rawAnalysis = await llm.generateText(prompt);
       console.log('✅ Gemini response length:', rawAnalysis?.length || 0);
 
       if (!rawAnalysis || rawAnalysis.trim().length === 0) {
@@ -362,12 +360,12 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
       // Batch segments for more efficient queries
       const batchSize = 3;
-      const segmentBatches = [];
+      const segmentBatches: string[][] = [];
       for (let i = 0; i < uniqueSegments.length; i += batchSize) {
         segmentBatches.push(uniqueSegments.slice(i, i + batchSize));
       }
 
-      const batchPromises = segmentBatches.map(async (batch) => {
+      const batchPromises = segmentBatches.map(async (batch: string[]) => {
         const batchQuery = `EDIFACT ${batch.join(' ')} Segment Bedeutung deutsche Energiewirtschaft`;
         return this.qdrantService.searchByText(batchQuery, 2, 0.7);
       });
@@ -618,7 +616,7 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
         PRÜFUNG: [Empfehlungen und Hinweise]
       `;
 
-      const rawAnalysis = await this.geminiService.generateText(prompt);
+      const rawAnalysis = await llm.generateText(prompt);
       const { summary, plausibilityChecks } = this.parseAnalysisResponse(rawAnalysis);
 
       return {

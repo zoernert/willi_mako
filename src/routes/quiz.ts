@@ -3,15 +3,13 @@ import { Pool } from 'pg';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { QuizService } from '../services/quizService';
 import { GamificationService } from '../services/gamification';
-import { GeminiService } from '../services/gemini';
 import { UserAnswer } from '../types/quiz';
 
 const router = express.Router();
 
 export default function createQuizRoutes(db: Pool) {
-  const geminiService = new GeminiService();
   const gamificationService = new GamificationService(db);
-  const quizService = new QuizService(db, geminiService, gamificationService);
+  const quizService = new QuizService(db, gamificationService);
 
   // Get available quizzes
   router.get('/quizzes', authenticateToken, async (req: AuthenticatedRequest, res) => {

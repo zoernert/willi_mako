@@ -1,7 +1,7 @@
 import pool from '../config/database';
 import { WorkspaceService } from './workspaceService';
 import { NotesService } from './notesService';
-import geminiService from './gemini';
+import llm from './llmProvider';
 import { safeParseJsonResponse } from '../utils/aiResponseUtils';
 
 export interface UserContext {
@@ -261,7 +261,7 @@ Consider:
 - Is this a general question that wouldn't benefit from personal context?
 `;
 
-      const response = await geminiService.generateResponse(
+      const response = await llm.generateResponse(
         [{ role: 'user', content: prompt }],
         '',
         {},

@@ -1,12 +1,12 @@
 import pool from '../config/database';
 import { UserNote, CreateNoteData, UpdateNoteData, NoteFilters, SearchResult } from '../types/workspace';
-import { GeminiService } from './gemini';
+import llm from './llmProvider';
 
 export class NotesService {
-  private geminiService: GeminiService;
+  // Use provider-agnostic LLM via llmProvider
 
   constructor() {
-    this.geminiService = new GeminiService();
+    // no-op
   }
 
   /**
@@ -419,7 +419,7 @@ export class NotesService {
   private async generateTags(content: string, title?: string): Promise<string[]> {
     try {
       const text = title ? `${title}\n\n${content}` : content;
-      const tags = await this.geminiService.generateTagsForNote(text);
+      const tags = await llm.generateTagsForNote(text);
       return tags;
     } catch (error) {
       console.error('Error generating tags:', error);

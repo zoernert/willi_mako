@@ -2,7 +2,7 @@ import { Router, Response, Request, NextFunction } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, authenticateToken } from '../middleware/auth';
 import pool from '../config/database';
-import geminiService from '../services/gemini';
+import llm from '../services/llmProvider';
 import { QdrantService } from '../services/qdrant';
 import { faqLinkingService } from '../services/faqLinkingService';
 import { FAQ, FAQWithLinks, CreateFAQLinkRequest } from '../types/faq';
@@ -315,7 +315,7 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
   
   let faqContent;
   try {
-    faqContent = await geminiService.generateFAQContent(messages);
+    faqContent = await llm.generateFAQContent(messages);
     console.log('Generated FAQ content successfully');
     
     // Validate the FAQ content structure
@@ -484,7 +484,7 @@ router.put('/admin/faqs/:id', authenticateToken, requireAdminForFaq, asyncHandle
       }
       
       // Enhance FAQ with LLM using the search context
-      const enhancedFAQ = await geminiService.enhanceFAQWithContext(finalFAQData, searchContext);
+      const enhancedFAQ = await llm.enhanceFAQWithContext(finalFAQData, searchContext);
       finalFAQData = enhancedFAQ;
     } catch (error) {
       console.error('Error enhancing FAQ with context:', error);

@@ -1,13 +1,18 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { UserDocument } from '../types/workspace';
-import { v4 as uuidv4 } from 'uuid';
-import geminiService from './gemini';
 import { QueryAnalysisService, QueryAnalysisResult } from './queryAnalysisService';
+import { generateEmbedding as providerEmbedding, generateHypotheticalAnswer as providerHyde } from './embeddingProvider.ts';
+import { getCollectionName, getEmbeddingDimension, getEmbeddingProvider } from './embeddingProvider.ts';
 
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION || 'ewilli';
-// CR-CS30: Add cs30 collection constant
+
+// Provider selection and derived config (centralized via embeddingProvider)
+const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'ewilli';
+const QDRANT_COLLECTION_NAME = getCollectionName(BASE_COLLECTION);
+const COLLECTION_EMBED_DIM = getEmbeddingDimension();
+const EMBEDDING_PROVIDER = getEmbeddingProvider();
+// CR-CS30: Add cs30 collection constant (unchanged)
 const CS30_COLLECTION_NAME = process.env.CS30_COLLECTION || 'cs30';
 
 export class QdrantService {
@@ -31,6 +36,7 @@ export class QdrantService {
     // This can be configured via env variable
     this.hybridSearchSupported = process.env.QDRANT_HYBRID_SEARCH === 'true';
     console.log(`Hybrid search support: ${this.hybridSearchSupported ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`Embedding provider: ${EMBEDDING_PROVIDER.toUpperCase()} | Collection: ${QDRANT_COLLECTION_NAME}`);
   }
 
   // Static method for initialization
@@ -48,7 +54,7 @@ export class QdrantService {
 
       if (!collectionExists) {
         await client.createCollection(QDRANT_COLLECTION_NAME, {
-          vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
+          vectors: { size: COLLECTION_EMBED_DIM, distance: 'Cosine' },
         });
         console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
       }
@@ -65,7 +71,7 @@ export class QdrantService {
       checkCompatibility: false  // Bypass version compatibility check
     });
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       const results = await client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -87,7 +93,7 @@ export class QdrantService {
 
       if (!collectionExists) {
         await this.client.createCollection(QDRANT_COLLECTION_NAME, {
-          vectors: { size: 768, distance: 'Cosine' }, // Assuming embedding size of 768
+          vectors: { size: COLLECTION_EMBED_DIM, distance: 'Cosine' },
         });
         console.log(`Collection ${QDRANT_COLLECTION_NAME} created.`);
       }
@@ -115,7 +121,7 @@ export class QdrantService {
   }
 
   async upsertDocument(document: UserDocument, text: string) {
-    const embedding = await geminiService.generateEmbedding(text);
+    const embedding = await providerEmbedding(text);
 
     await this.client.upsert(QDRANT_COLLECTION_NAME, {
       wait: true,
@@ -151,7 +157,7 @@ export class QdrantService {
   }
 
   async search(userId: string, queryText: string, limit: number = 10) {
-    const queryVector = await geminiService.generateEmbedding(queryText);
+    const queryVector = await providerEmbedding(queryText);
 
     const results = await this.client.search(QDRANT_COLLECTION_NAME, {
       vector: queryVector,
@@ -174,7 +180,7 @@ export class QdrantService {
   // Instance method for searching by text (used in message-analyzer and quiz services)
   async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -197,7 +203,7 @@ export class QdrantService {
     chunkIndex: number
   ) {
     try {
-      const embedding = await geminiService.generateEmbedding(text);
+      const embedding = await providerEmbedding(text);
       await this.client.upsert(QDRANT_COLLECTION_NAME, {
         wait: true,
         points: [
@@ -342,7 +348,7 @@ export class QdrantService {
       let searchQuery = analysisResult.expandedQuery;
       if (useHyDE) {
         try {
-          const hypotheticalAnswer = await geminiService.generateHypotheticalAnswer(analysisResult.expandedQuery);
+          const hypotheticalAnswer = await providerHyde(analysisResult.expandedQuery);
           searchQuery = hypotheticalAnswer;
         } catch (error) {
           console.error('Error generating hypothetical answer, using expanded query:', error);
@@ -356,7 +362,7 @@ export class QdrantService {
       const filter = QueryAnalysisService.createQdrantFilter(analysisResult, latestVersions);
 
       // 5. Embedding generieren und suchen
-      const queryVector = await geminiService.generateEmbedding(searchQuery);
+      const queryVector = await providerEmbedding(searchQuery);
       
       const searchParams: any = {
         vector: queryVector,
@@ -414,7 +420,7 @@ export class QdrantService {
       // Combine all FAQ content for embedding
       const fullContent = `${title}\n\n${description}\n\n${context}\n\n${answer}\n\n${additionalInfo}`.trim();
       
-      const embedding = await geminiService.generateEmbedding(fullContent);
+      const embedding = await providerEmbedding(fullContent);
       
       await this.client.upsert(QDRANT_COLLECTION_NAME, {
         wait: true,
@@ -481,7 +487,7 @@ export class QdrantService {
   // Method for searching FAQs specifically
   async searchFAQs(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
@@ -509,7 +515,7 @@ export class QdrantService {
   // CR-CS30: Search in cs30 collection for additional context
   async searchCs30(query: string, limit: number = 3, scoreThreshold: number = 0.80): Promise<any[]> {
     try {
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       const results = await this.client.search(CS30_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -550,7 +556,7 @@ export class QdrantService {
       console.log(`🔍 Performing hybrid search with alpha=${alpha}`);
       
       // Generate embedding for the query
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       
       // Set up search parameters for hybrid search
       const searchParams: any = {
@@ -632,7 +638,7 @@ export class QdrantService {
       console.error('Error in hybrid search:', error);
       // Fall back to regular vector search
       console.log('Falling back to regular vector search');
-      const queryVector = await geminiService.generateEmbedding(query);
+      const queryVector = await providerEmbedding(query);
       const fallbackResults = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,

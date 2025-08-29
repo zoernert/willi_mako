@@ -1,22 +1,21 @@
-import geminiService from './gemini';
+import { generateEmbedding as providerEmbedding, getEmbeddingDimension } from './embeddingProvider';
 
 /**
- * Generates a vector embedding for the given text using Google's embedding model.
+ * Generates a vector embedding for the given text using the configured provider.
  * @param text The text to embed.
  * @returns A promise that resolves to a vector (an array of numbers).
  */
 export async function getEmbedding(text: string): Promise<number[]> {
   try {
-    // Use Google's embedding model via Gemini service
-    const embedding = await geminiService.generateEmbedding(text);
+    const embedding = await providerEmbedding(text);
     return embedding;
   } catch (error) {
     console.error('Error generating embedding:', error);
     
-    // Fallback to basic hash-based embedding
-    const EMBEDDING_DIMENSION = 768;
+    // Fallback to basic hash-based embedding with provider dimension
+    const DEFAULT_DIM = getEmbeddingDimension();
     const vector = Array.from(
-      { length: EMBEDDING_DIMENSION },
+      { length: DEFAULT_DIM },
       () => Math.random() * 2 - 1
     );
     
