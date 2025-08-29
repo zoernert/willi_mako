@@ -8,7 +8,12 @@ export declare class GeminiService {
     private currentModelIndex;
     private codeLookupService;
     private modelUsageCount;
+    private lastUsedModelName;
     constructor();
+    /**
+     * Get the last used Gemini model name (for diagnostics/metrics)
+     */
+    getLastUsedModel(): string | null;
     /**
      * Asynchronously initializes models using the googleAIKeyManager for efficient key usage
      * @param modelNames Array of model names to initialize

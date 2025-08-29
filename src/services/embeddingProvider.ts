@@ -50,7 +50,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     const txt = await resp.text();
     throw new Error(`Mistral embeddings HTTP ${resp.status}: ${txt}`);
   }
-  const json = await resp.json();
+  const json: any = await resp.json();
   const vec = json?.data?.[0]?.embedding as number[];
   if (!Array.isArray(vec)) throw new Error('Mistral embeddings response missing embedding');
   return vec;
@@ -97,7 +97,7 @@ export async function generateHypotheticalAnswer(query: string): Promise<string>
     console.warn(`Mistral chat HTTP ${resp.status}: ${txt}`);
     return query; // fallback: no HyDE
   }
-  const data = await resp.json();
+  const data: any = await resp.json();
   const content = data?.choices?.[0]?.message?.content;
   return typeof content === 'string' && content.trim() ? content.trim() : query;
 }

@@ -1,8 +1,8 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { UserDocument } from '../types/workspace';
 import { QueryAnalysisService, QueryAnalysisResult } from './queryAnalysisService';
-import { generateEmbedding as providerEmbedding, generateHypotheticalAnswer as providerHyde } from './embeddingProvider.ts';
-import { getCollectionName, getEmbeddingDimension, getEmbeddingProvider } from './embeddingProvider.ts';
+import { generateEmbedding as providerEmbedding, generateHypotheticalAnswer as providerHyde } from './embeddingProvider';
+import { getCollectionName, getEmbeddingDimension, getEmbeddingProvider } from './embeddingProvider';
 
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;

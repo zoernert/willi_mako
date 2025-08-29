@@ -17,6 +17,7 @@ class GeminiService {
     constructor() {
         this.currentModelIndex = 0;
         this.modelUsageCount = new Map();
+        this.lastUsedModelName = null; // Track last selected model
         // Initialize multiple models for load balancing (no lite models for better quality)
         const modelConfigs = [
             'gemini-2.0-flash', // 15 RPM
@@ -36,6 +37,12 @@ class GeminiService {
         this.initializeModels(modelConfigs).catch(err => {
             console.error('Failed to initialize models with key manager:', err);
         });
+    }
+    /**
+     * Get the last used Gemini model name (for diagnostics/metrics)
+     */
+    getLastUsedModel() {
+        return this.lastUsedModelName;
     }
     /**
      * Asynchronously initializes models using the googleAIKeyManager for efficient key usage
@@ -188,6 +195,8 @@ class GeminiService {
                 // Update the model's usage tracking
                 selectedModel.lastUsed = Date.now();
                 this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
+                // Track last used model for external diagnostics
+                this.lastUsedModelName = selectedModel.name;
                 // Prepare system prompt with context
                 const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
                 // Format conversation history for function calling

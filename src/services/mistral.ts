@@ -25,6 +25,13 @@ export class MistralService {
     }
   }
 
+  /**
+   * Return the model name used for the last/next request.
+   */
+  public getLastUsedModel(): string {
+    return CHAT_MODEL;
+  }
+
   private async chat(messages: { role: 'user' | 'assistant' | 'system'; content: string }[]): Promise<string> {
     ensureApiKey();
 

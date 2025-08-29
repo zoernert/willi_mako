@@ -1,6 +1,10 @@
 export declare class MistralService {
     private client;
     constructor();
+    /**
+     * Return the model name used for the last/next request.
+     */
+    getLastUsedModel(): string;
     private chat;
     generateResponse(messages: {
         role: 'user' | 'assistant';

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import pool from '../config/database';
-import llm from '../services/llmProvider';
+import llm, { getActiveLLMInfo } from '../services/llmProvider';
 import { QdrantService } from '../services/qdrant';
 import flipModeService from '../services/flip-mode';
 import contextManager from '../services/contextManager';
@@ -475,6 +475,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
       usedDetailedIntentAnalysis?: boolean;
       [key: string]: any;
     };
+    llmInfo?: { provider: 'gemini' | 'mistral'; model: string | null };
   } = { 
     contextSources: reasoningResult.reasoningSteps.filter((step: any) => step.step === 'context_analysis').length,
     userContextUsed: false,
@@ -492,7 +493,8 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     hybridSearchAlpha: reasoningResult.hybridSearchAlpha,
     assistantMetadata: {
       usedDetailedIntentAnalysis: contextSettings?.useDetailedIntentAnalysis === true
-    }
+    },
+    llmInfo: getActiveLLMInfo()
   };
 
   // Check if we need to enhance with user context (fallback to existing logic if needed)
@@ -533,7 +535,8 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
         contextReason: contextDecision.reason,
         userDocumentsUsed: userContext.userDocuments.length,
         userNotesUsed: userContext.userNotes.length,
-        contextSummary: userContext.contextSummary
+        contextSummary: userContext.contextSummary,
+        llmInfo: getActiveLLMInfo()
       };
     }
   }
@@ -752,6 +755,7 @@ router.post('/chats/:chatId/generate', asyncHandler(async (req: AuthenticatedReq
             contextSources: contextResults.length,
             enhancedQuery: true,
             originalQuery: originalQuery,
+            llmInfo: getActiveLLMInfo()
         })]
     );
 

@@ -82,10 +82,13 @@ export interface LLMInterface {
     additionalInfo: string;
     tags: string[];
   }>;
+
+  // Diagnostics
+  getLastUsedModel(): string | null;
 }
 
 function selected(): LLMInterface {
-  return getLLMProvider() === 'mistral' ? mistralService : (geminiService as unknown as LLMInterface);
+  return getLLMProvider() === 'mistral' ? (mistralService as unknown as LLMInterface) : (geminiService as unknown as LLMInterface);
 }
 
 const llm: LLMInterface = {
@@ -105,8 +108,17 @@ const llm: LLMInterface = {
   generateHypotheticalAnswer: (...args) => selected().generateHypotheticalAnswer(...args as Parameters<LLMInterface['generateHypotheticalAnswer']>),
   generateFAQContent: (...args) => selected().generateFAQContent(...args as Parameters<LLMInterface['generateFAQContent']>),
   enhanceFAQWithContext: (...args) => selected().enhanceFAQWithContext(...args as Parameters<LLMInterface['enhanceFAQWithContext']>),
+  getLastUsedModel: () => selected().getLastUsedModel(),
 };
 
 export function getActiveLLMProvider(): 'gemini' | 'mistral' { return getLLMProvider(); }
+export function getActiveLLMModel(): string | null {
+  return getLLMProvider() === 'mistral'
+    ? mistralService.getLastUsedModel()
+    : (geminiService as any).getLastUsedModel?.() ?? null;
+}
+export function getActiveLLMInfo(): { provider: 'gemini' | 'mistral'; model: string | null } {
+  return { provider: getActiveLLMProvider(), model: getActiveLLMModel() };
+}
 
 export default llm;

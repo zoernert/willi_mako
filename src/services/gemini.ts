@@ -21,6 +21,7 @@ export class GeminiService {
   private currentModelIndex = 0;
   private codeLookupService: CodeLookupService;
   private modelUsageCount = new Map<string, number>();
+  private lastUsedModelName: string | null = null; // Track last selected model
 
   constructor() {
     // Initialize multiple models for load balancing (no lite models for better quality)
@@ -50,13 +51,20 @@ export class GeminiService {
   }
 
   /**
+   * Get the last used Gemini model name (for diagnostics/metrics)
+   */
+  public getLastUsedModel(): string | null {
+    return this.lastUsedModelName;
+  }
+
+  /**
    * Asynchronously initializes models using the googleAIKeyManager for efficient key usage
    * @param modelNames Array of model names to initialize
    */
   private async initializeModels(modelNames: string[]): Promise<void> {
     try {
       // Create empty array to hold model configurations
-      const newModels = [];
+      const newModels: any[] = [];
       
       for (const modelName of modelNames) {
         // For each model, get a model instance from the key manager
@@ -224,6 +232,9 @@ export class GeminiService {
         // Update the model's usage tracking
         selectedModel.lastUsed = Date.now();
         this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
+        
+        // Track last used model for external diagnostics
+        this.lastUsedModelName = selectedModel.name;
         
         // Prepare system prompt with context
         const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
@@ -814,7 +825,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
     correctIndex: number;
     explanation: string;
   }[]> {
-    const questions = [];
+    const questions: { question: string; options: string[]; correctIndex: number; explanation: string }[] = [];
     
     for (let i = 0; i < Math.min(questionCount, sourceContent.length); i++) {
       try {

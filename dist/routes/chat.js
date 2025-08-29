@@ -40,7 +40,7 @@ const express_1 = require("express");
 const uuid_1 = require("uuid");
 const errorHandler_1 = require("../middleware/errorHandler");
 const database_1 = __importDefault(require("../config/database"));
-const llmProvider_1 = __importDefault(require("../services/llmProvider"));
+const llmProvider_1 = __importStar(require("../services/llmProvider"));
 const qdrant_1 = require("../services/qdrant");
 const flip_mode_1 = __importDefault(require("../services/flip-mode"));
 const contextManager_1 = __importDefault(require("../services/contextManager"));
@@ -410,7 +410,8 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         hybridSearchAlpha: reasoningResult.hybridSearchAlpha,
         assistantMetadata: {
             usedDetailedIntentAnalysis: (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.useDetailedIntentAnalysis) === true
-        }
+        },
+        llmInfo: (0, llmProvider_1.getActiveLLMInfo)()
     };
     // Check if we need to enhance with user context (fallback to existing logic if needed)
     let userContext = null;
@@ -438,7 +439,8 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                 contextReason: contextDecision.reason,
                 userDocumentsUsed: userContext.userDocuments.length,
                 userNotesUsed: userContext.userNotes.length,
-                contextSummary: userContext.contextSummary
+                contextSummary: userContext.contextSummary,
+                llmInfo: (0, llmProvider_1.getActiveLLMInfo)()
             };
         }
     }
@@ -609,6 +611,7 @@ router.post('/chats/:chatId/generate', (0, errorHandler_1.asyncHandler)(async (r
             contextSources: contextResults.length,
             enhancedQuery: true,
             originalQuery: originalQuery,
+            llmInfo: (0, llmProvider_1.getActiveLLMInfo)()
         })]);
     // Mark flip mode as used for this chat and update timestamp
     await database_1.default.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP, flip_mode_used = TRUE WHERE id = $1', [chatId]);

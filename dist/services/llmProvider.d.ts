@@ -59,8 +59,14 @@ export interface LLMInterface {
         additionalInfo: string;
         tags: string[];
     }>;
+    getLastUsedModel(): string | null;
 }
 declare const llm: LLMInterface;
 export declare function getActiveLLMProvider(): 'gemini' | 'mistral';
+export declare function getActiveLLMModel(): string | null;
+export declare function getActiveLLMInfo(): {
+    provider: 'gemini' | 'mistral';
+    model: string | null;
+};
 export default llm;
 //# sourceMappingURL=llmProvider.d.ts.map

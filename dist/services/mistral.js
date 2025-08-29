@@ -27,6 +27,12 @@ class MistralService {
             }
         }
     }
+    /**
+     * Return the model name used for the last/next request.
+     */
+    getLastUsedModel() {
+        return CHAT_MODEL;
+    }
     async chat(messages) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         ensureApiKey();
