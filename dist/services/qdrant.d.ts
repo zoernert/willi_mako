@@ -21,6 +21,19 @@ export declare class QdrantService {
         shard_key?: string | number | Record<string, unknown> | null | undefined;
         order_value?: number | Record<string, unknown> | null | undefined;
     }[]>;
+    private static filterPseudocode;
+    private static filterExcludeVisual;
+    private static filterByPages;
+    private static combineFilters;
+    private static mergeWeighted;
+    private static payloadBoost;
+    private static outlineScopePages;
+    static semanticSearchGuided(query: string, options?: {
+        limit?: number;
+        alpha?: number;
+        outlineScoping?: boolean;
+        excludeVisual?: boolean;
+    }): Promise<any[]>;
     private ensureCollection;
     private ensureCs30Collection;
     upsertDocument(document: UserDocument, text: string): Promise<void>;

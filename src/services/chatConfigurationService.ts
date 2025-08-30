@@ -139,55 +139,44 @@ export class ChatConfigurationService {
         let allResults: any[] = [];
         let searchDetails: any[] = [];
 
-        // Verwende optimierte Suche wenn verfügbar
-        let useOptimizedSearch = true; // Standard aktiviert
-        
-        if (useOptimizedSearch) {
-          try {
-            // Optimierte Suche mit Pre-Filtering
-            const optimizedResults = await this.qdrantService.searchWithOptimizations(
-              query,
-              config.config.vectorSearch.limit * 2, // Mehr Ergebnisse für bessere Auswahl
-              config.config.vectorSearch.scoreThreshold,
-              true // HyDE aktiviert
-            );
-            
-            allResults = optimizedResults;
-            
-            // Dokumentiere die optimierte Suche
-            searchDetails.push({
-              query: query,
-              searchType: 'optimized',
-              resultsCount: optimizedResults.length,
-              results: optimizedResults.slice(0, 5).map((r: any) => ({
-                id: r.id,
-                score: r.score,
-                title: r.payload?.title || r.payload?.source_document || 'Unknown',
-                source: r.payload?.document_metadata?.document_base_name || 'Unknown',
-                chunk_type: r.payload?.chunk_type || 'paragraph',
-                chunk_index: r.payload?.chunk_index || 0,
-                content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
-              }))
-            });
+        // Always use optimized guided retrieval
+        try {
+          const guidedResults = await QdrantService.semanticSearchGuided(
+            query,
+            {
+              limit: config.config.vectorSearch.limit * 2,
+              outlineScoping: true,
+              excludeVisual: true
+            }
+          );
 
-          } catch (error) {
-            console.error('Optimized search failed, falling back to standard search:', error);
-            // Fallback zur Standard-Suche
-            useOptimizedSearch = false;
-          }
-        }
+          allResults = guidedResults;
 
-        if (!useOptimizedSearch) {
-          // Standard Multi-Query Suche
+          searchDetails.push({
+            query: query,
+            searchType: 'guided',
+            resultsCount: guidedResults.length,
+            results: guidedResults.slice(0, 5).map((r: any) => ({
+              id: r.id,
+              score: r.score ?? r.merged_score,
+              title: r.payload?.title || r.payload?.source_document || 'Unknown',
+              source: r.payload?.document_metadata?.document_base_name || 'Unknown',
+              chunk_type: r.payload?.chunk_type || 'paragraph',
+              chunk_index: r.payload?.chunk_index || 0,
+              content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
+            }))
+          });
+        } catch (error) {
+          console.error('Guided search failed, falling back to standard search:', error);
+          // Fallback zur Standard-Suche
           for (const q of searchQueries) {
             const results = await this.qdrantService.searchByText(
-              q, 
-              config.config.vectorSearch.limit, 
+              q,
+              config.config.vectorSearch.limit,
               config.config.vectorSearch.scoreThreshold
             );
             allResults.push(...results);
 
-            // Dokumentiere jede Suchanfrage
             searchDetails.push({
               query: q,
               searchType: 'standard',
@@ -209,8 +198,8 @@ export class ChatConfigurationService {
         const uniqueResults = this.removeDuplicates(allResults);
 
         // Berechne erweiterte Metriken
-        const scores = uniqueResults.map((r: any) => r.score).filter(s => s !== undefined);
-        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        const scores = uniqueResults.map((r: any) => (r.score ?? r.merged_score)).filter((s: any) => s !== undefined);
+        const avgScore = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
 
         processingSteps[processingSteps.length - 1].endTime = Date.now();
         processingSteps[processingSteps.length - 1].output = { 
@@ -219,7 +208,7 @@ export class ChatConfigurationService {
           uniqueResultsUsed: uniqueResults.length,
           scoreThreshold: config.config.vectorSearch.scoreThreshold,
           avgScore: avgScore,
-          searchType: useOptimizedSearch ? 'optimized' : 'standard'
+          searchType: 'guided'
         };
 
         // Step 3: Context Optimization (if enabled)
@@ -231,64 +220,71 @@ export class ChatConfigurationService {
           });
 
           if (uniqueResults.length > 0) {
-            // Verwende chunk-type-bewusste Synthese wenn optimierte Suche verwendet wurde
-            if (useOptimizedSearch && uniqueResults.some((r: any) => r.payload?.chunk_type)) {
-              // Erweitere Ergebnisse mit Kontext-Information
-              const contextualizedResults = uniqueResults.map(result => {
-                const chunkType = result.payload?.chunk_type || 'paragraph';
-                let contextualPrefix = '';
+            // chunk-type-bewusste Synthese inkl. pseudocode_* Typen
+            const contextualizedResults = uniqueResults.map(result => {
+              const chunkType = result.payload?.chunk_type || 'paragraph';
+              let contextualPrefix = '';
 
-                switch (chunkType) {
-                  case 'structured_table':
-                    contextualPrefix = '[TABELLE] ';
-                    break;
-                  case 'definition':
-                    contextualPrefix = '[DEFINITION] ';
-                    break;
-                  case 'abbreviation':
-                    contextualPrefix = '[ABKÜRZUNG] ';
-                    break;
-                  case 'visual_summary':
-                    contextualPrefix = '[DIAGRAMM-BESCHREIBUNG] ';
-                    break;
-                  case 'full_page':
-                    contextualPrefix = '[VOLLTEXT] ';
-                    break;
-                  default:
-                    contextualPrefix = '[ABSATZ] ';
-                }
-
-                return {
-                  ...result,
-                  payload: {
-                    ...result.payload,
-                    contextual_content: contextualPrefix + (result.payload?.text || result.payload?.content || '')
-                  }
-                };
-              });
-
-              contextUsed = await llm.synthesizeContextWithChunkTypes(query, contextualizedResults);
-            } else {
-              // Standard-Kontext-Synthese
-              if (config.config.contextSynthesis.enabled) {
-                contextUsed = await llm.synthesizeContext(query, uniqueResults);
-              } else {
-                // Extract content from results, prioritizing relevant information
-                const relevantContent = uniqueResults.map((r: any) => {
-                  return r.payload?.content || r.content || r.payload?.text || '';
-                }).filter(text => text.trim().length > 0);
-
-                contextUsed = relevantContent.join('\n\n');
+              switch (chunkType) {
+                case 'structured_table':
+                  contextualPrefix = '[TABELLE] ';
+                  break;
+                case 'definition':
+                  contextualPrefix = '[DEFINITION] ';
+                  break;
+                case 'abbreviation':
+                  contextualPrefix = '[ABKÜRZUNG] ';
+                  break;
+                case 'visual_summary':
+                  contextualPrefix = '[DIAGRAMM-BESCHREIBUNG] ';
+                  break;
+                case 'full_page':
+                  contextualPrefix = '[VOLLTEXT] ';
+                  break;
+                case 'pseudocode_flow':
+                  contextualPrefix = '[PSEUDOCODE-FLOW] ';
+                  break;
+                case 'pseudocode_validations_rules':
+                  contextualPrefix = '[VALIDIERUNGSREGELN] ';
+                  break;
+                case 'pseudocode_functions':
+                  contextualPrefix = '[PSEUDOCODE-FUNKTIONEN] ';
+                  break;
+                case 'pseudocode_table_maps':
+                  contextualPrefix = '[TABELLEN-MAPPINGS] ';
+                  break;
+                case 'pseudocode_entities_segments':
+                  contextualPrefix = '[SEGMENT/ELEMENTE] ';
+                  break;
+                case 'pseudocode_header':
+                  contextualPrefix = '[NACHRICHTEN-HEADER] ';
+                  break;
+                case 'pseudocode_examples':
+                  contextualPrefix = '[BEISPIELE] ';
+                  break;
+                case 'pseudocode_anchors':
+                  contextualPrefix = '[ANKER/HINWEISE] ';
+                  break;
+                default:
+                  contextualPrefix = '[ABSATZ] ';
               }
-            }
+
+              return {
+                ...result,
+                payload: {
+                  ...result.payload,
+                  contextual_content: contextualPrefix + (result.payload?.text || result.payload?.content || '')
+                }
+              };
+            });
+
+            contextUsed = await llm.synthesizeContextWithChunkTypes(query, contextualizedResults);
 
             // Ensure synthesis produced meaningful content
-            if (contextUsed.length < 200 && uniqueResults.length > 0) {
-              // If synthesis failed, use raw content (truncated if necessary)
+            if (contextUsed.length < 200) {
               const relevantContent = uniqueResults.map((r: any) => {
                 return r.payload?.content || r.content || r.payload?.text || '';
-              }).filter(text => text.trim().length > 0);
-              
+              }).filter((text: string) => text.trim().length > 0);
               const rawContext = relevantContent.join('\n\n');
               contextUsed = rawContext.length > config.config.contextSynthesis.maxLength 
                 ? rawContext.substring(0, config.config.contextSynthesis.maxLength) + '...'
@@ -311,13 +307,13 @@ export class ChatConfigurationService {
             wasTruncated: contextUsed.endsWith('...'),
             uniqueResultsUsed: uniqueResults.length,
             chunkTypesFound: [...new Set(uniqueResults.map((r: any) => r.payload?.chunk_type || 'paragraph'))],
-            optimizedSearchUsed: useOptimizedSearch
+            optimizedSearchUsed: true
           };
         } else {
           // Even without optimization, extract proper content
           const relevantContent = uniqueResults.map((r: any) => {
             return r.payload?.content || r.content || r.payload?.text || '';
-          }).filter(text => text.trim().length > 0);
+          }).filter((text: string) => text.trim().length > 0);
           contextUsed = relevantContent.join('\n\n');
         }
       }

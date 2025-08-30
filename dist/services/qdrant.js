@@ -76,6 +76,148 @@ class QdrantService {
             return [];
         }
     }
+    // --- New: Guided semantic search per Qdrant Retrieval Guidelines ---
+    static filterPseudocode() {
+        return {
+            must: [
+                {
+                    key: 'chunk_type',
+                    match: { any: [
+                            'pseudocode_flow',
+                            'pseudocode_validations_rules',
+                            'pseudocode_functions',
+                            'pseudocode_table_maps',
+                            'pseudocode_entities_segments',
+                            'pseudocode_header',
+                            'pseudocode_examples',
+                            'pseudocode_anchors'
+                        ] }
+                }
+            ]
+        };
+    }
+    static filterExcludeVisual() {
+        return { must_not: [{ key: 'chunk_type', match: { value: 'visual_structure' } }] };
+    }
+    static filterByPages(pages) {
+        return { must: [{ key: 'page_number', match: { any: pages } }] };
+    }
+    static combineFilters(...filters) {
+        const f = filters.filter(Boolean);
+        if (!f.length)
+            return undefined;
+        const must = [];
+        const must_not = [];
+        for (const x of f) {
+            if (x.must)
+                must.push(...x.must);
+            if (x.must_not)
+                must_not.push(...x.must_not);
+        }
+        return { ...(must.length ? { must } : {}), ...(must_not.length ? { must_not } : {}) };
+    }
+    static mergeWeighted(resultsA, resultsB, alpha = 0.75) {
+        var _a, _b;
+        const map = new Map();
+        for (const r of resultsA || [])
+            map.set(r.id, { point: r, score: alpha * ((_a = r.score) !== null && _a !== void 0 ? _a : 0) });
+        for (const r of resultsB || []) {
+            const prev = map.get(r.id);
+            const s = (1 - alpha) * ((_b = r.score) !== null && _b !== void 0 ? _b : 0);
+            if (prev)
+                prev.score += s;
+            else
+                map.set(r.id, { point: r, score: s });
+        }
+        return [...map.values()].map(x => ({ ...x.point, merged_score: x.score }))
+            .sort((a, b) => { var _a, _b; return ((_a = b.merged_score) !== null && _a !== void 0 ? _a : 0) - ((_b = a.merged_score) !== null && _b !== void 0 ? _b : 0); });
+    }
+    static payloadBoost(p) {
+        var _a, _b;
+        const t = (((_a = p === null || p === void 0 ? void 0 : p.payload) === null || _a === void 0 ? void 0 : _a.chunk_type) || '');
+        let b = 0;
+        if (t.includes('pseudocode_validations_rules'))
+            b += 0.06;
+        else if (t.includes('pseudocode_flow'))
+            b += 0.04;
+        else if (t.includes('pseudocode_table_maps'))
+            b += 0.03;
+        const kw = (((_b = p === null || p === void 0 ? void 0 : p.payload) === null || _b === void 0 ? void 0 : _b.keywords) || []);
+        if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS/i.test(k)))
+            b += 0.02;
+        return b;
+    }
+    static async outlineScopePages(client, queryVector, topPages = 3) {
+        try {
+            const outlineRes = await client.search(QDRANT_COLLECTION_NAME, {
+                vector: queryVector,
+                limit: topPages,
+                with_payload: true,
+                with_vector: false,
+                filter: { must: [{ key: 'chunk_type', match: { value: 'pseudocode_outline' } }] }
+            });
+            const pages = Array.from(new Set((outlineRes || []).map(p => { var _a; return (_a = p.payload) === null || _a === void 0 ? void 0 : _a.page_number; }).filter((x) => x != null)));
+            return pages;
+        }
+        catch (_) {
+            return [];
+        }
+    }
+    static async semanticSearchGuided(query, options) {
+        var _a, _b, _c, _d, _e;
+        const client = new js_client_rest_1.QdrantClient({ url: QDRANT_URL, apiKey: QDRANT_API_KEY, checkCompatibility: false });
+        const limit = (_a = options === null || options === void 0 ? void 0 : options.limit) !== null && _a !== void 0 ? _a : 20;
+        const alpha = (_b = options === null || options === void 0 ? void 0 : options.alpha) !== null && _b !== void 0 ? _b : 0.75;
+        const excludeVisual = (_c = options === null || options === void 0 ? void 0 : options.excludeVisual) !== null && _c !== void 0 ? _c : true;
+        const useOutline = (_d = options === null || options === void 0 ? void 0 : options.outlineScoping) !== null && _d !== void 0 ? _d : true;
+        try {
+            const v = await (0, embeddingProvider_1.generateEmbedding)(query);
+            // Optional outline scoping to top pages
+            let pageFilter;
+            if (useOutline) {
+                const pages = await this.outlineScopePages(client, v, 3);
+                if (pages === null || pages === void 0 ? void 0 : pages.length)
+                    pageFilter = this.filterByPages(pages);
+            }
+            // S1: pseudocode-only
+            const filterA = this.combineFilters(this.filterPseudocode(), pageFilter);
+            const resA = await client.search(QDRANT_COLLECTION_NAME, {
+                vector: v,
+                limit: Math.max(30, limit),
+                with_payload: true,
+                with_vector: false,
+                ...(filterA ? { filter: filterA } : {})
+            });
+            // S2: broad, optionally exclude visual_structure
+            const filterB = this.combineFilters(excludeVisual ? this.filterExcludeVisual() : undefined, pageFilter);
+            const resB = await client.search(QDRANT_COLLECTION_NAME, {
+                vector: v,
+                limit: Math.max(30, limit),
+                with_payload: true,
+                with_vector: false,
+                ...(filterB ? { filter: filterB } : {})
+            });
+            // Merge with weighting and light boosting
+            const merged = this.mergeWeighted(resA, resB, alpha).slice(0, limit * 2);
+            for (const p of merged)
+                p.merged_score = ((_e = p.merged_score) !== null && _e !== void 0 ? _e : 0) + this.payloadBoost(p);
+            merged.sort((a, b) => { var _a, _b; return ((_a = b.merged_score) !== null && _a !== void 0 ? _a : 0) - ((_b = a.merged_score) !== null && _b !== void 0 ? _b : 0); });
+            return merged.slice(0, limit);
+        }
+        catch (error) {
+            console.error('Error in semanticSearchGuided:', error);
+            // Fallback to simple vector search
+            try {
+                const v = await (0, embeddingProvider_1.generateEmbedding)(query);
+                const results = await client.search(QDRANT_COLLECTION_NAME, { vector: v, limit });
+                return results;
+            }
+            catch (e) {
+                console.error('Fallback vector search failed:', e);
+                return [];
+            }
+        }
+    }
     async ensureCollection() {
         try {
             const result = await this.client.getCollections();

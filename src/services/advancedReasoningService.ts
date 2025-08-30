@@ -160,8 +160,12 @@ class AdvancedReasoningService {
       // Step 2: Quick Context Retrieval
       const retrievalStart = Date.now();
       
-      // Simple search first for speed
-      const quickResults = await this.qdrantService.search('system', query, 10);
+      // Simple search first for speed (use optimized guided search)
+      const quickResults = await QdrantService.semanticSearchGuided(query, {
+        limit: 12,
+        outlineScoping: true,
+        excludeVisual: true
+      });
       
       if (quickResults.length === 0) {
         // If no results, try one enhanced search
@@ -236,7 +240,7 @@ class AdvancedReasoningService {
       
       // Fast fallback: Simple response generation
       try {
-        const fallbackResults = await this.qdrantService.search('system', query, 5);
+        const fallbackResults = await QdrantService.semanticSearchGuided(query, { limit: 8, outlineScoping: true, excludeVisual: true });
         const contextText = fallbackResults.map(r => r.payload?.text || '').join('\n');
         const fallbackResponse = await llm.generateResponse(
           previousMessages.concat([{ role: 'user', content: query }]),
@@ -468,40 +472,16 @@ class AdvancedReasoningService {
 
   private async performParallelSearch(queries: string[], userId?: string, teamId?: string): Promise<any[]> {
     try {
-      // Perform searches with hybrid capabilities
-      console.log(`🔍 Performing parallel searches for ${queries.length} queries with hybrid search capability`);
+      // Perform searches using optimized guided retrieval
+      console.log(`🔍 Performing parallel guided searches for ${queries.length} queries`);
       
-      // Track hybrid search metadata
-      let hybridSearchUsed = false;
-      let hybridSearchAlpha = 0.5; // Default alpha value
-      
-      // Perform all searches in parallel using our available search methods
-      const searchPromises = queries.map(query => {
-        // Use searchWithHybrid if available, otherwise fallback to standard search
-        if (typeof this.qdrantService.searchWithHybrid === 'function') {
-          return this.qdrantService.searchWithHybrid(query, 10, 0.3, 0.5, userId, teamId);
-        } else {
-          // Need to include userId parameter (using provided userId or 'system' as default)
-          return this.qdrantService.search(userId || 'system', query, 10);
-        }
-      });
-      
+      const searchPromises = queries.map(q => QdrantService.semanticSearchGuided(q, { limit: 10, outlineScoping: true, excludeVisual: true }));
       const searchResults = await Promise.all(searchPromises);
       
-      // Process results and collect metadata
+      // Flatten and process results
       let allResults: any[] = [];
-      
-      searchResults.forEach((result: any) => {
-        // Handle both standard search results and hybrid search results
-        // Use any type to avoid TypeScript errors with the experimental hybrid search
-        const results = (result as any).results || result; // Hybrid search returns {results, hybridSearchUsed}, standard search returns results directly
-        
-        if ((result as any).hybridSearchUsed) {
-          hybridSearchUsed = true;
-          hybridSearchAlpha = (result as any).hybridSearchAlpha;
-        }
-        
-        allResults = [...allResults, ...(Array.isArray(results) ? results : [results])];
+      searchResults.forEach((resultArray: any[]) => {
+        allResults = [...allResults, ...(Array.isArray(resultArray) ? resultArray : [resultArray])];
       });
       
       // Remove duplicates based on ID
@@ -514,34 +494,24 @@ class AdvancedReasoningService {
       });
       
       // Sort by score descending
-      uniqueResults.sort((a, b) => b.score - a.score);
-      
-      // Store hybrid search metadata in the first result for later retrieval
-      if (uniqueResults.length > 0 && hybridSearchUsed) {
-        uniqueResults[0].hybridSearchMetadata = {
-          hybridSearchUsed,
-          hybridSearchAlpha
-        };
-      }
+      uniqueResults.sort((a, b) => (b.score ?? b.merged_score ?? 0) - (a.score ?? a.merged_score ?? 0));
       
       console.log(`✅ Found ${uniqueResults.length} unique results across ${queries.length} queries`);
       return uniqueResults.slice(0, 20); // Limit to top 20 results
     } catch (error) {
-      console.error('❌ Error in parallel search:', error);
+      console.error('❌ Error in parallel guided search:', error);
       
       // Fallback to most basic search if all else fails
-      const fallbackPromises = queries.map(query => 
-        this.qdrantService.search('system', query, 10)
-      );
-      
+      const fallbackPromises = queries.map(q => QdrantService.semanticSearchGuided(q, { limit: 10 }));
       const fallbackResults = await Promise.all(fallbackPromises);
       const flattenedResults = fallbackResults.flat();
       
       // Remove duplicates
       const seen = new Set();
       const uniqueResults = flattenedResults.filter(result => {
-        if (seen.has(result.id)) return false;
-        seen.add(result.id);
+        const id = result.id || (result.payload && result.payload.id);
+        if (seen.has(id)) return false;
+        seen.add(id);
         return true;
       });
       
