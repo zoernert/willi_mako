@@ -65,7 +65,10 @@ INSERT INTO system_settings (key, value, value_type, description, category) VALU
 -- Team settings
 ('teams.max_members_per_team', '50', 'number', 'Maximum members allowed per team', 'teams'),
 ('teams.invitation_expiry_days', '7', 'number', 'Team invitation expiry time in days', 'teams'),
-('teams.auto_create_accounts', 'true', 'boolean', 'Auto-create accounts for team invitations', 'teams')
+('teams.auto_create_accounts', 'true', 'boolean', 'Auto-create accounts for team invitations', 'teams'),
+
+-- Engagement settings
+('engagement.enabled', 'true', 'boolean', 'Enable sending engagement emails', 'engagement')
 
 ON CONFLICT (key) DO NOTHING;
 

@@ -226,6 +226,8 @@ const AdminUsers = () => {
     isActive: true,
     canAccessCs30: false // CR-CS30: Add cs30 access field
   });
+  const [engagement, setEngagement] = useState<any[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string | undefined>(undefined);
   const { showSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -302,12 +304,30 @@ const AdminUsers = () => {
       setUserDetailsLoading(true);
       const response = await apiClient.get(`/admin/users/${userId}/details`) as any;
       setUserDetails(response);
+      // fetch engagement status
+      const eng = await apiClient.get(`/engagement/admin/engagement/${userId}`) as any;
+      setEngagement(eng.items || []);
+      // preset selected chat to most recent if available
+      setSelectedChatId(response?.recent_chats?.[0]?.id);
       setUserDetailsOpen(true);
     } catch (error) {
       console.error('Error fetching user details:', error);
       showSnackbar('Fehler beim Laden der Benutzerdetails', 'error');
     } finally {
       setUserDetailsLoading(false);
+    }
+  };
+
+  const sendEngagementMail = async (type: 'layout_feedback' | 'chat_feedback', chatId?: string) => {
+    if (!selectedUser && !userDetails) return;
+    const uid = (selectedUser?.id) || (userDetails?.id);
+    try {
+      await apiClient.post('/engagement/admin/engagement/send', { userId: uid, type, chatId });
+      showSnackbar('E-Mail versendet', 'success');
+      const eng = await apiClient.get(`/engagement/admin/engagement/${uid}`) as any;
+      setEngagement(eng.items || []);
+    } catch (e:any) {
+      showSnackbar(e.message || 'Versand fehlgeschlagen', 'error');
     }
   };
 
@@ -590,6 +610,73 @@ const AdminUsers = () => {
                     <Typography variant="body2" color="text.secondary">
                       Keine Chats vorhanden
                     </Typography>
+                  )}
+                </Paper>
+              </Box>
+
+              {/* Engagement Mails */}
+              <Box>
+                <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+                  <Typography variant="h6" gutterBottom>
+                    Engagement-Mails
+                  </Typography>
+                  {userDetails?.recent_chats?.length ? (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Chat für Bewertung auswählen</Typography>
+                      <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+                        <Select value={selectedChatId || ''} onChange={(e)=> setSelectedChatId(e.target.value as string)} displayEmpty>
+                          {userDetails.recent_chats.map((c:any)=> (
+                            <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  ) : null}
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                    <Button size="small" variant="contained" startIcon={<EmailIcon />} onClick={() => sendEngagementMail('layout_feedback')} disabled={!!engagement.find(e=>e.type==='layout_feedback')}>
+                      Layout-Feedback anfragen
+                    </Button>
+                    <Button size="small" variant="outlined" startIcon={<EmailIcon />} onClick={() => sendEngagementMail('chat_feedback', selectedChatId)} disabled={!!engagement.find(e=>e.type==='chat_feedback')}>
+                      Chat-Feedback anfragen
+                    </Button>
+                  </Box>
+                  {engagement.length>0 ? (
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Typ</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Bewertung</TableCell>
+                          <TableCell>Nützlich</TableCell>
+                          <TableCell>Kommentar</TableCell>
+                          <TableCell>Gesendet am</TableCell>
+                          <TableCell>Rückmeldung am</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {engagement.map((e:any)=> (
+                          <TableRow key={e.id}>
+                            <TableCell>{e.type}</TableCell>
+                            <TableCell>
+                              <Chip size="small" label={e.status} color={e.status==='responded'?'success':'default'} />
+                            </TableCell>
+                            <TableCell>{e.feedback?.stars ? `${e.feedback.stars} ★` : '-'}</TableCell>
+                            <TableCell>{e.feedback?.useful === true ? 'Ja' : e.feedback?.useful === false ? 'Nein' : '-'}</TableCell>
+                            <TableCell>
+                              {e.feedback?.comment ? (
+                                <Tooltip title={e.feedback.comment}>
+                                  <span>{String(e.feedback.comment).length > 40 ? `${String(e.feedback.comment).slice(0,40)}…` : e.feedback.comment}</span>
+                                </Tooltip>
+                              ) : '-' }
+                            </TableCell>
+                            <TableCell>{new Date(e.sent_at).toLocaleString('de-DE')}</TableCell>
+                            <TableCell>{e.feedback?.feedback_at ? new Date(e.feedback.feedback_at).toLocaleString('de-DE') : '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">Noch keine Engagement-Mails versendet</Typography>
                   )}
                 </Paper>
               </Box>
@@ -2050,5 +2137,6 @@ const Admin: React.FC = () => {
     </Container>
   );
 };
+
 
 export default Admin;

@@ -192,6 +192,10 @@ app.use('/api/cr-wmako-001', crWmako001TestRoutes);
 // Problem Report routes
 app.use('/api/problem-report', authenticateToken, problemReportRoutes);
 
+// Engagement routes
+import engagementRoutes from './routes/engagement';
+app.use('/api/engagement', engagementRoutes);
+
 // Error handling middleware
 app.use(errorHandler);
 

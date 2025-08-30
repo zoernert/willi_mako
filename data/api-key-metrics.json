@@ -4,9 +4,9 @@
       "2025-7-26": 34,
       "2025-7-27": 50,
       "2025-7-29": 16,
-      "2025-7-30": 10
+      "2025-7-30": 41
     },
-    "totalUsage": 110,
+    "totalUsage": 141,
     "lastReset": null,
     "currentDayUsage": 0
   },
@@ -14,9 +14,10 @@
     "dailyUsage": {
       "2025-7-26": 100,
       "2025-7-27": 210,
-      "2025-7-29": 4
+      "2025-7-29": 4,
+      "2025-7-30": 96
     },
-    "totalUsage": 314,
+    "totalUsage": 410,
     "lastReset": null,
     "currentDayUsage": 0
   },
@@ -26,6 +27,18 @@
       "totalFreeRequests": 0,
       "costSavingsUSD": "0.00",
       "costSavingsEUR": "0.00"
+    }
+  },
+  "providers": {
+    "gemini": {
+      "dailyUsage": {},
+      "totalUsage": 0,
+      "currentDayUsage": 0
+    },
+    "mistral": {
+      "dailyUsage": {},
+      "totalUsage": 0,
+      "currentDayUsage": 0
     }
   }
 }
