@@ -89,8 +89,12 @@ class AdvancedReasoningService {
             }
             // Step 2: Quick Context Retrieval
             const retrievalStart = Date.now();
-            // Simple search first for speed
-            const quickResults = await this.qdrantService.search('system', query, 10);
+            // Simple search first for speed (use optimized guided search)
+            const quickResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
+                limit: 12,
+                outlineScoping: true,
+                excludeVisual: true
+            });
             if (quickResults.length === 0) {
                 // If no results, try one enhanced search
                 const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
@@ -148,7 +152,7 @@ class AdvancedReasoningService {
             console.error('❌ Error in advanced reasoning:', error);
             // Fast fallback: Simple response generation
             try {
-                const fallbackResults = await this.qdrantService.search('system', query, 5);
+                const fallbackResults = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 8, outlineScoping: true, excludeVisual: true });
                 const contextText = fallbackResults.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
                 const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), contextText, userPreferences);
                 console.log('✅ Fallback response generated successfully');
@@ -327,34 +331,14 @@ class AdvancedReasoningService {
     }
     async performParallelSearch(queries, userId, teamId) {
         try {
-            // Perform searches with hybrid capabilities
-            console.log(`🔍 Performing parallel searches for ${queries.length} queries with hybrid search capability`);
-            // Track hybrid search metadata
-            let hybridSearchUsed = false;
-            let hybridSearchAlpha = 0.5; // Default alpha value
-            // Perform all searches in parallel using our available search methods
-            const searchPromises = queries.map(query => {
-                // Use searchWithHybrid if available, otherwise fallback to standard search
-                if (typeof this.qdrantService.searchWithHybrid === 'function') {
-                    return this.qdrantService.searchWithHybrid(query, 10, 0.3, 0.5, userId, teamId);
-                }
-                else {
-                    // Need to include userId parameter (using provided userId or 'system' as default)
-                    return this.qdrantService.search(userId || 'system', query, 10);
-                }
-            });
+            // Perform searches using optimized guided retrieval
+            console.log(`🔍 Performing parallel guided searches for ${queries.length} queries`);
+            const searchPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 10, outlineScoping: true, excludeVisual: true }));
             const searchResults = await Promise.all(searchPromises);
-            // Process results and collect metadata
+            // Flatten and process results
             let allResults = [];
-            searchResults.forEach((result) => {
-                // Handle both standard search results and hybrid search results
-                // Use any type to avoid TypeScript errors with the experimental hybrid search
-                const results = result.results || result; // Hybrid search returns {results, hybridSearchUsed}, standard search returns results directly
-                if (result.hybridSearchUsed) {
-                    hybridSearchUsed = true;
-                    hybridSearchAlpha = result.hybridSearchAlpha;
-                }
-                allResults = [...allResults, ...(Array.isArray(results) ? results : [results])];
+            searchResults.forEach((resultArray) => {
+                allResults = [...allResults, ...(Array.isArray(resultArray) ? resultArray : [resultArray])];
             });
             // Remove duplicates based on ID
             const seen = new Set();
@@ -366,29 +350,23 @@ class AdvancedReasoningService {
                 return true;
             });
             // Sort by score descending
-            uniqueResults.sort((a, b) => b.score - a.score);
-            // Store hybrid search metadata in the first result for later retrieval
-            if (uniqueResults.length > 0 && hybridSearchUsed) {
-                uniqueResults[0].hybridSearchMetadata = {
-                    hybridSearchUsed,
-                    hybridSearchAlpha
-                };
-            }
+            uniqueResults.sort((a, b) => { var _a, _b, _c, _d; return ((_b = (_a = b.score) !== null && _a !== void 0 ? _a : b.merged_score) !== null && _b !== void 0 ? _b : 0) - ((_d = (_c = a.score) !== null && _c !== void 0 ? _c : a.merged_score) !== null && _d !== void 0 ? _d : 0); });
             console.log(`✅ Found ${uniqueResults.length} unique results across ${queries.length} queries`);
             return uniqueResults.slice(0, 20); // Limit to top 20 results
         }
         catch (error) {
-            console.error('❌ Error in parallel search:', error);
+            console.error('❌ Error in parallel guided search:', error);
             // Fallback to most basic search if all else fails
-            const fallbackPromises = queries.map(query => this.qdrantService.search('system', query, 10));
+            const fallbackPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 10 }));
             const fallbackResults = await Promise.all(fallbackPromises);
             const flattenedResults = fallbackResults.flat();
             // Remove duplicates
             const seen = new Set();
             const uniqueResults = flattenedResults.filter(result => {
-                if (seen.has(result.id))
+                const id = result.id || (result.payload && result.payload.id);
+                if (seen.has(id))
                     return false;
-                seen.add(result.id);
+                seen.add(id);
                 return true;
             });
             return uniqueResults.slice(0, 20); // Limit to top 20 results

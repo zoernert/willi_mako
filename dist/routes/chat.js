@@ -124,13 +124,14 @@ class AdvancedRetrieval {
     async getContextualCompressedResults(query, userPreferences, // userPreferences is kept for interface consistency, but not used in the new flow
     limit = 10) {
         try {
-            // 1. Optimierte Suche mit Pre-Filtering und Query-Transformation
-            const optimizedResults = await qdrantService.searchWithOptimizations(query, limit * 2, // Hole mehr Ergebnisse für bessere Synthese
-            0.3, // Niedrigerer Threshold für mehr Ergebnisse
-            true // Verwende HyDE
-            );
-            if (optimizedResults.length === 0) {
-                // Fallback zur normalen Suche
+            // 1. Optimierte geführte Suche mit Outline-Scoping und Chunk-Type-Boosting
+            const guidedResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
+                limit: limit * 2,
+                outlineScoping: true,
+                excludeVisual: true
+            });
+            if (guidedResults.length === 0) {
+                // Fallback: einfache Suche über generierte Suchbegriffe
                 const searchQueries = await llmProvider_1.default.generateSearchQueries(query);
                 const allResults = [];
                 for (const q of searchQueries) {
@@ -154,8 +155,8 @@ class AdvancedRetrieval {
                 ];
             }
             // 2. Entferne Duplikate
-            const uniqueResults = this.removeDuplicates(optimizedResults);
-            // 3. Intelligente Post-Processing basierend auf chunk_type
+            const uniqueResults = this.removeDuplicates(guidedResults);
+            // 3. Intelligente Post-Processing basierend auf chunk_type inkl. pseudocode_* Typen
             const contextualizedResults = this.enhanceResultsWithChunkTypeContext(uniqueResults);
             // 4. Context Synthesis mit verbessertem Kontext
             const synthesizedContext = await llmProvider_1.default.synthesizeContextWithChunkTypes(query, contextualizedResults);
@@ -165,12 +166,12 @@ class AdvancedRetrieval {
                     payload: {
                         text: synthesizedContext,
                         sources: uniqueResults.map(r => {
-                            var _a, _b, _c, _d;
+                            var _a, _b, _c, _d, _e;
                             return ({
                                 source_document: ((_b = (_a = r.payload) === null || _a === void 0 ? void 0 : _a.document_metadata) === null || _b === void 0 ? void 0 : _b.document_base_name) || 'Unknown',
                                 page_number: ((_c = r.payload) === null || _c === void 0 ? void 0 : _c.page_number) || 'N/A',
                                 chunk_type: ((_d = r.payload) === null || _d === void 0 ? void 0 : _d.chunk_type) || 'paragraph',
-                                score: r.score
+                                score: (_e = r.score) !== null && _e !== void 0 ? _e : r.merged_score
                             });
                         })
                     },
@@ -208,6 +209,30 @@ class AdvancedRetrieval {
                 case 'full_page':
                     contextualPrefix = '[VOLLTEXT] ';
                     break;
+                case 'pseudocode_flow':
+                    contextualPrefix = '[PSEUDOCODE-FLOW] ';
+                    break;
+                case 'pseudocode_validations_rules':
+                    contextualPrefix = '[VALIDIERUNGSREGELN] ';
+                    break;
+                case 'pseudocode_functions':
+                    contextualPrefix = '[PSEUDOCODE-FUNKTIONEN] ';
+                    break;
+                case 'pseudocode_table_maps':
+                    contextualPrefix = '[TABELLEN-MAPPINGS] ';
+                    break;
+                case 'pseudocode_entities_segments':
+                    contextualPrefix = '[SEGMENT/ELEMENTE] ';
+                    break;
+                case 'pseudocode_header':
+                    contextualPrefix = '[NACHRICHTEN-HEADER] ';
+                    break;
+                case 'pseudocode_examples':
+                    contextualPrefix = '[BEISPIELE] ';
+                    break;
+                case 'pseudocode_anchors':
+                    contextualPrefix = '[ANKER/HINWEISE] ';
+                    break;
                 default:
                     contextualPrefix = '[ABSATZ] ';
             }
@@ -231,7 +256,15 @@ class AdvancedRetrieval {
             'abbreviation': 'Erklärung einer Abkürzung',
             'visual_summary': 'Textuelle Beschreibung eines Diagramms oder einer visuellen Darstellung',
             'full_page': 'Vollständiger Seiteninhalt',
-            'paragraph': 'Textabsatz'
+            'paragraph': 'Textabsatz',
+            'pseudocode_flow': 'Prozessflüsse in Pseudocode',
+            'pseudocode_validations_rules': 'Validierungsregeln und Prüfungen',
+            'pseudocode_functions': 'Funktionale Schritte/Logik',
+            'pseudocode_table_maps': 'Mapping zwischen Tabellenfeldern und Segmenten',
+            'pseudocode_entities_segments': 'Segmente und Datenfelder',
+            'pseudocode_header': 'Nachrichtenkopf und Meta',
+            'pseudocode_examples': 'Beispielsnippets',
+            'pseudocode_anchors': 'Anker/Hinweise'
         };
         return descriptions[chunkType] || 'Allgemeiner Textinhalt';
     }
