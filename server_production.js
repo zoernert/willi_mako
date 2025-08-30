@@ -4,6 +4,7 @@ const next = require('next');
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Initialize environment variables
 dotenv.config();
@@ -17,7 +18,7 @@ const backendPort = 4101; // Backend läuft auf separatem Port
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// Express app für Proxy
+// Express app für Proxy und statische Auslieferung
 const expressApp = express();
 
 // Setup API Proxy to Backend
@@ -56,6 +57,17 @@ function setupAPIProxy() {
 // Serve static files from public directory (including legacy app)
 expressApp.use(express.static('public'));
 
+// Explicitly serve Next.js build assets to avoid 404/MIME issues behind proxies
+// This ensures JS files under /_next/static are served with correct headers
+expressApp.use(
+  '/_next/static',
+  express.static(path.join(__dirname, '.next', 'static'), {
+    immutable: true,
+    maxAge: '1y',
+    fallthrough: true,
+  })
+);
+
 app.prepare().then(async () => {
   // Setup API proxy to backend
   setupAPIProxy();
@@ -64,13 +76,18 @@ app.prepare().then(async () => {
     const parsedUrl = parse(req.url, true);
     const { pathname } = parsedUrl;
 
-    // Handle API routes with Express proxy
+    // Handle API routes and static Next assets with Express
     if (pathname.startsWith('/api/')) {
       expressApp(req, res);
-    } else {
-      // Handle everything else with Next.js
-      handle(req, res, parsedUrl);
+      return;
     }
+    if (pathname.startsWith('/_next/static')) {
+      expressApp(req, res);
+      return;
+    }
+
+    // Handle everything else with Next.js
+    handle(req, res, parsedUrl);
   });
 
   server.listen(port, hostname, (err) => {

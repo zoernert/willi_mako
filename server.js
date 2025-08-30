@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const dotenv = require('dotenv');
+const path = require('path');
 
 // Initialize environment variables
 dotenv.config();
@@ -22,6 +23,18 @@ const handle = app.getRequestHandler();
 const expressApp = express();
 
 let backendProcess = null;
+
+// In production, explicitly serve Next static assets to avoid 404/MIME issues
+if (!dev) {
+  expressApp.use(
+    '/_next/static',
+    express.static(path.join(__dirname, '.next', 'static'), {
+      immutable: true,
+      maxAge: '1y',
+      fallthrough: true,
+    })
+  );
+}
 
 // Start Express.js Backend als separaten Prozess (intern)
 function startBackend() {
@@ -104,13 +117,18 @@ app.prepare().then(async () => {
     const parsedUrl = parse(req.url, true);
     const { pathname } = parsedUrl;
 
-    // Handle API routes with Express proxy
+    // Handle API routes and (in prod) Next static assets with Express
     if (pathname.startsWith('/api/')) {
       expressApp(req, res);
-    } else {
-      // Handle everything else with Next.js
-      handle(req, res, parsedUrl);
+      return;
     }
+    if (!dev && pathname.startsWith('/_next/static')) {
+      expressApp(req, res);
+      return;
+    }
+
+    // Handle everything else with Next.js
+    handle(req, res, parsedUrl);
   });
 
   server.listen(port, (err) => {
