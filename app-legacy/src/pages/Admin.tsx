@@ -35,6 +35,7 @@ import {
   Grid,
   FormControlLabel,
   Checkbox,
+  Snackbar
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -1010,7 +1011,28 @@ const AdminFAQ = () => {
     isActive: true,
     isPublic: false // Neues Feld für öffentliche Anzeige
   });
+  const [artifacts, setArtifacts] = useState<any | null>(null);
+  const [loadingArtifacts, setLoadingArtifacts] = useState(false);
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [sectionGenLoading, setSectionGenLoading] = useState(false);
+  const [extendFieldLoading, setExtendFieldLoading] = useState(false);
+  const [outlineNotes, setOutlineNotes] = useState('');
+  const [sectionForm, setSectionForm] = useState({ type: 'answer' as 'description' | 'context' | 'answer' | 'additional_info', order: 1, target_length: 600, sectionHint: '' });
+  const [extendForm, setExtendForm] = useState({ field: 'answer' as 'description' | 'context' | 'answer' | 'additional_info', target_length: 1500 });
+  const [lastGeneratedSection, setLastGeneratedSection] = useState<string>('');
+  const [uiBusy, setUiBusy] = useState(false);
   const { showSnackbar } = useSnackbar();
+
+  // Local date formatter for this component
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   useEffect(() => {
     fetchAvailableTags();
@@ -1020,6 +1042,14 @@ const AdminFAQ = () => {
       fetchFAQs();
     }
   }, [activeSubTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load artifacts when editing/creating FAQ with id
+  useEffect(() => {
+    const shouldLoad = (editFAQOpen || createFAQOpen) && Boolean(faqForm.id);
+    if (!shouldLoad) return;
+    loadArtifacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editFAQOpen, createFAQOpen, faqForm.id]);
 
   const fetchChats = async () => {
     try {
@@ -1119,7 +1149,7 @@ const AdminFAQ = () => {
     console.log('Validation results:', { titleValid, descriptionValid, answerValid });
     
     if (!titleValid || !descriptionValid || !answerValid) {
-      const missingFields = [];
+      const missingFields = [] as string[];
       if (!titleValid) missingFields.push('Titel');
       if (!descriptionValid) missingFields.push('Beschreibung');
       if (!answerValid) missingFields.push('Antwort');
@@ -1226,16 +1256,141 @@ const AdminFAQ = () => {
     });
     setSelectedChat(null);
     setChatMessages([]);
+    setArtifacts(null);
+    setOutlineNotes('');
+    setLastGeneratedSection('');
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const loadArtifacts = async () => {
+    if (!faqForm.id) return;
+    try {
+      setLoadingArtifacts(true);
+      const res = await apiClient.get(`/admin/faqs/${faqForm.id}/artifacts`) as any;
+      setArtifacts(res || null);
+      const existingOutline = res?.artifacts?.outline?.notes || '';
+      if (existingOutline) setOutlineNotes(existingOutline);
+    } catch (e:any) {
+      console.error('Error loading artifacts', e);
+      showSnackbar(e.message || 'Artefakte konnten nicht geladen werden', 'error');
+    } finally {
+      setLoadingArtifacts(false);
+    }
+  };
+
+  // Edit/delete section hooks
+  const editArtifactSection = async (sec: any, patch: Partial<{ title: string; order: number; type: 'description'|'context'|'answer'|'additional_info'; content: string }>) => {
+    if (!faqForm.id || !sec?.id) return;
+    try {
+      setUiBusy(true);
+      const updated = await apiClient.patch(`/admin/faqs/${faqForm.id}/artifacts/section/${sec.id}`, patch) as any;
+      setArtifacts(updated);
+      showSnackbar('Abschnitt aktualisiert', 'success');
+    } catch (e:any) {
+      console.error('Edit section failed', e);
+      showSnackbar(e.message || 'Fehler beim Aktualisieren des Abschnitts', 'error');
+    } finally {
+      setUiBusy(false);
+    }
+  };
+
+  const deleteArtifactSection = async (sec: any) => {
+    if (!faqForm.id || !sec?.id) return;
+    if (!window.confirm('Diesen Abschnitt wirklich löschen?')) return;
+    try {
+      setUiBusy(true);
+      const updated = await apiClient.delete(`/admin/faqs/${faqForm.id}/artifacts/section/${sec.id}`) as any;
+      setArtifacts(updated);
+      showSnackbar('Abschnitt gelöscht', 'success');
+    } catch (e:any) {
+      console.error('Delete section failed', e);
+      showSnackbar(e.message || 'Fehler beim Löschen des Abschnitts', 'error');
+    } finally {
+      setUiBusy(false);
+    }
+  };
+
+  const handleGenerateOutline = async () => {
+    if (!faqForm.id) return;
+    try {
+      setOutlineLoading(true);
+      const payload: any = { notes: outlineNotes.trim() || undefined };
+      const result = await apiClient.post(`/admin/faqs/${faqForm.id}/artifacts/outline`, payload) as any;
+      setArtifacts(result);
+      const notes = result?.artifacts?.outline?.notes || '';
+      setOutlineNotes(notes);
+      showSnackbar('Outline erstellt/aktualisiert', 'success');
+    } catch (e:any) {
+      console.error('Outline generation failed', e);
+      showSnackbar(e.message || 'Fehler bei Outline-Generierung', 'error');
+    } finally {
+      setOutlineLoading(false);
+    }
+  };
+
+  const appendToField = (field: 'description' | 'context' | 'answer' | 'additional_info', content: string) => {
+    const keyMap: any = { description: 'description', context: 'context', answer: 'answer', additional_info: 'additionalInfo' };
+    const formKey = keyMap[field];
+    setFaqForm((prev:any) => ({
+      ...prev,
+      [formKey]: `${(prev[formKey] || '').trim()}\n\n${content}`.trim()
+    }));
+  };
+
+  const handleGenerateSection = async () => {
+    if (!faqForm.id) return;
+    try {
+      setSectionGenLoading(true);
+      const payload: any = {
+        type: sectionForm.type,
+        order: sectionForm.order,
+        target_length: sectionForm.target_length,
+        section: sectionForm.sectionHint?.trim() || undefined
+      };
+      const res = await apiClient.post(`/admin/faqs/${faqForm.id}/artifacts/section`, payload) as any;
+      setArtifacts(res);
+      const secs = res?.artifacts?.sections || [];
+      const last = secs[secs.length - 1];
+      if (last?.content) {
+        setLastGeneratedSection(last.content);
+        appendToField(sectionForm.type, last.content);
+      }
+      showSnackbar('Abschnitt generiert und in Formular eingefügt', 'success');
+    } catch (e:any) {
+      console.error('Section generation failed', e);
+      showSnackbar(e.message || 'Fehler bei Abschnitt-Generierung', 'error');
+    } finally {
+      setSectionGenLoading(false);
+    }
+  };
+
+  const handleInsertArtifactSection = (sec: any) => {
+    if (!sec?.content || !sec?.type) return;
+    appendToField(sec.type, sec.content);
+    showSnackbar('Abschnitt in Formular eingefügt', 'success');
+  };
+
+  const handleExtendField = async () => {
+    if (!faqForm.id) return;
+    try {
+      setExtendFieldLoading(true);
+      const res: any = await apiClient.post(`/admin/faqs/${faqForm.id}/extend-field`, { field: extendForm.field, target_length: extendForm.target_length });
+      // Update form from response
+      setFaqForm((prev:any) => ({
+        ...prev,
+        description: res.description ?? prev.description,
+        context: res.context ?? prev.context,
+        answer: res.answer ?? prev.answer,
+        additionalInfo: res.additional_info ?? prev.additionalInfo
+      }));
+      // Reload artifacts to reflect trace
+      loadArtifacts();
+      showSnackbar('Feld erfolgreich erweitert', 'success');
+    } catch (e:any) {
+      console.error('Extend field failed', e);
+      showSnackbar(e.message || 'Fehler bei Feld-Erweiterung', 'error');
+    } finally {
+      setExtendFieldLoading(false);
+    }
   };
 
   return (
@@ -1455,8 +1610,8 @@ const AdminFAQ = () => {
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
             {editFAQOpen 
-              ? 'Bearbeiten Sie die FAQ-Inhalte nach Bedarf. Nutzen Sie "Mit Kontext erweitern" um relevante Informationen aus der Wissensdatenbank zu integrieren und einen ausführlicheren FAQ-Eintrag zu erstellen.'
-              : 'Diese Inhalte wurden automatisch von der KI generiert. Verwenden Sie "Mit Kontext erweitern" um zusätzliche Informationen aus der Wissensdatenbank zu integrieren und einen noch besseren FAQ-Eintrag zu erstellen.'
+              ? 'Bearbeiten Sie die FAQ-Inhalte nach Bedarf. Nutzen Sie "Mit Kontext erweitern" oder die Artefakt-Funktionen, um lange Inhalte strukturiert zu erstellen.'
+              : 'Diese Inhalte wurden automatisch von der KI generiert. Verwenden Sie "Mit Kontext erweitern" oder die Artefakt-Funktionen, um zusätzliche Informationen zu integrieren.'
             }
           </Alert>
           
@@ -1518,7 +1673,7 @@ const AdminFAQ = () => {
             <Select
               multiple
               value={faqForm.tags}
-              onChange={(e) => setFaqForm({ ...faqForm, tags: e.target.value as string[] })}
+              onChange={(e) => setFaqForm({ ...faqForm, tags: (e.target.value as string[]) })}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map((value: string) => (
@@ -1573,6 +1728,188 @@ const AdminFAQ = () => {
                 </Select>
               </FormControl>
             </>
+          )}
+
+          {/* --- KI-Artefakte Bereich --- */}
+          {faqForm.id ? (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                KI-Artefakte: Outline, Abschnitte, Feld-Erweiterung
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Erstellen und verwalten Sie lange FAQ-Inhalte iterativ. Generierte Abschnitte können gezielt in die Felder eingefügt werden.
+              </Typography>
+
+              {/* Outline */}
+              <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle1">Outline</Typography>
+                  {loadingArtifacts && <CircularProgress size={18} />}
+                </Box>
+                <TextField
+                  fullWidth
+                  label="Redaktionelle Hinweise für die Outline (optional)"
+                  multiline
+                  minRows={2}
+                  value={outlineNotes}
+                  onChange={(e)=> setOutlineNotes(e.target.value)}
+                  sx={{ mt: 1 }}
+                />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                  <Button size="small" variant="outlined" onClick={loadArtifacts}>Aktuelle Artefakte laden</Button>
+                  <Button size="small" variant="contained" onClick={handleGenerateOutline} disabled={outlineLoading}>
+                    {outlineLoading ? <CircularProgress size={18} /> : 'Outline generieren/aktualisieren'}
+                  </Button>
+                </Box>
+                {artifacts?.artifacts?.outline?.notes ? (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">Letzte Outline</Typography>
+                    <Paper variant="outlined" sx={{ p: 1, maxHeight: 180, overflow: 'auto' }}>
+                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{artifacts.artifacts.outline.notes}</pre>
+                    </Paper>
+                  </Box>
+                ) : null}
+              </Paper>
+
+              {/* Section Generator */}
+              <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                <Typography variant="subtitle1">Abschnitt generieren</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '4fr 2fr 3fr' }, gap: 2 }}>
+                    <Box>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Feld</InputLabel>
+                        <Select
+                          value={sectionForm.type}
+                          label="Feld"
+                          onChange={(e)=> setSectionForm({ ...sectionForm, type: e.target.value as any })}
+                        >
+                          <MenuItem value="description">Beschreibung</MenuItem>
+                          <MenuItem value="context">Kontext</MenuItem>
+                          <MenuItem value="answer">Antwort</MenuItem>
+                          <MenuItem value="additional_info">Zusätzliche Informationen</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Reihenfolge"
+                        type="number"
+                        value={sectionForm.order}
+                        onChange={(e)=> setSectionForm({ ...sectionForm, order: parseInt(e.target.value || '1', 10) })}
+                      />
+                    </Box>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Ziel-Länge"
+                        type="number"
+                        value={sectionForm.target_length}
+                        onChange={(e)=> setSectionForm({ ...sectionForm, target_length: parseInt(e.target.value || '600', 10) })}
+                      />
+                    </Box>
+                  </Box>
+                  <Box sx={{ mt: 2 }}>
+                    <TextField
+                      fullWidth
+                      label="Hinweise / Bulletpoints für den Abschnitt (optional)"
+                      multiline
+                      minRows={2}
+                      value={sectionForm.sectionHint}
+                      onChange={(e)=> setSectionForm({ ...sectionForm, sectionHint: e.target.value })}
+                    />
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                  <Button size="small" variant="contained" onClick={handleGenerateSection} disabled={sectionGenLoading}>
+                    {sectionGenLoading ? <CircularProgress size={18} /> : 'Abschnitt generieren und einfügen'}
+                  </Button>
+                </Box>
+                {lastGeneratedSection ? (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary">Zuletzt generierter Abschnitt</Typography>
+                    <Paper variant="outlined" sx={{ p: 1, maxHeight: 180, overflow: 'auto' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {lastGeneratedSection}
+                      </ReactMarkdown>
+                    </Paper>
+                  </Box>
+                ) : null}
+              </Paper>
+
+              {/* Artifacts viewer */}
+              {artifacts?.artifacts?.sections?.length ? (
+                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle1">Generierte Abschnitte</Typography>
+                  <List>
+                    {artifacts.artifacts.sections.map((sec:any, idx:number) => (
+                      <ListItem key={`${sec.id || idx}` } divider sx={{ display: 'block' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle2">{sec.title || sec.type} • {sec.type} • #{sec.order}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button size="small" onClick={() => handleInsertArtifactSection(sec)} disabled={uiBusy}>In Feld einfügen</Button>
+                            <Button size="small" variant="outlined" onClick={() => editArtifactSection(sec, { title: prompt('Neuer Titel', sec.title) || sec.title })} disabled={uiBusy}>Bearbeiten</Button>
+                            <Button size="small" color="error" onClick={() => deleteArtifactSection(sec)} disabled={uiBusy}>Löschen</Button>
+                          </Box>
+                        </Box>
+                        {sec?.content ? (
+                          <Box sx={{ mt: 1 }}>
+                            <Paper variant="outlined" sx={{ p: 1, maxHeight: 160, overflow: 'auto' }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {sec.content}
+                              </ReactMarkdown>
+                            </Paper>
+                          </Box>
+                        ) : null}
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              ) : null}
+
+              {/* Extend Field */}
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle1">Feld iterativ erweitern</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mt: 0.5 }}>
+                  <Box>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Feld</InputLabel>
+                      <Select
+                        value={extendForm.field}
+                        label="Feld"
+                        onChange={(e)=> setExtendForm({ ...extendForm, field: e.target.value as any })}
+                      >
+                        <MenuItem value="description">Beschreibung</MenuItem>
+                        <MenuItem value="context">Kontext</MenuItem>
+                        <MenuItem value="answer">Antwort</MenuItem>
+                        <MenuItem value="additional_info">Zusätzliche Informationen</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                  <Box>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Ziel-Länge (Wörter)"
+                      value={extendForm.target_length}
+                      onChange={(e)=> setExtendForm({ ...extendForm, target_length: parseInt(e.target.value || '1500', 10) })}
+                    />
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                  <Button size="small" variant="contained" onClick={handleExtendField} disabled={extendFieldLoading}>
+                    {extendFieldLoading ? <CircularProgress size={18} /> : 'Feld erweitern'}
+                  </Button>
+                </Box>
+              </Paper>
+            </Box>
+          ) : (
+            <Alert severity="warning" sx={{ mt: 2 }}>FAQ muss eine ID haben, um Artefakte zu erzeugen. Erstellen Sie zuerst den FAQ-Eintrag.</Alert>
           )}
         </DialogContent>
         <DialogActions>
@@ -1666,7 +2003,7 @@ const AdminSettings = () => {
     }
   };
 
-  const handleTestConnection = async (type: string) => {
+  const handleTestConnection = async (type: 'qdrant' | 'smtp') => {
     try {
       await apiClient.post(`/admin/settings/test-${type}`);
       showSnackbar(`${type.toUpperCase()} Verbindung erfolgreich getestet`, 'success');
@@ -1947,6 +2284,8 @@ const AdminStats = () => {
         <Tabs 
           value={activeTab} 
           onChange={(e, newValue) => setActiveTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider' }}
         >
           <Tab label="System-Metriken" />

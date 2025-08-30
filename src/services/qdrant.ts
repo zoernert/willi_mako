@@ -84,6 +84,136 @@ export class QdrantService {
     }
   }
 
+  // --- New: Guided semantic search per Qdrant Retrieval Guidelines ---
+  private static filterPseudocode(): any {
+    return {
+      must: [
+        {
+          key: 'chunk_type',
+          match: { any: [
+            'pseudocode_flow',
+            'pseudocode_validations_rules',
+            'pseudocode_functions',
+            'pseudocode_table_maps',
+            'pseudocode_entities_segments',
+            'pseudocode_header',
+            'pseudocode_examples',
+            'pseudocode_anchors'
+          ] }
+        }
+      ]
+    };
+  }
+  private static filterExcludeVisual(): any {
+    return { must_not: [{ key: 'chunk_type', match: { value: 'visual_structure' } }] };
+  }
+  private static filterByPages(pages: number[]): any {
+    return { must: [{ key: 'page_number', match: { any: pages } }] };
+  }
+  private static combineFilters(...filters: Array<any | null | undefined>): any | undefined {
+    const f = filters.filter(Boolean) as any[];
+    if (!f.length) return undefined;
+    const must: any[] = [];
+    const must_not: any[] = [];
+    for (const x of f) {
+      if (x.must) must.push(...x.must);
+      if (x.must_not) must_not.push(...x.must_not);
+    }
+    return { ...(must.length ? { must } : {}), ...(must_not.length ? { must_not } : {}) };
+  }
+  private static mergeWeighted(resultsA: any[], resultsB: any[], alpha = 0.75) {
+    const map = new Map<string | number, { point: any; score: number }>();
+    for (const r of resultsA || []) map.set(r.id, { point: r, score: alpha * (r.score ?? 0) });
+    for (const r of resultsB || []) {
+      const prev = map.get(r.id);
+      const s = (1 - alpha) * (r.score ?? 0);
+      if (prev) prev.score += s; else map.set(r.id, { point: r, score: s });
+    }
+    return [...map.values()].map(x => ({ ...x.point, merged_score: x.score }))
+      .sort((a, b) => (b.merged_score ?? 0) - (a.merged_score ?? 0));
+  }
+  private static payloadBoost(p: any): number {
+    const t = (p?.payload?.chunk_type || '') as string;
+    let b = 0;
+    if (t.includes('pseudocode_validations_rules')) b += 0.06;
+    else if (t.includes('pseudocode_flow')) b += 0.04;
+    else if (t.includes('pseudocode_table_maps')) b += 0.03;
+    const kw: string[] = (p?.payload?.keywords || []) as string[];
+    if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS/i.test(k))) b += 0.02;
+    return b;
+  }
+  private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3): Promise<number[]> {
+    try {
+      const outlineRes: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+        vector: queryVector,
+        limit: topPages,
+        with_payload: true as any,
+        with_vector: false as any,
+        filter: { must: [{ key: 'chunk_type', match: { value: 'pseudocode_outline' } }] }
+      } as any);
+      const pages = Array.from(new Set((outlineRes || []).map(p => p.payload?.page_number).filter((x: any) => x != null)));
+      return pages as number[];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static async semanticSearchGuided(query: string, options?: { limit?: number; alpha?: number; outlineScoping?: boolean; excludeVisual?: boolean; }): Promise<any[]> {
+    const client = new QdrantClient({ url: QDRANT_URL, apiKey: QDRANT_API_KEY, checkCompatibility: false });
+    const limit = options?.limit ?? 20;
+    const alpha = options?.alpha ?? 0.75;
+    const excludeVisual = options?.excludeVisual ?? true;
+    const useOutline = options?.outlineScoping ?? true;
+
+    try {
+      const v = await providerEmbedding(query);
+
+      // Optional outline scoping to top pages
+      let pageFilter: any | undefined;
+      if (useOutline) {
+        const pages = await this.outlineScopePages(client, v, 3);
+        if (pages?.length) pageFilter = this.filterByPages(pages);
+      }
+
+      // S1: pseudocode-only
+      const filterA = this.combineFilters(this.filterPseudocode(), pageFilter);
+      const resA: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+        vector: v,
+        limit: Math.max(30, limit),
+        with_payload: true as any,
+        with_vector: false as any,
+        ...(filterA ? { filter: filterA } : {})
+      } as any);
+
+      // S2: broad, optionally exclude visual_structure
+      const filterB = this.combineFilters(excludeVisual ? this.filterExcludeVisual() : undefined, pageFilter);
+      const resB: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+        vector: v,
+        limit: Math.max(30, limit),
+        with_payload: true as any,
+        with_vector: false as any,
+        ...(filterB ? { filter: filterB } : {})
+      } as any);
+
+      // Merge with weighting and light boosting
+      const merged = this.mergeWeighted(resA, resB, alpha).slice(0, limit * 2);
+      for (const p of merged) p.merged_score = (p.merged_score ?? 0) + this.payloadBoost(p);
+      merged.sort((a, b) => (b.merged_score ?? 0) - (a.merged_score ?? 0));
+      return merged.slice(0, limit);
+    } catch (error) {
+      console.error('Error in semanticSearchGuided:', error);
+      // Fallback to simple vector search
+      try {
+        const v = await providerEmbedding(query);
+        const results = await client.search(QDRANT_COLLECTION_NAME, { vector: v, limit } as any);
+        return results as any[];
+      } catch (e) {
+        console.error('Fallback vector search failed:', e);
+        return [];
+      }
+    }
+  }
+
   private async ensureCollection() {
     try {
       const result = await this.client.getCollections();

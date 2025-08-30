@@ -60,3 +60,33 @@ export interface FAQLinkingStats {
     link_count: number;
   };
 }
+
+// New: FAQ generation artifacts
+export interface FAQArtifactsMeta {
+  strategy?: 'outline-first' | 'sectionwise' | 'continue';
+  target_lengths?: { description?: number; context?: number; answer?: number; additional_info?: number };
+  model?: string;
+  created_by?: string;
+}
+
+export interface FAQSectionArtifact {
+  id: string; // stable section id
+  title: string;
+  type: 'description' | 'context' | 'answer' | 'additional_info';
+  order: number;
+  content: string;
+  tokens_estimate?: number;
+  sources?: { id?: string; title?: string; snippet?: string }[];
+}
+
+export interface FAQArtifactsRecord {
+  id: string;
+  faq_id: string;
+  artifacts: {
+    outline?: { sections: Omit<FAQSectionArtifact, 'content'>[]; notes?: string };
+    sections?: FAQSectionArtifact[];
+  };
+  meta?: FAQArtifactsMeta;
+  created_at: string;
+  updated_at: string;
+}

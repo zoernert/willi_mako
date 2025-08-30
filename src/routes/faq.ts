@@ -761,4 +761,173 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
   });
 }));
 
+// New: FAQ Artifacts API
+router.get('/admin/faqs/:id/artifacts', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const result = await pool.query(`SELECT id, faq_id, artifacts, meta, created_at, updated_at FROM faq_artifacts WHERE faq_id = $1 ORDER BY created_at DESC LIMIT 1`, [id]);
+  if (result.rows.length === 0) {
+    return res.json({ success: true, data: null });
+  }
+  res.json({ success: true, data: result.rows[0] });
+}));
+
+router.post('/admin/faqs/:id/artifacts/outline', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { notes, target_lengths } = req.body || {};
+
+  // Build prompt from current FAQ + optional notes
+  const faqRes = await pool.query(`SELECT title, description, context, answer, additional_info, tags FROM faqs WHERE id = $1`, [id]);
+  if (faqRes.rows.length === 0) throw new AppError('FAQ not found', 404);
+  const faq = faqRes.rows[0];
+
+  const outlinePrompt = `Erstelle eine detaillierte Gliederung (Outline) für einen ausführlichen FAQ-Artikel zum Thema:\n\nTitel: ${faq.title}\nTags: ${(Array.isArray(faq.tags)? faq.tags : JSON.parse(faq.tags||'[]')).join(', ')}\n\nKurzbeschreibung: ${faq.description}\nKontext: ${faq.context || ''}\nAntwort (bisher): ${faq.answer || ''}\nZusätzliche Infos: ${faq.additional_info || ''}\n\nAnforderungen:\n- Struktur in Abschnitte mit Titeln, Typ (description|context|answer|additional_info) und Reihenfolge\n- Stichpunkte je Abschnitt was abzudecken ist\n- Optional Quellenhinweise (generisch, werden später ersetzt)\n- Keine langen Texte, nur Outline.\n${notes ? `\nHinweise des Editors: ${notes}\n` : ''}`;
+
+  const outlineText = await llm.generateText(outlinePrompt);
+
+  // Minimal parsing: keep raw text as outline notes, sections skeleton without content
+  const artifacts = { outline: { sections: [], notes: outlineText } };
+  const meta = { strategy: 'outline-first', target_lengths, created_by: req.user!.id, model: llm.getLastUsedModel?.() };
+
+  const upsert = await pool.query(
+    `INSERT INTO faq_artifacts (faq_id, artifacts, meta) VALUES ($1, $2, $3)
+     ON CONFLICT (faq_id) DO UPDATE SET artifacts = $2, meta = $3, updated_at = CURRENT_TIMESTAMP
+     RETURNING id, faq_id, artifacts, meta, created_at, updated_at`,
+    [id, artifacts, meta]
+  );
+
+  res.json({ success: true, data: upsert.rows[0] });
+}));
+
+router.post('/admin/faqs/:id/artifacts/section', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { section, order = 0, type, sources = [], target_length = 600, continue_from = '' } = req.body || {};
+  if (!type || !['description','context','answer','additional_info'].includes(type)) throw new AppError('Invalid section type', 400);
+
+  const faqRes = await pool.query(`SELECT title, description, context, answer, additional_info, tags FROM faqs WHERE id = $1`, [id]);
+  if (faqRes.rows.length === 0) throw new AppError('FAQ not found', 404);
+  const faq = faqRes.rows[0];
+
+  // Retrieve relevant context from vector store (guided semantic search)
+  const searchQuery = `${faq.title} ${faq.description} ${(Array.isArray(faq.tags)? faq.tags : JSON.parse(faq.tags||'[]')).join(' ')}`.trim();
+  const results = await QdrantService.semanticSearchGuided(searchQuery, { limit: 30, alpha: 0.75, outlineScoping: true, excludeVisual: true });
+  const extractText = (r: any) => r?.payload?.text || r?.payload?.payload?.text || r?.payload?.text_content || r?.payload?.snippet || r?.payload?.content || '';
+  const contextSnippets = (results || []).map(extractText).filter(Boolean).slice(0, 8);
+
+  const prompt = `Schreibe den Abschnitt (${type}) Nummer ${order} für einen ausführlichen FAQ-Artikel.\n\nTitel: ${faq.title}\nTags: ${(Array.isArray(faq.tags)? faq.tags : JSON.parse(faq.tags||'[]')).join(', ')}\n\nBisherige Inhalte:\n- Beschreibung: ${faq.description}\n- Kontext: ${faq.context || ''}\n- Antwort: ${faq.answer || ''}\n- Zusätzliche Infos: ${faq.additional_info || ''}\n\nAbschnitt-Hinweise: ${section || '-'}\nQuellen-Snippets:\n${contextSnippets.map((s, i) => `[${i+1}] ${s.substring(0, 500)}`).join('\n')}\n\nFortsetzen-Text (falls vorhanden): ${continue_from || '-'}\n\nAnforderungen:\n- Ziel-Länge ca. ${target_length} Wörter\n- Präzise, faktenbasiert, keine Wiederholungen\n- Nutze Snippets zur Belegung von Aussagen\n- Markdown erlaubt (Überschriften, Listen)\n- Nutze primär Inhalte aus pseudocode_* und structured_table Chunks; zitiere chunk_type/Seite falls möglich.\n\nGib nur den Abschnittstext zurück.`;
+
+  const content = await llm.generateText(prompt);
+
+  // Load latest artifacts record (or create)
+  const artRes = await pool.query(`SELECT id, artifacts FROM faq_artifacts WHERE faq_id = $1 ORDER BY created_at DESC LIMIT 1`, [id]);
+  let artifacts: any = artRes.rows[0]?.artifacts || {};
+  artifacts.sections = artifacts.sections || [];
+  artifacts.sections.push({ id: `${type}-${Date.now()}`, title: section?.title || type, type, order, content, sources });
+
+  const upsert = await pool.query(
+    `INSERT INTO faq_artifacts (faq_id, artifacts, meta) VALUES ($1, $2, COALESCE((SELECT meta FROM faq_artifacts WHERE faq_id = $1 LIMIT 1), '{}'::jsonb))
+     ON CONFLICT (faq_id) DO UPDATE SET artifacts = $2, updated_at = CURRENT_TIMESTAMP
+     RETURNING id, faq_id, artifacts, meta, created_at, updated_at`,
+    [id, artifacts]
+  );
+
+  res.json({ success: true, data: upsert.rows[0] });
+}));
+
+// Edit existing section (title/order/type/content)
+router.patch('/admin/faqs/:id/artifacts/section/:sectionId', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id, sectionId } = req.params;
+  const { title, order, type, content } = req.body || {};
+
+  const artRes = await pool.query(`SELECT id, artifacts FROM faq_artifacts WHERE faq_id = $1 LIMIT 1`, [id]);
+  if (artRes.rows.length === 0) throw new AppError('No artifacts found for FAQ', 404);
+
+  const artifacts: any = artRes.rows[0].artifacts || {};
+  const sections: any[] = artifacts.sections || [];
+  const idx = sections.findIndex(s => s.id === sectionId);
+  if (idx === -1) throw new AppError('Section not found', 404);
+
+  if (title !== undefined) sections[idx].title = title;
+  if (order !== undefined) sections[idx].order = order;
+  if (type !== undefined) {
+    if (!['description','context','answer','additional_info'].includes(type)) throw new AppError('Invalid section type', 400);
+    sections[idx].type = type;
+  }
+  if (content !== undefined) sections[idx].content = content;
+
+  artifacts.sections = sections;
+
+  const update = await pool.query(
+    `UPDATE faq_artifacts SET artifacts = $1, updated_at = CURRENT_TIMESTAMP WHERE faq_id = $2 RETURNING id, faq_id, artifacts, meta, created_at, updated_at`,
+    [artifacts, id]
+  );
+
+  res.json({ success: true, data: update.rows[0] });
+}));
+
+// Delete a generated section
+router.delete('/admin/faqs/:id/artifacts/section/:sectionId', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id, sectionId } = req.params;
+  const artRes = await pool.query(`SELECT id, artifacts FROM faq_artifacts WHERE faq_id = $1 LIMIT 1`, [id]);
+  if (artRes.rows.length === 0) throw new AppError('No artifacts found for FAQ', 404);
+
+  const artifacts: any = artRes.rows[0].artifacts || {};
+  const before = (artifacts.sections || []).length;
+  artifacts.sections = (artifacts.sections || []).filter((s: any) => s.id !== sectionId);
+  const after = (artifacts.sections || []).length;
+  if (before === after) throw new AppError('Section not found', 404);
+
+  const update = await pool.query(
+    `UPDATE faq_artifacts SET artifacts = $1, updated_at = CURRENT_TIMESTAMP WHERE faq_id = $2 RETURNING id, faq_id, artifacts, meta, created_at, updated_at`,
+    [artifacts, id]
+  );
+
+  res.json({ success: true, data: update.rows[0] });
+}));
+
+router.post('/admin/faqs/:id/extend-field', authenticateToken, requireAdminForFaq, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { field, target_length = 1500, strategy = 'sectionwise' } = req.body || {};
+  const allowed = ['description','context','answer','additional_info'];
+  if (!allowed.includes(field)) throw new AppError('Unsupported field', 400);
+
+  const faqRes = await pool.query(`SELECT id, title, description, context, answer, additional_info, tags FROM faqs WHERE id = $1`, [id]);
+  if (faqRes.rows.length === 0) throw new AppError('FAQ not found', 404);
+  const faq = faqRes.rows[0];
+
+  // Iterative generation in segments of ~500-700 words
+  const segmentTarget = Math.max(400, Math.min(800, Math.round(target_length / 2)));
+  let current = (faq[field] || '') as string;
+  let totalWords = current.split(/\s+/).filter(Boolean).length;
+  let iterations = 0;
+
+  while (totalWords < target_length && iterations < 6) {
+    iterations++;
+    const searchQuery = `${faq.title} ${(Array.isArray(faq.tags)? faq.tags : JSON.parse(faq.tags||'[]')).join(' ')} ${current.substring(0, 400)}`.trim();
+    const results = await QdrantService.semanticSearchGuided(searchQuery, { limit: 24, alpha: 0.75, outlineScoping: true, excludeVisual: true });
+    const extractText = (r: any) => r?.payload?.text || r?.payload?.payload?.text || r?.payload?.text_content || r?.payload?.snippet || r?.payload?.content || '';
+    const contextSnippets = (results || []).map(extractText).filter(Boolean).slice(0, 6);
+
+    const prompt = `Erweitere das Feld '${field}' eines FAQ-Eintrags.\n\nTitel: ${faq.title}\nVorhandener Text (Auszug):\n${current.slice(-1200)}\n\nRelevante Snippets:\n${contextSnippets.map((s, i) => `[${i+1}] ${s.substring(0, 500)}`).join('\n')}\n\nAnforderungen:\n- Füge einen kohärenten Abschnitt an (ca. ${segmentTarget} Wörter)\n- Keine Wiederholung, konsistente Begriffe, Quellenbezug\n- Nutze Überschriften/Listen wo sinnvoll\n- Bevorzuge Informationen aus pseudocode_* und structured_table\n- Zitiere, falls möglich, chunk_type/Seite\n- Gib nur den neuen Text (ohne alten) zurück.`;
+
+    const addition = await llm.generateText(prompt);
+    current = `${current}\n\n${addition}`.trim();
+    totalWords = current.split(/\s+/).filter(Boolean).length;
+  }
+
+  // Save field
+  const columnMap: any = { description: 'description', context: 'context', answer: 'answer', additional_info: 'additional_info' };
+  const col = columnMap[field];
+  const update = await pool.query(`UPDATE faqs SET ${col} = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`, [current, id]);
+
+  // Also reflect in artifacts for traceability
+  await pool.query(
+    `INSERT INTO faq_artifacts (faq_id, artifacts, meta)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (faq_id) DO UPDATE SET artifacts = faq_artifacts.artifacts || $2, meta = faq_artifacts.meta || $3, updated_at = CURRENT_TIMESTAMP`,
+    [id, { [`extended_${field}`]: { length: totalWords } }, { strategy, target_lengths: { [field]: target_length }, model: llm.getLastUsedModel?.(), created_by: req.user!.id }]
+  );
+
+  res.json({ success: true, data: update.rows[0] });
+}));
+
 export default router;

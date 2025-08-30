@@ -168,6 +168,9 @@ app.use('/api/imap', imap_scheduler_js_1.default);
 app.use('/api/cr-wmako-001', cr_wmako_001_test_js_1.default);
 // Problem Report routes
 app.use('/api/problem-report', auth_2.authenticateToken, problemReport_1.default);
+// Engagement routes
+const engagement_1 = __importDefault(require("./routes/engagement"));
+app.use('/api/engagement', engagement_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Initialize Qdrant collections

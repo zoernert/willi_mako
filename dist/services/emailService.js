@@ -119,47 +119,39 @@ class EmailService {
         return nodemailer_1.default.createTransport(alternativeConfig);
     }
     /**
-     * Sendet eine E-Mail
+     * Send an email and return the messageId (if available)
      */
-    async sendEmail(options) {
+    async sendEmailWithInfo(options) {
         let lastError = null;
+        // Prepare mail options once
+        const smtpSettings = await systemSettingsService_1.SystemSettingsService.getSMTPSettings();
+        const mailOptions = {
+            from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+            text: options.text || this.htmlToText(options.html),
+            attachments: options.attachments || []
+        };
         try {
             const transporter = await this.getTransporter();
-            const smtpSettings = await systemSettingsService_1.SystemSettingsService.getSMTPSettings();
-            const mailOptions = {
-                from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
-                to: options.to,
-                subject: options.subject,
-                html: options.html,
-                text: options.text || this.htmlToText(options.html),
-                attachments: options.attachments || []
-            };
             const info = await transporter.sendMail(mailOptions);
             getLoggerSafe().info(`E-Mail erfolgreich gesendet an ${options.to}, MessageID: ${info.messageId}`);
-            return;
+            return { messageId: info === null || info === void 0 ? void 0 : info.messageId };
         }
         catch (error) {
             lastError = error instanceof Error ? error : new Error(String(error));
             getLoggerSafe().warn(`Primäre SMTP-Konfiguration fehlgeschlagen: ${lastError.message}`);
-            // Versuche alternative Konfiguration bei "Greeting never received" oder ähnlichen Fehlern
+            // Try alternative configuration for specific errors
             if (lastError.message.includes('Greeting never received') ||
                 lastError.message.includes('connection timeout') ||
                 lastError.message.includes('ECONNRESET')) {
                 getLoggerSafe().info('Versuche alternative SMTP-Konfiguration...');
                 try {
-                    const smtpSettings = await systemSettingsService_1.SystemSettingsService.getSMTPSettings();
                     const alternativeTransporter = await this.createAlternativeTransporter(smtpSettings);
-                    const mailOptions = {
-                        from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
-                        to: options.to,
-                        subject: options.subject,
-                        html: options.html,
-                        text: options.text || this.htmlToText(options.html),
-                        attachments: options.attachments || []
-                    };
                     const info = await alternativeTransporter.sendMail(mailOptions);
                     getLoggerSafe().info(`E-Mail erfolgreich mit alternativer Konfiguration gesendet an ${options.to}, MessageID: ${info.messageId}`);
-                    return;
+                    return { messageId: info === null || info === void 0 ? void 0 : info.messageId };
                 }
                 catch (alternativeError) {
                     getLoggerSafe().error(`Alternative SMTP-Konfiguration ebenfalls fehlgeschlagen: ${alternativeError instanceof Error ? alternativeError.message : String(alternativeError)}`);
@@ -168,6 +160,13 @@ class EmailService {
         }
         getLoggerSafe().error(`Fehler beim Senden der E-Mail: ${(lastError === null || lastError === void 0 ? void 0 : lastError.message) || 'Unbekannter Fehler'}`);
         throw new Error('E-Mail konnte nicht gesendet werden');
+    }
+    /**
+     * Sendet eine E-Mail (kompatible API)
+     */
+    async sendEmail(options) {
+        // Delegate to the info-returning variant to avoid duplicate logic
+        await this.sendEmailWithInfo(options);
     }
     /**
      * Sendet eine Team-Einladungs-E-Mail

@@ -49,7 +49,13 @@ export declare class EmailService {
      */
     private createAlternativeTransporter;
     /**
-     * Sendet eine E-Mail
+     * Send an email and return the messageId (if available)
+     */
+    sendEmailWithInfo(options: EmailOptions): Promise<{
+        messageId?: string;
+    }>;
+    /**
+     * Sendet eine E-Mail (kompatible API)
      */
     sendEmail(options: EmailOptions): Promise<void>;
     /**
