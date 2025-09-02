@@ -4,7 +4,7 @@
   "description": "Stromhaltig - Digital Energy Infrastructure for tomorrow",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "./start-dev.sh",
+    "dev": "bash ./start-dev-limited.sh",
     "dev:limited": "./start-dev-limited.sh",
     "dev:next-only": "next dev -p 3003",
     "dev:backend-only": "PORT=3009 nodemon --exec \"npx tsx src/server.ts\"",

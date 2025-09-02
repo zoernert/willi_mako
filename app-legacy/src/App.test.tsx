@@ -2,8 +2,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+// Simple smoke test to ensure App renders without crashing
+it('renders the application shell', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  // Our react-router-dom mock renders a container with this test id
+  expect(screen.getByTestId('router')).toBeInTheDocument();
 });

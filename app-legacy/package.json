@@ -39,7 +39,7 @@
     "start": "PORT=3002 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test:ci": "react-scripts test --watchAll=false --env=jsdom"
   },
   "eslintConfig": {
     "extends": [

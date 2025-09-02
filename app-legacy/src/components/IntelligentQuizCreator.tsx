@@ -23,13 +23,11 @@ import {
   Chip,
   List,
   ListItem,
-  ListItemText,
-  Divider
+  ListItemText
 } from '@mui/material';
 import {
   AutoFixHigh as AIIcon,
   Quiz as QuizIcon,
-  Search as SearchIcon,
   CheckCircle as CheckIcon
 } from '@mui/icons-material';
 import { quizApi } from '../services/quizApi';
@@ -51,18 +49,8 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const steps = [
-    'Thema definieren',
-    'Quiz erstellen',
-    'Fertig'
-  ];
-
   const handleNext = () => {
     setActiveStep(prev => prev + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep(prev => prev - 1);
   };
 
   const handleCreateQuiz = async () => {
@@ -144,7 +132,7 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
           <Stepper activeStep={activeStep} orientation="vertical">
             <Step>
               <StepLabel>Quiz-Details eingeben</StepLabel>
-              <StepContent>
+              <StepContent TransitionProps={{ unmountOnExit: true }}>
                 <Box sx={{ mt: 2 }}>
                   <TextField
                     fullWidth
@@ -191,7 +179,7 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
 
             <Step>
               <StepLabel>Quiz wird erstellt</StepLabel>
-              <StepContent>
+              <StepContent TransitionProps={{ unmountOnExit: true }}>
                 <Box sx={{ mt: 2, textAlign: 'center' }}>
                   <CircularProgress size={48} />
                   <Typography variant="h6" sx={{ mt: 2 }}>
@@ -206,7 +194,7 @@ const IntelligentQuizCreator: React.FC<IntelligentQuizCreatorProps> = ({ onQuizC
 
             <Step>
               <StepLabel>Quiz erfolgreich erstellt</StepLabel>
-              <StepContent>
+              <StepContent TransitionProps={{ unmountOnExit: true }}>
                 <Box sx={{ mt: 2 }}>
                   <Alert severity="success" sx={{ mb: 2 }}>
                     <Typography variant="h6">Quiz erfolgreich erstellt!</Typography>
