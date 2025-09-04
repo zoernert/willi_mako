@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { EmailService } from '../../services/emailService';
 
 interface SendWhitepaperRequest extends NextApiRequest {
   body: {
@@ -10,35 +11,31 @@ interface SendWhitepaperRequest extends NextApiRequest {
 
 export default async function handler(req: SendWhitepaperRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { email, whitepaperTitle, whitepaperPdfUrl } = req.body;
+  const { email, whitepaperTitle, whitepaperPdfUrl } = req.body;
 
     if (!email || !whitepaperTitle || !whitepaperPdfUrl) {
       return res.status(400).json({ error: 'Fehlende Parameter: E-Mail, Whitepaper-Titel oder PDF-URL.' });
     }
 
     try {
-      // HIER WÜRDE DIE LOGIK FÜR DEN E-MAIL-VERSAND EINGEFÜGT WERDEN.
-      // Dies sollte die gleiche Logik sein, die auch für das "Beratungsformular" verwendet wird.
-      // Beispiel (Platzhalter):
-      console.log(`Simuliere E-Mail-Versand an ${email} für Whitepaper: ${whitepaperTitle} (${whitepaperPdfUrl})`);
-      
-      // In einer echten Implementierung würden Sie hier einen E-Mail-Dienst (z.B. Nodemailer, AWS SES) aufrufen.
-      // const nodemailer = require('nodemailer');
-      // const transporter = nodemailer.createTransport({
-      //   // Konfiguration Ihres SMTP-Servers
-      // });
-      // await transporter.sendMail({
-      //   from: 'noreply@stromhaltig.de',
-      //   to: email,
-      //   subject: `Ihr angefordertes Whitepaper: ${whitepaperTitle}`,
-      //   html: `<p>Sehr geehrte/r Interessent/in,</p>
-      //          <p>vielen Dank für Ihr Interesse an unserem Whitepaper "${whitepaperTitle}".</p>
-      //          <p>Sie können es hier herunterladen: <a href="${whitepaperPdfUrl}">${whitepaperTitle}</a></p>
-      //          <p>Mit freundlichen Grüßen,</p>
-      //          <p>Ihr Stromhaltig Team</p>`,
-      // });
+      const emailService = new EmailService();
 
-      return res.status(200).json({ message: 'Whitepaper wurde erfolgreich per E-Mail versendet.' });
+      // 1) Interne Lead-Mail – use default verified sender; route replies to the prospect
+      await emailService.sendEmail({
+        to: 'dev@stromdao.com',
+        subject: `Whitepaper-Lead: ${whitepaperTitle}`,
+        replyTo: email,
+        html: `
+          <h1>Neuer Whitepaper-Lead</h1>
+          <p><strong>Whitepaper:</strong> ${whitepaperTitle}</p>
+          <p><strong>Interessent (E-Mail):</strong> ${email}</p>
+          <p><strong>Download-Link (PDF):</strong> <a href="${whitepaperPdfUrl}">${whitepaperPdfUrl}</a></p>
+          <hr/>
+          <p>Hinweis: Nachgelagerte Leadverarbeitung erfolgt separat. Double-Opt-In ist nicht aktiviert.</p>
+        `,
+      });
+
+  return res.status(200).json({ message: 'Vielen Dank! Ihre Anfrage wurde übermittelt.' });
     } catch (error) {
       console.error('Fehler beim Senden des Whitepapers per E-Mail:', error);
       return res.status(500).json({ error: 'Fehler beim Senden des Whitepapers.' });

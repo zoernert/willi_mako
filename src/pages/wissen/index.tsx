@@ -16,7 +16,8 @@ import {
 import {
   ExpandMore as ExpandMoreIcon,
   QuestionAnswer as FAQIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Description as DescriptionIcon
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../../lib/faq-api';
@@ -40,7 +41,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
         <title>Wissensdatenbank | Energiewirtschaft FAQ | Willi-Mako</title>
         <meta 
           name="description" 
-          content={`Umfassende Wissensdatenbank für Marktkommunikation in der Energiewirtschaft. ${totalCount} FAQ-Artikel zu BDEW, EIC, Bilanzkreisen und mehr.`}
+          content={`Umfassende Wissensdatenbank für Marktkommunikation in der Energiewirtschaft. [ ${totalCount} ]FAQ-Artikel zu BDEW, EIC, Bilanzkreisen und mehr.`}
         />
         <meta name="keywords" content="Energiewirtschaft, FAQ, BDEW, EIC, Bilanzkreise, Marktkommunikation, Strommarkt" />
         <link rel="canonical" href="https://stromhaltig.de/wissen" />
@@ -104,6 +105,26 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
             {totalCount} Artikel zu BDEW-Codes, EIC-Codes, Bilanzkreisen und mehr.
           </Typography>
         </Box>
+
+        {/* Whitepapers Callout */}
+        <Paper elevation={1} sx={{ p: 3, mb: 8, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DescriptionIcon color="primary" />
+            <Typography variant="h6" component="h2" sx={{ m: 0, fontWeight: 600 }}>
+              Whitepapers zur Marktkommunikation
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            component={Link}
+            href="/whitepaper"
+            variant="contained"
+            color="primary"
+            sx={{ fontWeight: 600 }}
+          >
+            Zu den Whitepapers →
+          </Button>
+        </Paper>
 
         {/* Tag Navigation */}
         <Box component="nav" aria-label="FAQ Kategorien" sx={{ mb: 8 }}>

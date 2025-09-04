@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Allow: /wissen/
+Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /atom.xml
 Allow: /sitemap.xml
@@ -8,18 +9,21 @@ Allow: /sitemap.xml
 # AI-Crawler spezifische Regeln
 User-agent: ChatGPT-User
 Allow: /wissen/
+Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /sitemap.xml
 Crawl-delay: 1
 
 User-agent: Claude-Web
 Allow: /wissen/
+Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /sitemap.xml
 Crawl-delay: 1
 
 User-agent: Google-Extended
 Allow: /wissen/
+Allow: /whitepaper/
 Allow: /feed.xml
 
 User-agent: CCBot

@@ -8,7 +8,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../config/database"));
 const auth_1 = require("../middleware/auth");
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const router = express_1.default.Router();
+// Configure uploads for emails (.eml) and attachments
+const ensureDir = (dirPath) => {
+    if (!fs_1.default.existsSync(dirPath))
+        fs_1.default.mkdirSync(dirPath, { recursive: true });
+};
+const storage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        const clarificationId = req.params.id || 'misc';
+        const base = file.fieldname === 'attachment'
+            ? path_1.default.join(process.cwd(), 'uploads', 'clarifications', clarificationId, 'attachments')
+            : path_1.default.join(process.cwd(), 'uploads', 'clarifications', clarificationId, 'emails');
+        ensureDir(base);
+        cb(null, base);
+    },
+    filename: (req, file, cb) => {
+        const timestamp = Date.now();
+        const safeOriginal = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+        cb(null, `${timestamp}__${safeOriginal}`);
+    }
+});
+const upload = (0, multer_1.default)({ storage });
 // First, let's create the table if it doesn't exist
 const initializeTable = async () => {
     try {
@@ -64,6 +88,13 @@ const initializeTable = async () => {
           BEFORE UPDATE ON bilateral_clarifications
           FOR EACH ROW
           EXECUTE FUNCTION update_bilateral_clarifications_updated_at();
+      
+  -- W2 server fields (added conditionally if not present)
+  ALTER TABLE bilateral_clarifications ADD COLUMN IF NOT EXISTS waiting_on VARCHAR(5) CHECK (waiting_on IN ('US','MP'));
+  ALTER TABLE bilateral_clarifications ADD COLUMN IF NOT EXISTS next_action_at TIMESTAMP;
+  ALTER TABLE bilateral_clarifications ADD COLUMN IF NOT EXISTS sla_due_at TIMESTAMP;
+  ALTER TABLE bilateral_clarifications ADD COLUMN IF NOT EXISTS last_inbound_at TIMESTAMP;
+  ALTER TABLE bilateral_clarifications ADD COLUMN IF NOT EXISTS last_outbound_at TIMESTAMP;
           
       -- Create references table for storing links to external data sources
       CREATE TABLE IF NOT EXISTS clarification_references (
@@ -83,6 +114,37 @@ const initializeTable = async () => {
           data JSONB NOT NULL,                  -- Die eigentlichen Daten
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+    -- Email history for clarifications
+    CREATE TABLE IF NOT EXISTS clarification_emails (
+      id SERIAL PRIMARY KEY,
+      clarification_id INTEGER NOT NULL REFERENCES bilateral_clarifications(id) ON DELETE CASCADE,
+      direction VARCHAR(10) NOT NULL CHECK (direction IN ('INCOMING','OUTGOING')),
+      subject VARCHAR(512),
+      from_address VARCHAR(320),
+      to_addresses TEXT[],
+      cc_addresses TEXT[],
+      bcc_addresses TEXT[],
+      content TEXT,
+      content_type VARCHAR(20) DEFAULT 'text',
+      email_type VARCHAR(40),
+      is_important BOOLEAN DEFAULT FALSE,
+      source VARCHAR(20) DEFAULT 'API',
+      file_path TEXT, -- for uploaded .eml
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Attachments for clarifications
+    CREATE TABLE IF NOT EXISTS clarification_attachments (
+      id SERIAL PRIMARY KEY,
+      clarification_id INTEGER NOT NULL REFERENCES bilateral_clarifications(id) ON DELETE CASCADE,
+      filename VARCHAR(512) NOT NULL,
+      file_path TEXT NOT NULL,
+      mime_type VARCHAR(127),
+      file_size INTEGER,
+      uploaded_by UUID,
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     `;
         await database_1.default.query(createTableQuery);
         console.log('✅ bilateral_clarifications table initialized');
@@ -117,6 +179,7 @@ const formatClarification = (row) => {
         sourceSystem: row.source_system,
         version: row.version,
         lastModifiedBy: row.last_modified_by,
+        lastEditedBy: row.last_modified_by,
         archived: row.archived,
         archivedAt: (_e = row.archived_at) === null || _e === void 0 ? void 0 : _e.toISOString(),
         // New bilateral clarification fields
@@ -125,6 +188,11 @@ const formatClarification = (row) => {
         selectedContact: row.selected_contact,
         dataExchangeReference: row.data_exchange_reference,
         internalStatus: row.internal_status,
+        waitingOn: row.waiting_on || (['SENT', 'PENDING', 'IN_PROGRESS'].includes(row.status) ? 'MP' : 'US'),
+        nextActionAt: row.next_action_at ? new Date(row.next_action_at).toISOString() : (row.updated_at ? new Date(new Date(row.updated_at).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString() : undefined),
+        slaDueAt: row.sla_due_at ? new Date(row.sla_due_at).toISOString() : (row.due_date ? new Date(row.due_date).toISOString() : undefined),
+        lastInboundAt: row.last_inbound_at ? new Date(row.last_inbound_at).toISOString() : undefined,
+        lastOutboundAt: row.last_outbound_at ? new Date(row.last_outbound_at).toISOString() : undefined,
         // Computed fields
         isOverdue: row.due_date && new Date(row.due_date) < new Date() && row.status !== 'CLOSED' && row.status !== 'RESOLVED',
         daysSinceCreated: Math.floor((new Date().getTime() - new Date(row.created_at).getTime()) / (1000 * 60 * 60 * 24))
@@ -186,6 +254,69 @@ router.get('/', async (req, res) => {
             error: 'Fehler beim Laden der Klärfälle',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
+    }
+});
+// Place statistics and export routes BEFORE parametric routes to avoid /:id capture
+// GET /api/bilateral-clarifications/statistics
+router.get('/statistics', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const statsQuery = `
+      SELECT
+        COUNT(*) FILTER (WHERE status NOT IN ('RESOLVED','CLOSED')) as total_active,
+        COUNT(*) FILTER (WHERE waiting_on = 'US') as waiting_us,
+        COUNT(*) FILTER (WHERE waiting_on = 'MP') as waiting_mp,
+        COUNT(*) FILTER (WHERE sla_due_at IS NOT NULL AND sla_due_at::date = CURRENT_DATE AND status NOT IN ('RESOLVED','CLOSED')) as due_today,
+        COUNT(*) FILTER (WHERE sla_due_at IS NOT NULL AND sla_due_at < NOW() AND status NOT IN ('RESOLVED','CLOSED')) as overdue,
+        COUNT(*) FILTER (WHERE priority IN ('HIGH','CRITICAL')) as high_priority
+      FROM bilateral_clarifications WHERE archived = FALSE;
+    `;
+        const r = await database_1.default.query(statsQuery);
+        const row = r.rows[0] || {};
+        res.json({
+            totalActive: parseInt(row.total_active || 0),
+            waitingUS: parseInt(row.waiting_us || 0),
+            waitingMP: parseInt(row.waiting_mp || 0),
+            dueToday: parseInt(row.due_today || 0),
+            overdue: parseInt(row.overdue || 0),
+            highPriority: parseInt(row.high_priority || 0)
+        });
+    }
+    catch (error) {
+        console.error('Error fetching statistics:', error);
+        res.status(500).json({ error: 'Fehler beim Laden der Statistiken' });
+    }
+});
+// GET /api/bilateral-clarifications/export
+router.get('/export', auth_1.authenticateToken, async (req, res) => {
+    try {
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="bilateral-clarifications-export.csv"');
+        const header = 'id;title;status;priority;waitingOn;slaDueAt\n';
+        res.write(header);
+        const q = await database_1.default.query(`SELECT id, title, status, priority, waiting_on, sla_due_at FROM bilateral_clarifications WHERE archived = FALSE ORDER BY id DESC LIMIT 1000`);
+        q.rows.forEach(r => {
+            const line = `${r.id};${(r.title || '').replace(/;/g, ',')};${r.status};${r.priority};${r.waiting_on || ''};${r.sla_due_at ? new Date(r.sla_due_at).toISOString() : ''}\n`;
+            res.write(line);
+        });
+        res.end();
+    }
+    catch (error) {
+        console.error('Error exporting clarifications:', error);
+        res.status(500).json({ error: 'Fehler beim Export' });
+    }
+});
+// GET /api/bilateral-clarifications/validate-email
+router.get('/validate-email', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { marketPartnerCode, role } = req.query;
+        if (!marketPartnerCode)
+            return res.json({ isValid: false });
+        const email = role ? `${String(role).toLowerCase()}_${marketPartnerCode}@example.com` : `${marketPartnerCode}@example.com`;
+        res.json({ isValid: true, email, contactName: 'Kontakt (automatisch)' });
+    }
+    catch (error) {
+        console.error('Error validating email:', error);
+        res.status(500).json({ isValid: false });
     }
 });
 // POST /api/bilateral-clarifications
@@ -657,7 +788,8 @@ router.patch('/:id/status', auth_1.authenticateToken, async (req, res) => {
         }
         const updateQuery = `
       UPDATE bilateral_clarifications 
-      SET status = $1, internal_status = $2, last_modified_by = $3, version = version + 1
+      SET status = $1, internal_status = $2, last_modified_by = $3, version = version + 1,
+          waiting_on = CASE WHEN $1 IN ('SENT','PENDING','IN_PROGRESS') THEN 'MP' ELSE 'US' END
       WHERE id = $4 AND archived = FALSE
       RETURNING *
     `;
@@ -698,14 +830,19 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
         // Build dynamic update query
         const allowedFields = [
             'title', 'description', 'priority', 'assigned_to',
-            'tags', 'shared_with_team'
+            'tags', 'shared_with_team',
+            // W2 server fields
+            'waiting_on', 'next_action_at', 'sla_due_at'
         ];
         const updateFields = [];
         const updateValues = [];
         let paramCounter = 1;
         Object.keys(updates).forEach(key => {
             const dbField = key === 'assignedTo' ? 'assigned_to' :
-                key === 'sharedWithTeam' ? 'shared_with_team' : key;
+                key === 'sharedWithTeam' ? 'shared_with_team' :
+                    key === 'waitingOn' ? 'waiting_on' :
+                        key === 'nextActionAt' ? 'next_action_at' :
+                            key === 'slaDueAt' ? 'sla_due_at' : key;
             if (allowedFields.includes(dbField)) {
                 updateFields.push(`${dbField} = $${paramCounter}`);
                 updateValues.push(updates[key]);
@@ -743,6 +880,163 @@ router.put('/:id', auth_1.authenticateToken, async (req, res) => {
             error: 'Fehler beim Aktualisieren des Klärfalls',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
+    }
+});
+// EMAILS: history, add, upload .eml, send-email, validate-email
+// GET /:id/emails
+router.get('/:id/emails', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const r = await database_1.default.query('SELECT * FROM clarification_emails WHERE clarification_id = $1 ORDER BY created_at ASC', [id]);
+        res.json(r.rows.map(row => {
+            var _a;
+            return ({
+                id: row.id,
+                direction: row.direction,
+                subject: row.subject,
+                fromAddress: row.from_address,
+                toAddresses: row.to_addresses || [],
+                ccAddresses: row.cc_addresses || [],
+                bccAddresses: row.bcc_addresses || [],
+                content: row.content,
+                contentType: row.content_type,
+                emailType: row.email_type,
+                isImportant: row.is_important,
+                source: row.source,
+                filePath: row.file_path,
+                createdAt: (_a = row.created_at) === null || _a === void 0 ? void 0 : _a.toISOString()
+            });
+        }));
+    }
+    catch (error) {
+        console.error('Error fetching email history:', error);
+        res.status(500).json({ error: 'Fehler beim Laden der E-Mail-Historie' });
+    }
+});
+// POST /:id/emails
+router.post('/:id/emails', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { direction, subject, fromAddress, toAddresses, ccAddresses, bccAddresses, content, contentType, emailType, isImportant, source } = req.body;
+        if (!direction || !content) {
+            return res.status(400).json({ error: 'direction und content sind erforderlich' });
+        }
+        const insert = `INSERT INTO clarification_emails
+      (clarification_id, direction, subject, from_address, to_addresses, cc_addresses, bcc_addresses, content, content_type, email_type, is_important, source)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, created_at`;
+        const vals = [id, direction, subject || null, fromAddress || null, toAddresses || null, ccAddresses || null, bccAddresses || null, content, contentType || 'text', emailType || null, !!isImportant, source || 'API'];
+        const r = await database_1.default.query(insert, vals);
+        // Update last inbound/outbound timestamps and potentially waiting_on
+        if (direction === 'INCOMING') {
+            await database_1.default.query('UPDATE bilateral_clarifications SET last_inbound_at = NOW(), waiting_on = $1 WHERE id = $2', ['US', id]);
+        }
+        else if (direction === 'OUTGOING') {
+            await database_1.default.query('UPDATE bilateral_clarifications SET last_outbound_at = NOW(), waiting_on = $1 WHERE id = $2', ['MP', id]);
+        }
+        res.json({ success: true, emailId: r.rows[0].id });
+    }
+    catch (error) {
+        console.error('Error adding email:', error);
+        res.status(500).json({ error: 'Fehler beim Hinzufügen der E-Mail' });
+    }
+});
+// POST /:id/emails/upload (.eml)
+router.post('/:id/emails/upload', auth_1.authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const file = req.file;
+        if (!file)
+            return res.status(400).json({ error: 'Datei fehlt' });
+        const insert = `INSERT INTO clarification_emails
+      (clarification_id, direction, subject, from_address, content, content_type, email_type, is_important, source, file_path)
+      VALUES ($1,'INCOMING',NULL,NULL,NULL,'mixed',NULL,FALSE,'IMPORT',$2) RETURNING id`;
+        const r = await database_1.default.query(insert, [id, file.path]);
+        await database_1.default.query('UPDATE bilateral_clarifications SET last_inbound_at = NOW(), waiting_on = $1 WHERE id = $2', ['US', id]);
+        res.json({ success: true, emailId: r.rows[0].id });
+    }
+    catch (error) {
+        console.error('Error uploading .eml:', error);
+        res.status(500).json({ error: 'Fehler beim Hochladen der E-Mail' });
+    }
+});
+// POST /:id/send-email
+router.post('/:id/send-email', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { subject, fromAddress, toAddresses, ccAddresses, bccAddresses, content } = req.body || {};
+        // In this simplified implementation, we record the outgoing email and mark SENT
+        const insert = `INSERT INTO clarification_emails
+      (clarification_id, direction, subject, from_address, to_addresses, cc_addresses, bcc_addresses, content, content_type, email_type, is_important, source)
+      VALUES ($1,'OUTGOING',$2,$3,$4,$5,$6,$7,'html','CLARIFICATION_REQUEST',FALSE,'API') RETURNING id`;
+        await database_1.default.query(insert, [id, subject || '', fromAddress || null, toAddresses || null, ccAddresses || null, bccAddresses || null, content || '']);
+        const update = `UPDATE bilateral_clarifications SET status = CASE WHEN status = 'READY_TO_SEND' THEN 'SENT' ELSE status END, last_outbound_at = NOW(), waiting_on = 'MP' WHERE id = $1`;
+        await database_1.default.query(update, [id]);
+        res.json({ success: true, sentAt: new Date().toISOString() });
+    }
+    catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ error: 'Fehler beim Senden der E-Mail' });
+    }
+});
+// (moved earlier) validate-email route
+// ATTACHMENTS: list, upload, download
+// GET /:id/attachments
+router.get('/:id/attachments', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const r = await database_1.default.query('SELECT id, filename, file_path, mime_type, file_size, uploaded_by, uploaded_at FROM clarification_attachments WHERE clarification_id = $1 ORDER BY uploaded_at DESC', [id]);
+        res.json(r.rows.map(row => {
+            var _a;
+            return ({
+                id: row.id,
+                name: row.filename,
+                path: row.file_path,
+                mimeType: row.mime_type,
+                size: row.file_size,
+                uploadedBy: row.uploaded_by,
+                uploadedAt: (_a = row.uploaded_at) === null || _a === void 0 ? void 0 : _a.toISOString()
+            });
+        }));
+    }
+    catch (error) {
+        console.error('Error fetching attachments:', error);
+        res.status(500).json({ error: 'Fehler beim Laden der Anhänge' });
+    }
+});
+// POST /:id/attachments
+router.post('/:id/attachments', auth_1.authenticateToken, upload.single('attachment'), async (req, res) => {
+    var _a, _b;
+    try {
+        const { id } = req.params;
+        const file = req.file;
+        if (!file)
+            return res.status(400).json({ error: 'Datei fehlt' });
+        const insert = `INSERT INTO clarification_attachments (clarification_id, filename, file_path, mime_type, file_size, uploaded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, uploaded_at`;
+        const r = await database_1.default.query(insert, [id, file.originalname, file.path, file.mimetype || null, file.size || null, ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || null]);
+        res.json({ id: r.rows[0].id, name: file.originalname, uploadedAt: (_b = r.rows[0].uploaded_at) === null || _b === void 0 ? void 0 : _b.toISOString() });
+    }
+    catch (error) {
+        console.error('Error uploading attachment:', error);
+        res.status(500).json({ error: 'Fehler beim Hochladen des Anhangs' });
+    }
+});
+// GET /attachments/:attachmentId/download
+router.get('/attachments/:attachmentId/download', auth_1.authenticateToken, async (req, res) => {
+    try {
+        const { attachmentId } = req.params;
+        const r = await database_1.default.query('SELECT filename, file_path, mime_type FROM clarification_attachments WHERE id = $1', [attachmentId]);
+        if (r.rows.length === 0)
+            return res.status(404).json({ error: 'Anhang nicht gefunden' });
+        const row = r.rows[0];
+        res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${row.filename}"`);
+        const stream = fs_1.default.createReadStream(row.file_path);
+        stream.on('error', () => res.status(500).end());
+        stream.pipe(res);
+    }
+    catch (error) {
+        console.error('Error downloading attachment:', error);
+        res.status(500).json({ error: 'Fehler beim Download des Anhangs' });
     }
 });
 // Endpunkte für die Verwaltung von Referenzen (Chats, Notizen, etc.)

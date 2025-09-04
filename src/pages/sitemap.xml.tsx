@@ -1,5 +1,7 @@
 import { GetServerSideProps } from 'next';
 import { getAllPublicFAQs, getAllTags } from '../../lib/faq-api';
+import { getAllWhitepapers } from '../../lib/content/whitepapers';
+import { getAllArticles } from '../../lib/content/articles';
 import { calculateSitemapPriority, calculateChangeFreq } from '../../lib/seo-utils';
 
 export default function Sitemap() {
@@ -8,9 +10,11 @@ export default function Sitemap() {
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   try {
-    const [faqs, tags] = await Promise.all([
+    const [faqs, tags, whitepapers, articles] = await Promise.all([
       getAllPublicFAQs(),
-      getAllTags()
+      getAllTags(),
+      Promise.resolve(getAllWhitepapers()),
+      Promise.resolve(getAllArticles()),
     ]);
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -31,6 +35,22 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     <priority>0.9</priority>
   </url>
 
+  <!-- Whitepaper Overview -->
+  <url>
+    <loc>https://stromhaltig.de/whitepaper</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Artikel Overview -->
+  <url>
+    <loc>https://stromhaltig.de/wissen/artikel</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- Tag Pages -->
   ${tags.slice(0, 20).map(tag => `
   <url>
@@ -47,6 +67,24 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     <lastmod>${faq.updated_at}</lastmod>
     <changefreq>${calculateChangeFreq(faq.view_count)}</changefreq>
     <priority>${calculateSitemapPriority(faq.view_count, faq.tags)}</priority>
+  </url>`).join('')}
+
+  <!-- Whitepaper Pages -->
+  ${whitepapers.map(wp => `
+  <url>
+    <loc>https://stromhaltig.de/whitepaper/${wp.slug}</loc>
+    <lastmod>${wp.publishedDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('')}
+
+  <!-- Artikel Pages -->
+  ${articles.map(a => `
+  <url>
+    <loc>https://stromhaltig.de/wissen/artikel/${a.slug}</loc>
+    <lastmod>${a.publishedDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>`).join('')}
 
   <!-- RSS/Atom Feeds -->

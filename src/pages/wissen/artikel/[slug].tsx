@@ -1,1 +1,107 @@
-import React from 'react';import { GetStaticPaths, GetStaticProps } from 'next';import Head from 'next/head';import { useRouter } from 'next/router';import { Container, Typography, Box, Button, Paper } from '@mui/material';import Link from 'next/link';import { ArrowBack as BackIcon } from '@mui/icons-material';import MarkdownRenderer from '../../../app-legacy/src/components/MarkdownRenderer';// Dummy-Daten für Whitepaper und Artikel (später vom CMS)interface WhitepaperArticle {  id: string;  title: string;  slug: string;  short_description: string;  content: string;  whitepaper_slug: string;  whitepaper_title: string;  published_date: string;  seo_title?: string;  seo_description?: string;  canonical_url?: string;}const dummyArticles: WhitepaperArticle[] = [  {    id: 'a1',    title: 'Digitale Infrastrukturen als Basis der Energiewende',    slug: 'digitale-infrastrukturen-energiewende',    short_description: 'Ein Auszug aus unserem Whitepaper zur Zukunft der Energie.',    content: '## Digitale Infrastrukturen\n\nDigitale Infrastrukturen sind entscheidend für die Energiewende. Sie ermöglichen eine effizientere Steuerung und Verteilung von Energie. Moderne Netze nutzen Sensoren und Datenanalyse, um Angebot und Nachfrage in Echtzeit auszugleichen, was zu einer stabileren und nachhaltigeren Energieversorgung führt.\n\nDies ist ein wichtiger Schritt, um die Integration erneuerbarer Energien wie Solar- und Windkraft zu optimieren und die Abhängigkeit von fossilen Brennstoffen zu reduzieren.',    whitepaper_slug: 'die-zukunft-der-energie',    whitepaper_title: 'Whitepaper: Die Zukunft der Energie',    published_date: '2023-01-15',    seo_title: 'Digitale Infrastrukturen für die Energiewende - Stromhaltig',    seo_description: 'Erfahren Sie mehr über die Rolle digitaler Infrastrukturen in der Energiewende in diesem Artikel.',  },  {    id: 'a2',    title: 'Die Rolle von Smart Grids in der modernen Energieversorgung',    slug: 'smart-grids-energieversorgung',    short_description: 'Einblicke in intelligente Stromnetze aus unserem Whitepaper.',    content: '## Smart Grids\n\nSmart Grids, oder intelligente Stromnetze, sind das Rückgrat einer modernen Energieversorgung. Sie integrieren fortschrittliche Kommunikationstechnologien, um den Energiefluss zu überwachen und zu steuern. Dies ermöglicht eine bessere Reaktion auf Schwankungen bei der Erzeugung und dem Verbrauch, insbesondere bei der Einbindung von dezentralen erneuerbaren Energiequellen.\n\nDurch Smart Grids können Verbraucher auch aktiver am Energiemarkt teilnehmen, beispielsweise durch Lastmanagement und die Nutzung von Speichersystemen.',    whitepaper_slug: 'die-zukunft-der-energie',    whitepaper_title: 'Whitepaper: Die Zukunft der Energie',    published_date: '2023-01-15',    seo_title: 'Smart Grids in der modernen Energieversorgung - Stromhaltig',    seo_description: 'Ein detaillierter Artikel über die Bedeutung von Smart Grids für die Energieversorgung der Zukunft.',  },  {    id: 'a3',    title: 'Vorteile intelligenter Stromnetze',    slug: 'vorteile-intelligenter-stromnetze',    short_description: 'Ein Artikel über die Vorteile von Smart Grids.',    content: '## Vorteile intelligenter Stromnetze\n\nIntelligente Stromnetze bieten eine Vielzahl von Vorteilen, die für die Energiewende unerlässlich sind. Dazu gehören:\n\n*   **Erhöhte Effizienz:** Optimale Nutzung der vorhandenen Netzinfrastruktur.\n*   **Bessere Integration erneuerbarer Energien:** Schwankungen werden ausgeglichen.\n*   **Verbesserte Netzsicherheit:** Schnellere Fehlererkennung und -behebung.\n*   **Reduzierung von CO2-Emissionen:** Durch effizientere Energienutzung.\n\nDiese Vorteile tragen maßgeblich dazu bei, eine nachhaltige und zuverlässige Energieversorgung zu gewährleisten.',    whitepaper_slug: 'smart-grids-effizienz',    whitepaper_title: 'Smart Grids: Effizienz und Nachhaltigkeit',    published_date: '2023-03-20',    seo_title: 'Vorteile intelligenter Stromnetze - Stromhaltig',    seo_description: 'Entdecken Sie die zahlreichen Vorteile von Smart Grids für eine effiziente und nachhaltige Energieversorgung.',  },];interface WhitepaperArticleDetailProps {  article: WhitepaperArticle;}const WhitepaperArticleDetailPage: React.FC<WhitepaperArticleDetailProps> = ({ article }) => {  const router = useRouter();  if (!article) {    return (      <Container maxWidth="lg">        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">          <Alert severity="error">Artikel nicht gefunden.</Alert>        </Box>      </Container>    );  }  return (    <Container maxWidth="lg">      <Head>        <title>{article.seo_title || article.title}</title>        <meta name="description" content={article.seo_description || article.short_description} />        {article.canonical_url && <link rel="canonical" href={article.canonical_url} />}      </Head>      <Box sx={{ py: 4 }}>        <Box sx={{ mb: 4 }}>          <Button             variant="outlined"             onClick={() => router.push('/whitepaper')}            startIcon={<BackIcon />}            sx={{ mb: 2, borderColor: '#147a50', color: '#147a50' }}          >            Zurück zu den Whitepapern          </Button>          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">            {article.title}          </Typography>          <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>            Veröffentlicht: {new Date(article.published_date).toLocaleDateString('de-DE')}          </Typography>          <Typography variant="body1" paragraph>            {article.short_description}          </Typography>        </Box>        <Paper sx={{ p: 4, mb: 4 }}>          <div className="whitepaper-article-content">            <MarkdownRenderer>{article.content}</MarkdownRenderer>          </div>        </Paper>        <Box sx={{ mt: 4 }}>          <Typography variant="h6" component="h2" gutterBottom>            Dieser Artikel ist Teil unseres Whitepapers:          </Typography>          <Link href={`/whitepaper/${article.whitepaper_slug}`} passHref>            <Button             variant="contained"             sx={{ backgroundColor: '#147a50', '&:hover': { backgroundColor: '#0d5538' } }}            >              {article.whitepaper_title} ansehen            </Button>          </Link>        </Box>      </Box>    </Container>  );};export const getStaticPaths: GetStaticPaths = async () => {  // Hier würden später die Slugs aller Whitepaper-Artikel vom CMS abgerufen  const paths = dummyArticles.map((article) => ({    params: { slug: article.slug },  }));  return {    paths,    fallback: false, // 'blocking' oder true, je nach Anforderung  };};export const getStaticProps: GetStaticProps = async ({ params }) => {  const slug = params?.slug as string;  // Hier würden später die Daten vom Headless CMS abgerufen  const article = dummyArticles.find((art) => art.slug === slug) || null;  if (!article) {    return {      notFound: true,    };  }  return {    props: {      article,    },    revalidate: 60, // Inkrementelle statische Regenerierung  };};export default WhitepaperArticleDetailPage;
+import React from 'react';
+import { GetStaticPaths, GetStaticProps } from 'next';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { Container, Typography, Box, Button, Paper, Alert } from '@mui/material';
+import Link from 'next/link';
+import { ArrowBack as BackIcon } from '@mui/icons-material';
+import MarkdownRenderer from '../../../components/MarkdownRenderer';
+import { getAllArticles, getArticleBySlug, getArticleSlugs, Article } from '../../../lib/content/articles';
+import { getWhitepaperBySlug } from '../../../lib/content/whitepapers';
+import Layout from '../../../components/Layout';
+
+interface ArticleDetailProps {
+	article: Article;
+	whitepaperTitle?: string;
+}
+
+const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTitle }) => {
+	const router = useRouter();
+	if (!article) {
+			return (
+				<Layout title="Artikel nicht gefunden">
+					<Container maxWidth="lg">
+						<Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+							<Alert severity="error">Artikel nicht gefunden.</Alert>
+						</Box>
+					</Container>
+				</Layout>
+			);
+	}
+		return (
+			<Layout title={article.seoTitle || article.title}>
+				<Container maxWidth="lg">
+			<Head>
+				<title>{article.seoTitle || article.title}</title>
+				<meta name="description" content={article.seoDescription || article.shortDescription} />
+				{article.canonicalUrl && <link rel="canonical" href={article.canonicalUrl} />}
+			</Head>
+			<Box sx={{ py: 4 }}>
+				<Box sx={{ mb: 4 }}>
+					<Button
+						variant="outlined"
+						onClick={() => router.push('/whitepaper')}
+						startIcon={<BackIcon />}
+						sx={{ mb: 2, borderColor: '#147a50', color: '#147a50' }}
+					>
+						Zurück zu den Whitepapern
+					</Button>
+					<Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+						{article.title}
+					</Typography>
+					<Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+						Veröffentlicht: {new Date(article.publishedDate).toLocaleDateString('de-DE')}
+					</Typography>
+					<Typography variant="body1" paragraph>
+						{article.shortDescription}
+					</Typography>
+				</Box>
+				<Paper sx={{ p: 4, mb: 4 }}>
+					<div className="whitepaper-article-content">
+						<MarkdownRenderer>{article.content}</MarkdownRenderer>
+					</div>
+				</Paper>
+				{article.whitepaperSlug && (
+					<Box sx={{ mt: 4 }}>
+						<Typography variant="h6" component="h2" gutterBottom>
+							Dieser Artikel ist Teil unseres Whitepapers:
+						</Typography>
+						<Link href={`/whitepaper/${article.whitepaperSlug}`} passHref>
+							<Button
+								variant="contained"
+								sx={{ backgroundColor: '#147a50', '&:hover': { backgroundColor: '#0d5538' } }}
+							>
+								{whitepaperTitle || 'Whitepaper ansehen'}
+							</Button>
+						</Link>
+					</Box>
+				)}
+					</Box>
+					</Container>
+				</Layout>
+	);
+};
+
+export const getStaticPaths: GetStaticPaths = async () => {
+	const paths = getArticleSlugs().map((slug) => ({ params: { slug } }));
+	return { paths, fallback: false };
+};
+
+export const getStaticProps: GetStaticProps = async ({ params }) => {
+	const slug = params?.slug as string;
+	const article = getArticleBySlug(slug);
+	if (!article) {
+		return { notFound: true };
+	}
+	let whitepaperTitle: string | undefined;
+	if (article.whitepaperSlug) {
+		const wp = getWhitepaperBySlug(article.whitepaperSlug);
+		whitepaperTitle = wp?.title;
+	}
+	return {
+		props: { article, whitepaperTitle },
+		revalidate: 60,
+	};
+};
+
+export default ArticleDetailPage;

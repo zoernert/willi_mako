@@ -25,6 +25,7 @@ import {
   Info as InfoIcon,
   Api as ApiIcon,
   PhotoCamera as PhotoIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -50,6 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
   const menuItems = [
     { text: 'Startseite', icon: <HomeIcon />, path: '/' },
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
+  { text: 'Fachartikel', icon: <DescriptionIcon />, path: '/wissen/artikel' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
     { text: 'Beratung', icon: <InfoIcon />, path: '/beratung' },

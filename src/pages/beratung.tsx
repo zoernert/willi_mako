@@ -16,6 +16,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import Layout from '../components/Layout';
+import { Description as DescriptionIcon } from '@mui/icons-material';
 
 interface FormData {
   companyName: string;
@@ -180,6 +181,28 @@ export default function BeratungAnfrage() {
           content="Anfrage für eine Beratung zur Nutzung von Willi-Mako - der Plattform für professionelle Marktkommunikation in der Energiewirtschaft."
         />
       </Head>
+
+      {/* Whitepaper Callout - promotes credibility and references */}
+      <Container maxWidth="md" sx={{ pt: 6 }}>
+        <Paper elevation={1} sx={{ p: 3, mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DescriptionIcon color="primary" />
+            <Typography variant="h6" component="h2" sx={{ m: 0, fontWeight: 600 }}>
+              Whitepapers als Grundlage unserer Beratung
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            component={Link}
+            href="/whitepaper"
+            variant="contained"
+            color="primary"
+            sx={{ fontWeight: 600 }}
+          >
+            Whitepaper ansehen →
+          </Button>
+        </Paper>
+      </Container>
 
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>

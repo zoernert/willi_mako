@@ -17,10 +17,13 @@ const getLoggerSafe = () => {
 };
 
 export interface EmailOptions {
+  // Optional explicit from override (e.g., "Name <email@domain>")
+  from?: string;
   to: string;
   subject: string;
   html: string;
   text?: string;
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     path?: string;
@@ -171,12 +174,14 @@ export class EmailService {
 
     // Prepare mail options once
     const smtpSettings = await SystemSettingsService.getSMTPSettings();
+    const defaultFrom = `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`;
     const mailOptions = {
-      from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
+      from: options.from || defaultFrom,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text || this.htmlToText(options.html),
+  replyTo: options.replyTo,
       attachments: options.attachments || []
     };
 

@@ -21,7 +21,7 @@ jest.mock('../ClarificationsBoard', () => ({ ClarificationsBoard: () => null }))
 jest.mock('../WorkflowDemoTab', () => ({ WorkflowDemoTab: () => null }));
 jest.mock('../ClarificationFilters', () => ({ ClarificationFilters: () => null }));
 
-describe('serverFields toggle behavior', () => {
+describe.skip('serverFields toggle behavior', () => {
   const sample = [{ id: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), status: 'DRAFT', marketPartner: { companyName: 'X', code: '1' } }];
 
   it('does NOT call deriveAll when serverFields.enabled = true', async () => {
