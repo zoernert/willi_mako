@@ -91,6 +91,26 @@ jest.mock('@mui/material/ButtonBase/TouchRipple', () => ({
   default: () => null,
 }), { virtual: true });
 
+// Also mock the newer MUI lazy ripple hook to no-op to further reduce act warnings
+jest.mock('@mui/material/useLazyRipple', () => ({
+  __esModule: true,
+  default: () => ({
+    start: () => {},
+    stop: () => {},
+    pulsate: () => {},
+  }),
+}), { virtual: true });
+
+// Some MUI builds import the hook from a deeper path
+jest.mock('@mui/material/useLazyRipple/useLazyRipple', () => ({
+  __esModule: true,
+  default: () => ({
+    start: () => {},
+    stop: () => {},
+    pulsate: () => {},
+  }),
+}), { virtual: true });
+
 // Provide a lightweight mock for react-router-dom so CRA/Jest can import files referencing it
 jest.mock('react-router-dom', () => {
   const React = require('react');

@@ -2,7 +2,7 @@
 // Erstellt: 14. August 2025
 // Beschreibung: Zeigt chronologisch alle Aktivitäten eines Klärfalls an
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Card,
@@ -45,6 +45,8 @@ import { de } from 'date-fns/locale';
 import { BilateralClarification } from '../../types/bilateral';
 import { notesApi } from '../../services/notesApi';
 import { useSnackbar } from '../../contexts/SnackbarContext';
+import { useUserNames } from '../../hooks/useUserNames';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TimelineActivity {
   id: string;
@@ -83,19 +85,32 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
   const [newNoteContent, setNewNoteContent] = useState('');
   const [loading, setLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
+  const { state } = useAuth();
+  const currentUserId = state.user?.id;
+  // Collect potential user IDs from clarification and artifacts for name resolution
+  const candidateUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (clarification.createdBy) ids.add(clarification.createdBy.toString());
+    if (clarification.lastModifiedBy) ids.add(clarification.lastModifiedBy.toString());
+    (notes || []).forEach((n: any) => { if (n.created_by) ids.add(String(n.created_by)); });
+    (emails || []).forEach((e: any) => { if (e.added_by) ids.add(String(e.added_by)); });
+    (attachments || []).forEach((a: any) => { if (a.uploaded_by) ids.add(String(a.uploaded_by)); });
+    return Array.from(ids);
+  }, [clarification, notes, emails, attachments]);
+  const nameMap = useUserNames(candidateUserIds);
 
   // Timeline-Aktivitäten zusammenstellen
   React.useEffect(() => {
     const timelineActivities: TimelineActivity[] = [];
 
     // Erstellung des Klärfalls
-    timelineActivities.push({
+  timelineActivities.push({
       id: `created-${clarification.id}`,
       type: 'created',
       timestamp: clarification.createdAt,
       user: {
-        id: clarification.createdBy?.toString() || '',
-        name: 'System' // TODO: Get real user name
+    id: clarification.createdBy?.toString() || '',
+    name: (clarification.createdBy && clarification.createdBy === currentUserId) ? 'ich' : (clarification.createdBy ? (nameMap[clarification.createdBy] || 'System') : 'System')
       },
       title: 'Klärfall erstellt',
       description: `Klärfall "${clarification.title}" wurde erstellt`
@@ -141,7 +156,9 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
         timestamp: statusTimestamp,
         user: {
           id: clarification.lastModifiedBy?.toString() || clarification.createdBy?.toString() || '',
-          name: 'System'
+          name: (clarification.lastModifiedBy && clarification.lastModifiedBy === currentUserId)
+            ? 'ich'
+            : (clarification.lastModifiedBy ? (nameMap[clarification.lastModifiedBy] || 'System') : 'System')
         },
         title: 'Status aktualisiert',
         description: statusDescription
@@ -156,7 +173,9 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
         timestamp: note.created_at,
         user: {
           id: note.created_by?.toString() || '',
-          name: note.author_name || 'Unbekannt'
+          name: (note.created_by && String(note.created_by) === currentUserId)
+            ? 'ich'
+            : (note.author_name || nameMap[String(note.created_by)] || 'Unbekannt')
         },
         title: note.title || 'Notiz ohne Titel',
         description: 'Notiz hinzugefügt',
@@ -173,7 +192,9 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
         timestamp: email.added_at || email.sent_at,
         user: {
           id: email.added_by?.toString() || '',
-          name: email.adder_name || 'System'
+          name: (email.added_by && String(email.added_by) === currentUserId)
+            ? 'ich'
+            : (email.adder_name || nameMap[String(email.added_by)] || 'System')
         },
         title: email.direction === 'OUTGOING' ? 'E-Mail gesendet' : 'E-Mail empfangen',
         description: email.subject,
@@ -190,7 +211,9 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
         timestamp: attachment.uploaded_at,
         user: {
           id: attachment.uploaded_by?.toString() || '',
-          name: attachment.uploader_name || 'Unbekannt'
+          name: (attachment.uploaded_by && String(attachment.uploaded_by) === currentUserId)
+            ? 'ich'
+            : (attachment.uploader_name || nameMap[String(attachment.uploaded_by)] || 'Unbekannt')
         },
         title: 'Anhang hinzugefügt',
         description: attachment.original_filename,
@@ -420,13 +443,27 @@ export const ClarificationTimeline: React.FC<ClarificationTimelineProps> = ({
                   {/* Zusätzliche Metadaten */}
                   {activity.type === 'email' && activity.metadata && (
                     <Box mt={1}>
-                      <Chip 
-                        label={activity.metadata.direction === 'OUTGOING' ? 'Ausgehend' : 'Eingehend'} 
-                        size="small" 
+                      {/* Direction chip */}
+                      <Chip
+                        label={activity.metadata.direction === 'OUTGOING' ? 'Ausgehend' : 'Eingehend'}
+                        size="small"
                         color={activity.metadata.direction === 'OUTGOING' ? 'primary' : 'secondary'}
                       />
-                      {activity.metadata.is_important && (
+                      {/* Important chip (supports snake_case and camelCase) */}
+                      {(activity.metadata.is_important || activity.metadata.isImportant) && (
                         <Chip label="Wichtig" size="small" color="error" sx={{ ml: 1 }} />
+                      )}
+                      {/* Reply/thread hints */}
+                      {Boolean(activity.metadata.in_reply_to || activity.metadata.inReplyTo) && (
+                        <Chip label="Antwort" size="small" variant="outlined" sx={{ ml: 1 }} />
+                      )}
+                      {Boolean(activity.metadata.message_id || activity.metadata.messageId) && (
+                        <Chip
+                          label={`Thread ${(activity.metadata.message_id || activity.metadata.messageId).toString().slice(0, 8)}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                        />
                       )}
                     </Box>
                   )}

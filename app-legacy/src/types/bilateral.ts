@@ -164,6 +164,15 @@ export interface BilateralClarification {
   attachmentCount?: number;
   noteCount?: number;
   commentCount?: number;
+
+  // Client-derived fields (Welle 1)
+  waitingOn?: 'PARTNER' | 'US';
+  staleSinceDays?: number;
+  nextActionAt?: string; // ISO timestamp
+  slaDueAt?: string; // ISO timestamp
+  lastInboundAt?: string; // ISO timestamp
+  lastOutboundAt?: string; // ISO timestamp
+  lastEditedBy?: string; // UUID
 }
 
 // Interface für Attachments

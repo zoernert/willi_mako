@@ -1,4 +1,15 @@
 # Bilaterale Klärfälle - Benutzerhandbuch
+# Bilaterale Klärfälle - Benutzerhandbuch
+
+> Quick‑Guide (Welle 1) – Stand: 2025‑09‑04
+
+Kurzfassung für den Alltag:
+- Board als Default mit Chips: „wartet auf“, SLA/Next Action, Alter. Sortierung nach Next Action.
+- Composer: „Senden als“ Team/User, „Senden & warten“ setzt +3 Tage Next Action.
+- Inbound: Copy & Paste oder EML hochladen, Richtung INCOMING; danach „wir sind dran“.
+- Gespeicherte Sichten: „Meine aktiven“, „Wartet >7 Tage“, „Heute fällig“, „Team offen“.
+- Dashboard: „Überfällige“, „Heute fällig“, Aging‑Buckets (wartet auf MP), Überfällig‑Buckets.
+- Karten/Liste zeigen „zuletzt: ich|<id8>“ (W1 ohne Namensauflösung).
 
 ## Einführung
 

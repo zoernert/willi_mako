@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,12 +15,16 @@ import {
   Checkbox,
   CircularProgress
 } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import {
   Send as SendIcon,
   Preview as PreviewIcon,
   Email as EmailIcon
 } from '@mui/icons-material';
 import { BilateralClarification } from '../../types/bilateral';
+import { bilateralClarificationService } from '../../services/bilateralClarificationService';
+import { useAuth } from '../../contexts/AuthContext';
+import { featureFlags } from '../../config/featureFlags';
 
 interface EmailComposerDialogProps {
   open: boolean;
@@ -36,6 +40,8 @@ export interface EmailData {
   body: string;
   includeAttachments: boolean;
   attachmentIds?: number[];
+  sendAs?: string; // identity used to send (team or user)
+  sendAndWait?: boolean; // when true, set status to SENT and next action +3d on server or via UI flow
 }
 
 export const EmailComposerDialog: React.FC<EmailComposerDialogProps> = ({
@@ -44,18 +50,45 @@ export const EmailComposerDialog: React.FC<EmailComposerDialogProps> = ({
   onSend,
   clarification
 }) => {
+  const { state } = useAuth();
+  const currentUser = state.user;
   const [emailData, setEmailData] = useState<EmailData>({
     to: '',
     cc: '',
     subject: '',
     body: '',
     includeAttachments: false,
-    attachmentIds: []
+  attachmentIds: [],
+  sendAndWait: true
   });
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  // Compute default send-as address: prefer team identity if available
+  const defaultTeamAddress = 'team@stromhaltig.de';
+  const normalizeLocalPart = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9.-]/g, '-')
+      .replace(/--+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  const userFromAddress = useMemo(() => {
+    if (!currentUser) return '';
+    // If user already has a stromhaltig.de address, use it
+    if (currentUser.email?.endsWith('@stromhaltig.de')) return currentUser.email;
+    // Else derive from name or local part
+    const base = currentUser.name?.trim() ? currentUser.name : (currentUser.email?.split('@')[0] || 'user');
+    return `${normalizeLocalPart(base)}@stromhaltig.de`;
+  }, [currentUser]);
+
+  const [sendAs, setSendAs] = useState<string>(defaultTeamAddress);
+  const [recipientValidated, setRecipientValidated] = useState<{ valid: boolean; suggestion?: string } | null>(null);
 
   // Email-Daten initialisieren wenn Dialog geöffnet wird
   useEffect(() => {
@@ -73,7 +106,9 @@ export const EmailComposerDialog: React.FC<EmailComposerDialogProps> = ({
         subject,
         body,
         includeAttachments: false,
-        attachmentIds: clarification.attachments?.map(att => att.id) || []
+        attachmentIds: clarification.attachments?.map(att => att.id) || [],
+  sendAs,
+  sendAndWait: true
       });
     }
   }, [open, clarification]);
@@ -116,12 +151,32 @@ Klärfall-ID: ${clarification.id}
 
   const handleInputChange = (field: keyof EmailData, value: any) => {
     setEmailData(prev => ({ ...prev, [field]: value }));
+    if (field === 'to') {
+      setRecipientValidated(null);
+    }
   };
 
   const handleSend = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Recipient validation (optional, best-effort)
+      try {
+        const role = clarification.selectedContact?.role || clarification.selectedRole;
+        if (role && clarification.marketPartner.code) {
+          const v = await bilateralClarificationService.validateMarketPartnerEmail(
+            clarification.marketPartner.code,
+            role
+          );
+          if (v?.isValid === false && v.email) {
+            setRecipientValidated({ valid: false, suggestion: v.email });
+            // Do not block send; just inform
+          } else {
+            setRecipientValidated({ valid: true });
+          }
+        }
+      } catch {}
 
       // Validierung
       if (!emailData.to.trim()) {
@@ -139,7 +194,13 @@ Klärfall-ID: ${clarification.id}
         return;
       }
 
-      await onSend(emailData);
+  // Resolve final from-address only if feature is enabled
+  const fromAddress = sendAs === 'user' ? (userFromAddress || currentUser?.email || defaultTeamAddress) : sendAs;
+  const payload = featureFlags.sendAsIdentity.enabled
+    ? { ...emailData, sendAs: fromAddress }
+    : { ...emailData };
+
+  await onSend(payload);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Versenden der E-Mail');
@@ -163,6 +224,11 @@ Klärfall-ID: ${clarification.id}
       
       <DialogContent>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {recipientValidated && recipientValidated.valid === false && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Empfängeradresse konnte nicht validiert werden. Vorschlag: {recipientValidated.suggestion}
+          </Alert>
+        )}
 
         {/* Empfänger-Informationen */}
         <Box sx={{ mb: 3 }}>
@@ -193,6 +259,26 @@ Klärfall-ID: ${clarification.id}
 
         {/* Email-Formular */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {featureFlags.sendAsIdentity.enabled && (
+            <>
+              <FormControl fullWidth>
+                <InputLabel id="send-as-label">Senden als</InputLabel>
+                <Select
+                  labelId="send-as-label"
+                  value={sendAs}
+                  label="Senden als"
+                  onChange={(e) => setSendAs(e.target.value)}
+                >
+                  <MenuItem value={defaultTeamAddress}>{defaultTeamAddress} (Team)</MenuItem>
+                  <MenuItem value="user">Eigene Adresse (Benutzer){currentUser ? ` — ${userFromAddress || currentUser.email}` : ''}</MenuItem>
+                </Select>
+              </FormControl>
+              <Typography variant="caption" color="text.secondary">
+                Von-Adresse: {sendAs === 'user' ? (userFromAddress || currentUser?.email || defaultTeamAddress) : sendAs}
+              </Typography>
+            </>
+          )}
+
           <TextField
             label="An"
             value={emailData.to}
@@ -231,6 +317,17 @@ Klärfall-ID: ${clarification.id}
               label={`Anhänge einschließen (${clarification.attachments.length} Dateien)`}
             />
           )}
+
+          {/* Senden & warten */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!emailData.sendAndWait}
+                onChange={(e) => handleInputChange('sendAndWait', e.target.checked)}
+              />
+            }
+            label="Senden & warten (Next Action +3 Tage)"
+          />
 
           {/* Nachricht */}
           {preview ? (

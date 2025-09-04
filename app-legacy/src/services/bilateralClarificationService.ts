@@ -484,6 +484,58 @@ export class BilateralClarificationService {
     }
   }
 
+  /**
+   * Adds an email record to a clarification (manual paste or API provided text)
+   */
+  async addEmail(
+    clarificationId: number,
+    payload: {
+      direction: 'INCOMING' | 'OUTGOING';
+      subject?: string;
+      fromAddress?: string;
+      toAddresses?: string[];
+      ccAddresses?: string[];
+      bccAddresses?: string[];
+      content: string;
+      contentType?: 'text' | 'html' | 'mixed';
+      emailType?: 'CLARIFICATION_REQUEST' | 'RESPONSE' | 'ESCALATION' | 'NOTIFICATION' | 'INTERNAL' | 'OTHER';
+      isImportant?: boolean;
+      source?: 'MANUAL_PASTE' | 'FORWARD' | 'IMPORT' | 'API';
+    }
+  ): Promise<{ success: boolean; emailId: number }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; emailId: number }>(
+        `${BILATERAL_BASE}/${clarificationId}/emails`,
+        payload
+      );
+      return response;
+    } catch (error) {
+      console.error('Error adding email to clarification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Uploads an .eml file to attach/import as an email entry
+   */
+  async uploadEmailEml(
+    clarificationId: number,
+    file: File
+  ): Promise<{ success: boolean; emailId: number }> {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const response = await apiClient.postMultipart<{ success: boolean; emailId: number }>(
+        `${BILATERAL_BASE}/${clarificationId}/emails/upload`,
+        form
+      );
+      return response;
+    } catch (error) {
+      console.error('Error uploading .eml file:', error);
+      throw error;
+    }
+  }
+
   // Neue Methoden für die Verwaltung von Chat- und Notiz-Referenzen
   
   /**

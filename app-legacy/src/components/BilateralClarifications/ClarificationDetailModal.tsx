@@ -44,6 +44,10 @@ import { bilateralClarificationService } from '../../services/bilateralClarifica
 import { WorkflowStatusCard } from './WorkflowStatusCard';
 import { EmailComposerDialog, EmailData } from './EmailComposerDialog';
 import { ClarificationTimeline } from './ClarificationTimeline';
+import { parsePastedEmail } from './emailUtils';
+import { EmailImportDialog } from './EmailImportDialog';
+import { featureFlags } from '../../config/featureFlags';
+import { AttachmentManager } from './AttachmentManager';
 import { ClarificationReferences } from './ClarificationReferences';
 
 interface ClarificationDetailModalProps {
@@ -78,6 +82,7 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
   const [formData, setFormData] = useState<Partial<BilateralClarification>>({});
   const [error, setError] = useState<string | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open && clarificationId) {
@@ -189,12 +194,56 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
     setLoading(true);
     try {
       await bilateralClarificationService.sendClarificationEmail(clarification.id, emailData);
+      // Optional: set status to SENT and start waiting on partner using existing status API
+      if (emailData.sendAndWait) {
+        try {
+          await bilateralClarificationService.updateClarificationStatus(
+            clarification.id,
+            'SENT',
+            undefined,
+            'Anfrage versendet – Warten auf Antwort (Next Action +3 Tage)'
+          );
+        } catch (e) {
+          console.warn('Status update after send failed (non-blocking):', e);
+        }
+      }
       await loadClarification();
       onUpdate();
       setEmailDialogOpen(false);
     } catch (err) {
       setError('Fehler beim Versenden der E-Mail');
       console.error('Error sending email:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportEmail = async (payload: { content: string; source: 'MANUAL_PASTE' | 'IMPORT'; file?: File }) => {
+    if (!clarification) return;
+    setLoading(true);
+    try {
+      if (payload.file) {
+        await bilateralClarificationService.uploadEmailEml(clarification.id, payload.file);
+      } else {
+        const { subject, fromAddress, toAddresses, ccAddresses, body } = parsePastedEmail(payload.content);
+        await bilateralClarificationService.addEmail(clarification.id, {
+          direction: 'INCOMING',
+          subject,
+          fromAddress,
+          toAddresses,
+          ccAddresses,
+          content: body,
+          contentType: 'text',
+          emailType: 'RESPONSE',
+          source: payload.source
+        });
+      }
+      await loadClarification();
+      onUpdate();
+      setImportDialogOpen(false);
+    } catch (err) {
+      setError('Fehler beim Import der E-Mail');
+      console.error('Error importing email:', err);
     } finally {
       setLoading(false);
     }
@@ -511,6 +560,13 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
             {/* Timeline Tab */}
             <TabPanel value={activeTab} index={2}>
               <Box p={2}>
+                {featureFlags.emailImport.enabled && (
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                    <Button variant="outlined" onClick={() => setImportDialogOpen(true)}>
+                      E-Mail importieren
+                    </Button>
+                  </Box>
+                )}
                 <ClarificationTimeline
                   clarification={clarification}
                   notes={clarification.notes || []}
@@ -528,10 +584,21 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
             <TabPanel value={activeTab} index={3}>
               <Box p={2}>
                 <Typography variant="h6" gutterBottom>Anhänge</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Hier können Sie relevante Dokumente wie EDIFACT-Nachrichten hochladen.
-                </Typography>
-                {/* TODO: Implement attachment management */}
+                {featureFlags.attachments.enabled ? (
+                  clarification && (
+                    <AttachmentManager 
+                      clarificationId={clarification.id.toString()} 
+                      onAttachmentsChange={() => {
+                        loadClarification();
+                        onUpdate();
+                      }}
+                    />
+                  )
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Anhänge sind deaktiviert.
+                  </Typography>
+                )}
               </Box>
             </TabPanel>
           </Box>
@@ -564,6 +631,15 @@ export const ClarificationDetailModal: React.FC<ClarificationDetailModalProps> =
           onClose={() => setEmailDialogOpen(false)}
           onSend={handleSendEmail}
           clarification={clarification}
+        />
+      )}
+
+      {/* Email Import Dialog */}
+      {featureFlags.emailImport.enabled && (
+        <EmailImportDialog
+          open={importDialogOpen}
+          onClose={() => setImportDialogOpen(false)}
+          onImport={handleImportEmail}
         />
       )}
     </Dialog>

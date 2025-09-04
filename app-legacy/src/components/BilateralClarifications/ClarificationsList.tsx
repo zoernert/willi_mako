@@ -49,6 +49,8 @@ import {
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { BilateralClarification } from '../../types/bilateral';
+import { useAuth } from '../../contexts/AuthContext';
+import { useUserNames } from '../../hooks/useUserNames';
 
 // Utility functions
 const getStatusColor = (status: string) => {
@@ -89,6 +91,35 @@ const getPriorityLabel = (priority: string) => {
   }
 };
 
+// New helpers for derived columns
+const getWaitingOnLabel = (waitingOn?: 'US' | 'PARTNER') => {
+  if (!waitingOn) return '-';
+  return waitingOn === 'PARTNER' ? 'MP' : 'Wir';
+};
+
+const getWaitingOnColor = (waitingOn?: 'US' | 'PARTNER') => {
+  if (!waitingOn) return 'default';
+  return waitingOn === 'PARTNER' ? 'warning' : 'info';
+};
+
+const formatDays = (days?: number) => {
+  if (days === undefined || days === null) return '-';
+  if (days <= 0) return '0d';
+  return `${days}d`;
+};
+
+const getSlaLabelAndColor = (clar: BilateralClarification): { label: string; color: 'default' | 'info' | 'warning' | 'error' } => {
+  const due = (clar as any).slaDueAt ? new Date((clar as any).slaDueAt) : ((clar as any).nextActionAt ? new Date((clar as any).nextActionAt) : undefined);
+  if (!due) return { label: '-', color: 'default' };
+  const now = new Date();
+  const diffMs = due.getTime() - now.getTime();
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 0) return { label: `überfällig ${Math.abs(days)}d`, color: 'error' };
+  if (days === 0) return { label: 'heute fällig', color: 'warning' };
+  if (days <= 2) return { label: `fällig in ${days}d`, color: 'warning' };
+  return { label: `fällig in ${days}d`, color: 'info' };
+};
+
 interface ClarificationsListProps {
   clarifications: BilateralClarification[];
   pagination: {
@@ -112,6 +143,10 @@ export const ClarificationsList: React.FC<ClarificationsListProps> = ({
   selectable = false,
   onBulkAction
 }) => {
+  const { state } = useAuth();
+  const currentUserId = state.user?.id;
+  const lastEditors = (clarifications || []).map(c => (c as any).lastEditedBy).filter(Boolean) as string[];
+  const nameMap = useUserNames(lastEditors);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedClarification, setSelectedClarification] = useState<BilateralClarification | null>(null);
@@ -331,6 +366,9 @@ export const ClarificationsList: React.FC<ClarificationsListProps> = ({
               <TableCell>Status</TableCell>
               <TableCell>Priorität</TableCell>
               <TableCell>Zugewiesen</TableCell>
+              <TableCell>Wartet auf</TableCell>
+              <TableCell>Wartet seit</TableCell>
+              <TableCell>SLA fällig</TableCell>
               <TableCell>Fälligkeitsdatum</TableCell>
               <TableCell>Erstellt</TableCell>
               <TableCell>Aktionen</TableCell>
@@ -378,6 +416,11 @@ export const ClarificationsList: React.FC<ClarificationsListProps> = ({
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {clarification.caseType}
+              {(clarification as any).lastEditedBy && (
+                            <>
+                {' '}· zuletzt: {((clarification as any).lastEditedBy === currentUserId) ? 'ich' : (nameMap[(clarification as any).lastEditedBy] || String((clarification as any).lastEditedBy).slice(0, 8))}
+                            </>
+                          )}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -417,6 +460,30 @@ export const ClarificationsList: React.FC<ClarificationsListProps> = ({
                     </TableCell>
 
                     <TableCell>
+                      <Chip
+                        size="small"
+                        label={getWaitingOnLabel((clarification as any).waitingOn)}
+                        color={getWaitingOnColor((clarification as any).waitingOn) as any}
+                        variant={(clarification as any).waitingOn ? 'filled' : 'outlined'}
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatDays((clarification as any).staleSinceDays)}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      {(() => {
+                        const { label, color } = getSlaLabelAndColor(clarification);
+                        return (
+                          <Chip size="small" label={label} color={color as any} />
+                        );
+                      })()}
+                    </TableCell>
+
+                    <TableCell>
                       {clarification.dueDate ? (
                         <Typography variant="body2">
                           {format(new Date(clarification.dueDate), 'dd.MM.yyyy', { locale: de })}
@@ -445,7 +512,7 @@ export const ClarificationsList: React.FC<ClarificationsListProps> = ({
                   {isExpanded && (
                     <TableRow>
                       <TableCell
-                        colSpan={selectable ? 9 : 8}
+                        colSpan={selectable ? 12 : 11}
                         sx={{ p: 0, border: 0 }}
                       >
                         <Collapse in={isExpanded}>
