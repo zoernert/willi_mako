@@ -189,6 +189,14 @@ EOF
         echo "❌ public-Verzeichnis nicht gefunden."
         exit 1
     fi
+
+    # Content (MDX) Dateien kopieren (für ISR zur Laufzeit)
+    if [ -d "content" ]; then
+        cp -r content "$TEMP_DIR/"
+        echo "✅ content/ Verzeichnis für MDX-Inhalte hinzugefügt"
+    else
+        echo "⚠️  content/ Verzeichnis nicht gefunden – Artikel/Whitepaper könnten fehlen"
+    fi
     
     # Next.js Config kopieren
     if [ -f "next.config.js" ]; then

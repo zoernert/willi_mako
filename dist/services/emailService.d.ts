@@ -1,9 +1,11 @@
 import { SMTPSettings } from './systemSettingsService';
 export interface EmailOptions {
+    from?: string;
     to: string;
     subject: string;
     html: string;
     text?: string;
+    replyTo?: string;
     attachments?: Array<{
         filename: string;
         path?: string;

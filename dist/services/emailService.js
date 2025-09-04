@@ -125,12 +125,14 @@ class EmailService {
         let lastError = null;
         // Prepare mail options once
         const smtpSettings = await systemSettingsService_1.SystemSettingsService.getSMTPSettings();
+        const defaultFrom = `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`;
         const mailOptions = {
-            from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
+            from: options.from || defaultFrom,
             to: options.to,
             subject: options.subject,
             html: options.html,
             text: options.text || this.htmlToText(options.html),
+            replyTo: options.replyTo,
             attachments: options.attachments || []
         };
         try {
