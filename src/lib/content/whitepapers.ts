@@ -48,18 +48,19 @@ export function getWhitepaperBySlug(slug: string): Whitepaper | null {
   const fm = data as Partial<WhitepaperFrontmatter>;
   if (!fm.title || !fm.slug) return null;
 
-  return {
+  const wp: any = {
     title: fm.title,
     slug: fm.slug,
     description: fm.description || '',
     publishedDate: fm.publishedDate || new Date().toISOString(),
     pdfPath: fm.pdfPath || '',
     status: (fm.status as 'draft' | 'published') || 'draft',
-    seoTitle: fm.seoTitle,
-    seoDescription: fm.seoDescription,
-    canonicalUrl: fm.canonicalUrl,
     content,
   };
+  if (fm.seoTitle) wp.seoTitle = fm.seoTitle;
+  if (fm.seoDescription) wp.seoDescription = fm.seoDescription;
+  if (fm.canonicalUrl) wp.canonicalUrl = fm.canonicalUrl;
+  return wp as any;
 }
 
 export function getAllWhitepapers(): Whitepaper[] {

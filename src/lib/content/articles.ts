@@ -51,18 +51,19 @@ function parseArticleFromFile(filePath: string, inferred: { slug?: string; white
   if (!title) return null;
   const publishedDate = (fm.publishedDate || new Date().toISOString()).toString();
   const status = (fm.status as 'draft' | 'published') || 'draft';
-  return {
+  const article: Article = {
     title,
     slug,
     shortDescription: fm.shortDescription || '',
     whitepaperSlug,
     publishedDate,
     status,
-    seoTitle: fm.seoTitle,
-    seoDescription: fm.seoDescription,
-    canonicalUrl: fm.canonicalUrl,
     content,
   };
+  if (fm.seoTitle) article.seoTitle = fm.seoTitle;
+  if (fm.seoDescription) article.seoDescription = fm.seoDescription;
+  if (fm.canonicalUrl) article.canonicalUrl = fm.canonicalUrl;
+  return article;
 }
 
 function collectFlatArticles(): Article[] {
