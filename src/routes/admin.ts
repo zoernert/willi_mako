@@ -11,6 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import chatConfigRouter from './admin/chatConfig';
 import { initializeCommunityAdminRoutes } from './admin/community';
+import contentAdminRouter from './admin/content';
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
 
@@ -33,6 +34,9 @@ router.use('/chat-config', chatConfigRouter);
 
 // Mount API-Schlüssel-Routes
 router.use('/', apiKeysRouter);
+
+// Content admin (articles/whitepapers on filesystem)
+router.use('/content', contentAdminRouter);
 
 // Initialize and mount community admin routes (needs to be done in server.ts with db pool)
 // router.use('/community', initializeCommunityAdminRoutes(db)); // This will be done in server.ts
@@ -120,7 +124,7 @@ router.get('/stats', asyncHandler(async (req: AuthenticatedRequest, res: Respons
 router.get('/activity', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Get recent activities from different tables
-    const activities = [];
+  const activities: Array<{ type: string; name: string; timestamp: Date; description: string }> = [];
 
     // Recent user registrations
     const recentUsers = await DatabaseHelper.executeQuery<{type: string, name: string, timestamp: Date, description: string}>(`

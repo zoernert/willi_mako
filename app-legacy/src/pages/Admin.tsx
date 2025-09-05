@@ -65,6 +65,7 @@ import CommunityAdminManager from '../components/admin/CommunityAdminManager';
 import TeamEmailConfig from '../components/admin/TeamEmailConfig';
 import BulkClarificationManager from '../components/admin/BulkClarificationManager';
 import APIKeyUsageMetricsLegacy from '../components/admin/APIKeyUsageMetricsLegacy';
+import AdminArticlesManager from '../components/admin/AdminArticlesManager';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -2429,7 +2430,8 @@ const Admin: React.FC = () => {
     { label: 'Dashboard', icon: <DashboardIcon />, component: <AdminDashboard /> },
     { label: 'Benutzer', icon: <UsersIcon />, component: <AdminUsers /> },
     { label: 'Dokumente', icon: <DocumentsIcon />, component: <AdminDocuments /> },
-    { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
+  { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
+  { label: 'Artikel (MDX)', icon: <DocumentsIcon />, component: <AdminArticlesManager /> },
     { label: 'Community', icon: <ForumIcon />, component: <CommunityAdminManager /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
     { label: 'Team E-Mail', icon: <EmailIcon />, component: <TeamEmailConfig /> },
