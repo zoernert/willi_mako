@@ -174,7 +174,8 @@ const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, art
 
 export const getStaticPaths: GetStaticPaths = async () => {
 	const paths = getWhitepaperSlugs().map((slug) => ({ params: { slug } }));
-	return { paths, fallback: false };
+	// Use blocking fallback so newly added whitepapers (via filesystem/admin) are generated on first request
+	return { paths, fallback: 'blocking' };
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {

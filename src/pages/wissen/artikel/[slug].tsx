@@ -84,7 +84,8 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 
 export const getStaticPaths: GetStaticPaths = async () => {
 	const paths = getArticleSlugs().map((slug) => ({ params: { slug } }));
-	return { paths, fallback: false };
+	// Use blocking to allow new articles to appear immediately after deploy, generated on first request
+	return { paths, fallback: 'blocking' };
 };
 
 export const getStaticProps: GetStaticProps = async ({ params }) => {
