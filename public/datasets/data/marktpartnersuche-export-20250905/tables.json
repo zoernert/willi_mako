@@ -1,0 +1,14 @@
+{
+  "tablesCount": 1,
+  "tables": [
+    {
+      "id": "table-001",
+      "files": {
+        "json": "table-001.json",
+        "csv": "table-001.csv"
+      },
+      "headersCount": 7,
+      "rowsCount": 9532
+    }
+  ]
+}

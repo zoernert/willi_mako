@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateFAQSlug = generateFAQSlug;
+exports.slugifyTag = slugifyTag;
 exports.getAllPublicFAQs = getAllPublicFAQs;
 exports.getFAQBySlug = getFAQBySlug;
 exports.getRelatedFAQs = getRelatedFAQs;
@@ -45,6 +46,19 @@ async function safeQdrantSearch(query, limit, scoreThreshold) {
 // Generiere einen SEO-optimierten Slug aus dem FAQ-Titel
 function generateFAQSlug(title) {
     return title
+        .toLowerCase()
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+        .replace(/ß/g, 'ss')
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+// Slugify helper for tags/topics to ensure clean URLs
+// Mirrors generateFAQSlug behavior but kept semantically separate
+function slugifyTag(tag) {
+    return (tag || '')
         .toLowerCase()
         .replace(/ä/g, 'ae')
         .replace(/ö/g, 'oe')

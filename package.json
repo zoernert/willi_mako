@@ -41,7 +41,8 @@
     "timeline:worker:dev": "nodemon --exec \"npx tsx workers/timelineProcessor.ts\"",
     "timeline:migrate": "psql $DATABASE_URL -f migrations/timeline_system.sql",
     "timeline:stats": "node -e \"require('./workers/timelineProcessor.ts').timelineProcessor.getQueueStats().then(console.log)\"",
-    "reindex:providers": "npx tsx scripts/reindex-providers.ts"
+  "reindex:providers": "npx tsx scripts/reindex-providers.ts",
+  "export:marktpartnersuche": "npx tsx scripts/export-marketpartnersuche-dataset.ts"
   },
   "repository": {
     "type": "git",

@@ -725,6 +725,48 @@
         "localPath": "km2/Codeliste_europäischer_Ländercode_1.0_Fehlerkorrektur_20230330.pdf",
         "presentInQdrant": false
       }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Marktpartnersuche Export 2025-09-05",
+      "alternateName": "Marktpartnersuche_Export_2025-09-05.csv",
+      "identifier": "marktpartnersuche_export_2025-09-05",
+      "description": "Export der Marktpartnersuche: BDEW-Code, Marktrollen und erkannte Software-Produkte",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/marktpartnersuche-export-20250905",
+      "datePublished": "2025-09-05",
+      "keywords": [
+        "Marktpartnersuche",
+        "BDEW",
+        "Marktrollen",
+        "Software"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/marktpartnersuche-export-20250905/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/marktpartnersuche-export-20250905/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.json",
+          "contentUrl": "https://stromhaltig.de/data/marktpartnersuche-export-20250905/table-001.json",
+          "encodingFormat": "application/json"
+        }
+      ],
+      "_source": {
+        "type": "mongo",
+        "collection": "discovery_results"
+      }
     }
   ]
 }

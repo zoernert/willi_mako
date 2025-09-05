@@ -23,6 +23,7 @@ export interface FAQTag {
     count: number;
 }
 export declare function generateFAQSlug(title: string): string;
+export declare function slugifyTag(tag: string): string;
 export declare function getAllPublicFAQs(): Promise<StaticFAQData[]>;
 export declare function getFAQBySlug(slug: string): Promise<StaticFAQData | null>;
 export declare function getRelatedFAQs(faqId: string, content: string, limit?: number): Promise<RelatedFAQ[]>;
