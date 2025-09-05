@@ -12,6 +12,7 @@ class GoogleAIKeyManager {
     // Configuration
     this.freeApiKey = process.env.GOOGLE_AI_API_KEY_FREE;
     this.paidApiKey = process.env.GOOGLE_AI_API_KEY;
+  this.freeEnabled = !!this.freeApiKey; // Disable free flow when no key configured
     
     // Track usage and rate limiting
     this.usageCounter = {
@@ -67,7 +68,7 @@ class GoogleAIKeyManager {
     this.currentBackoff = 0;
     
     // Initialize the API clients
-    this.freeGenAI = new GoogleGenerativeAI(this.freeApiKey);
+  this.freeGenAI = new GoogleGenerativeAI(this.freeApiKey);
     this.paidGenAI = new GoogleGenerativeAI(this.paidApiKey);
     
     console.log('GoogleAIKeyManager initialized with free and paid API keys');
@@ -98,6 +99,7 @@ class GoogleAIKeyManager {
    * Check and update rate limits for the current time period
    */
   updateRateLimits() {
+  if (!this.freeEnabled) return; // Skip tracking when free is disabled
     const currentMinute = this.getCurrentMinute();
     const currentDay = this.getCurrentDay();
     
@@ -126,7 +128,8 @@ class GoogleAIKeyManager {
    * Check if free tier limits have been reached
    */
   isFreeQuotaAvailable() {
-    this.updateRateLimits();
+  if (!this.freeEnabled) return false;
+  this.updateRateLimits();
     
     const dailyAvailable = this.usageCounter.free.dailyUsage < this.usageCounter.free.dailyLimit;
     const minuteAvailable = this.usageCounter.free.minuteUsage < this.usageCounter.free.minuteLimit;
@@ -149,6 +152,11 @@ class GoogleAIKeyManager {
    */
   async getGenerativeModel(options) {
     try {
+      // If free key is not configured, directly use paid
+      if (!this.freeEnabled) {
+        this.trackKeyUsage('paid');
+        return this.paidGenAI.getGenerativeModel(options);
+      }
       // Always try free tier first
       if (this.isFreeQuotaAvailable()) {
         // Track this usage
@@ -211,7 +219,7 @@ class GoogleAIKeyManager {
    * based on quota availability
    */
   getGenAI() {
-    if (this.isFreeQuotaAvailable()) {
+  if (this.freeEnabled && this.isFreeQuotaAvailable()) {
       this.incrementUsage();
       
       // Track for admin metrics

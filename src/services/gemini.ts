@@ -27,8 +27,7 @@ export class GeminiService {
     // Initialize multiple models for load balancing (no lite models for better quality)
     const modelConfigs = [
       'gemini-2.0-flash',      // 15 RPM
-      'gemini-2.5-flash',      // 10 RPM  
-      'gemini-2.5-pro'         // 5 RPM
+      'gemini-2.5-flash'       // 10 RPM
     ];
 
     // Initialize with empty array that will be populated asynchronously
@@ -117,7 +116,10 @@ export class GeminiService {
    */
   private initializeFallbackModels(modelNames: string[]): void {
     console.log('Using fallback model initialization with direct API key');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     
     this.models = modelNames.map(modelName => ({
       name: modelName,

@@ -8,6 +8,7 @@ declare const googleAIKeyManager: GoogleAIKeyManager;
 declare class GoogleAIKeyManager {
     freeApiKey: string;
     paidApiKey: string;
+    freeEnabled: boolean;
     usageCounter: {
         free: {
             dailyUsage: number;
