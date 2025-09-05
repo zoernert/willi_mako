@@ -28,6 +28,9 @@ export default function SEOHead({
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={url} />
+  {/* Hreflang alternates (single-language site) */}
+  <link rel="alternate" hrefLang="de" href={url} />
+  <link rel="alternate" hrefLang="x-default" href={url} />
       
       {noindex && <meta name="robots" content="noindex,nofollow" />}
       

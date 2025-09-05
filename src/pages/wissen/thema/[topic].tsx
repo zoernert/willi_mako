@@ -22,8 +22,20 @@ interface TopicPageProps {
   relatedTopics: string[];
 }
 
+const toSlug = (s: string) => (s || '')
+  .toLowerCase()
+  .replace(/ä/g, 'ae')
+  .replace(/ö/g, 'oe')
+  .replace(/ü/g, 'ue')
+  .replace(/ß/g, 'ss')
+  .replace(/[^a-z0-9]/g, '-')
+  .replace(/-+/g, '-')
+  .replace(/^-|-$/g, '');
+
 export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: TopicPageProps) {
-  const capitalizedTopic = topic.charAt(0).toUpperCase() + topic.slice(1);
+  // ensure topic is a slug for URL building, but display with capitalization
+  const topicSlug = toSlug(topic);
+  const capitalizedTopic = (topicSlug.charAt(0).toUpperCase() + topicSlug.slice(1));
   
   return (
     <Layout title={`${capitalizedTopic} - Wissensdatenbank`}>
@@ -34,13 +46,16 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
           content={`${totalCount} FAQ-Beiträge zum Thema ${capitalizedTopic} in der Energiewirtschaft. Expertenwissen zur Marktkommunikation.`} 
         />
         <meta name="keywords" content={`${topic}, Energiewirtschaft, Marktkommunikation, FAQ, ${relatedTopics.join(', ')}`} />
-        <link rel="canonical" href={`https://stromhaltig.de/wissen/thema/${topic}`} />
+  <link rel="canonical" href={`https://stromhaltig.de/wissen/thema/${topicSlug}`} />
+  {/* Hreflang alternates */}
+  <link rel="alternate" hrefLang="de" href={`https://stromhaltig.de/wissen/thema/${topicSlug}`} />
+  <link rel="alternate" hrefLang="x-default" href={`https://stromhaltig.de/wissen/thema/${topicSlug}`} />
         
         {/* Open Graph */}
         <meta property="og:title" content={`${capitalizedTopic} - Willi-Mako Wissensdatenbank`} />
         <meta property="og:description" content={`${totalCount} FAQ-Beiträge zum Thema ${capitalizedTopic} in der Energiewirtschaft`} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://stromhaltig.de/wissen/thema/${topic}`} />
+  <meta property="og:url" content={`https://stromhaltig.de/wissen/thema/${topicSlug}`} />
         
         {/* Schema.org JSON-LD */}
         <script
@@ -51,7 +66,7 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
               "@type": "CollectionPage",
               "name": `${capitalizedTopic} - FAQ Sammlung`,
               "description": `Umfassende FAQ-Sammlung zum Thema ${capitalizedTopic} in der Energiewirtschaft`,
-              "url": `https://stromhaltig.de/wissen/thema/${topic}`,
+              "url": `https://stromhaltig.de/wissen/thema/${topicSlug}`,
               "mainEntity": {
                 "@type": "ItemList",
                 "numberOfItems": totalCount,
@@ -78,7 +93,7 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
                     "@type": "ListItem",
                     "position": 2,
                     "name": capitalizedTopic,
-                    "item": `https://stromhaltig.de/wissen/thema/${topic}`
+                    "item": `https://stromhaltig.de/wissen/thema/${topicSlug}`
                   }
                 ]
               },
@@ -127,7 +142,7 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
               {relatedTopics.slice(0, 5).map((relatedTopic) => (
                 <Link
                   key={relatedTopic}
-                  href={`/wissen/thema/${relatedTopic.toLowerCase()}`}
+                  href={`/wissen/thema/${encodeURIComponent(toSlug(relatedTopic))}`}
                   className="inline-block px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-colors"
                 >
                   {relatedTopic}
@@ -177,7 +192,7 @@ export default function TopicPage({ topic, faqs, totalCount, relatedTopics }: To
                       {faq.tags.map((tag) => (
                         <Link
                           key={tag}
-                          href={`/wissen/thema/${tag.toLowerCase()}`}
+                          href={`/wissen/thema/${encodeURIComponent(toSlug(tag))}`}
                           className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 transition-colors"
                         >
                           {tag}
@@ -219,7 +234,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
     const tags = await getDistinctTags();
     
     const paths = tags.map((tag: string) => ({
-      params: { topic: tag.toLowerCase() }
+      params: { topic: toSlug(tag) }
     }));
 
     return {
@@ -245,9 +260,20 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 export const getStaticProps: GetStaticProps<TopicPageProps> = async ({ params }) => {
   try {
-    const topic = params?.topic as string;
-    if (!topic) {
+  const topicParam = params?.topic as string;
+    if (!topicParam) {
       return { notFound: true };
+    }
+
+    // If a non-slug form is requested, canonicalize to slug via 301 at build-time by returning redirect
+  const topic = toSlug(topicParam);
+    if (topic !== topicParam) {
+      return {
+        redirect: {
+          destination: `/wissen/thema/${encodeURIComponent(topic)}`,
+          permanent: true,
+        }
+      } as any;
     }
 
     // Try to get FAQs for this specific topic
@@ -256,7 +282,8 @@ export const getStaticProps: GetStaticProps<TopicPageProps> = async ({ params })
     let allTags: string[] = [];
     
     try {
-      faqs = await getFAQsByTag(topic);
+  // get by original text if possible; DB match is case-insensitive
+  faqs = await getFAQsByTag(topic);
       allTags = await getDistinctTags();
     } catch (dbError) {
       console.warn('Database not available during static generation, using empty data:', dbError);
@@ -266,7 +293,7 @@ export const getStaticProps: GetStaticProps<TopicPageProps> = async ({ params })
 
     // Filter out the current topic from related topics
     const relatedTopics = allTags
-      .filter((tag: string) => tag.toLowerCase() !== topic.toLowerCase())
+      .filter((tag: string) => toSlug(tag) !== topic)
       .slice(0, 10); // Limit to 10 related topics
 
     return {

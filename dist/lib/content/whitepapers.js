@@ -38,18 +38,22 @@ function getWhitepaperBySlug(slug) {
     const fm = data;
     if (!fm.title || !fm.slug)
         return null;
-    return {
+    const wp = {
         title: fm.title,
         slug: fm.slug,
         description: fm.description || '',
         publishedDate: fm.publishedDate || new Date().toISOString(),
         pdfPath: fm.pdfPath || '',
         status: fm.status || 'draft',
-        seoTitle: fm.seoTitle,
-        seoDescription: fm.seoDescription,
-        canonicalUrl: fm.canonicalUrl,
         content,
     };
+    if (fm.seoTitle)
+        wp.seoTitle = fm.seoTitle;
+    if (fm.seoDescription)
+        wp.seoDescription = fm.seoDescription;
+    if (fm.canonicalUrl)
+        wp.canonicalUrl = fm.canonicalUrl;
+    return wp;
 }
 function getAllWhitepapers() {
     const slugs = getWhitepaperSlugs();

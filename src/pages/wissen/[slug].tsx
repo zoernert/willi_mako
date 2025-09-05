@@ -19,13 +19,15 @@ import {
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 import { getAllPublicFAQs, getFAQBySlug, StaticFAQData } from '../../../lib/faq-api';
+import { suggestDatasetsFromText, DatasetEntry } from '../../lib/datasets';
 import { generateMetadata, generateFAQJSONLD, generateBreadcrumbJSONLD } from '../../../lib/seo-utils';
 
 interface FAQDetailProps {
   faq: StaticFAQData;
+  relatedDatasets?: Array<Pick<DatasetEntry, 'name' | 'description' | 'url'>>;
 }
 
-export default function FAQDetail({ faq }: FAQDetailProps) {
+export default function FAQDetail({ faq, relatedDatasets = [] }: FAQDetailProps) {
   const metadata = generateMetadata(faq);
   const faqJSONLD = generateFAQJSONLD(faq);
   const breadcrumbJSONLD = generateBreadcrumbJSONLD(faq);
@@ -37,6 +39,15 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
         <meta name="description" content={metadata.description} />
         <meta name="keywords" content={metadata.keywords} />
         <link rel="canonical" href={metadata.openGraph.url} />
+  {/* Hreflang alternates */}
+  <link rel="alternate" hrefLang="de" href={metadata.openGraph.url} />
+  <link rel="alternate" hrefLang="x-default" href={metadata.openGraph.url} />
+  {/* Author/Creator for SEO */}
+  <meta name="author" content="Willi Mako (STROMDAO GmbH)" />
+  <meta name="creator" content="Willi Mako (STROMDAO GmbH)" />
+  <meta name="publisher" content="STROMDAO GmbH" />
+  <meta property="article:author" content="Willi Mako (STROMDAO GmbH)" />
+  <meta property="og:site_name" content="Willi-Mako" />
         
         {/* Open Graph */}
         <meta property="og:title" content={metadata.openGraph.title} />
@@ -91,7 +102,7 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
                   color="primary"
                   size="small"
                   component={Link}
-                  href={`/wissen/thema/${tag.toLowerCase()}`}
+                  href={`/wissen/thema/${encodeURIComponent(tag.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,''))}`}
                   clickable
                 />
               ))}
@@ -160,7 +171,7 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
           </Box>
         </Paper>
 
-        {/* Related FAQs */}
+  {/* Related FAQs */}
         {faq.related_faqs && faq.related_faqs.length > 0 && (
           <Paper sx={{ p: 4, mb: 4 }}>
             <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
@@ -197,6 +208,27 @@ export default function FAQDetail({ faq }: FAQDetailProps) {
                     )}
                   </CardContent>
                 </Card>
+              ))}
+            </Box>
+          </Paper>
+        )}
+
+        {/* Related Datasets */}
+        {relatedDatasets.length > 0 && (
+          <Paper sx={{ p: 4, mb: 4 }}>
+            <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+              Verwandte Datensätze
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, m: 0 }}>
+              {relatedDatasets.slice(0, 5).map((d) => (
+                <li key={d.url}>
+                  <Link href={(d.url || '').replace('https://stromhaltig.de', '')} style={{ textDecoration: 'none' }}>
+                    <Typography variant="body1" color="primary">{d.name}</Typography>
+                  </Link>
+                  {d.description && (
+                    <Typography variant="body2" color="text.secondary">{d.description}</Typography>
+                  )}
+                </li>
               ))}
             </Box>
           </Paper>
@@ -275,9 +307,18 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
       };
     }
 
+    // dataset suggestions from FAQ content
+    let relatedDatasets: Array<Pick<DatasetEntry, 'name' | 'description' | 'url'>> = [];
+    if (faq) {
+      const text = `${faq.title}\n${faq.description || ''}\n${faq.tags.join(' ')}\n${faq.content || ''}`;
+      relatedDatasets = suggestDatasetsFromText(text, ['codeliste', 'obis', 'zeitreihentypen'], 5)
+        .map((d) => ({ name: d.name, description: d.description, url: d.url }));
+    }
+
     return {
       props: {
         faq,
+        relatedDatasets,
       },
       revalidate: 3600, // Revalidate every hour
     };

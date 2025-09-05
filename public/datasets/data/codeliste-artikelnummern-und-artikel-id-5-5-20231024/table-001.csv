@@ -1,0 +1,48 @@
+Artikelnummer,BDEW-Artikelnummer 1,Hinweise,GPKE,GeLi Gas,GPKE,GeLi Gas,MaBiS,WiM,WiM,MMM,Mengenangabe,Kapazität,Geräteübern.,auslaufend,"Prüfidentifikator: A D, E,","A B F, G",B C I,C H J
+Leistung 5,9990001,00005,3,,,X,X,,,,,X,,6,KWT,,DAY / MON / ANN
+Leistung pauschal 7,9990001,00007,9,Wirkleistung,,X,,,,,,X,,6,KWT,,DAY / MON / ANN
+Grundpreis 8,9990001,00008,7,"Ist ausschließlich dann verwendbar, wenn der Preis unabhängig von Arbeit und Leistung ist. Sie ist nicht zu verwenden, um die über den Preis des Sockelbetrags abgegoltene Arbeit (oder Leistung) in Rechnung zu stellen, da dieser Preis von der Jahresmenge (-leistung) der jeweiligen Marktlokation abhängt.",,X,X,,,,,X,,6,H87,,DAY / MON / ANN
+Reservenetzkapazität 16,9990001,00016,0,,,X,,,,,,X,,6,KWT,,DAY / MON / ANN
+Reserveleistung 17,9990001,00017,8,Wirkleistung,,X,,,,,,X,,6,KWT,,DAY / MON / ANN
+Zusätzliche Ablesung 18,9990001,00018,6,,,,X,,,X,,,,,H87,n,
+Wirkarbeit 26,9990001,00026,9,,,X,X,,,,,X,,6,KWH,n,
+"singulär genutzte Betriebsmittel (z. B. Trafomiete, Leitungen) 28",9990001,00028,5,Bei Betriebsmitteln wie Leitungen ist der monatliche Gesamtbetrag zu ermitteln (Preis pro km * Anzahl km) und dieser im PRI-Segment zu verwenden.,,X,X,,,,,X,,6,H87,,DAY / MON / ANN
+Abgabe KWKG 33,9990001,00033,4,,,X,,,,,,X,,6,KWH,n,
+Abschlag 37,9990001,00037,6,,X,X,,,,,,,,,H87,n,
+Konzessionsabgabe 41,9990001,00041,7,,,X,X,,,,,X,,6,KWH,n,
+Entgelt für Fernauslesung 43,9990001,00043,3,,,X,X,,,,,X,,6,H87,,DAY / MON / ANN
+Untermessung 47,9990001,00047,5,,,X,X,,,,,X,,6,KWH,n,
+Blindmehrarbeit 50,9990001,00050,8,,,X,,,,,,X,,6,K3,n,
+Entgelt für Abrechnung 53,9990001,00053,2,,,,X,,,,,,,,H87,,DAY / MON / ANN
+Blindmehrleistung 59,9990001,00059,0,,,X,,,,,,X,,6,KVR,,DAY / MON / ANN
+Entgelt für Messung und Ablesung 61,9990001,00061,5,,,,X,,,X,,,,,H87,,DAY / MON / ANN
+"Entgelt für Einbau, Betrieb und Wartung der Messtechnik 62",9990001,00062,3,,,,X,,,X,,,,,H87,,DAY / MON / ANN
+Ausgleichsenergie Überdeckung 63,9990001,00063,1,,,,,X,,,,,,,KWH,n,
+Zähleinrichtung 64,9990001,00064,9,,,,,,X,,X,,,H87,,DAY / MON / ANN,2
+Wandler/Mengenumwerter 65,9990001,00065,7,,,X,6,,X,,X,X,6,H87,,DAY / MON / ANN,2
+Kommunikationseinrichtung 66,9990001,00066,5,,,,,,X,,X,,,H87,,DAY / MON / ANN,2
+Technische Steuereinrichtung 67,9990001,00067,3,,,,,,X,,X,,,H87,,DAY / MON / ANN,2
+§ 19 StromNEV Umlage 68,9990001,00068,1,,,X,,,,,,X,,6,KWH,n,
+Befestigungseinrichtung (z. B. Zählertafel) 69,9990001,00069,9,,,,,,X,,X,,,H87,,DAY / MON / ANN,2
+Offshore-Netzumlage 70,9990001,00070,6,,,X,,,,,,X,,6,KWH,n,
+Fixe Arbeitsentgeltkomponente 71,9990001,00071,4,nur wenn nicht Artikel 8 verwendet wird,,,X,,,,,,,,H87,,DAY / MON / ANN
+Fixe Leistungsentgeltkomponente 72,9990001,00072,2,nur wenn nicht Artikel 8 verwendet wird,,,X,,,,,,,,H87,,DAY / MON / ANN
+Umlage abschaltbare Lasten 73,9990001,00073,0,,,X,,,,,,X,,6,KWH,n,
+Mehrmenge 74,9990001,00074,8,,,,,,,X,,,,,KWH,n,
+Mindermenge 75,9990001,00075,6,,,,,,,X,,,,,KWH,n,
+Energiesteuer 76,9990001,00076,4,"Anzuwenden im Rahmen der MMM-Abrechnung, wenn der Erlaubnisschein des Lieferanten nicht vorliegt.",,,,,,,X,,,,KWH,n,
+Smartmeter-Gateway 77,9990001,00077,2,,X,5,,,X,,X,,,H87,,DAY / MON / ANN,2
+Steuerbox 78,9990001,00078,0,,X,5,,,X,,X,,,H87,,DAY / MON / ANN,2
+Entgelt für Messstellenbetrieb 79,9990001,00079,8,,,X,X,,X,7,X,X,6,H87,4,DAY / MON / ANN,4
+Ausgleichsenergie Unterdeckung 80,9990001,00080,5,,,,,X,,,,,,,KWH,n,
+Zusatzdienstleistung nach § 35 Abs. 2 Nr. 1 MsbG 81,9990001,00081,3,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Zusatzdienstleistung nach § 35 Abs. 2 Nr. 2 MsbG 82,9990001,00082,1,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Zusatzdienstleistung nach § 35 Abs. 2 Nr. 3 MsbG 83,9990001,00083,9,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Zusatzdienstleistung nach § 35 Abs. 2 Nr. 4 MsbG 84,9990001,00084,7,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Zusatzdienstleistung nach § 35 Abs. 2 Nr. 5 MsbG 85,9990001,00085,5,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Zusatzdienstleistung nach § 35 Abs. 3 MsbG 86,9990001,00086,3,,,,,,,X,7,,,H87,,DAY / MON / ANN
+Entgelt für Kapazitäten 87,9990001,00087,1,,,,,,,,,,X,n,n,,
+Biogaswälzungsbetrag 88,9990001,00088,9,,,,,,,,,,X,n,n,,
+Umlage für Marktraumumstellung 89,9990001,00089,7,,,,,,,,,,X,n,n,,
+Aufwandspauschale 90,9990001,00090,4,,,,,,,,,,X,n,n,,
+Messentgelt 91,9990001,00091,2,,,,,,,,,,X,n,n,,

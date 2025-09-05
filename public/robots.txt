@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://stromhaltig.de/sitemap.xml
+User-agent: *
+Allow: /
 Allow: /wissen/
 Allow: /whitepaper/
 Allow: /feed.xml

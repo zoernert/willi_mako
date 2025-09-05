@@ -26,6 +26,7 @@ import {
   Api as ApiIcon,
   PhotoCamera as PhotoIcon,
   Description as DescriptionIcon,
+  Storage as StorageIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -52,6 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
     { text: 'Startseite', icon: <HomeIcon />, path: '/' },
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
   { text: 'Fachartikel', icon: <DescriptionIcon />, path: '/wissen/artikel' },
+  { text: 'Daten', icon: <StorageIcon />, path: '/data' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
     { text: 'Beratung', icon: <InfoIcon />, path: '/beratung' },
@@ -264,6 +266,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
                 flexWrap: 'wrap',
                 justifyContent: { xs: 'center', md: 'flex-end' }
               }}>
+                <Link href="/data" style={{ textDecoration: 'none' }}>
+                  <Typography variant="body2" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+                    Daten
+                  </Typography>
+                </Link>
                 <Link href="/impressum" style={{ textDecoration: 'none' }}>
                   <Typography variant="body2" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
                     Impressum

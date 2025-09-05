@@ -1,0 +1,730 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste der Temperaturanbieter 1.0i 20220722",
+      "alternateName": "Codeliste der Temperaturanbieter_1.0i_20220722.pdf",
+      "identifier": "Codeliste der Temperaturanbieter_1.0i_2022-07-22",
+      "description": "Codeliste der Temperaturanbieter 1.0i 20220722, Version 1.0i, veröffentlicht am 2022-07-22",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-der-temperaturanbieter-1-0i-20220722",
+      "version": "1.0i",
+      "datePublished": "2022-07-22",
+      "keywords": [
+        "Codeliste",
+        "Temperaturanbieter",
+        "1.0i",
+        "20220722"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste der Temperaturanbieter_1.0i_20220722.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-temperaturanbieter-1-0i-20220722/Codeliste%20der%20Temperaturanbieter_1.0i_20220722.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "127.29 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-temperaturanbieter-1-0i-20220722/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "38.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-temperaturanbieter-1-0i-20220722/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-temperaturanbieter-1-0i-20220722/tables.json",
+          "encodingFormat": "application/json"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste der Temperaturanbieter_1.0i_20220722.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste europaeischer Laendercodes 1 0 20170401",
+      "alternateName": "Codeliste europaeischer Laendercodes_1_0_20170401.pdf",
+      "identifier": "Codeliste europaeischer Laendercodes_1_0_2017-04-01",
+      "description": "Codeliste europaeischer Laendercodes 1 0 20170401, Version 1_0, veröffentlicht am 2017-04-01",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401",
+      "version": "1_0",
+      "datePublished": "2017-04-01",
+      "keywords": [
+        "Codeliste",
+        "europaeischer",
+        "Laendercodes",
+        "20170401"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste europaeischer Laendercodes_1_0_20170401.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/Codeliste%20europaeischer%20Laendercodes_1_0_20170401.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "94.26 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "296.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercodes-1-0-20170401/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste europaeischer Laendercodes_1_0_20170401.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-Konfigurationen 1 3b 20241001",
+      "alternateName": "Codeliste-Konfigurationen_1_3b_20241001.pdf",
+      "identifier": "Codeliste-Konfigurationen_1_3b_2024-10-01",
+      "description": "Codeliste-Konfigurationen 1 3b 20241001, Version 1_3b, veröffentlicht am 2024-10-01",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001",
+      "version": "1_3b",
+      "datePublished": "2024-10-01",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-Konfigurationen",
+        "20241001"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-Konfigurationen_1_3b_20241001.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/Codeliste-Konfigurationen_1_3b_20241001.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "769.10 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "281.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-20241001/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste-Konfigurationen_1_3b_20241001.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-Lokationsbuendelstrukturen 1 0 20230331",
+      "alternateName": "Codeliste-Lokationsbuendelstrukturen_1_0_20230331.pdf",
+      "identifier": "Codeliste-Lokationsbuendelstrukturen_1_0_2023-03-31",
+      "description": "Codeliste-Lokationsbuendelstrukturen 1 0 20230331, Version 1_0, veröffentlicht am 2023-03-31",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331",
+      "version": "1_0",
+      "datePublished": "2023-03-31",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-Lokationsbuendelstrukturen",
+        "20230331"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-Lokationsbuendelstrukturen_1_0_20230331.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/Codeliste-Lokationsbuendelstrukturen_1_0_20230331.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "5.54 MB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "282.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-20230331/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste-Lokationsbuendelstrukturen_1_0_20230331.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-Lokationsbündelstrukturen 1 0 Fehlerkorrektur 20241213",
+      "alternateName": "Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+      "identifier": "Codeliste-Lokationsbündelstrukturen_1_0_no-version_2024-12-13",
+      "description": "Codeliste-Lokationsbündelstrukturen 1 0 Fehlerkorrektur 20241213, veröffentlicht am 2024-12-13",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213",
+      "datePublished": "2024-12-13",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-Lokationsbündelstrukturen",
+        "Fehlerkorrektur",
+        "20241213"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213/Codeliste-Lokationsbu%CC%88ndelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "6.42 MB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "282.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbundelstrukturen-1-0-fehlerkorrektur-20241213/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste Artikelnummern und Artikel-ID 5 5 20231024",
+      "alternateName": "Codeliste_Artikelnummern und Artikel-ID_5_5_20231024.pdf",
+      "identifier": "Codeliste_Artikelnummern und Artikel-ID_5_5_2023-10-24",
+      "description": "Codeliste Artikelnummern und Artikel-ID 5 5 20231024, Version 5_5, veröffentlicht am 2023-10-24",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024",
+      "version": "5_5",
+      "datePublished": "2023-10-24",
+      "keywords": [
+        "Codeliste",
+        "Artikelnummern",
+        "Artikel-ID",
+        "20231024"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste_Artikelnummern und Artikel-ID_5_5_20231024.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024/Codeliste_Artikelnummern%20und%20Artikel-ID_5_5_20231024.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "545.21 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "283.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024/table-001.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024/tables.json",
+          "encodingFormat": "application/json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-20231024/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste_Artikelnummern und Artikel-ID_5_5_20231024.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste Artikelnummern und Artikel-ID 5 5 außerordentliche 20250320",
+      "alternateName": "Codeliste_Artikelnummern und Artikel-ID_5_5_außerordentliche_20250320.pdf",
+      "identifier": "Codeliste_Artikelnummern und Artikel-ID_5_5_no-version_2025-03-20",
+      "description": "Codeliste Artikelnummern und Artikel-ID 5 5 außerordentliche 20250320, veröffentlicht am 2025-03-20",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-ausserordentliche-20250320",
+      "datePublished": "2025-03-20",
+      "keywords": [
+        "Codeliste",
+        "Artikelnummern",
+        "Artikel-ID",
+        "außerordentliche",
+        "20250320"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste_Artikelnummern und Artikel-ID_5_5_außerordentliche_20250320.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-ausserordentliche-20250320/Codeliste_Artikelnummern%20und%20Artikel-ID_5_5_au%C3%9Ferordentliche_20250320.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "1.02 MB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-ausserordentliche-20250320/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "283.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-artikelnummern-und-artikel-id-5-5-ausserordentliche-20250320/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste_Artikelnummern und Artikel-ID_5_5_außerordentliche_20250320.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste der Zeitreihentypen 1 1d 20210401",
+      "alternateName": "Codeliste_der_Zeitreihentypen_1_1d_20210401.pdf",
+      "identifier": "Codeliste_der_Zeitreihentypen_1_1d_2021-04-01",
+      "description": "Codeliste der Zeitreihentypen 1 1d 20210401, Version 1_1d, veröffentlicht am 2021-04-01",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-20210401",
+      "version": "1_1d",
+      "datePublished": "2021-04-01",
+      "keywords": [
+        "Codeliste",
+        "Zeitreihentypen",
+        "20210401"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste_der_Zeitreihentypen_1_1d_20210401.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-20210401/Codeliste_der_Zeitreihentypen_1_1d_20210401.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "213.59 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-20210401/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "280.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-20210401/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "knowledge/Codeliste_der_Zeitreihentypen_1_1d_20210401.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-Konfigurationen 1 3b Fehlerkorrektur 20250417",
+      "alternateName": "Codeliste-Konfigurationen_1_3b_Fehlerkorrektur_20250417.pdf",
+      "identifier": "Codeliste-Konfigurationen_1_3b_no-version_2025-04-17",
+      "description": "Codeliste-Konfigurationen 1 3b Fehlerkorrektur 20250417, veröffentlicht am 2025-04-17",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-fehlerkorrektur-20250417",
+      "datePublished": "2025-04-17",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-Konfigurationen",
+        "Fehlerkorrektur",
+        "20250417"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-Konfigurationen_1_3b_Fehlerkorrektur_20250417.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-fehlerkorrektur-20250417/Codeliste-Konfigurationen_1_3b_Fehlerkorrektur_20250417.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "890.63 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-fehlerkorrektur-20250417/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "281.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-konfigurationen-1-3b-fehlerkorrektur-20250417/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste-Konfigurationen_1_3b_Fehlerkorrektur_20250417.pdf",
+        "presentInQdrant": false
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-Lokationsbündelstrukturen 1 0 Fehlerkorrektur 20241213",
+      "alternateName": "Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+      "identifier": "Codeliste-Lokationsbündelstrukturen_1_0_no-version_2024-12-13",
+      "description": "Codeliste-Lokationsbündelstrukturen 1 0 Fehlerkorrektur 20241213, veröffentlicht am 2024-12-13",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-fehlerkorrektur-20241213",
+      "datePublished": "2024-12-13",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-Lokationsbündelstrukturen",
+        "Fehlerkorrektur",
+        "20241213"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-fehlerkorrektur-20241213/Codeliste-Lokationsb%C3%BCndelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "6.42 MB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-fehlerkorrektur-20241213/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "282.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-lokationsbuendelstrukturen-1-0-fehlerkorrektur-20241213/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste-Lokationsbündelstrukturen_1_0_Fehlerkorrektur_20241213.pdf",
+        "presentInQdrant": false
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-OBIS-Kennzahlen Medien 2 5b 20240125",
+      "alternateName": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_20240125.pdf",
+      "identifier": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_2024-01-25",
+      "description": "Codeliste-OBIS-Kennzahlen Medien 2 5b 20240125, Version 2_5b, veröffentlicht am 2024-01-25",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-20240125",
+      "version": "2_5b",
+      "datePublished": "2024-01-25",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-OBIS-Kennzahlen",
+        "Medien",
+        "20240125"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_20240125.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-20240125/Codeliste-OBIS-Kennzahlen_Medien_2_5b_20240125.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "505.88 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-20240125/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "281.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-20240125/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste-OBIS-Kennzahlen_Medien_2_5b_20240125.pdf",
+        "presentInQdrant": false
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste-OBIS-Kennzahlen Medien 2 5b Fehlerkorrektur 20250210",
+      "alternateName": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_Fehlerkorrektur_20250210.pdf",
+      "identifier": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_no-version_2025-02-10",
+      "description": "Codeliste-OBIS-Kennzahlen Medien 2 5b Fehlerkorrektur 20250210, veröffentlicht am 2025-02-10",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-fehlerkorrektur-20250210",
+      "datePublished": "2025-02-10",
+      "keywords": [
+        "Codeliste",
+        "Codeliste-OBIS-Kennzahlen",
+        "Medien",
+        "Fehlerkorrektur",
+        "20250210"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste-OBIS-Kennzahlen_Medien_2_5b_Fehlerkorrektur_20250210.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-fehlerkorrektur-20250210/Codeliste-OBIS-Kennzahlen_Medien_2_5b_Fehlerkorrektur_20250210.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "698.46 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-fehlerkorrektur-20250210/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "281.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-obis-kennzahlen-medien-2-5b-fehlerkorrektur-20250210/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste-OBIS-Kennzahlen_Medien_2_5b_Fehlerkorrektur_20250210.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste der Zeitreihentypen 1 1d Lesefassung 20210716",
+      "alternateName": "Codeliste_der_Zeitreihentypen_1_1d_Lesefassung_20210716.pdf",
+      "identifier": "Codeliste_der_Zeitreihentypen_1_1d_no-version_2021-07-16",
+      "description": "Codeliste der Zeitreihentypen 1 1d Lesefassung 20210716, veröffentlicht am 2021-07-16",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-lesefassung-20210716",
+      "datePublished": "2021-07-16",
+      "keywords": [
+        "Codeliste",
+        "Zeitreihentypen",
+        "Lesefassung",
+        "20210716"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste_der_Zeitreihentypen_1_1d_Lesefassung_20210716.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-lesefassung-20210716/Codeliste_der_Zeitreihentypen_1_1d_Lesefassung_20210716.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "201.95 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-lesefassung-20210716/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "295.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-der-zeitreihentypen-1-1d-lesefassung-20210716/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste_der_Zeitreihentypen_1_1d_Lesefassung_20210716.pdf",
+        "presentInQdrant": true
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Codeliste europäischer Ländercode 1.0 Fehlerkorrektur 20230330",
+      "alternateName": "Codeliste_europäischer_Ländercode_1.0_Fehlerkorrektur_20230330.pdf",
+      "identifier": "Codeliste_europäischer_Ländercode_1.0_no-version_2023-03-30",
+      "description": "Codeliste europäischer Ländercode 1.0 Fehlerkorrektur 20230330, veröffentlicht am 2023-03-30",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/codeliste-europaeischer-laendercode-1-0-fehlerkorrektur-20230330",
+      "datePublished": "2023-03-30",
+      "keywords": [
+        "Codeliste",
+        "europäischer",
+        "Ländercode",
+        "Fehlerkorrektur",
+        "20230330"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Codeliste_europäischer_Ländercode_1.0_Fehlerkorrektur_20230330.pdf",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercode-1-0-fehlerkorrektur-20230330/Codeliste_europ%C3%A4ischer_L%C3%A4ndercode_1.0_Fehlerkorrektur_20230330.pdf",
+          "encodingFormat": "application/pdf",
+          "contentSize": "159.00 KB"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Tables manifest (JSON)",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercode-1-0-fehlerkorrektur-20230330/tables.json",
+          "encodingFormat": "application/json",
+          "contentSize": "296.00 B"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "table-001.csv",
+          "contentUrl": "https://stromhaltig.de/data/codeliste-europaeischer-laendercode-1-0-fehlerkorrektur-20230330/table-001.csv",
+          "encodingFormat": "text/csv"
+        }
+      ],
+      "_source": {
+        "localPath": "km2/Codeliste_europäischer_Ländercode_1.0_Fehlerkorrektur_20230330.pdf",
+        "presentInQdrant": false
+      }
+    }
+  ]
+}

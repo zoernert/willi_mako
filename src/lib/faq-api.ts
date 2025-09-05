@@ -69,6 +69,20 @@ export function generateFAQSlug(title: string): string {
     .replace(/^-|-$/g, '');
 }
 
+// Slugify helper for tags/topics to ensure clean URLs
+// Mirrors generateFAQSlug behavior but kept semantically separate
+export function slugifyTag(tag: string): string {
+  return (tag || '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 // Hole alle öffentlichen FAQs für die statische Generierung
 export async function getAllPublicFAQs(): Promise<StaticFAQData[]> {
   try {

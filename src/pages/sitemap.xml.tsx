@@ -1,5 +1,6 @@
 import { GetServerSideProps } from 'next';
 import { getAllPublicFAQs, getAllTags } from '../../lib/faq-api';
+import { loadDatasets } from '../../lib/datasets';
 import { getAllWhitepapers } from '../../lib/content/whitepapers';
 import { getAllArticles } from '../../lib/content/articles';
 import { calculateSitemapPriority, calculateChangeFreq } from '../../lib/seo-utils';
@@ -10,12 +11,13 @@ export default function Sitemap() {
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   try {
-    const [faqs, tags, whitepapers, articles] = await Promise.all([
+  const [faqs, tags, whitepapers, articles] = await Promise.all([
       getAllPublicFAQs(),
       getAllTags(),
       Promise.resolve(getAllWhitepapers()),
       Promise.resolve(getAllArticles()),
     ]);
+  const datasets = loadDatasets();
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -54,7 +56,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
   <!-- Tag Pages -->
   ${tags.slice(0, 20).map(tag => `
   <url>
-    <loc>https://stromhaltig.de/wissen/thema/${tag.tag.toLowerCase()}</loc>
+    <loc>https://stromhaltig.de/wissen/thema/${tag.tag.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -86,6 +88,13 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>`).join('')}
+
+  <!-- Dataset Pages -->
+  ${datasets.map(d => {
+    const url = d.url || '';
+    const lastmod = d.dateModified || d.datePublished || new Date().toISOString();
+    return `\n  <url>\n    <loc>${url}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`;
+  }).join('')}
 
   <!-- RSS/Atom Feeds -->
   <url>

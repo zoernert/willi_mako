@@ -14,7 +14,7 @@ const nextConfig = {
   
   // Legacy app integration - handled by custom server
   async rewrites() {
-    return [
+  return [
       // Static assets für Legacy App
       {
         source: '/static/:path*',
@@ -30,6 +30,19 @@ const nextConfig = {
         source: '/app/:path*',
         destination: '/app/index.html',
       },
+      // Public dataset files served under /data/<slug>/... (do not hijack /data/:slug page)
+      {
+        source: '/data/:slug/tables.json',
+        destination: '/datasets/data/:slug/tables.json',
+      },
+      {
+        source: '/data/:slug/table-:rest*.json',
+        destination: '/datasets/data/:slug/table-:rest*.json',
+      },
+      {
+        source: '/data/:slug/table-:rest*.csv',
+        destination: '/datasets/data/:slug/table-:rest*.csv',
+      },
     ];
   },
 
@@ -39,6 +52,20 @@ const nextConfig = {
       {
         source: '/client/:path*',
         destination: '/app/:path*',
+        permanent: true,
+      },
+      // Normalize legacy topic URLs that contain spaces or special chars
+      // e.g., /wissen/thema/Fehlercode%20Z20 -> /wissen/thema/fehlercode-z20
+      {
+        source: '/wissen/thema/:topic*',
+        has: [
+          {
+            type: 'query',
+            key: 'normalize',
+            value: '(.*)'
+          }
+        ],
+        destination: '/wissen/thema/:topic',
         permanent: true,
       },
     ];
@@ -85,6 +112,21 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
+        ],
+      },
+      // Avoid indexing of raw data files; keep HTML pages indexable
+      {
+        source: '/data/:slug*.csv',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex' },
+          { key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/data/:slug*.json',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex' },
+          { key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' },
         ],
       },
       {

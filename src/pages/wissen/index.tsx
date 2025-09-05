@@ -51,6 +51,9 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
         <meta property="og:description" content={`Umfassende Wissensdatenbank für Marktkommunikation in der Energiewirtschaft. ${totalCount} FAQ-Artikel zu BDEW, EIC, Bilanzkreisen und mehr.`} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://stromhaltig.de/wissen" />
+  {/* Hreflang alternates */}
+  <link rel="alternate" hrefLang="de" href="https://stromhaltig.de/wissen" />
+  <link rel="alternate" hrefLang="x-default" href="https://stromhaltig.de/wissen" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -139,7 +142,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
                 variant="outlined"
                 color="primary"
                 component={Link}
-                href={`/wissen/thema/${tag.tag.toLowerCase()}`}
+                href={`/wissen/thema/${encodeURIComponent(tag.tag.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,''))}`}
                 clickable
                 sx={{ 
                   px: 2,
@@ -168,7 +171,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
                 </Typography>
                 <Button
                   component={Link}
-                  href={`/wissen/thema/${tag.tag.toLowerCase()}`}
+                  href={`/wissen/thema/${encodeURIComponent(tag.tag.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,''))}`}
                   variant="text"
                   color="primary"
                   sx={{ fontWeight: 600 }}

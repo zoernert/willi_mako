@@ -1,0 +1,87 @@
+{
+  "page": 1,
+  "confidence": 0.85,
+  "indicators": 4,
+  "headers": [
+    "Überschrift",
+    "Beschreibung",
+    "Wertebereich"
+  ],
+  "rows": [
+    [
+      "Code der Lokati-",
+      "Eindeutiger Identifikator für die Lokationsbündelstruktur, gemäß EDI@Energy Codeliste „Lokationsbündelstrukturen“.",
+      "Code"
+    ],
+    [
+      "onsbündelstruk-",
+      "",
+      ""
+    ],
+    [
+      "tur",
+      "",
+      ""
+    ],
+    [
+      "Objekt-Code",
+      "Der Objekt-Code ist ein in der Lokationsbündelstruktur vorkommender Code, der eine festgelegte Position für ein Objekt (NeLo, MeLo, MaLo oder TR) in der Lokationsbündelstruktur beschreibt. Die Objektcodes werden vergeben in Abhängigkeit vom Objekt (NeLo, MeLo, MaLo, TR), der Ebene (1, 2, 3), der Richtung (Erzeugung, Verbrauch, Erzeugung und Verbrauch).",
+      "Code"
+    ],
+    [
+      "Objekttyp",
+      "Beschreibt den Typ des Objektes, welchem der Objekt-Code zugeordnet ist (NeLo, MeLo, MaLo oder TR)",
+      "MeLo, MaLo, TR,NeLo"
+    ],
+    [
+      "Richtung",
+      "Die Richtung entspricht der Energieflussrichtung und beschreibt, ob es sich um Erzeugung oder Verbrauch handelt, bzw. ob eine MeLo beide Energieflussrichtungen erfasst.",
+      "Verbrauch, Erzeugung, Verbrauch & Erzeugung"
+    ],
+    [
+      "Ebene",
+      "Die Ebene gibt an, auf welcher Ebene der Lokationsbündelstruktur sich das Objekt (MeLo, MaLo, NeLo, TR) befindet. Es gibt vereinzelt Lokationsbündelstrukturen in Netzgebieten mit mehr als den angegebenen Ebenen, die werden aber derzeit in der Codeliste nicht abgebildet.",
+      "1, 2, 3"
+    ],
+    [
+      "Flexibilität mög-",
+      "Hier wird beschrieben, ob eine flexible Nutzung des Objekts möglich ist.",
+      "Starr, Flexibel"
+    ],
+    [
+      "lich",
+      "„Starr“ in diesem Feld zeigt auf, dass es sich bei in dieser Zelle befindlichem Objekt-Code um ein starres Objekt (Die Anzahl der Objekte ist fest vorgegeben) handelt.",
+      ""
+    ],
+    [
+      "",
+      "„Flexibel“ kennzeichnet ein flexibles nutzbares Objekt (Die Anzahl der Objekte ist nicht starr und kann zwischen 0 bis n variieren). Hier muss immer in der UTILMD bei der Übermittlung der Lokationsbündelstruktur die Referenz von der MeLo zur MaLo und ggf. NeLo mit übertragen werden.",
+      ""
+    ],
+    [
+      "Anzahl Objekte",
+      "Die Anzahl der Objekte zu dem Objekt-Code sagt aus, wie oft ein Objekt mit dem in der Zeile befindlichen Objekt-Code mindestens und maximal vorkommen kann, damit die Lokationsbündelstruktur korrekt aufgebaut ist.",
+      "numerisch, positiv"
+    ],
+    [
+      "Referenz Messlo-",
+      "Hier wird der Objekt-Code der Messlokation angegeben, auf welche das flexible Objekt, welches in der Zeile genannt ist, referenziert.",
+      "Objekt Code einer Messlokation"
+    ],
+    [
+      "kation",
+      "Hinweis: Diese Tabellenspalte existiert in den Codelisten der Lokationsbündelstrukturen nur dann, wenn diese für die jeweilige Codeliste der Lokationsbündelstruktur notwendig ist.",
+      ""
+    ],
+    [
+      "Referenz Netzlo-",
+      "Hier wird der Objekt-Code der Netzlokation angegeben, auf welche das flexible Objekt, welches in der Zeile genannt ist, referenziert.",
+      "Objekt Code einer Netzlokation"
+    ],
+    [
+      "kation",
+      "Hinweis: Diese Tabellenspalte existiert in den Codelisten der Lokationsbündelstrukturen nur dann, wenn diese für die jeweilige Codeliste der Lokationsbündelstruktur notwendig ist.",
+      ""
+    ]
+  ]
+}

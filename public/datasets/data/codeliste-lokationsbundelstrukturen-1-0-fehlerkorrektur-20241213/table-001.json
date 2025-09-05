@@ -1,0 +1,71 @@
+{
+  "page": 1,
+  "confidence": 0.85,
+  "indicators": 4,
+  "headers": [
+    "Code der Lokations-bündel-struktur¹",
+    "Bezeichnung"
+  ],
+  "rows": [
+    [
+      "9992 00000 001 8",
+      "Verbrauch ohne Messlokation (Pauschal)"
+    ],
+    [
+      "9992 00000 002 6",
+      "Verbrauch mit einer Messlokation (Standard)"
+    ],
+    [
+      "9992 00000 003 4",
+      "Erzeugung mit einer Messlokation"
+    ],
+    [
+      "9992 00000 004 2",
+      "Erzeugung ohne getrennt gemessene Erzeugung"
+    ],
+    [
+      "9992 00000 006 8",
+      "Verbrauch mit flexibler Hinterschaltung ohne Erzeugung"
+    ],
+    [
+      "9992 00000 007 6",
+      "Verbrauch mit flexibler Hinterschaltung und nicht getrennt gemessener Erzeugung"
+    ],
+    [
+      "9992 00000 008 4",
+      "Verbrauch mit flexibler Hinterschaltung und getrennt gemessener flexibler Erzeugung"
+    ],
+    [
+      "9992 00000 010 9",
+      "Summenmessung Verbrauch ohne Erzeugung"
+    ],
+    [
+      "9992 00000 011 7",
+      "Summenmessung mit mindestens einer ungemessenen Erzeugung"
+    ],
+    [
+      "9992 00000 012 5",
+      "Summenmessung mit mindestens einer separat gemessenen Erzeugung"
+    ],
+    [
+      "9992 00000 013 3",
+      "Erzeugung mit getrennt gemessener Erzeugung"
+    ],
+    [
+      "9992 00000 015 9",
+      "Erzeugungskaskade mit ungemessener Erzeugung"
+    ],
+    [
+      "9992 00000 016 7",
+      "Erzeugungskaskade mit gemessener und ungemessener Erzeugung"
+    ],
+    [
+      "9992 00000 017 5",
+      "Verbrauchskaskade mit ungemessenen TR (Wärmepumpenkaskade)"
+    ],
+    [
+      "9992 00000 018 3",
+      "Verbrauchskaskade mit ungemessenem Verbrauch und gemessener Erzeugung"
+    ]
+  ]
+}

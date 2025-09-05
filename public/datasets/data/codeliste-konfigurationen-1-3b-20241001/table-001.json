@@ -1,0 +1,68 @@
+{
+  "page": 1,
+  "confidence": 0.85,
+  "indicators": 4,
+  "headers": [
+    "Messprodukt-Code 1",
+    "Bezeichnung Wert",
+    "Werteart",
+    "Wertegranularität",
+    "Messprodukt gegenüber MSB von Marktrolle bestellbar"
+  ],
+  "rows": [
+    [
+      "",
+      "",
+      "",
+      "",
+      "NB",
+      "LF",
+      "MSB"
+    ],
+    [
+      "9991 00000 004 4",
+      "Marktlokation 2 mit Wahlmöglichkeit der Zuordnung einer Zählzeit für Wirkarbeit Menge jährlich",
+      "Wirkarbeit",
+      "Arbeitsmenge jährlich",
+      "X",
+      "--",
+      "--"
+    ],
+    [
+      "9991 00000 049 0",
+      "Marktlokation 2 mit Wahlmöglichkeit der Zuordnung einer Zählzeit für Wirkarbeit Menge halbjährlich",
+      "Wirkarbeit",
+      "Arbeitsmenge halbjährlich",
+      "X",
+      "--",
+      "--"
+    ],
+    [
+      "9991 00000 005 2",
+      "Marktlokation 2 mit Wahlmöglichkeit der Zuordnung einer Zählzeit für Wirkarbeit Menge quartalsweise",
+      "Wirkarbeit",
+      "Arbeitsmenge quartalsweise",
+      "X",
+      "--",
+      "--"
+    ],
+    [
+      "9991 00000 006 0",
+      "Marktlokation 2 mit Wahlmöglichkeit der Zuordnung einer Zählzeit für Wirkarbeit Menge monatlich",
+      "Wirkarbeit",
+      "Arbeitsmenge monatlich",
+      "X",
+      "--",
+      "--"
+    ],
+    [
+      "9991 00000 149 8",
+      "Marktlokation 2 mit Wahlmöglichkeit der Zuordnung einer Zählzeit für Wirkarbeit Menge monatlich",
+      "Wirkarbeit",
+      "Arbeitsmenge monatlich",
+      "--",
+      "X",
+      "--"
+    ]
+  ]
+}

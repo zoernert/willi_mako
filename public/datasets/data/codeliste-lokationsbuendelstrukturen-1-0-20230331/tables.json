@@ -1,0 +1,17 @@
+{
+  "tablesCount": 1,
+  "tables": [
+    {
+      "id": "table-001",
+      "page": 1,
+      "confidence": 0.85,
+      "indicators": 4,
+      "headersCount": 3,
+      "rowsCount": 15,
+      "files": {
+        "json": "table-001.json",
+        "csv": "table-001.csv"
+      }
+    }
+  ]
+}

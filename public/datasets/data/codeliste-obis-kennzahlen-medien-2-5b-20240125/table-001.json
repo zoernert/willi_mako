@@ -1,0 +1,77 @@
+{
+  "page": 1,
+  "confidence": 0.85,
+  "indicators": 4,
+  "headers": [
+    "Medium (A)",
+    "Kanal (B)",
+    "Messgröße (C)",
+    "Messart (D)",
+    "Tarif (E)"
+  ],
+  "rows": [
+    [
+      "1 Elektrizität",
+      "Kanal 0-65",
+      "1 ∑ Li Wirkleistung +",
+      "6 Maximum",
+      "0 Total"
+    ],
+    [
+      "",
+      "Kanal 66   (nur bei Angabe  von Blindmehr- arbeit und Blind- mehrleistung im  Lieferschein)",
+      "2 ∑ Li Wirkleistung -",
+      "8 Zeitintegral 1",
+      "1 Tarif 1"
+    ],
+    [
+      "",
+      "",
+      "3 ∑ Li Blindleistung positiv",
+      "9 Zeitintegral 2",
+      "2 Tarif 2"
+    ],
+    [
+      "",
+      "",
+      "4 ∑ Li Blindleistung negativ",
+      "29 Zeitintegral 5",
+      "3 Tarif 3"
+    ],
+    [
+      "",
+      "",
+      "5 ∑ Li Blindleistung Q I",
+      "",
+      "4 Tarif 4"
+    ],
+    [
+      "",
+      "",
+      "6 ∑ Li Blindleistung Q II",
+      "",
+      "5 Tarif 5"
+    ],
+    [
+      "",
+      "",
+      "7 ∑ Li Blindleistung Q III",
+      "",
+      "..."
+    ],
+    [
+      "",
+      "",
+      "8 ∑ Li Blindleistung Q IV",
+      "",
+      "62 Tarif 62"
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "63 Fehlerregister"
+    ]
+  ]
+}
