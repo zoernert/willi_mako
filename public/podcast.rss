@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Radio Willi</title>
+    <link>https://stromhaltig.de/</link>
+    <description>Aktuelle Audio-Inhalte von Willi Mako</description>
+    <language>de-de</language>
+    <item>
+      <title>Mako in der Krise</title>
+      <description>Ein kurzer Beitrag zur aktuellen Lage in der MaKo.</description>
+      <enclosure url="/media/mako_krise.mp3" length="0" type="audio/mpeg" />
+      <guid isPermaLink="false">mako_krise_mp3</guid>
+      <pubDate>Mon, 01 Sep 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Whitepaper: Bilateral</title>
+      <description>Audiofassung des Whitepapers zur bilateralen Klärung.</description>
+      <enclosure url="/media/whitepaper_bilateral.m4a" length="0" type="audio/mp4" />
+      <guid isPermaLink="false">whitepaper_bilateral_m4a</guid>
+      <pubDate>Mon, 01 Sep 2025 10:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

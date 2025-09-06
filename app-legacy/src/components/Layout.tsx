@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import HeaderQuickNoteButton from './Workspace/HeaderQuickNoteButton';
+import RadioWilliPlayer from './RadioWilliPlayer';
 import TimelineSelector from './Timeline/TimelineSelector'; // NEU: Timeline-Selector
 import ProblemReportDialog from './ProblemReportDialog';
 
@@ -215,9 +216,9 @@ const Layout: React.FC = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Stromhaltig - Willi Mako
-          </Typography>
+          <Box sx={{ flexGrow: 1, minWidth: 0, mr: 1 }}>
+            <RadioWilliPlayer />
+          </Box>
           <HeaderQuickNoteButton />
           <TimelineSelector /> {/* NEU: Timeline-Selector */}
           <Button
