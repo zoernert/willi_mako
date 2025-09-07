@@ -12,31 +12,38 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Legacy app integration - handled by custom server
+  // Legacy app integration and dataset file serving
   async rewrites() {
-  return [
-      // Static assets für Legacy App
-      {
-        source: '/static/:path*',
-        destination: '/app/static/:path*',
-      },
-      // Manifest und andere Root-Assets für Legacy App
-      {
-        source: '/manifest.json',
-        destination: '/app/manifest.json',
-      },
-      // Fallback für Legacy App
-      {
-        source: '/app/:path*',
-        destination: '/app/index.html',
-      },
-      // Public dataset files served under /data/<slug>/** (do not hijack /data/:slug page)
-      // This catches any file within the dataset folder (json, csv, images, etc.)
-      {
-        source: '/data/:slug/:path*',
-        destination: '/datasets/data/:slug/:path*',
-      },
-    ];
+    return {
+      // Rewrites applied before checking filesystem and pages
+      beforeFiles: [
+        // Static assets für Legacy App
+        {
+          source: '/static/:path*',
+          destination: '/app/static/:path*',
+        },
+        // Manifest und andere Root-Assets für Legacy App
+        {
+          source: '/manifest.json',
+          destination: '/app/manifest.json',
+        },
+        // Fallback für Legacy App SPA
+        {
+          source: '/app/:path*',
+          destination: '/app/index.html',
+        },
+      ],
+      // Rewrites applied after checking filesystem and pages
+      // Ensures that Next page /data/[slug] is NOT overridden by this rule
+      afterFiles: [
+        // Public dataset files served under /data/<slug>/**
+        {
+          source: '/data/:slug/:path*',
+          destination: '/datasets/data/:slug/:path*',
+        },
+      ],
+      fallback: [],
+    };
   },
 
   // Redirects für alte Pfade
