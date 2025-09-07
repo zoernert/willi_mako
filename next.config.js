@@ -30,18 +30,11 @@ const nextConfig = {
         source: '/app/:path*',
         destination: '/app/index.html',
       },
-      // Public dataset files served under /data/<slug>/... (do not hijack /data/:slug page)
+      // Public dataset files served under /data/<slug>/** (do not hijack /data/:slug page)
+      // This catches any file within the dataset folder (json, csv, images, etc.)
       {
-        source: '/data/:slug/tables.json',
-        destination: '/datasets/data/:slug/tables.json',
-      },
-      {
-        source: '/data/:slug/table-:rest*.json',
-        destination: '/datasets/data/:slug/table-:rest*.json',
-      },
-      {
-        source: '/data/:slug/table-:rest*.csv',
-        destination: '/datasets/data/:slug/table-:rest*.csv',
+        source: '/data/:slug/:path*',
+        destination: '/datasets/data/:slug/:path*',
       },
     ];
   },
@@ -116,14 +109,14 @@ const nextConfig = {
       },
       // Avoid indexing of raw data files; keep HTML pages indexable
       {
-        source: '/data/:slug*.csv',
+        source: '/data/:slug/:path*.csv',
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex' },
           { key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' },
         ],
       },
       {
-        source: '/data/:slug*.json',
+        source: '/data/:slug/:path*.json',
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex' },
           { key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' },

@@ -12,9 +12,10 @@ interface DataDetailProps {
   sampleTableJsonPath: string | null;
   sampleTable?: TableData | null;
   relatedFaqs?: Array<Pick<StaticFAQData, 'title' | 'slug' | 'description'>>;
+  sampleTableCsvPath?: string | null;
 }
 
-export default function DataDetail({ slug, dataset, tablesCount, sampleTableJsonPath, sampleTable, relatedFaqs = [] }: DataDetailProps) {
+export default function DataDetail({ slug, dataset, tablesCount, sampleTableJsonPath, sampleTable, relatedFaqs = [], sampleTableCsvPath = null }: DataDetailProps) {
   if (!dataset) {
     return (
       <Layout title="Datensatz nicht gefunden">
@@ -106,6 +107,11 @@ export default function DataDetail({ slug, dataset, tablesCount, sampleTableJson
                 <Link className="text-blue-600" href={sampleTableJsonPath}>Beispiel-Tabelle (JSON)</Link>
               </li>
             )}
+            {tablesCount > 0 && sampleTableCsvPath && (
+              <li>
+                <Link className="text-blue-600" href={sampleTableCsvPath}>Beispiel-Tabelle (CSV)</Link>
+              </li>
+            )}
           </ul>
           <p className="text-xs text-gray-500 mt-2">Hinweis: Für normative Zwecke gilt ausschließlich das PDF.</p>
         </section>
@@ -174,6 +180,12 @@ export const getStaticProps: GetStaticProps<DataDetailProps> = async ({ params }
   const tablesCount = manifest?.tablesCount || 0;
   const sampleTableJsonPath = manifest ? getSampleTableJsonPath(slug, manifest) : null;
   const sampleTable = loadFirstTableData(slug);
+  const sampleTableCsvPath = (() => {
+    if (!manifest || !manifest.tables?.length) return null;
+    const first = manifest.tables[0];
+    const rel = first.files?.csv || `${first.id}.csv`;
+    return `/data/${slug}/${rel}`;
+  })();
 
   // Compute related FAQs via simple token overlap
   let relatedFaqs: Array<Pick<StaticFAQData, 'title' | 'slug' | 'description'>> = [];
@@ -205,6 +217,7 @@ export const getStaticProps: GetStaticProps<DataDetailProps> = async ({ params }
   sampleTableJsonPath,
   sampleTable,
   relatedFaqs,
+  sampleTableCsvPath,
     },
     revalidate: 3600,
   };
