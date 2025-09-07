@@ -36,10 +36,10 @@ const nextConfig = {
       // Rewrites applied after checking filesystem and pages
       // Ensures that Next page /data/[slug] is NOT overridden by this rule
       afterFiles: [
-        // Public dataset files served under /data/<slug>/**
+        // Only rewrite actual data files (avoid hijacking /data/:slug page)
         {
-          source: '/data/:slug/:path*',
-          destination: '/datasets/data/:slug/:path*',
+          source: '/data/:slug/:file((?:[^/]+)\\.(?:json|csv))',
+          destination: '/datasets/data/:slug/:file',
         },
       ],
       fallback: [],
