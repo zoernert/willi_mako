@@ -53,8 +53,8 @@ if (!dev) {
     res.sendFile(path.join(legacyDir, 'index.html'));
   });
   expressApp.get('/app/index.html', (req, res) => {
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(legacyDir, 'index.html'));
+    // Canonicalize to /app/ so the SPA routing doesn't treat /index.html as an unknown route
+    res.redirect(301, '/app/');
   });
 
   // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
