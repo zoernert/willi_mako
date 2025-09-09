@@ -55,6 +55,18 @@ class ApiClient {
           this.clearAuth();
           window.location.href = '/login';
         }
+        if (error.response?.status === 403) {
+          try {
+            const data: any = error.response.data as any;
+            const code = (data as any)?.code || (data as any)?.error?.code || (data as any)?.data?.code;
+            if (code === 'AI_KEY_REQUIRED') {
+              // Redirect to profile AI key section in legacy app
+              const current = window.location.pathname + window.location.search;
+              window.sessionStorage.setItem('post_ai_key_redirect', current);
+              window.location.href = '/app/profile#ai-key';
+            }
+          } catch {}
+        }
         
         return Promise.reject(this.formatError(error));
       }

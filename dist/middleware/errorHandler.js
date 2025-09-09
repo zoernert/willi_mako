@@ -41,10 +41,15 @@ const errorHandler = (err, req, res, next) => {
         message = 'Token expired';
         statusCode = 401;
     }
+    // Extract optional code and context for clients
+    const errorContext = error.context || {};
+    const code = error.code || errorContext.code;
     res.status(statusCode).json({
         success: false,
         error: {
             message,
+            ...(code && { code }),
+            ...(Object.keys(errorContext || {}).length > 0 && { context: errorContext }),
             ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
         }
     });

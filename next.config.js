@@ -17,16 +17,7 @@ const nextConfig = {
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
-        // Static assets für Legacy App
-        {
-          source: '/static/:path*',
-          destination: '/app/static/:path*',
-        },
-        // Manifest und andere Root-Assets für Legacy App
-        {
-          source: '/manifest.json',
-          destination: '/app/manifest.json',
-        },
+  // Keep root files as-is; legacy app assets are served by Express
       ],
       // Rewrites applied after checking filesystem and pages
       // Ensures that Next page /data/[slug] is NOT overridden by this rule
@@ -38,12 +29,7 @@ const nextConfig = {
         },
       ],
       // Apply SPA fallback only if no page or static file matched
-      fallback: [
-        {
-          source: '/app/:path*',
-          destination: '/app/index.html',
-        },
-      ],
+  fallback: [],
     };
   },
 

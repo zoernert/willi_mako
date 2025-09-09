@@ -24,8 +24,9 @@ const expressApp = express();
 
 let backendProcess = null;
 
-// In production, explicitly serve Next static assets to avoid 404/MIME issues
+// In production, explicitly serve Next static assets and legacy CRA to avoid 404/MIME issues
 if (!dev) {
+  // Next.js build assets
   expressApp.use(
     '/_next/static',
     express.static(path.join(__dirname, '.next', 'static'), {
@@ -34,6 +35,33 @@ if (!dev) {
       fallthrough: true,
     })
   );
+
+  // Legacy CRA build served from public/app with correct content types
+  const legacyDir = path.join(__dirname, 'public', 'app');
+  expressApp.use(
+    '/app',
+    express.static(legacyDir, {
+      index: ['index.html'],
+      maxAge: '30d',
+      fallthrough: true,
+    })
+  );
+
+  // Serve index.html with no-cache to avoid stale hashed asset references
+  expressApp.get('/app', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(legacyDir, 'index.html'));
+  });
+  expressApp.get('/app/index.html', (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(legacyDir, 'index.html'));
+  });
+
+  // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
+  expressApp.get(/^\/app(?!\/static\/).+/, (req, res) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(legacyDir, 'index.html'));
+  });
 }
 
 // Start Express.js Backend als separaten Prozess (intern)
@@ -117,12 +145,12 @@ app.prepare().then(async () => {
     const parsedUrl = parse(req.url, true);
     const { pathname } = parsedUrl;
 
-    // Handle API routes and (in prod) Next static assets with Express
+  // Handle API routes and (in prod) static assets with Express
     if (pathname.startsWith('/api/')) {
       expressApp(req, res);
       return;
     }
-    if (!dev && pathname.startsWith('/_next/static')) {
+  if (!dev && (pathname.startsWith('/_next/static') || pathname.startsWith('/app'))) {
       expressApp(req, res);
       return;
     }

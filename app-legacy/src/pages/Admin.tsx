@@ -220,6 +220,7 @@ const AdminUsers = () => {
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+  const [aiKeyStatus, setAiKeyStatus] = useState<Record<string, { hasKey: boolean; status: string; systemKeyAllowed?: boolean }>>({});
   const [userForm, setUserForm] = useState({
     id: '',
     email: '',
@@ -241,6 +242,20 @@ const AdminUsers = () => {
       setLoading(true);
       const response = await apiClient.get('/admin/users') as any;
       setUsers(Array.isArray(response) ? response : []);
+      // Optionally prefetch AI key status for listed users (best-effort, ignore failures)
+      try {
+        const results = await Promise.all(
+          (Array.isArray(response) ? response : []).slice(0, 25).map(async (u: any) => {
+            try {
+              const s = await apiClient.get(`/admin/users/${u.id}/ai-key/status`) as any;
+              return { id: u.id, s };
+            } catch { return null; }
+          })
+        );
+        const map: Record<string, any> = {};
+        results.filter(Boolean).forEach((r: any) => { map[r.id] = r.s; });
+        setAiKeyStatus(map);
+      } catch {}
     } catch (error) {
       console.error('Error fetching users:', error);
       showSnackbar('Fehler beim Laden der Benutzer', 'error');
@@ -306,6 +321,10 @@ const AdminUsers = () => {
       setUserDetailsLoading(true);
       const response = await apiClient.get(`/admin/users/${userId}/details`) as any;
       setUserDetails(response);
+      try {
+        const s = await apiClient.get(`/admin/users/${userId}/ai-key/status`) as any;
+        setAiKeyStatus(prev => ({ ...prev, [userId]: s }));
+      } catch {}
       // fetch engagement status
       const eng = await apiClient.get(`/engagement/admin/engagement/${userId}`) as any;
       setEngagement(eng.items || []);
@@ -365,6 +384,8 @@ const AdminUsers = () => {
                 <TableCell>E-Mail</TableCell>
                 <TableCell>Rolle</TableCell>
                 <TableCell>Firma</TableCell>
+                <TableCell>Gemini-Key</TableCell>
+                <TableCell>System-Key erlaubt</TableCell>
                 <TableCell>Registriert</TableCell>
                 <TableCell>Aktionen</TableCell>
               </TableRow>
@@ -382,6 +403,26 @@ const AdminUsers = () => {
                     />
                   </TableCell>
                   <TableCell>{user.company || '-'}</TableCell>
+                  <TableCell>
+                    {aiKeyStatus[user.id]?.hasKey ? (
+                      <Chip size="small" label={aiKeyStatus[user.id]?.status === 'valid' ? 'Vorhanden (gültig)' : 'Vorhanden (unbekannt/ungültig)'} color={aiKeyStatus[user.id]?.status === 'valid' ? 'success' : 'warning'} />
+                    ) : (
+                      <Chip size="small" label="Kein persönlicher Key" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <FormControlLabel
+                      control={<Checkbox checked={aiKeyStatus[user.id]?.systemKeyAllowed !== false} onChange={async (e) => {
+                        try {
+                          const systemKeyAllowed = e.target.checked;
+                          await apiClient.patch(`/admin/users/${user.id}/ai-key-policy`, { systemKeyAllowed });
+                          const s = await apiClient.get(`/admin/users/${user.id}/ai-key/status`) as any;
+                          setAiKeyStatus(prev => ({ ...prev, [user.id]: s }));
+                        } catch (err) { console.error(err); }
+                      }} />}
+                      label={aiKeyStatus[user.id]?.systemKeyAllowed !== false ? 'Erlaubt' : 'Verboten'}
+                    />
+                  </TableCell>
                   <TableCell>{formatDate(user.created_at)}</TableCell>
                   <TableCell>
                     <Tooltip title="Bearbeiten">
@@ -398,6 +439,20 @@ const AdminUsers = () => {
                       <IconButton onClick={() => handleViewUserDetails(user.id)}>
                         <Visibility />
                       </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Persönlichen Key entfernen">
+                      <span>
+                        <IconButton disabled={!aiKeyStatus[user.id]?.hasKey} onClick={async ()=>{
+                          if (!window.confirm('Persönlichen Gemini-Schlüssel dieses Benutzers löschen?')) return;
+                          try {
+                            await apiClient.delete(`/admin/users/${user.id}/ai-key`);
+                            const s = await apiClient.get(`/admin/users/${user.id}/ai-key/status`) as any;
+                            setAiKeyStatus(prev => ({ ...prev, [user.id]: s }));
+                          } catch (err) { console.error(err); }
+                        }}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>

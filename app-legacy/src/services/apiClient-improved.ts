@@ -74,6 +74,20 @@ apiClient.interceptors.response.use(
     // 403 Forbidden - Unzureichende Berechtigungen
     if (error.response?.status === 403) {
       console.warn('403 Forbidden - insufficient permissions');
+      try {
+        const data: any = (error.response as any).data;
+        const code = data?.code || data?.error?.code || data?.data?.code;
+        if (code === 'AI_KEY_REQUIRED') {
+          // Redirect user to profile AI key section
+          const current = window.location.pathname + window.location.search;
+          const target = '/app/profile#ai-key';
+          if (!window.location.pathname.startsWith('/app/profile')) {
+            // Preserve current path for back navigation via history
+            window.sessionStorage.setItem('post_ai_key_redirect', current);
+            window.location.href = target;
+          }
+        }
+      } catch {}
     }
 
     // Network errors

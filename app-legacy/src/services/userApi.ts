@@ -35,6 +35,17 @@ export const userApi = {
     return apiClient.put(API_ENDPOINTS.user.flipModePreferences, preferencesData);
   },
   
+  // AI key management (per-user Gemini key)
+  getAIKeyStatus: (): Promise<{ hasKey: boolean; status: 'unknown'|'valid'|'invalid'; lastVerifiedAt: string | null; systemKeyAllowed?: boolean }> => {
+    return apiClient.get('/v2/user/ai-key/status');
+  },
+  setAIKey: (apiKey: string): Promise<{ status: 'unknown'|'valid'|'invalid'; lastVerifiedAt: string | null }> => {
+    return apiClient.put('/v2/user/ai-key', { apiKey });
+  },
+  deleteAIKey: (): Promise<{ deleted: boolean }> => {
+    return apiClient.delete('/v2/user/ai-key');
+  },
+  
   // M2C Roles methods
   getAllM2CRoles: (): Promise<M2CRole[]> => {
     return apiClient.get('/m2c-roles');

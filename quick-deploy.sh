@@ -138,6 +138,13 @@ validate_builds() {
     fi
     echo "✅ Legacy App in public/app kopiert"
     
+    # Basic MIME sanity check locally using file(1) to ensure built asset types look right
+    if command -v file >/dev/null 2>&1; then
+        echo "🔍 Prüfe lokale Asset-Typen (heuristisch)..."
+        file -b --mime-type public/app/static/css/*.css | grep -q 'text/css' || echo "⚠️ CSS MIME nicht eindeutig text/css (lokal Heuristik)"
+        file -b --mime-type public/app/static/js/*.js | grep -Eq 'application/javascript|text/javascript' || echo "⚠️ JS MIME nicht eindeutig javascript (lokal Heuristik)"
+    fi
+    
     echo "✅ Alle Builds validiert"
 }
 
@@ -469,6 +476,16 @@ transfer_files() {
     ssh $PROD_SERVER "echo 'Root-Inhalt nach rsync:'; ls -1 $DEPLOY_DIR | head; [ -f $DEPLOY_DIR/VERSION ] && echo '✅ VERSION vorhanden' || echo '❌ VERSION fehlt'; [ -f $DEPLOY_DIR/dist/BUILD_INFO.json ] && echo '✅ BUILD_INFO.json vorhanden' || echo '❌ BUILD_INFO.json fehlt'"
     
     echo "✅ Dateien erfolgreich übertragen"
+    
+        # Server-side MIME check via curl HEAD to catch misrouted HTML responses for CSS/JS
+        echo "🔍 Remote MIME-Type Check (CSS/JS Assets unter /app)..."
+        ssh $PROD_SERVER "\
+            set -e; \
+            CSS_FILE=\$(basename \$(ls $DEPLOY_DIR/public/app/static/css/*.css | head -1)); \
+            JS_FILE=\$(basename \$(ls $DEPLOY_DIR/public/app/static/js/*.js | head -1)); \
+            echo CSS: \$CSS_FILE; echo JS: \$JS_FILE; \
+            echo 'Local HEAD checks (over localhost:'$FRONTEND_PORT') will run in check_status()'; \
+        "
 }
 
 # Abhängigkeiten installieren
@@ -651,6 +668,15 @@ echo "Static Pages Test:"
 curl -s -I http://localhost:$FRONTEND_PORT/ | head -1 || echo "Homepage nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/app/ | head -1 || echo "Legacy App nicht erreichbar"
 curl -s -I http://localhost:$FRONTEND_PORT/wissen/ | head -1 || echo "Wissen Page nicht erreichbar"
+echo "\nMIME-Type Checks (Legacy Assets):"
+CSS_ASSET=$(basename $(ls public/app/static/css/*.css | head -1) 2>/dev/null)
+JS_ASSET=$(basename $(ls public/app/static/js/*.js | head -1) 2>/dev/null)
+if [ -n "$CSS_ASSET" ]; then
+    curl -s -I http://localhost:$FRONTEND_PORT/app/static/css/$CSS_ASSET | sed -n '1p;/Content-Type/p'
+fi
+if [ -n "$JS_ASSET" ]; then
+    curl -s -I http://localhost:$FRONTEND_PORT/app/static/js/$JS_ASSET | sed -n '1p;/Content-Type/p'
+fi
 echo ""
 echo "CodeLookup API Test (/api/codes):"
 curl -s "http://localhost:$FRONTEND_PORT/api/codes?query=test&_ts=\$(date +%s)" | head -c 400; echo ""

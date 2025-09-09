@@ -51,6 +51,9 @@ const Profile: React.FC = () => {
   });
   const [flipModePreferences, setFlipModePreferences] = useState<FlipModePreferences>({});
   const [error, setError] = useState<string | null>(null);
+  const [aiKeyInfo, setAiKeyInfo] = useState<{ hasKey: boolean; status: 'unknown'|'valid'|'invalid'; lastVerifiedAt: string | null; systemKeyAllowed?: boolean } | null>(null);
+  const [aiKeyInput, setAiKeyInput] = useState<string>('');
+  const [aiKeySaving, setAiKeySaving] = useState<boolean>(false);
 
   const topicOptions = [
     'Marktkommunikation', 'Bilanzkreismanagement', 'Regulierung', 'Smart Meter', 'Energiehandel',
@@ -71,7 +74,7 @@ const Profile: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
+  const loadData = async () => {
         setLoading(true);
         try {
             const [userProfile, userPreferences, flipPrefs] = await Promise.all([
@@ -100,6 +103,12 @@ const Profile: React.FC = () => {
             });
             
             setFlipModePreferences(flipPrefs || {});
+
+            // Load AI key status separately (best-effort)
+            try {
+              const status = await userApi.getAIKeyStatus();
+              setAiKeyInfo(status as any);
+            } catch (e) { /* ignore */ }
 
             setError(null);
         } catch (error) {
@@ -153,6 +162,38 @@ const Profile: React.FC = () => {
       showSnackbar('Fehler beim Speichern des Profils', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveAIKey = async () => {
+    if (!aiKeyInput.trim()) {
+      showSnackbar('Bitte geben Sie einen Gemini API-Schlüssel ein.', 'warning');
+      return;
+    }
+    try {
+      setAiKeySaving(true);
+      const res = await userApi.setAIKey(aiKeyInput.trim());
+      setAiKeyInfo(prev => ({ ...(prev||{hasKey:true,status:'unknown',lastVerifiedAt:null}), hasKey: true, status: res.status, lastVerifiedAt: res.lastVerifiedAt } as any));
+      setAiKeyInput('');
+      showSnackbar('API-Schlüssel gespeichert.', 'success');
+    } catch (e:any) {
+      showSnackbar(e?.message || 'Fehler beim Speichern des Schlüssels', 'error');
+    } finally {
+      setAiKeySaving(false);
+    }
+  };
+
+  const deleteAIKey = async () => {
+    if (!window.confirm('Persönlichen Gemini API-Schlüssel löschen?')) return;
+    try {
+      setAiKeySaving(true);
+      await userApi.deleteAIKey();
+      setAiKeyInfo({ hasKey: false, status: 'unknown', lastVerifiedAt: null, systemKeyAllowed: aiKeyInfo?.systemKeyAllowed });
+      showSnackbar('API-Schlüssel entfernt.', 'success');
+    } catch (e:any) {
+      showSnackbar(e?.message || 'Fehler beim Entfernen', 'error');
+    } finally {
+      setAiKeySaving(false);
     }
   };
 
@@ -253,6 +294,33 @@ const Profile: React.FC = () => {
               disabled={!editing || loading}
               renderInput={(params) => <TextField {...params} variant="outlined" label="Interessante Unternehmensarten" />}
             />
+          </Paper>
+          <Paper id="ai-key" sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>Persönlicher Gemini API-Schlüssel</Typography>
+            {aiKeyInfo?.systemKeyAllowed === false && !aiKeyInfo?.hasKey && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Ein persönlicher Gemini API-Schlüssel ist erforderlich, um die KI-Funktionen zu nutzen.
+              </Alert>
+            )}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                type="password"
+                label="Gemini API-Schlüssel"
+                placeholder="AIza..."
+                value={aiKeyInput}
+                onChange={(e)=> setAiKeyInput(e.target.value)}
+                disabled={aiKeySaving}
+              />
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button variant="contained" onClick={saveAIKey} disabled={aiKeySaving}>Speichern</Button>
+                <Button variant="outlined" color="error" onClick={deleteAIKey} disabled={aiKeySaving || !aiKeyInfo?.hasKey}>Löschen</Button>
+              </Box>
+              <Divider />
+              <Typography variant="body2" color="text.secondary">
+                Status: {aiKeyInfo?.hasKey ? (aiKeyInfo?.status === 'valid' ? 'Gültig' : aiKeyInfo?.status === 'invalid' ? 'Ungültig' : 'Unbekannt') : 'Kein Schlüssel gespeichert'}
+                {aiKeyInfo?.lastVerifiedAt ? ` • Zuletzt geprüft: ${new Date(aiKeyInfo.lastVerifiedAt).toLocaleString('de-DE')}` : ''}
+              </Typography>
+            </Box>
           </Paper>
         </Box>
 
