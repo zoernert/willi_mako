@@ -20,7 +20,8 @@ const gamificationService = new GamificationService();
 // CR-CS30: Helper function to generate CS30 additional response
 async function generateCs30AdditionalResponse(
   userQuery: string, 
-  userHasCs30Access: boolean
+  userHasCs30Access: boolean,
+  userId: string
 ): Promise<{ hasCs30Response: boolean; cs30Response?: string; cs30Sources?: any[] }> {
   if (!userHasCs30Access) {
     console.log('🔍 CS30: User does not have cs30 access');
@@ -62,7 +63,7 @@ async function generateCs30AdditionalResponse(
     const cs30Response = await llm.generateResponse(
       [{ role: 'user', content: userQuery }],
       cs30Context,
-      {},
+      { userId },
       false   // not enhanced query
     );
 
@@ -436,7 +437,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   const reasoningPromise = advancedReasoningService.generateReasonedResponse(
     content,
     previousMessages.rows,
-    userPreferences.rows[0] || {},
+    { ...(userPreferences.rows[0] || {}), userId },
     contextSettings
   );
 
@@ -461,7 +462,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
       const fallbackResponse = await llm.generateResponse(
         previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })),
         contextText,
-        userPreferences.rows[0] || {}
+        { ...(userPreferences.rows[0] || {}), userId }
       );
       
       reasoningResult = {
@@ -622,7 +623,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   let cs30ResponsePromise: Promise<any> | null = null;
   if (userHasCs30Access) {
     console.log(`🔍 Starting CS30 search for query: "${content}"`);
-    cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access);
+    cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
   }
 
   // Prepare primary response data
@@ -772,10 +773,10 @@ router.post('/chats/:chatId/generate', asyncHandler(async (req: AuthenticatedReq
     messagesForGeneration.push({ role: 'user', content: enhancedQuery });
 
     // Generate enhanced AI response
-    const aiResponse = await llm.generateResponse(
+  const aiResponse = await llm.generateResponse(
         messagesForGeneration,
         context,
-        userPreferences.rows[0] || {},
+    { ...(userPreferences.rows[0] || {}), userId },
         true // isEnhancedQuery = true
     );
 

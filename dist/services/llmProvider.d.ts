@@ -5,10 +5,10 @@ export interface LLMInterface {
         content: string;
         timestamp?: Date;
     }[], context?: string, userPreferences?: any, isEnhancedQuery?: boolean, contextMode?: ContextMode): Promise<string>;
-    generateText(prompt: string): Promise<string>;
-    generateSearchQueries(query: string): Promise<string[]>;
-    synthesizeContext(query: string, searchResults: any[]): Promise<string>;
-    synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string>;
+    generateText(prompt: string, userPreferences?: any): Promise<string>;
+    generateSearchQueries(query: string, userPreferences?: any): Promise<string[]>;
+    synthesizeContext(query: string, searchResults: any[], userPreferences?: any): Promise<string>;
+    synthesizeContextWithChunkTypes(query: string, searchResults: any[], userPreferences?: any): Promise<string>;
     generateResponseWithUserContext(messages: {
         role: 'user' | 'assistant';
         content: string;

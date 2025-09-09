@@ -4,6 +4,10 @@ export interface CustomError extends Error {
   statusCode?: number;
   status?: string;
   isOperational?: boolean;
+  // Optional structured metadata (used by utils/errors AppError)
+  context?: any;
+  // Optional machine-readable code for clients
+  code?: string;
 }
 
 export const errorHandler = (
@@ -59,10 +63,16 @@ export const errorHandler = (
     statusCode = 401;
   }
 
+  // Extract optional code and context for clients
+  const errorContext: any = (error as any).context || {};
+  const code = (error as any).code || errorContext.code;
+
   res.status(statusCode).json({
     success: false,
     error: {
       message,
+      ...(code && { code }),
+      ...(Object.keys(errorContext || {}).length > 0 && { context: errorContext }),
       ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
     }
   });

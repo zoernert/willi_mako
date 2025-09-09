@@ -6,6 +6,7 @@ import { DatabaseHelper } from '../../../utils/database';
 import { AppError } from '../../../utils/errors';
 import jwt from 'jsonwebtoken';
 import UserPreferencesService from '../../../modules/user/user.service';
+import UserAIKeyService from '../../../services/userAIKeyService';
 
 export class UserController {
 
@@ -253,6 +254,41 @@ export class UserController {
             ResponseUtils.success(res, stats, 'User statistics retrieved successfully');
         } catch (error) {
             console.error('Error fetching user stats:', error);
+            next(error);
+        }
+    };
+
+    // AI key management
+    public getUserAIKeyStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = req.user!.id;
+            const status = await UserAIKeyService.getUserGeminiKeyStatus(userId);
+            ResponseUtils.success(res, status);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public setUserAIKey = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = req.user!.id;
+            const { apiKey } = req.body || {};
+            if (!apiKey || typeof apiKey !== 'string') {
+                throw new AppError('apiKey is required', 400);
+            }
+            const result = await UserAIKeyService.setUserGeminiKey(userId, apiKey.trim());
+            ResponseUtils.success(res, result, 'API key saved');
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public deleteUserAIKey = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = req.user!.id;
+            await UserAIKeyService.deleteUserGeminiKey(userId);
+            ResponseUtils.success(res, { deleted: true }, 'API key removed');
+        } catch (error) {
             next(error);
         }
     };

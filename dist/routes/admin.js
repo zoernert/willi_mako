@@ -51,6 +51,7 @@ const chatConfig_1 = __importDefault(require("./admin/chatConfig"));
 const content_1 = __importDefault(require("./admin/content"));
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
+const userAIKeyService_1 = __importDefault(require("../services/userAIKeyService"));
 const router = (0, express_1.Router)();
 // Admin middleware - require admin role
 const requireAdmin = (req, res, next) => {
@@ -199,6 +200,36 @@ router.get('/users', (0, errorHandler_1.asyncHandler)(async (req, res) => {
         console.error('Error fetching users:', error);
         throw new errors_1.AppError('Failed to fetch users', 500);
     }
+}));
+/**
+ * PATCH /admin/users/:userId/ai-key-policy
+ * Toggle whether user can use system keys
+ */
+router.patch('/users/:userId/ai-key-policy', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { userId } = req.params;
+    const { systemKeyAllowed } = req.body;
+    if (typeof systemKeyAllowed !== 'boolean') {
+        throw new errors_1.AppError('systemKeyAllowed must be boolean', 400);
+    }
+    await userAIKeyService_1.default.setSystemKeyAccess(userId, systemKeyAllowed);
+    response_1.ResponseUtils.success(res, { id: userId, systemKeyAllowed }, 'AI key policy updated');
+}));
+/**
+ * DELETE /admin/users/:userId/ai-key
+ * Admin deletes a user's personal API key
+ */
+router.delete('/users/:userId/ai-key', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { userId } = req.params;
+    await userAIKeyService_1.default.deleteUserGeminiKey(userId);
+    response_1.ResponseUtils.success(res, { id: userId, deleted: true }, 'User AI key removed');
+}));
+/**
+ * GET /admin/users/:userId/ai-key/status
+ */
+router.get('/users/:userId/ai-key/status', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { userId } = req.params;
+    const status = await userAIKeyService_1.default.getUserGeminiKeyStatus(userId);
+    response_1.ResponseUtils.success(res, status, 'AI key status');
 }));
 /**
  * PUT /admin/users/:userId/role

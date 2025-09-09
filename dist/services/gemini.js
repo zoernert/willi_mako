@@ -13,6 +13,8 @@ const aiResponseUtils_1 = require("../utils/aiResponseUtils");
 dotenv_1.default.config();
 // Importing the GoogleAIKeyManager for efficient key management
 const googleAIKeyManager = require('./googleAIKeyManager');
+const userAIKeyService_1 = __importDefault(require("./userAIKeyService"));
+const errors_1 = require("../utils/errors");
 class GeminiService {
     constructor() {
         this.currentModelIndex = 0;
@@ -52,7 +54,7 @@ class GeminiService {
             // Create empty array to hold model configurations
             const newModels = [];
             for (const modelName of modelNames) {
-                // For each model, get a model instance from the key manager
+                // Default: system key via key manager
                 const modelInstance = await googleAIKeyManager.getGenerativeModel({
                     model: modelName,
                     tools: [
@@ -184,6 +186,47 @@ class GeminiService {
         }, 60000); // Reset every minute
     }
     async generateResponse(messages, context = '', userPreferences = {}, isEnhancedQuery = false, contextMode) {
+        // Resolve per-user key if available and allowed
+        const userId = (userPreferences && userPreferences.userId) || (userPreferences && userPreferences.id);
+        let perRequestModels = this.models;
+        if (userId) {
+            try {
+                const resolved = await userAIKeyService_1.default.resolveGeminiApiKey(userId);
+                if (resolved.source === 'user' && resolved.key) {
+                    // Build dedicated models for this request using user's key
+                    const genAI = new generative_ai_1.GoogleGenerativeAI(resolved.key);
+                    perRequestModels = this.models.map(m => ({
+                        ...m,
+                        instance: genAI.getGenerativeModel({ model: m.name, tools: [
+                                {
+                                    functionDeclarations: [
+                                        {
+                                            name: 'lookup_energy_code',
+                                            description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
+                                            parameters: {
+                                                type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                                properties: { code: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.' } },
+                                                required: ['code']
+                                            }
+                                        }
+                                    ]
+                                }
+                            ] })
+                    }));
+                }
+                else if (resolved.source === null) {
+                    // Policy forbids using system keys
+                    throw new errors_1.AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+                }
+            }
+            catch (e) {
+                if (e instanceof errors_1.AppError) {
+                    throw e;
+                }
+                // Non-fatal: fall back to system models
+                console.warn('User key resolution failed, using system key:', e);
+            }
+        }
         let attemptCount = 0;
         const maxAttempts = 3; // Try up to 3 different models
         let lastError = undefined;
@@ -192,7 +235,7 @@ class GeminiService {
             attemptCount++;
             try {
                 // Select best available model accounting for quota limits
-                const selectedModel = await this.getQuotaAwareModel(lastModel, lastError);
+                const selectedModel = await this.getQuotaAwareModel(lastModel, lastError, perRequestModels);
                 lastModel = selectedModel;
                 // Update the model's usage tracking
                 selectedModel.lastUsed = Date.now();
@@ -750,9 +793,9 @@ Antworte nur als JSON ohne Markdown-Formatierung:
             };
         }
     }
-    async generateText(prompt) {
+    async generateText(prompt, userPreferences = {}) {
         try {
-            const result = await this.generateWithRetry(prompt);
+            const result = await this.generateWithRetry(prompt, userPreferences);
             const response = await result.response;
             return response.text();
         }
@@ -761,18 +804,41 @@ Antworte nur als JSON ohne Markdown-Formatierung:
             throw new Error('Failed to generate text from Gemini');
         }
     }
-    async generateWithRetry(prompt, maxRetries = 3) {
+    async generateWithRetry(prompt, userPreferences = {}, maxRetries = 3) {
         var _a, _b;
         let lastError = null;
         const triedModels = new Set();
+        // Build per-request models if user key present
+        let modelsOverride;
+        const userId = (userPreferences && (userPreferences.userId || userPreferences.id)) || undefined;
+        if (userId) {
+            try {
+                const resolved = await userAIKeyService_1.default.resolveGeminiApiKey(userId);
+                if (resolved.source === 'user' && resolved.key) {
+                    const genAI = new generative_ai_1.GoogleGenerativeAI(resolved.key);
+                    modelsOverride = this.models.map(m => ({
+                        ...m,
+                        instance: genAI.getGenerativeModel({ model: m.name })
+                    }));
+                }
+                else if (resolved.source === null) {
+                    throw new errors_1.AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+                }
+            }
+            catch (e) {
+                if (e instanceof errors_1.AppError)
+                    throw e;
+                console.warn('User key resolution failed for generateWithRetry, using system key:', e);
+            }
+        }
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            let selectedModel = this.getNextAvailableModel();
+            let selectedModel = await this.getQuotaAwareModel(undefined, undefined, modelsOverride);
             // If we've tried all models, start over but wait a bit
             if (triedModels.has(selectedModel.name) && triedModels.size >= this.models.length) {
                 console.log(`All models tried, waiting before retry attempt ${attempt}/${maxRetries}`);
                 await this.sleep(1000 * attempt); // Progressive delay
                 triedModels.clear();
-                selectedModel = this.getNextAvailableModel();
+                selectedModel = await this.getQuotaAwareModel(undefined, undefined, modelsOverride);
             }
             try {
                 // Check if this specific model needs to wait
@@ -970,7 +1036,7 @@ Antwort:`;
             return query;
         }
     }
-    async generateSearchQueries(query) {
+    async generateSearchQueries(query, userPreferences = {}) {
         try {
             const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen, die helfen würden, umfassenden Kontext aus einer Wissensdatenbank zu sammeln. Decke dabei verschiedene Aspekte und mögliche Intentionen der ursprünglichen Anfrage ab.
 
@@ -978,7 +1044,7 @@ Benutzeranfrage: "${query}"
 
 Gib die Suchanfragen als JSON-Array von Strings zurück. Antworte nur mit dem JSON-Array.
 Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenbetreiber", "Prozesse der Netznutzungsabrechnung"]`;
-            const result = await this.generateWithRetry(prompt);
+            const result = await this.generateWithRetry(prompt, userPreferences);
             const response = await result.response;
             let text = response.text().trim();
             // Clean the response to ensure it's valid JSON
@@ -1010,7 +1076,7 @@ Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenb
             return [query];
         }
     }
-    async synthesizeContext(query, searchResults) {
+    async synthesizeContext(query, searchResults, userPreferences = {}) {
         try {
             // Use content field instead of payload.text for better data extraction
             const documents = searchResults.map((r, i) => {
@@ -1033,7 +1099,7 @@ Dokumente:
 ${documents}
 
 Strukturierter Kontext mit allen relevanten technischen Details:`;
-            const result = await this.generateWithRetry(prompt);
+            const result = await this.generateWithRetry(prompt, userPreferences);
             const response = await result.response;
             const synthesizedText = response.text();
             // Ensure we have meaningful content
@@ -1056,7 +1122,7 @@ Strukturierter Kontext mit allen relevanten technischen Details:`;
     /**
      * Erweiterte Kontext-Synthese mit chunk_type-bewusster Verarbeitung
      */
-    async synthesizeContextWithChunkTypes(query, searchResults) {
+    async synthesizeContextWithChunkTypes(query, searchResults, userPreferences = {}) {
         try {
             const contextParts = [];
             // Gruppiere Ergebnisse nach chunk_type für bessere Strukturierung
@@ -1119,7 +1185,7 @@ Erstelle eine präzise, strukturierte Antwort die:
 5. Alle relevanten Aspekte der Anfrage abdeckt
 
 Antwort:`;
-            const result = await this.generateWithRetry(prompt);
+            const result = await this.generateWithRetry(prompt, userPreferences);
             const response = await result.response;
             return response.text();
         }
@@ -1226,10 +1292,33 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
             const maxAttempts = 3; // Gleiche Anzahl von Versuchen wie bei generateResponse
             let lastError = undefined;
             let selectedModel = null;
+            // Per-user key override
+            let modelsOverride;
+            const userId = (userPreferences && (userPreferences.userId || userPreferences.id)) || undefined;
+            if (userId) {
+                try {
+                    const resolved = await userAIKeyService_1.default.resolveGeminiApiKey(userId);
+                    if (resolved.source === 'user' && resolved.key) {
+                        const genAI = new generative_ai_1.GoogleGenerativeAI(resolved.key);
+                        modelsOverride = this.models.map(m => ({
+                            ...m,
+                            instance: genAI.getGenerativeModel({ model: m.name })
+                        }));
+                    }
+                    else if (resolved.source === null) {
+                        throw new errors_1.AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+                    }
+                }
+                catch (e) {
+                    if (e instanceof errors_1.AppError)
+                        throw e;
+                    console.warn('User key resolution failed for structured output, using system key:', e);
+                }
+            }
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     // Modell mit dem geringsten Nutzungsgrad wählen und Quota-Checks durchführen
-                    selectedModel = await this.getQuotaAwareModel(selectedModel, lastError);
+                    selectedModel = await this.getQuotaAwareModel(selectedModel, lastError, modelsOverride);
                     if (!selectedModel) {
                         throw new Error('No available model found for structured output generation');
                     }
@@ -1330,7 +1419,7 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
         this.modelUsageCount.set(selectedModel.name, (this.modelUsageCount.get(selectedModel.name) || 0) + 1);
         return selectedModel;
     }
-    async getQuotaAwareModel(previousModel, quotaExceededError) {
+    async getQuotaAwareModel(previousModel, quotaExceededError, modelsOverride) {
         // Ensure models are initialized before proceeding
         await this.ensureModelsInitialized();
         // If there was a quota exceeded error, mark the model as unavailable
@@ -1353,7 +1442,8 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
             }
         }
         // Filter out models that have exceeded their daily quota
-        const availableModels = this.models.filter(m => !m.dailyQuotaExceeded);
+        const baseModels = modelsOverride || this.models;
+        const availableModels = baseModels.filter(m => !m.dailyQuotaExceeded);
         // If we have no available models, throw an error
         if (availableModels.length === 0) {
             throw new Error('All Gemini models have exceeded their daily quota');

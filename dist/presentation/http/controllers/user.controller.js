@@ -10,6 +10,7 @@ const database_1 = require("../../../utils/database");
 const errors_1 = require("../../../utils/errors");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_service_1 = __importDefault(require("../../../modules/user/user.service"));
+const userAIKeyService_1 = __importDefault(require("../../../services/userAIKeyService"));
 class UserController {
     constructor() {
         this.registerUser = async (req, res, next) => {
@@ -175,6 +176,41 @@ class UserController {
             }
             catch (error) {
                 console.error('Error fetching user stats:', error);
+                next(error);
+            }
+        };
+        // AI key management
+        this.getUserAIKeyStatus = async (req, res, next) => {
+            try {
+                const userId = req.user.id;
+                const status = await userAIKeyService_1.default.getUserGeminiKeyStatus(userId);
+                response_1.ResponseUtils.success(res, status);
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.setUserAIKey = async (req, res, next) => {
+            try {
+                const userId = req.user.id;
+                const { apiKey } = req.body || {};
+                if (!apiKey || typeof apiKey !== 'string') {
+                    throw new errors_1.AppError('apiKey is required', 400);
+                }
+                const result = await userAIKeyService_1.default.setUserGeminiKey(userId, apiKey.trim());
+                response_1.ResponseUtils.success(res, result, 'API key saved');
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.deleteUserAIKey = async (req, res, next) => {
+            try {
+                const userId = req.user.id;
+                await userAIKeyService_1.default.deleteUserGeminiKey(userId);
+                response_1.ResponseUtils.success(res, { deleted: true }, 'API key removed');
+            }
+            catch (error) {
                 next(error);
             }
         };

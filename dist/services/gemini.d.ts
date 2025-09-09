@@ -75,7 +75,7 @@ export declare class GeminiService {
         explanation: string;
         improvementTips: string[];
     }>;
-    generateText(prompt: string): Promise<string>;
+    generateText(prompt: string, userPreferences?: any): Promise<string>;
     private generateWithRetry;
     private sleep;
     /**
@@ -101,12 +101,12 @@ export declare class GeminiService {
      * Generiert eine hypothetische Antwort für HyDE (Hypothetical Document Embeddings)
      */
     generateHypotheticalAnswer(query: string): Promise<string>;
-    generateSearchQueries(query: string): Promise<string[]>;
-    synthesizeContext(query: string, searchResults: any[]): Promise<string>;
+    generateSearchQueries(query: string, userPreferences?: any): Promise<string[]>;
+    synthesizeContext(query: string, searchResults: any[], userPreferences?: any): Promise<string>;
     /**
      * Erweiterte Kontext-Synthese mit chunk_type-bewusster Verarbeitung
      */
-    synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string>;
+    synthesizeContextWithChunkTypes(query: string, searchResults: any[], userPreferences?: any): Promise<string>;
     /**
      * Re-Ranking von Suchergebnissen basierend auf semantischer Ähnlichkeit
      * (Vereinfachte Implementierung ohne externes Cross-Encoder Modell)

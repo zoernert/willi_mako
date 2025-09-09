@@ -51,7 +51,7 @@ const router = (0, express_1.Router)();
 const qdrantService = new qdrant_1.QdrantService();
 const gamificationService = new gamification_service_1.GamificationService();
 // CR-CS30: Helper function to generate CS30 additional response
-async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
+async function generateCs30AdditionalResponse(userQuery, userHasCs30Access, userId) {
     if (!userHasCs30Access) {
         console.log('🔍 CS30: User does not have cs30 access');
         return { hasCs30Response: false };
@@ -82,7 +82,7 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access) {
         }).join('\n\n');
         console.log('🔍 CS30: Generating response with context length:', cs30Context.length);
         // Generate cs30-specific response
-        const cs30Response = await llmProvider_1.default.generateResponse([{ role: 'user', content: userQuery }], cs30Context, {}, false // not enhanced query
+        const cs30Response = await llmProvider_1.default.generateResponse([{ role: 'user', content: userQuery }], cs30Context, { userId }, false // not enhanced query
         );
         console.log(`✅ CS30: Generated response with ${cs30Results.length} sources`);
         return {
@@ -390,7 +390,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     const previousMessages = await database_1.default.query('SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
     const userPreferences = await database_1.default.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userId]);
     // Use the advanced reasoning pipeline for better quality responses with timeout protection
-    const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, userPreferences.rows[0] || {}, contextSettings);
+    const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, { ...(userPreferences.rows[0] || {}), userId }, contextSettings);
     // Add timeout protection (120 seconds for complex queries)
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('REASONING_TIMEOUT')), 120000);
@@ -405,7 +405,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
             // Fallback to simple response
             const fallbackContext = await retrieval.getContextualCompressedResults(content, userPreferences.rows[0] || {}, 5);
             const contextText = fallbackContext.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
-            const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, userPreferences.rows[0] || {});
+            const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, { ...(userPreferences.rows[0] || {}), userId });
             reasoningResult = {
                 response: fallbackResponse,
                 reasoningSteps: [{
@@ -516,7 +516,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     let cs30ResponsePromise = null;
     if (userHasCs30Access) {
         console.log(`🔍 Starting CS30 search for query: "${content}"`);
-        cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access);
+        cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
     }
     // Prepare primary response data
     const primaryResponseData = {
@@ -637,7 +637,7 @@ router.post('/chats/:chatId/generate', (0, errorHandler_1.asyncHandler)(async (r
     // Add the enhanced query as the current user turn
     messagesForGeneration.push({ role: 'user', content: enhancedQuery });
     // Generate enhanced AI response
-    const aiResponse = await llmProvider_1.default.generateResponse(messagesForGeneration, context, userPreferences.rows[0] || {}, true // isEnhancedQuery = true
+    const aiResponse = await llmProvider_1.default.generateResponse(messagesForGeneration, context, { ...(userPreferences.rows[0] || {}), userId }, true // isEnhancedQuery = true
     );
     // Save AI response
     const assistantMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', aiResponse, JSON.stringify({

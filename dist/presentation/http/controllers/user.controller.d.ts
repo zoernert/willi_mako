@@ -10,5 +10,8 @@ export declare class UserController {
     getFlipModePreferences: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
     updateFlipModePreferences: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
     getUserStats: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
+    getUserAIKeyStatus: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
+    setUserAIKey: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
+    deleteUserAIKey: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 }
 //# sourceMappingURL=user.controller.d.ts.map

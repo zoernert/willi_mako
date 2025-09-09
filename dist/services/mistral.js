@@ -73,11 +73,11 @@ class MistralService {
         ];
         return (await this.chat(msgs)).trim();
     }
-    async generateText(prompt) {
+    async generateText(prompt, _userPreferences = {}) {
         const msgs = [{ role: 'user', content: prompt }];
         return (await this.chat(msgs)).trim();
     }
-    async generateSearchQueries(query) {
+    async generateSearchQueries(query, _userPreferences = {}) {
         const prompt = `Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen als JSON-Array von Strings. Antworte NUR mit dem JSON-Array.\n\nAnfrage: "${query}"`;
         const text = await this.generateText(prompt);
         try {
@@ -89,12 +89,12 @@ class MistralService {
         catch (_a) { }
         return [query];
     }
-    async synthesizeContext(query, searchResults) {
+    async synthesizeContext(query, searchResults, _userPreferences = {}) {
         const documents = searchResults.map((r, i) => { var _a, _b; return `Dokument ${i + 1}:\n${((_a = r.payload) === null || _a === void 0 ? void 0 : _a.content) || r.content || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.text) || ''}`; }).join('\n\n---\n\n');
         const prompt = `Beantworte die Nutzeranfrage basierend auf den folgenden Dokumenten. Extrahiere alle relevanten technischen Details.\n\nFrage: ${query}\n\nDokumente:\n${documents}\n\nAntwort:`;
         return this.generateText(prompt);
     }
-    async synthesizeContextWithChunkTypes(query, searchResults) {
+    async synthesizeContextWithChunkTypes(query, searchResults, _userPreferences = {}) {
         // Simplified version: reuse synthesizeContext
         return this.synthesizeContext(query, searchResults);
     }

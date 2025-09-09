@@ -18,5 +18,9 @@ router.get('/flip-mode-preferences', auth_1.authenticateToken, userController.ge
 router.put('/flip-mode-preferences', auth_1.authenticateToken, userController.updateFlipModePreferences);
 // User statistics
 router.get('/stats', auth_1.authenticateToken, userController.getUserStats);
+// User AI key management
+router.get('/ai-key/status', auth_1.authenticateToken, userController.getUserAIKeyStatus);
+router.put('/ai-key', auth_1.authenticateToken, userController.setUserAIKey);
+router.delete('/ai-key', auth_1.authenticateToken, userController.deleteUserAIKey);
 exports.default = router;
 //# sourceMappingURL=user.routes.js.map

@@ -27,11 +27,6 @@ const nextConfig = {
           source: '/manifest.json',
           destination: '/app/manifest.json',
         },
-        // Fallback für Legacy App SPA
-        {
-          source: '/app/:path*',
-          destination: '/app/index.html',
-        },
       ],
       // Rewrites applied after checking filesystem and pages
       // Ensures that Next page /data/[slug] is NOT overridden by this rule
@@ -42,7 +37,13 @@ const nextConfig = {
           destination: '/datasets/data/:slug/:file',
         },
       ],
-      fallback: [],
+      // Apply SPA fallback only if no page or static file matched
+      fallback: [
+        {
+          source: '/app/:path*',
+          destination: '/app/index.html',
+        },
+      ],
     };
   },
 

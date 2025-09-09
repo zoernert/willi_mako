@@ -441,7 +441,7 @@ class AdvancedReasoningService {
       // Fast search query generation with reduced complexity
       const simplePrompt = `Generate 3 search terms for: "${query}". Return only JSON array like ["term1", "term2", "term3"]:`;
       
-      const result = await llm.generateText(simplePrompt);
+  const result = await llm.generateText(simplePrompt, userPreferences);
       
       // Extract JSON array from response
       let queries: string[] = [];
@@ -538,7 +538,11 @@ class AdvancedReasoningService {
     };
   }
 
-  private async performQAAnalysis(query: string, context: string): Promise<QAAnalysis> {
+  private async performQAAnalysis(
+    query: string,
+    context: string,
+    userPreferences: any
+  ): Promise<QAAnalysis> {
     const prompt = `Analyze if the following context contains sufficient information to answer the user query. Respond only with a JSON object:
 
 Query: ${query}
@@ -553,7 +557,7 @@ Required JSON format:
 }`;
 
     try {
-      const result = await llm.generateText(prompt);
+  const result = await llm.generateText(prompt, userPreferences);
       const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const analysis = JSON.parse(jsonMatch[0]);
@@ -615,7 +619,7 @@ Additional Context: ${context.slice(0, 1000)}
 
 Provide an improved version:`;
 
-        currentResponse = await llm.generateText(refinementPrompt);
+  currentResponse = await llm.generateText(refinementPrompt, userPreferences);
         apiCallsUsed++;
       }
 
@@ -641,7 +645,12 @@ Provide an improved version:`;
     };
   }
 
-  private async assessResponseQuality(query: string, response: string, context: string): Promise<number> {
+  private async assessResponseQuality(
+    query: string,
+    response: string,
+    context: string,
+    userPreferences: any
+  ): Promise<number> {
     const prompt = `Rate the quality of this response on a scale of 0-1:
 
 Query: ${query}
@@ -652,7 +661,7 @@ Consider: relevance, completeness, accuracy, clarity.
 Respond with only a number between 0 and 1:`;
 
     try {
-      const result = await llm.generateText(prompt);
+  const result = await llm.generateText(prompt, userPreferences);
       const score = parseFloat(result.trim());
       return isNaN(score) ? 0.7 : Math.max(0, Math.min(1, score));
     } catch (error) {

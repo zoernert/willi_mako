@@ -9,6 +9,8 @@ dotenv.config();
 
 // Importing the GoogleAIKeyManager for efficient key management
 const googleAIKeyManager = require('./googleAIKeyManager');
+import UserAIKeyService from './userAIKeyService';
+import { AppError } from '../utils/errors';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -66,7 +68,7 @@ export class GeminiService {
       const newModels: any[] = [];
       
       for (const modelName of modelNames) {
-        // For each model, get a model instance from the key manager
+        // Default: system key via key manager
         const modelInstance = await googleAIKeyManager.getGenerativeModel({ 
           model: modelName,
           tools: [
@@ -219,6 +221,45 @@ export class GeminiService {
     isEnhancedQuery: boolean = false,
     contextMode?: 'workspace-only' | 'standard' | 'system-only'
   ): Promise<string> {
+    // Resolve per-user key if available and allowed
+    const userId = (userPreferences && userPreferences.userId) || (userPreferences && userPreferences.id);
+    let perRequestModels = this.models;
+    if (userId) {
+      try {
+        const resolved = await UserAIKeyService.resolveGeminiApiKey(userId);
+        if (resolved.source === 'user' && resolved.key) {
+          // Build dedicated models for this request using user's key
+          const genAI = new GoogleGenerativeAI(resolved.key);
+          perRequestModels = this.models.map(m => ({
+            ...m,
+            instance: genAI.getGenerativeModel({ model: m.name, tools: [
+              {
+                functionDeclarations: [
+                  {
+                    name: 'lookup_energy_code',
+                    description: 'Sucht nach deutschen BDEW- oder EIC-Energiewirtschaftscodes. Nützlich, um herauszufinden, welches Unternehmen zu einem bestimmten Code gehört.',
+                    parameters: {
+                      type: FunctionDeclarationSchemaType.OBJECT,
+                      properties: { code: { type: FunctionDeclarationSchemaType.STRING, description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.' } },
+                      required: ['code']
+                    }
+                  }
+                ]
+              }
+            ] })
+          }));
+        } else if (resolved.source === null) {
+          // Policy forbids using system keys
+          throw new AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+        }
+      } catch (e) {
+        if (e instanceof AppError) {
+          throw e;
+        }
+        // Non-fatal: fall back to system models
+        console.warn('User key resolution failed, using system key:', e);
+      }
+    }
     let attemptCount = 0;
     const maxAttempts = 3; // Try up to 3 different models
     let lastError: Error | undefined = undefined;
@@ -228,7 +269,7 @@ export class GeminiService {
       attemptCount++;
       try {
         // Select best available model accounting for quota limits
-        const selectedModel = await this.getQuotaAwareModel(lastModel, lastError);
+        const selectedModel = await this.getQuotaAwareModel(lastModel, lastError, perRequestModels);
         lastModel = selectedModel;
         
         // Update the model's usage tracking
@@ -253,7 +294,7 @@ export class GeminiService {
           ...conversationHistory
         ];
 
-        const chat = selectedModel.instance.startChat({
+  const chat = selectedModel.instance.startChat({
           history: messagesWithSystem
         });
 
@@ -903,9 +944,9 @@ Antworte nur als JSON ohne Markdown-Formatierung:
     }
   }
 
-  async generateText(prompt: string): Promise<string> {
+  async generateText(prompt: string, userPreferences: any = {}): Promise<string> {
     try {
-      const result = await this.generateWithRetry(prompt);
+      const result = await this.generateWithRetry(prompt, userPreferences);
       const response = await result.response;
       return response.text();
     } catch (error) {
@@ -914,19 +955,39 @@ Antworte nur als JSON ohne Markdown-Formatierung:
     }
   }
 
-  private async generateWithRetry(prompt: string, maxRetries: number = 3): Promise<any> {
+  private async generateWithRetry(prompt: string, userPreferences: any = {}, maxRetries: number = 3): Promise<any> {
     let lastError: Error | null = null;
     const triedModels = new Set<string>();
+    // Build per-request models if user key present
+    let modelsOverride: any[] | undefined;
+    const userId = (userPreferences && (userPreferences.userId || userPreferences.id)) || undefined;
+    if (userId) {
+      try {
+        const resolved = await UserAIKeyService.resolveGeminiApiKey(userId);
+        if (resolved.source === 'user' && resolved.key) {
+          const genAI = new GoogleGenerativeAI(resolved.key);
+          modelsOverride = this.models.map(m => ({
+            ...m,
+            instance: genAI.getGenerativeModel({ model: m.name })
+          }));
+        } else if (resolved.source === null) {
+          throw new AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+        }
+      } catch (e) {
+        if (e instanceof AppError) throw e;
+        console.warn('User key resolution failed for generateWithRetry, using system key:', e);
+      }
+    }
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      let selectedModel = this.getNextAvailableModel();
+      let selectedModel = await this.getQuotaAwareModel(undefined, undefined, modelsOverride);
       
       // If we've tried all models, start over but wait a bit
       if (triedModels.has(selectedModel.name) && triedModels.size >= this.models.length) {
         console.log(`All models tried, waiting before retry attempt ${attempt}/${maxRetries}`);
         await this.sleep(1000 * attempt); // Progressive delay
         triedModels.clear();
-        selectedModel = this.getNextAvailableModel();
+        selectedModel = await this.getQuotaAwareModel(undefined, undefined, modelsOverride);
       }
       
       try {
@@ -944,7 +1005,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
         selectedModel.lastUsed = Date.now();
         console.log(`Using model: ${selectedModel.name} for attempt ${attempt}/${maxRetries}`);
         
-        const result = await selectedModel.instance.generateContent(prompt);
+  const result = await selectedModel.instance.generateContent(prompt);
         
         // Success - update usage count
         const currentCount = this.modelUsageCount.get(selectedModel.name) || 0;
@@ -953,7 +1014,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
         return result;
         
       } catch (error: any) {
-        lastError = error;
+  lastError = error;
         triedModels.add(selectedModel.name);
         console.error(`Gemini API attempt ${attempt}/${maxRetries} failed with model ${selectedModel.name}:`, error.message);
         
@@ -1161,7 +1222,7 @@ Antwort:`;
     }
   }
 
-  async generateSearchQueries(query: string): Promise<string[]> {
+  async generateSearchQueries(query: string, userPreferences: any = {}): Promise<string[]> {
     try {
       const prompt = `Du bist ein Experte für die deutsche Energiewirtschaft. Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen, die helfen würden, umfassenden Kontext aus einer Wissensdatenbank zu sammeln. Decke dabei verschiedene Aspekte und mögliche Intentionen der ursprünglichen Anfrage ab.
 
@@ -1170,7 +1231,7 @@ Benutzeranfrage: "${query}"
 Gib die Suchanfragen als JSON-Array von Strings zurück. Antworte nur mit dem JSON-Array.
 Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenbetreiber", "Prozesse der Netznutzungsabrechnung"]`;
 
-      const result = await this.generateWithRetry(prompt);
+  const result = await this.generateWithRetry(prompt, userPreferences);
       const response = await result.response;
       let text = response.text().trim();
 
@@ -1203,7 +1264,7 @@ Beispiel: ["Details zur Marktkommunikation 2024", "Anforderungen an Messstellenb
     }
   }
 
-  async synthesizeContext(query: string, searchResults: any[]): Promise<string> {
+  async synthesizeContext(query: string, searchResults: any[], userPreferences: any = {}): Promise<string> {
     try {
       // Use content field instead of payload.text for better data extraction
       const documents = searchResults.map((r, i) => {
@@ -1227,7 +1288,7 @@ ${documents}
 
 Strukturierter Kontext mit allen relevanten technischen Details:`;
 
-      const result = await this.generateWithRetry(prompt);
+  const result = await this.generateWithRetry(prompt, userPreferences);
       const response = await result.response;
       const synthesizedText = response.text();
       
@@ -1252,7 +1313,7 @@ Strukturierter Kontext mit allen relevanten technischen Details:`;
   /**
    * Erweiterte Kontext-Synthese mit chunk_type-bewusster Verarbeitung
    */
-  async synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string> {
+  async synthesizeContextWithChunkTypes(query: string, searchResults: any[], userPreferences: any = {}): Promise<string> {
     try {
       const contextParts: string[] = [];
 
@@ -1320,7 +1381,7 @@ Erstelle eine präzise, strukturierte Antwort die:
 
 Antwort:`;
 
-      const result = await this.generateWithRetry(prompt);
+  const result = await this.generateWithRetry(prompt, userPreferences);
       const response = await result.response;
       return response.text();
 
@@ -1447,11 +1508,31 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
       const maxAttempts = 3; // Gleiche Anzahl von Versuchen wie bei generateResponse
       let lastError: Error | undefined = undefined;
       let selectedModel: any = null;
+      // Per-user key override
+      let modelsOverride: any[] | undefined;
+      const userId = (userPreferences && (userPreferences.userId || userPreferences.id)) || undefined;
+      if (userId) {
+        try {
+          const resolved = await UserAIKeyService.resolveGeminiApiKey(userId);
+          if (resolved.source === 'user' && resolved.key) {
+            const genAI = new GoogleGenerativeAI(resolved.key);
+            modelsOverride = this.models.map(m => ({
+              ...m,
+              instance: genAI.getGenerativeModel({ model: m.name })
+            }));
+          } else if (resolved.source === null) {
+            throw new AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });
+          }
+        } catch (e) {
+          if (e instanceof AppError) throw e;
+          console.warn('User key resolution failed for structured output, using system key:', e);
+        }
+      }
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           // Modell mit dem geringsten Nutzungsgrad wählen und Quota-Checks durchführen
-          selectedModel = await this.getQuotaAwareModel(selectedModel, lastError);
+          selectedModel = await this.getQuotaAwareModel(selectedModel, lastError, modelsOverride);
           
           if (!selectedModel) {
             throw new Error('No available model found for structured output generation');
@@ -1570,7 +1651,7 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
     return selectedModel;
   }
 
-  private async getQuotaAwareModel(previousModel?: any, quotaExceededError?: Error | undefined): Promise<any> {
+  private async getQuotaAwareModel(previousModel?: any, quotaExceededError?: Error | undefined, modelsOverride?: any[]): Promise<any> {
     // Ensure models are initialized before proceeding
     await this.ensureModelsInitialized();
     
@@ -1598,17 +1679,18 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
       }
     }
     
-    // Filter out models that have exceeded their daily quota
-    const availableModels = this.models.filter(m => !m.dailyQuotaExceeded);
+  // Filter out models that have exceeded their daily quota
+  const baseModels = modelsOverride || this.models;
+  const availableModels = baseModels.filter(m => !m.dailyQuotaExceeded);
     
     // If we have no available models, throw an error
     if (availableModels.length === 0) {
       throw new Error('All Gemini models have exceeded their daily quota');
     }
     
-    // Copy the original getNextAvailableModel logic but only consider available models
+  // Copy the original getNextAvailableModel logic but only consider available models
     const now = Date.now();
-    let bestModel = availableModels[0];
+  let bestModel = availableModels[0];
     let bestScore = -Infinity;
     
     for (const model of availableModels) {

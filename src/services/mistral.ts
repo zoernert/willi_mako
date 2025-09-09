@@ -79,12 +79,12 @@ export class MistralService {
     return (await this.chat(msgs)).trim();
   }
 
-  async generateText(prompt: string): Promise<string> {
+  async generateText(prompt: string, _userPreferences: any = {}): Promise<string> {
     const msgs = [{ role: 'user' as const, content: prompt }];
     return (await this.chat(msgs)).trim();
   }
 
-  async generateSearchQueries(query: string): Promise<string[]> {
+  async generateSearchQueries(query: string, _userPreferences: any = {}): Promise<string[]> {
     const prompt = `Analysiere die folgende Benutzeranfrage und generiere 3-5 alternative, detaillierte Suchanfragen als JSON-Array von Strings. Antworte NUR mit dem JSON-Array.\n\nAnfrage: "${query}"`;
     const text = await this.generateText(prompt);
     try {
@@ -95,13 +95,13 @@ export class MistralService {
     return [query];
   }
 
-  async synthesizeContext(query: string, searchResults: any[]): Promise<string> {
+  async synthesizeContext(query: string, searchResults: any[], _userPreferences: any = {}): Promise<string> {
     const documents = searchResults.map((r: any, i: number) => `Dokument ${i + 1}:\n${r.payload?.content || r.content || r.payload?.text || ''}`).join('\n\n---\n\n');
     const prompt = `Beantworte die Nutzeranfrage basierend auf den folgenden Dokumenten. Extrahiere alle relevanten technischen Details.\n\nFrage: ${query}\n\nDokumente:\n${documents}\n\nAntwort:`;
     return this.generateText(prompt);
   }
 
-  async synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string> {
+  async synthesizeContextWithChunkTypes(query: string, searchResults: any[], _userPreferences: any = {}): Promise<string> {
     // Simplified version: reuse synthesizeContext
     return this.synthesizeContext(query, searchResults);
   }

@@ -303,7 +303,7 @@ class AdvancedReasoningService {
         try {
             // Fast search query generation with reduced complexity
             const simplePrompt = `Generate 3 search terms for: "${query}". Return only JSON array like ["term1", "term2", "term3"]:`;
-            const result = await llmProvider_1.default.generateText(simplePrompt);
+            const result = await llmProvider_1.default.generateText(simplePrompt, userPreferences);
             // Extract JSON array from response
             let queries = [];
             try {
@@ -389,7 +389,7 @@ class AdvancedReasoningService {
             contextQuality
         };
     }
-    async performQAAnalysis(query, context) {
+    async performQAAnalysis(query, context, userPreferences) {
         const prompt = `Analyze if the following context contains sufficient information to answer the user query. Respond only with a JSON object:
 
 Query: ${query}
@@ -403,7 +403,7 @@ Required JSON format:
   "missingInfo": ["missing aspect 1", "missing aspect 2"]
 }`;
         try {
-            const result = await llmProvider_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt, userPreferences);
             const jsonMatch = result.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const analysis = JSON.parse(jsonMatch[0]);
@@ -445,7 +445,7 @@ Current Response: ${currentResponse}
 Additional Context: ${context.slice(0, 1000)}
 
 Provide an improved version:`;
-                currentResponse = await llmProvider_1.default.generateText(refinementPrompt);
+                currentResponse = await llmProvider_1.default.generateText(refinementPrompt, userPreferences);
                 apiCallsUsed++;
             }
             steps.push({
@@ -467,7 +467,7 @@ Provide an improved version:`;
             steps
         };
     }
-    async assessResponseQuality(query, response, context) {
+    async assessResponseQuality(query, response, context, userPreferences) {
         const prompt = `Rate the quality of this response on a scale of 0-1:
 
 Query: ${query}
@@ -477,7 +477,7 @@ Available Context: ${context.slice(0, 500)}...
 Consider: relevance, completeness, accuracy, clarity.
 Respond with only a number between 0 and 1:`;
         try {
-            const result = await llmProvider_1.default.generateText(prompt);
+            const result = await llmProvider_1.default.generateText(prompt, userPreferences);
             const score = parseFloat(result.trim());
             return isNaN(score) ? 0.7 : Math.max(0, Math.min(1, score));
         }

@@ -10,10 +10,10 @@ export declare class MistralService {
         role: 'user' | 'assistant';
         content: string;
     }[], context?: string, userPreferences?: any, isEnhancedQuery?: boolean, contextMode?: 'workspace-only' | 'standard' | 'system-only'): Promise<string>;
-    generateText(prompt: string): Promise<string>;
-    generateSearchQueries(query: string): Promise<string[]>;
-    synthesizeContext(query: string, searchResults: any[]): Promise<string>;
-    synthesizeContextWithChunkTypes(query: string, searchResults: any[]): Promise<string>;
+    generateText(prompt: string, _userPreferences?: any): Promise<string>;
+    generateSearchQueries(query: string, _userPreferences?: any): Promise<string[]>;
+    synthesizeContext(query: string, searchResults: any[], _userPreferences?: any): Promise<string>;
+    synthesizeContextWithChunkTypes(query: string, searchResults: any[], _userPreferences?: any): Promise<string>;
     generateResponseWithUserContext(messages: {
         role: 'user' | 'assistant';
         content: string;

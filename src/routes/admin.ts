@@ -14,6 +14,7 @@ import { initializeCommunityAdminRoutes } from './admin/community';
 import contentAdminRouter from './admin/content';
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
+import UserAIKeyService from '../services/userAIKeyService';
 
 const router = Router();
 
@@ -191,6 +192,39 @@ router.get('/users', asyncHandler(async (req: AuthenticatedRequest, res: Respons
     console.error('Error fetching users:', error);
     throw new AppError('Failed to fetch users', 500);
   }
+}));
+
+/**
+ * PATCH /admin/users/:userId/ai-key-policy
+ * Toggle whether user can use system keys
+ */
+router.patch('/users/:userId/ai-key-policy', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  const { systemKeyAllowed } = req.body;
+  if (typeof systemKeyAllowed !== 'boolean') {
+    throw new AppError('systemKeyAllowed must be boolean', 400);
+  }
+  await UserAIKeyService.setSystemKeyAccess(userId, systemKeyAllowed);
+  ResponseUtils.success(res, { id: userId, systemKeyAllowed }, 'AI key policy updated');
+}));
+
+/**
+ * DELETE /admin/users/:userId/ai-key
+ * Admin deletes a user's personal API key
+ */
+router.delete('/users/:userId/ai-key', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  await UserAIKeyService.deleteUserGeminiKey(userId);
+  ResponseUtils.success(res, { id: userId, deleted: true }, 'User AI key removed');
+}));
+
+/**
+ * GET /admin/users/:userId/ai-key/status
+ */
+router.get('/users/:userId/ai-key/status', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { userId } = req.params;
+  const status = await UserAIKeyService.getUserGeminiKeyStatus(userId);
+  ResponseUtils.success(res, status, 'AI key status');
 }));
 
 /**

@@ -27,11 +27,20 @@ fi
 # Export password for psql to use
 export PGPASSWORD=$DB_PASSWORD
 
-# If a command is provided as argument, execute it
-if [ $# -gt 0 ]; then
+# If a SQL file is provided with -f, execute the file
+if [ "$1" = "-f" ] && [ -n "$2" ]; then
+  SQL_FILE=$2
+  if [ ! -f "$SQL_FILE" ]; then
+    echo "Error: SQL file '$SQL_FILE' not found"
+    unset PGPASSWORD
+    exit 1
+  fi
+  psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "$SQL_FILE"
+elif [ $# -gt 0 ]; then
+  # Otherwise, treat all arguments as a SQL command
   psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "$*"
 else
-  # Otherwise, open an interactive psql session
+  # Open an interactive psql session
   psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME
 fi
 

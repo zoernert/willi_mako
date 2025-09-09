@@ -23,4 +23,9 @@ router.put('/flip-mode-preferences', authenticateToken, userController.updateFli
 // User statistics
 router.get('/stats', authenticateToken, userController.getUserStats);
 
+// User AI key management
+router.get('/ai-key/status', authenticateToken, userController.getUserAIKeyStatus);
+router.put('/ai-key', authenticateToken, userController.setUserAIKey);
+router.delete('/ai-key', authenticateToken, userController.deleteUserAIKey);
+
 export default router;
