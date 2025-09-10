@@ -11,6 +11,49 @@ function getLLMProvider(): 'gemini' | 'mistral' {
 
 const mistralService = new MistralService();
 
+// Keep track of actual provider/model used on the last successful call (for accurate metadata)
+let lastProviderUsed: 'gemini' | 'mistral' | null = null;
+let lastModelUsed: string | null = null;
+
+function shouldFallbackToGeminiOnMistralError(error: any): boolean {
+  // Be safe: fall back on most common transient/quotas/network issues
+  const msg = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+  const is429 = msg.includes('429') || msg.includes('too many requests') || msg.includes('rate limit');
+  const isCapacity = msg.includes('capacity') || msg.includes('service_tier_capacity_exceeded');
+  const is5xx = /\b5\d{2}\b/.test(msg) || msg.includes('internal server error');
+  const isNetwork = msg.includes('fetch') || msg.includes('network');
+  // Default to true for mistral-specific errors we can't classify
+  return is429 || isCapacity || is5xx || isNetwork || true;
+}
+
+async function callWithFallback<T>(methodName: keyof LLMInterface | string, args: any[]): Promise<T> {
+  const active = getLLMProvider();
+  // If Mistral is configured, try it first and fall back to Gemini when needed
+  if (active === 'mistral') {
+    try {
+      const result = await (mistralService as any)[methodName](...args);
+      lastProviderUsed = 'mistral';
+      lastModelUsed = mistralService.getLastUsedModel();
+      return result as T;
+    } catch (err: any) {
+      // Only log and fall back – never break the chat flow due to Mistral
+      if (shouldFallbackToGeminiOnMistralError(err)) {
+        console.warn(`Mistral error – falling back to Gemini for ${String(methodName)}:`, err?.message || err);
+        const result = await (geminiService as any)[methodName](...args);
+        lastProviderUsed = 'gemini';
+        lastModelUsed = (geminiService as any).getLastUsedModel?.() ?? null;
+        return result as T;
+      }
+      throw err;
+    }
+  }
+  // Default provider is Gemini
+  const result = await (geminiService as any)[methodName](...args);
+  lastProviderUsed = 'gemini';
+  lastModelUsed = (geminiService as any).getLastUsedModel?.() ?? null;
+  return result as T;
+}
+
 // Define the interface of methods we support across providers
 export interface LLMInterface {
   generateResponse(
@@ -87,36 +130,30 @@ export interface LLMInterface {
   getLastUsedModel(): string | null;
 }
 
-function selected(): LLMInterface {
-  return getLLMProvider() === 'mistral' ? (mistralService as unknown as LLMInterface) : (geminiService as unknown as LLMInterface);
-}
-
 const llm: LLMInterface = {
-  generateResponse: (...args) => selected().generateResponse(...args as Parameters<LLMInterface['generateResponse']>),
-  generateText: (...args) => selected().generateText(...args as Parameters<LLMInterface['generateText']>),
-  generateSearchQueries: (...args) => selected().generateSearchQueries(...args as Parameters<LLMInterface['generateSearchQueries']>),
-  synthesizeContext: (...args) => selected().synthesizeContext(...args as Parameters<LLMInterface['synthesizeContext']>),
-  synthesizeContextWithChunkTypes: (...args) => selected().synthesizeContextWithChunkTypes(...args as Parameters<LLMInterface['synthesizeContextWithChunkTypes']>),
-  generateResponseWithUserContext: (...args) => selected().generateResponseWithUserContext(...args as Parameters<LLMInterface['generateResponseWithUserContext']>),
-  generateChatTitle: (...args) => selected().generateChatTitle(...args as Parameters<LLMInterface['generateChatTitle']>),
-  generateStructuredOutput: (...args) => selected().generateStructuredOutput(...args as Parameters<LLMInterface['generateStructuredOutput']>),
-  generateTagsForNote: (...args) => selected().generateTagsForNote(...args as Parameters<LLMInterface['generateTagsForNote']>),
-  generateTagsForDocument: (...args) => selected().generateTagsForDocument(...args as Parameters<LLMInterface['generateTagsForDocument']>),
-  generateMultipleChoiceQuestion: (...args) => selected().generateMultipleChoiceQuestion(...args as Parameters<LLMInterface['generateMultipleChoiceQuestion']>),
-  generateQuizQuestions: (...args) => selected().generateQuizQuestions(...args as Parameters<LLMInterface['generateQuizQuestions']>),
-  evaluateAnswerWithExplanation: (...args) => selected().evaluateAnswerWithExplanation(...args as Parameters<LLMInterface['evaluateAnswerWithExplanation']>),
-  generateHypotheticalAnswer: (...args) => selected().generateHypotheticalAnswer(...args as Parameters<LLMInterface['generateHypotheticalAnswer']>),
-  generateFAQContent: (...args) => selected().generateFAQContent(...args as Parameters<LLMInterface['generateFAQContent']>),
-  enhanceFAQWithContext: (...args) => selected().enhanceFAQWithContext(...args as Parameters<LLMInterface['enhanceFAQWithContext']>),
-  getLastUsedModel: () => selected().getLastUsedModel(),
+  generateResponse: (...args) => callWithFallback('generateResponse', args as any[]),
+  generateText: (...args) => callWithFallback('generateText', args as any[]),
+  generateSearchQueries: (...args) => callWithFallback('generateSearchQueries', args as any[]),
+  synthesizeContext: (...args) => callWithFallback('synthesizeContext', args as any[]),
+  synthesizeContextWithChunkTypes: (...args) => callWithFallback('synthesizeContextWithChunkTypes', args as any[]),
+  generateResponseWithUserContext: (...args) => callWithFallback('generateResponseWithUserContext', args as any[]),
+  generateChatTitle: (...args) => callWithFallback('generateChatTitle', args as any[]),
+  generateStructuredOutput: (...args) => callWithFallback('generateStructuredOutput', args as any[]),
+  generateTagsForNote: (...args) => callWithFallback('generateTagsForNote', args as any[]),
+  generateTagsForDocument: (...args) => callWithFallback('generateTagsForDocument', args as any[]),
+  generateMultipleChoiceQuestion: (...args) => callWithFallback('generateMultipleChoiceQuestion', args as any[]),
+  generateQuizQuestions: (...args) => callWithFallback('generateQuizQuestions', args as any[]),
+  evaluateAnswerWithExplanation: (...args) => callWithFallback('evaluateAnswerWithExplanation', args as any[]),
+  generateHypotheticalAnswer: (...args) => callWithFallback('generateHypotheticalAnswer', args as any[]),
+  generateFAQContent: (...args) => callWithFallback('generateFAQContent', args as any[]),
+  enhanceFAQWithContext: (...args) => callWithFallback('enhanceFAQWithContext', args as any[]),
+  getLastUsedModel: () => lastModelUsed ?? (getLLMProvider() === 'mistral'
+    ? mistralService.getLastUsedModel()
+    : (geminiService as any).getLastUsedModel?.() ?? null),
 };
 
-export function getActiveLLMProvider(): 'gemini' | 'mistral' { return getLLMProvider(); }
-export function getActiveLLMModel(): string | null {
-  return getLLMProvider() === 'mistral'
-    ? mistralService.getLastUsedModel()
-    : (geminiService as any).getLastUsedModel?.() ?? null;
-}
+export function getActiveLLMProvider(): 'gemini' | 'mistral' { return (lastProviderUsed || getLLMProvider()); }
+export function getActiveLLMModel(): string | null { return lastModelUsed ?? llm.getLastUsedModel(); }
 export function getActiveLLMInfo(): { provider: 'gemini' | 'mistral'; model: string | null } {
   return { provider: getActiveLLMProvider(), model: getActiveLLMModel() };
 }

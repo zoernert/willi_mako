@@ -73,7 +73,7 @@ class AdvancedReasoningService {
     const useDetailedIntentAnalysis = contextSettings?.useDetailedIntentAnalysis === true;
     console.log(`🔍 Intent Analysis Mode: ${useDetailedIntentAnalysis ? 'Detailed' : 'Standard'}`);
 
-    try {
+  try {
       console.log('🚀 Starting Advanced Reasoning Pipeline...');
 
       // Step 1: Question Analysis (1 API call max, immer bei detaillierter Intent-Analyse)
@@ -212,7 +212,45 @@ class AdvancedReasoningService {
       // Check if we have enough context for a direct response
       if (contextAnalysis.contextQuality > 0.5 || quickResults.length >= 5) {
         console.log('✅ Sufficient context found, generating direct response');
-        return await this.generateDirectResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1);
+        // Check admin override for iterative refinement
+        const override = contextSettings?.overridePipeline as Partial<PipelineDecision> | undefined;
+        if (override?.useIterativeRefinement) {
+          const decisions: PipelineDecision = {
+            useIterativeRefinement: true,
+            maxIterations: override.maxIterations ?? 2,
+            confidenceThreshold: override.confidenceThreshold ?? 0.8,
+            reason: 'Admin override iterative refinement'
+          };
+          return await this.generateRefinedResponse(
+            query,
+            quickResults,
+            previousMessages,
+            userPreferences,
+            reasoningSteps,
+            1,
+            qaAnalysis,
+            contextAnalysis,
+            decisions,
+            useDetailedIntentAnalysis
+          );
+        }
+        return await this.generateDirectResponse(
+          query,
+          quickResults,
+          previousMessages,
+          userPreferences,
+          reasoningSteps,
+          1,
+          qaAnalysis,
+          contextAnalysis,
+          {
+            useIterativeRefinement: false,
+            maxIterations: 1,
+            confidenceThreshold: 0.8,
+            reason: 'Direct response for speed'
+          },
+          useDetailedIntentAnalysis
+        );
       }
 
       // Step 3: Enhanced search only if needed (2 more API calls max)
@@ -232,8 +270,45 @@ class AdvancedReasoningService {
         qdrantResults: enhancedResults.length
       });
 
-      // Final response generation
-      return await this.generateDirectResponse(query, combinedResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1);
+      // Final response generation (with optional admin override)
+      const override = contextSettings?.overridePipeline as Partial<PipelineDecision> | undefined;
+      if (override?.useIterativeRefinement) {
+        const decisions: PipelineDecision = {
+          useIterativeRefinement: true,
+          maxIterations: override.maxIterations ?? 2,
+          confidenceThreshold: override.confidenceThreshold ?? 0.8,
+          reason: 'Admin override iterative refinement'
+        };
+        return await this.generateRefinedResponse(
+          query,
+          combinedResults,
+          previousMessages,
+          userPreferences,
+          reasoningSteps,
+          apiCallsUsed + 1,
+          qaAnalysis!,
+          contextAnalysis,
+          decisions,
+          useDetailedIntentAnalysis
+        );
+      }
+      return await this.generateDirectResponse(
+        query,
+        combinedResults,
+        previousMessages,
+        userPreferences,
+        reasoningSteps,
+        apiCallsUsed + 1,
+        qaAnalysis!,
+        contextAnalysis,
+        {
+          useIterativeRefinement: false,
+          maxIterations: 1,
+          confidenceThreshold: 0.8,
+          reason: 'Direct response for speed'
+        },
+        useDetailedIntentAnalysis
+      );
 
     } catch (error) {
       console.error('❌ Error in advanced reasoning:', error);

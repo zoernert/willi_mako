@@ -68,6 +68,8 @@ import APIKeyUsageMetricsLegacy from '../components/admin/APIKeyUsageMetricsLega
 import AdminArticlesManager from '../components/admin/AdminArticlesManager';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import SearchIcon from '@mui/icons-material/Search';
+import BugReportIcon from '@mui/icons-material/BugReport';
 
 // Admin components - Full implementation
 const AdminDashboard = () => {
@@ -651,8 +653,8 @@ const AdminUsers = () => {
                   {userDetails.recent_chats && userDetails.recent_chats.length > 0 ? (
                     <List>
                       {userDetails.recent_chats.map((chat: any) => (
-                        <ListItem key={chat.id} divider>
-                          <Box sx={{ width: '100%' }}>
+                        <ListItem key={chat.id} divider sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ flex: 1 }}>
                             <Typography variant="subtitle2">
                               {chat.title}
                             </Typography>
@@ -660,6 +662,14 @@ const AdminUsers = () => {
                               {formatDate(chat.created_at)} • {chat.message_count} Nachrichten
                             </Typography>
                           </Box>
+                          <Button size="small" variant="outlined" onClick={async ()=>{
+                            try {
+                              const r = await apiClient.post(`/admin/chats/${chat.id}/clone-as-admin`);
+                              showSnackbar('Chat als Admin kopiert', 'success');
+                            } catch (e:any) {
+                              showSnackbar(e.message || 'Klonen fehlgeschlagen', 'error');
+                            }
+                          }}>Als Admin kopieren</Button>
                         </ListItem>
                       ))}
                     </List>
@@ -2489,6 +2499,8 @@ const Admin: React.FC = () => {
   { label: 'Artikel (MDX)', icon: <DocumentsIcon />, component: <AdminArticlesManager /> },
     { label: 'Community', icon: <ForumIcon />, component: <CommunityAdminManager /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
+  { label: 'Search Lab', icon: <SearchIcon />, component: <AdminSearchLab /> },
+  { label: 'Chatflow Inspector', icon: <BugReportIcon />, component: <AdminChatflowInspector /> },
     { label: 'Team E-Mail', icon: <EmailIcon />, component: <TeamEmailConfig /> },
     { label: 'Bulk-Klärungen', icon: <BulkIcon />, component: <BulkClarificationManager /> },
     { label: 'Chat-Config', icon: <SettingsIcon />, component: <AdminChatConfiguration /> },
@@ -2536,3 +2548,194 @@ const Admin: React.FC = () => {
 
 
 export default Admin;
+
+// --- New: Admin Search Lab component ---
+const AdminSearchLab: React.FC = () => {
+  const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<'guided'|'simple'|'hybrid'|'optimized'|'faqs'|'cs30'>('guided');
+  const [limit, setLimit] = useState(20);
+  const [alpha, setAlpha] = useState(0.75);
+  const [scoreThreshold, setScoreThreshold] = useState(0.5);
+  const [outlineScoping, setOutlineScoping] = useState(true);
+  const [excludeVisual, setExcludeVisual] = useState(true);
+  const [userScope, setUserScope] = useState('');
+  const [teamScope, setTeamScope] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<any>(null);
+  const { showSnackbar } = useSnackbar();
+
+  const runSearch = async () => {
+    if (!query.trim()) { showSnackbar('Bitte Suchbegriff eingeben', 'warning'); return; }
+    try {
+      setLoading(true);
+      const body:any = { query, mode, limit, scoreThreshold, alpha, outlineScoping, excludeVisual };
+      if (userScope) body.userId = userScope; if (teamScope) body.teamId = teamScope;
+      const r:any = await apiClient.post('/admin/semantic-search', body);
+      setResults(r);
+    } catch (e:any) {
+      showSnackbar(e.message || 'Suche fehlgeschlagen', 'error');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>Semantic Search Lab</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Teste verschiedene Suchmodi und Parameter, um Retrieval zu optimieren.</Typography>
+      <Paper sx={{ p:2, mb:2, display:'grid', gap:1, gridTemplateColumns:'1fr' }}>
+        <TextField label="Query" value={query} onChange={(e)=>setQuery(e.target.value)} fullWidth />
+        <Box sx={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:1 }}>
+          <FormControl fullWidth>
+            <InputLabel>Modus</InputLabel>
+            <Select value={mode} label="Modus" onChange={(e)=>setMode(e.target.value as any)}>
+              <MenuItem value="guided">Guided</MenuItem>
+              <MenuItem value="simple">Simple</MenuItem>
+              <MenuItem value="hybrid">Hybrid</MenuItem>
+              <MenuItem value="optimized">Optimized</MenuItem>
+              <MenuItem value="faqs">FAQs</MenuItem>
+              <MenuItem value="cs30">CS30</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField type="number" label="Limit" value={limit} onChange={(e)=>setLimit(parseInt(e.target.value||'0')||20)} />
+          <TextField type="number" label="Score Threshold" value={scoreThreshold} onChange={(e)=>setScoreThreshold(parseFloat(e.target.value||'0')||0.5)} />
+          {(mode==='guided'||mode==='hybrid') && (
+            <TextField type="number" label="Alpha" value={alpha} onChange={(e)=>setAlpha(parseFloat(e.target.value||'0')||0.75)} />
+          )}
+          {mode==='guided' && (
+            <>
+              <FormControlLabel control={<Checkbox checked={outlineScoping} onChange={(e)=>setOutlineScoping(e.target.checked)} />} label="Outline Scoping" />
+              <FormControlLabel control={<Checkbox checked={excludeVisual} onChange={(e)=>setExcludeVisual(e.target.checked)} />} label="Visual ausschließen" />
+            </>
+          )}
+          {mode==='hybrid' && (
+            <>
+              <TextField label="User Scope (optional userId)" value={userScope} onChange={(e)=>setUserScope(e.target.value)} />
+              <TextField label="Team Scope (optional teamId)" value={teamScope} onChange={(e)=>setTeamScope(e.target.value)} />
+            </>
+          )}
+        </Box>
+        <Box sx={{ display:'flex', gap:1, mt:1 }}>
+          <Button variant="contained" startIcon={<SearchIcon />} onClick={runSearch} disabled={loading}>
+            {loading ? 'Suchen…' : 'Suchen'}
+          </Button>
+        </Box>
+      </Paper>
+      {results && (
+        <Paper sx={{ p:2 }}>
+          <Typography variant="subtitle1" gutterBottom>Ergebnisse ({Array.isArray(results?.results) ? results.results.length : (results?.results?.results?.length||0)})</Typography>
+          <List>
+            {(Array.isArray(results?.results) ? results.results : (results?.results?.results||[])).map((r:any, idx:number)=> (
+              <ListItem key={r.id || idx} divider>
+                <Box>
+                  <Typography variant="body2">Score: {(r.merged_score ?? r.score ?? 0).toFixed(3)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{r.payload?.title || r.payload?.document_name || r.payload?.type || 'Item'}</Typography>
+                  {r.payload?.text && (
+                    <Typography variant="body2" sx={{ mt:0.5 }}>
+                      {String(r.payload.text).slice(0,240)}{String(r.payload.text).length>240?'…':''}
+                    </Typography>
+                  )}
+                </Box>
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
+    </Box>
+  );
+};
+
+// --- New: Admin Chatflow Inspector ---
+const AdminChatflowInspector: React.FC = () => {
+  const [query, setQuery] = useState('');
+  const [chatId, setChatId] = useState('');
+  const [targetUserId, setTargetUserId] = useState('');
+  const [useDetailed, setUseDetailed] = useState(true);
+  const [useIterative, setUseIterative] = useState(false);
+  const [maxIterations, setMaxIterations] = useState(2);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.8);
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<any>(null);
+  const { showSnackbar } = useSnackbar();
+
+  const runPreview = async () => {
+    if (!query.trim()) { showSnackbar('Bitte eine Nutzerfrage eingeben', 'warning'); return; }
+    try {
+      setLoading(true);
+      const r:any = await apiClient.post('/admin/chatflow/preview', {
+        query, chatId: chatId || undefined, targetUserId: targetUserId || undefined,
+        useDetailedIntentAnalysis: useDetailed,
+        overridePipeline: useIterative ? { useIterativeRefinement: true, maxIterations, confidenceThreshold } : undefined
+      });
+      setPreview(r);
+    } catch (e:any) {
+      showSnackbar(e.message || 'Vorschau fehlgeschlagen', 'error');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>Chatflow Inspector</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Intercept und steuere die Antworterstellung: Intent-Analyse, Retrieval, Iterationen und Entscheidungen.
+      </Typography>
+      <Paper sx={{ p:2, mb:2, display:'grid', gap:1 }}>
+        <TextField label="Nutzerfrage" value={query} onChange={(e)=>setQuery(e.target.value)} fullWidth />
+        <Box sx={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:1 }}>
+          <TextField label="Chat-ID (optional)" value={chatId} onChange={(e)=>setChatId(e.target.value)} />
+          <TextField label="User-ID (optional)" value={targetUserId} onChange={(e)=>setTargetUserId(e.target.value)} />
+          <FormControlLabel control={<Checkbox checked={useDetailed} onChange={(e)=>setUseDetailed(e.target.checked)} />} label="Detaillierte Intent-Analyse" />
+          <FormControlLabel control={<Checkbox checked={useIterative} onChange={(e)=>setUseIterative(e.target.checked)} />} label="Iterative Verfeinerung" />
+          {useIterative && (
+            <>
+              <TextField type="number" label="Max Iterationen" value={maxIterations} onChange={(e)=>setMaxIterations(parseInt(e.target.value||'0')||1)} />
+              <TextField type="number" label="Confidence Threshold" value={confidenceThreshold} onChange={(e)=>setConfidenceThreshold(parseFloat(e.target.value||'0')||0.8)} />
+            </>
+          )}
+        </Box>
+        <Box sx={{ display:'flex', gap:1, mt:1 }}>
+          <Button variant="contained" onClick={runPreview} disabled={loading}>{loading ? 'Analysiere…' : 'Vorschau ausführen'}</Button>
+        </Box>
+      </Paper>
+
+      {preview && (
+        <Box sx={{ display:'grid', gap:2 }}>
+          <Paper sx={{ p:2 }}>
+            <Typography variant="h6">Zusammenfassung</Typography>
+            <Typography variant="body2" sx={{ mt:1 }}>Qualität: {preview.result?.finalQuality?.toFixed?.(2) ?? '-'}</Typography>
+            <Typography variant="body2">Iterationen: {preview.result?.iterationsUsed ?? '-'}</Typography>
+            <Typography variant="body2">API Calls: {preview.result?.apiCallsUsed ?? '-'}</Typography>
+            <Typography variant="body2">Hybrid: {preview.result?.hybridSearchUsed ? `Ja (α=${preview.result?.hybridSearchAlpha ?? '-'})` : 'Nein'}</Typography>
+          </Paper>
+          <Paper sx={{ p:2 }}>
+            <Typography variant="h6">Pipeline-Entscheidungen</Typography>
+            <pre style={{ whiteSpace:'pre-wrap', margin:0 }}>{JSON.stringify(preview.result?.pipelineDecisions, null, 2)}</pre>
+          </Paper>
+          <Paper sx={{ p:2 }}>
+            <Typography variant="h6">QA-Analyse</Typography>
+            <pre style={{ whiteSpace:'pre-wrap', margin:0 }}>{JSON.stringify(preview.result?.qaAnalysis, null, 2)}</pre>
+          </Paper>
+          <Paper sx={{ p:2 }}>
+            <Typography variant="h6">Reasoning Steps</Typography>
+            <List>
+              {(preview.result?.reasoningSteps || []).map((s:any, idx:number)=> (
+                <ListItem key={idx} divider>
+                  <Box>
+                    <Typography variant="subtitle2">{s.step}</Typography>
+                    <Typography variant="caption" color="text.secondary">{new Date(s.timestamp).toLocaleString('de-DE')} • {s.duration ? `${s.duration}ms` : ''}</Typography>
+                    {s.description && <Typography variant="body2" sx={{ mt:0.5 }}>{s.description}</Typography>}
+                    {s.qdrantQueries?.length ? <Typography variant="caption">Qdrant Queries: {s.qdrantQueries.length}</Typography> : null}
+                    {s.qdrantResults != null ? <Typography variant="caption" sx={{ ml:1 }}>Results: {s.qdrantResults}</Typography> : null}
+                    {s.error && <Alert severity="warning" sx={{ mt:1 }}>{s.error}</Alert>}
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+          <Paper sx={{ p:2 }}>
+            <Typography variant="h6">Antwort (Vorschau)</Typography>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{preview.result?.response || ''}</ReactMarkdown>
+          </Paper>
+        </Box>
+      )}
+    </Box>
+  );
+};

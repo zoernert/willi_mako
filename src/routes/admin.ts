@@ -15,6 +15,9 @@ import contentAdminRouter from './admin/content';
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
 import UserAIKeyService from '../services/userAIKeyService';
+import pool from '../config/database';
+import { QdrantService } from '../services/qdrant';
+import advancedReasoningService from '../services/advancedReasoningService';
 
 const router = Router();
 
@@ -751,3 +754,138 @@ router.get('/users/:userId/details', asyncHandler(async (req: AuthenticatedReque
 }));
 
 export default router;
+
+/**
+ * Additional Admin Utilities
+ * - Clone a user's chat as the current admin
+ * - Run parameterizable semantic search
+ */
+
+// Clone a chat as admin (creates a new chat owned by admin and copies messages)
+router.post('/chats/:chatId/clone-as-admin', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { chatId } = req.params;
+  const adminUserId = req.user!.id;
+
+  // Start a transaction to ensure consistency
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Load original chat
+    const chatResult = await client.query(
+      'SELECT id, title, user_id FROM chats WHERE id = $1',
+      [chatId]
+    );
+    if (chatResult.rows.length === 0) {
+      throw new AppError('Chat not found', 404);
+    }
+    const original = chatResult.rows[0];
+
+    // Create new chat for admin
+    const newTitle = `Kopie von ${original.title || 'Chat'}`.substring(0, 200);
+    const newChatInsert = await client.query(
+      'INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id, title, created_at, updated_at',
+      [adminUserId, newTitle]
+    );
+    const newChat = newChatInsert.rows[0];
+
+    // Copy messages
+    const messages = await client.query(
+      'SELECT role, content, metadata FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
+      [chatId]
+    );
+    let copied = 0;
+    for (const m of messages.rows) {
+      await client.query(
+        'INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4)',
+        [newChat.id, m.role, m.content, m.metadata || null]
+      );
+      copied++;
+    }
+
+    await client.query('COMMIT');
+    return ResponseUtils.success(res, { newChat, copiedMessages: copied }, 'Chat cloned as admin');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error cloning chat as admin:', error);
+    throw new AppError('Failed to clone chat', 500);
+  } finally {
+    client.release();
+  }
+}));
+
+// Parameterizable semantic search
+router.post('/semantic-search', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { query, mode, limit, scoreThreshold, alpha, outlineScoping, excludeVisual, userId, teamId } = req.body || {};
+  if (!query || typeof query !== 'string' || !query.trim()) {
+    throw new AppError('Query is required', 400);
+  }
+
+  const svc = new QdrantService();
+  const m = (mode || 'guided') as string;
+  const lim = Math.max(1, Math.min(parseInt(limit ?? 20, 10) || 20, 100));
+  const thr = typeof scoreThreshold === 'number' ? scoreThreshold : 0.5;
+  const a = typeof alpha === 'number' ? alpha : 0.75;
+  const outline = outlineScoping !== false; // default true
+  const exclude = excludeVisual !== false; // default true
+
+  try {
+    let result: any;
+    if (m === 'simple') {
+      result = await QdrantService.searchByText(query, lim, thr);
+    } else if (m === 'guided') {
+      result = await QdrantService.semanticSearchGuided(query, { limit: lim, alpha: a, outlineScoping: outline, excludeVisual: exclude });
+    } else if (m === 'hybrid') {
+      result = await svc.searchWithHybrid(query, lim, thr, a, userId, teamId);
+    } else if (m === 'optimized') {
+      result = await svc.searchWithOptimizations(query, lim, thr, true);
+    } else if (m === 'faqs') {
+      result = await svc.searchFAQs(query, lim, thr);
+    } else if (m === 'cs30') {
+      result = await svc.searchCs30(query, Math.min(lim, 20), Math.max(thr, 0.7));
+    } else {
+      result = await QdrantService.searchByText(query, lim, thr);
+    }
+
+    return ResponseUtils.success(res, { mode: m, limit: lim, scoreThreshold: thr, alpha: a, results: result }, 'Semantic search executed');
+  } catch (error) {
+    console.error('Error in semantic search:', error);
+    throw new AppError('Semantic search failed', 500);
+  }
+}));
+
+// Chatflow preview/steering for admins
+router.post('/chatflow/preview', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { query, chatId, targetUserId, useDetailedIntentAnalysis, overridePipeline } = req.body || {};
+  if (!query || typeof query !== 'string') {
+    throw new AppError('Query is required', 400);
+  }
+
+  // Load previous messages if chatId provided
+  let previousMessages: { role: string; content: string }[] = [];
+  if (chatId) {
+    const msgs = await pool.query('SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
+    previousMessages = msgs.rows;
+  }
+
+  // Load user preferences for target user if provided, else current admin (minimal set)
+  let userIdForPrefs = targetUserId || req.user!.id;
+  const prefs = await pool.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userIdForPrefs]);
+  const userPreferences = { ...(prefs.rows[0] || {}), user_id: userIdForPrefs } as any;
+
+  // Build context settings with admin overrides
+  const contextSettings: any = {
+    useDetailedIntentAnalysis: useDetailedIntentAnalysis === true,
+    ...(overridePipeline ? { overridePipeline } : {})
+  };
+
+  // Execute reasoning without persisting
+  const result = await advancedReasoningService.generateReasonedResponse(
+    query,
+    previousMessages,
+    userPreferences,
+    contextSettings
+  );
+
+  return ResponseUtils.success(res, { result, used: { useDetailedIntentAnalysis: !!contextSettings.useDetailedIntentAnalysis, overridePipeline: overridePipeline || null, chatId: chatId || null, targetUserId: userIdForPrefs } }, 'Chatflow preview generated');
+}));
