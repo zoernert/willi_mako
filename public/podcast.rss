@@ -6,6 +6,13 @@
     <description>Aktuelle Audio-Inhalte von Willi Mako</description>
     <language>de-de</language>
     <item>
+      <title>M2C und die Stammdaten</title>
+      <description>Ein kurzer Beitrag zur aktuellen Lage in der MaKo.</description>
+      <enclosure url="/media/m2c_stammdaten.mp4" length="0" type="audio/mpeg" />
+      <guid isPermaLink="false">m2c_stammdaten.mp4</guid>
+      <pubDate>Thu, 11 Sep 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
       <title>Mako in der Krise</title>
       <description>Ein kurzer Beitrag zur aktuellen Lage in der MaKo.</description>
       <enclosure url="/media/mako_krise.mp3" length="0" type="audio/mpeg" />
