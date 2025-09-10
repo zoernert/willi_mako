@@ -23,7 +23,9 @@ app.prepare().then(() => {
     express.static(legacyDir, {
       index: ['index.html'],
       maxAge: dev ? 0 : '30d',
-      fallthrough: true,
+  // Important: do NOT fall through on missing static files, otherwise Next.js
+  // may serve /app/index.html for /app/static/*.css and trigger MIME errors
+  fallthrough: false,
     })
   );
 
@@ -47,10 +49,21 @@ app.prepare().then(() => {
     res.redirect(301, '/app/');
   });
 
+  // Simple health endpoint for frontend service
+  expressApp.get('/api/health', (_req, res) => {
+    res.json({ ok: true, service: 'frontend', ts: Date.now() });
+  });
+
   // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
   expressApp.get(/^\/app(?!\/static\/).+/, (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(legacyDir, 'index.html'));
+  });
+
+  // Explicit 404 for unknown assets under /app/static to avoid serving HTML by mistake
+  expressApp.use('/app/static', (req, res) => {
+    // If we reached here, express.static did not find the asset
+    res.status(404).type('text/plain').send('Not Found');
   });
 
   // Delegate all other requests to Next.js handler

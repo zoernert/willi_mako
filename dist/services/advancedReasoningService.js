@@ -11,6 +11,7 @@ class AdvancedReasoningService {
         this.qdrantService = new qdrant_1.QdrantService();
     }
     async generateReasonedResponse(query, previousMessages, userPreferences = {}, contextSettings = {}) {
+        var _a, _b, _c, _d;
         const startTime = Date.now();
         const reasoningSteps = [];
         let apiCallsUsed = 0;
@@ -129,7 +130,23 @@ class AdvancedReasoningService {
             // Check if we have enough context for a direct response
             if (contextAnalysis.contextQuality > 0.5 || quickResults.length >= 5) {
                 console.log('✅ Sufficient context found, generating direct response');
-                return await this.generateDirectResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1);
+                // Check admin override for iterative refinement
+                const override = contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.overridePipeline;
+                if (override === null || override === void 0 ? void 0 : override.useIterativeRefinement) {
+                    const decisions = {
+                        useIterativeRefinement: true,
+                        maxIterations: (_a = override.maxIterations) !== null && _a !== void 0 ? _a : 2,
+                        confidenceThreshold: (_b = override.confidenceThreshold) !== null && _b !== void 0 ? _b : 0.8,
+                        reason: 'Admin override iterative refinement'
+                    };
+                    return await this.generateRefinedResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, decisions, useDetailedIntentAnalysis);
+                }
+                return await this.generateDirectResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, {
+                    useIterativeRefinement: false,
+                    maxIterations: 1,
+                    confidenceThreshold: 0.8,
+                    reason: 'Direct response for speed'
+                }, useDetailedIntentAnalysis);
             }
             // Step 3: Enhanced search only if needed (2 more API calls max)
             console.log('🔍 Need more context, performing enhanced search...');
@@ -145,8 +162,23 @@ class AdvancedReasoningService {
                 qdrantQueries: searchQueries,
                 qdrantResults: enhancedResults.length
             });
-            // Final response generation
-            return await this.generateDirectResponse(query, combinedResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1);
+            // Final response generation (with optional admin override)
+            const override = contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.overridePipeline;
+            if (override === null || override === void 0 ? void 0 : override.useIterativeRefinement) {
+                const decisions = {
+                    useIterativeRefinement: true,
+                    maxIterations: (_c = override.maxIterations) !== null && _c !== void 0 ? _c : 2,
+                    confidenceThreshold: (_d = override.confidenceThreshold) !== null && _d !== void 0 ? _d : 0.8,
+                    reason: 'Admin override iterative refinement'
+                };
+                return await this.generateRefinedResponse(query, combinedResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1, qaAnalysis, contextAnalysis, decisions, useDetailedIntentAnalysis);
+            }
+            return await this.generateDirectResponse(query, combinedResults, previousMessages, userPreferences, reasoningSteps, apiCallsUsed + 1, qaAnalysis, contextAnalysis, {
+                useIterativeRefinement: false,
+                maxIterations: 1,
+                confidenceThreshold: 0.8,
+                reason: 'Direct response for speed'
+            }, useDetailedIntentAnalysis);
         }
         catch (error) {
             console.error('❌ Error in advanced reasoning:', error);

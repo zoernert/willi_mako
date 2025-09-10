@@ -18,7 +18,9 @@ const nextConfig: NextConfig = {
       ],
       // Apply SPA fallback only if no page or static file matched
       fallback: [
-        { source: '/app/:path*', destination: '/app/index.html' },
+        // Do NOT rewrite static asset requests; let Express serve them with correct MIME types
+        // This rule excludes /app/static/* to prevent returning index.html for assets
+        { source: '/app/:path((?!static/).*)', destination: '/app/index.html' },
       ],
     }
   },

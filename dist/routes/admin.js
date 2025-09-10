@@ -52,6 +52,9 @@ const content_1 = __importDefault(require("./admin/content"));
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
 const userAIKeyService_1 = __importDefault(require("../services/userAIKeyService"));
+const database_2 = __importDefault(require("../config/database"));
+const qdrant_1 = require("../services/qdrant");
+const advancedReasoningService_1 = __importDefault(require("../services/advancedReasoningService"));
 const router = (0, express_1.Router)();
 // Admin middleware - require admin role
 const requireAdmin = (req, res, next) => {
@@ -670,4 +673,114 @@ router.get('/users/:userId/details', (0, errorHandler_1.asyncHandler)(async (req
     }
 }));
 exports.default = router;
+/**
+ * Additional Admin Utilities
+ * - Clone a user's chat as the current admin
+ * - Run parameterizable semantic search
+ */
+// Clone a chat as admin (creates a new chat owned by admin and copies messages)
+router.post('/chats/:chatId/clone-as-admin', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { chatId } = req.params;
+    const adminUserId = req.user.id;
+    // Start a transaction to ensure consistency
+    const client = await database_2.default.connect();
+    try {
+        await client.query('BEGIN');
+        // Load original chat
+        const chatResult = await client.query('SELECT id, title, user_id FROM chats WHERE id = $1', [chatId]);
+        if (chatResult.rows.length === 0) {
+            throw new errors_1.AppError('Chat not found', 404);
+        }
+        const original = chatResult.rows[0];
+        // Create new chat for admin
+        const newTitle = `Kopie von ${original.title || 'Chat'}`.substring(0, 200);
+        const newChatInsert = await client.query('INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id, title, created_at, updated_at', [adminUserId, newTitle]);
+        const newChat = newChatInsert.rows[0];
+        // Copy messages
+        const messages = await client.query('SELECT role, content, metadata FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
+        let copied = 0;
+        for (const m of messages.rows) {
+            await client.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4)', [newChat.id, m.role, m.content, m.metadata || null]);
+            copied++;
+        }
+        await client.query('COMMIT');
+        return response_1.ResponseUtils.success(res, { newChat, copiedMessages: copied }, 'Chat cloned as admin');
+    }
+    catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error cloning chat as admin:', error);
+        throw new errors_1.AppError('Failed to clone chat', 500);
+    }
+    finally {
+        client.release();
+    }
+}));
+// Parameterizable semantic search
+router.post('/semantic-search', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { query, mode, limit, scoreThreshold, alpha, outlineScoping, excludeVisual, userId, teamId } = req.body || {};
+    if (!query || typeof query !== 'string' || !query.trim()) {
+        throw new errors_1.AppError('Query is required', 400);
+    }
+    const svc = new qdrant_1.QdrantService();
+    const m = (mode || 'guided');
+    const lim = Math.max(1, Math.min(parseInt(limit !== null && limit !== void 0 ? limit : 20, 10) || 20, 100));
+    const thr = typeof scoreThreshold === 'number' ? scoreThreshold : 0.5;
+    const a = typeof alpha === 'number' ? alpha : 0.75;
+    const outline = outlineScoping !== false; // default true
+    const exclude = excludeVisual !== false; // default true
+    try {
+        let result;
+        if (m === 'simple') {
+            result = await qdrant_1.QdrantService.searchByText(query, lim, thr);
+        }
+        else if (m === 'guided') {
+            result = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: lim, alpha: a, outlineScoping: outline, excludeVisual: exclude });
+        }
+        else if (m === 'hybrid') {
+            result = await svc.searchWithHybrid(query, lim, thr, a, userId, teamId);
+        }
+        else if (m === 'optimized') {
+            result = await svc.searchWithOptimizations(query, lim, thr, true);
+        }
+        else if (m === 'faqs') {
+            result = await svc.searchFAQs(query, lim, thr);
+        }
+        else if (m === 'cs30') {
+            result = await svc.searchCs30(query, Math.min(lim, 20), Math.max(thr, 0.7));
+        }
+        else {
+            result = await qdrant_1.QdrantService.searchByText(query, lim, thr);
+        }
+        return response_1.ResponseUtils.success(res, { mode: m, limit: lim, scoreThreshold: thr, alpha: a, results: result }, 'Semantic search executed');
+    }
+    catch (error) {
+        console.error('Error in semantic search:', error);
+        throw new errors_1.AppError('Semantic search failed', 500);
+    }
+}));
+// Chatflow preview/steering for admins
+router.post('/chatflow/preview', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { query, chatId, targetUserId, useDetailedIntentAnalysis, overridePipeline } = req.body || {};
+    if (!query || typeof query !== 'string') {
+        throw new errors_1.AppError('Query is required', 400);
+    }
+    // Load previous messages if chatId provided
+    let previousMessages = [];
+    if (chatId) {
+        const msgs = await database_2.default.query('SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
+        previousMessages = msgs.rows;
+    }
+    // Load user preferences for target user if provided, else current admin (minimal set)
+    let userIdForPrefs = targetUserId || req.user.id;
+    const prefs = await database_2.default.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userIdForPrefs]);
+    const userPreferences = { ...(prefs.rows[0] || {}), user_id: userIdForPrefs };
+    // Build context settings with admin overrides
+    const contextSettings = {
+        useDetailedIntentAnalysis: useDetailedIntentAnalysis === true,
+        ...(overridePipeline ? { overridePipeline } : {})
+    };
+    // Execute reasoning without persisting
+    const result = await advancedReasoningService_1.default.generateReasonedResponse(query, previousMessages, userPreferences, contextSettings);
+    return response_1.ResponseUtils.success(res, { result, used: { useDetailedIntentAnalysis: !!contextSettings.useDetailedIntentAnalysis, overridePipeline: overridePipeline || null, chatId: chatId || null, targetUserId: userIdForPrefs } }, 'Chatflow preview generated');
+}));
 //# sourceMappingURL=admin.js.map
