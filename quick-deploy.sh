@@ -246,6 +246,9 @@ WORKSPACE_STORAGE_LIMIT_MB=500
 WORKSPACE_MAX_FILE_SIZE_MB=50
 WORKSPACE_ALLOWED_EXTENSIONS=pdf,doc,docx,txt,md
 WORKSPACE_VECTOR_CHUNK_SIZE=1000
+
+# Retrieval/LLM Safety Flags
+DISABLE_HYDE=1
 EOF
 
     # package.json & package-lock.json kopieren
@@ -342,6 +345,7 @@ GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
 GOOGLE_AI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_VISION_MODEL=gemini-2.5-flash
+DISABLE_HYDE=1
 EOF
     
     # .env.light-api für den Light API Service erstellen

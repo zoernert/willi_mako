@@ -39,6 +39,23 @@ export class QdrantService {
     console.log(`Embedding provider: ${EMBEDDING_PROVIDER.toUpperCase()} | Collection: ${QDRANT_COLLECTION_NAME}`);
   }
 
+  // --- Simple in-memory embedding cache (LRU-light) ---
+  private static embeddingCache: Map<string, number[]> = new Map();
+  private static maxCacheEntries = parseInt(process.env.EMBED_CACHE_SIZE || '500', 10);
+  private static getEmbeddingCached = async (text: string): Promise<number[]> => {
+    const key = text.trim();
+    const existing = this.embeddingCache.get(key);
+    if (existing) return existing;
+    const vec = await providerEmbedding(key);
+    // Evict oldest if size exceeded
+    if (this.embeddingCache.size >= this.maxCacheEntries) {
+      const firstKey = this.embeddingCache.keys().next().value;
+      if (firstKey) this.embeddingCache.delete(firstKey);
+    }
+    this.embeddingCache.set(key, vec);
+    return vec;
+  };
+
   // Static method for initialization
   static async createCollection() {
     const client = new QdrantClient({ 
@@ -71,7 +88,7 @@ export class QdrantService {
       checkCompatibility: false  // Bypass version compatibility check
     });
     try {
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await this.getEmbeddingCached(query);
       const results = await client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -135,11 +152,25 @@ export class QdrantService {
   private static payloadBoost(p: any): number {
     const t = (p?.payload?.chunk_type || '') as string;
     let b = 0;
-    if (t.includes('pseudocode_validations_rules')) b += 0.06;
-    else if (t.includes('pseudocode_flow')) b += 0.04;
-    else if (t.includes('pseudocode_table_maps')) b += 0.03;
+    // Reduced pseudocode boosts (were dominating domain full text)
+    if (t.includes('pseudocode_validations_rules')) b += 0.02;
+    else if (t.includes('pseudocode_flow')) b += 0.015;
+    else if (t.includes('pseudocode_table_maps')) b += 0.01;
+
     const kw: string[] = (p?.payload?.keywords || []) as string[];
-    if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS/i.test(k))) b += 0.02;
+    if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS|INVOIC|REMADV/i.test(k))) b += 0.02;
+
+    // Domain full/paragraph emphasis: detect EDIFACT segment & data element patterns
+    const text: string = (p?.payload?.contextual_content || p?.payload?.text || p?.payload?.content || '') as string;
+    const upper = text.toUpperCase();
+    if (/(PRI\+CAL|UNB\+|UNH\+|BGM\+|DTM\+)/i.test(text) && (t === 'full_page' || t === 'paragraph' || t === 'n/a')) {
+      b += 0.05; // segment signal
+    }
+    // Data element 4-digit codes
+  const dataElems: string[] = upper.match(/\b\d{4}\b/g) || [];
+  if (dataElems.includes('6411')) b += 0.04; // explicit boost for questioned element
+    // Mild boost for presence of any process numbers (31xxx) - fosters cardinality context
+    if (/31\d{3}/.test(upper)) b += 0.02;
     return b;
   }
   private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3): Promise<number[]> {
@@ -164,9 +195,10 @@ export class QdrantService {
     const alpha = options?.alpha ?? 0.75;
     const excludeVisual = options?.excludeVisual ?? true;
     const useOutline = options?.outlineScoping ?? true;
+    const cardinalityIntent = /(\bM\[\d+\]|\bX\[\d+\])/.test(query) && /\b\d{4}\b/.test(query);
 
     try {
-      const v = await providerEmbedding(query);
+  const v = await this.getEmbeddingCached(query);
 
       // Optional outline scoping to top pages
       let pageFilter: any | undefined;
@@ -175,36 +207,90 @@ export class QdrantService {
         if (pages?.length) pageFilter = this.filterByPages(pages);
       }
 
-      // S1: pseudocode-only
+      // Phase 1: pseudocode-focused
       const filterA = this.combineFilters(this.filterPseudocode(), pageFilter);
       const resA: any[] = await client.search(QDRANT_COLLECTION_NAME, {
         vector: v,
-        limit: Math.max(30, limit),
+        limit: Math.max(25, limit),
         with_payload: true as any,
         with_vector: false as any,
         ...(filterA ? { filter: filterA } : {})
       } as any);
 
-      // S2: broad, optionally exclude visual_structure
+      // Phase 2: broad (exclude visual if requested)
       const filterB = this.combineFilters(excludeVisual ? this.filterExcludeVisual() : undefined, pageFilter);
       const resB: any[] = await client.search(QDRANT_COLLECTION_NAME, {
         vector: v,
-        limit: Math.max(30, limit),
+        limit: Math.max(25, limit),
         with_payload: true as any,
         with_vector: false as any,
         ...(filterB ? { filter: filterB } : {})
       } as any);
 
-      // Merge with weighting and light boosting
-      const merged = this.mergeWeighted(resA, resB, alpha).slice(0, limit * 2);
-      for (const p of merged) p.merged_score = (p.merged_score ?? 0) + this.payloadBoost(p);
+      // Phase 3: plain full vector (no filters) to capture domain full_page / paragraph that were being missed
+      const resC: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+        vector: v,
+        limit: Math.max(40, limit * 2),
+        with_payload: true as any,
+        with_vector: false as any
+      } as any);
+
+      // Optional Phase 4 (cardinality intent): slight additional plain search with increased limit for nuanced cardinality docs
+      let resD: any[] = [];
+      if (cardinalityIntent) {
+        resD = await client.search(QDRANT_COLLECTION_NAME, {
+          vector: v,
+            limit: Math.max(50, limit * 2 + 10),
+            with_payload: true as any,
+            with_vector: false as any
+        } as any);
+      }
+
+      // Merge A & B first (original weighting)
+      const mergedAB = this.mergeWeighted(resA, resB, alpha);
+      // Integrate C (plain) giving vector-only results extra chance (gamma weight)
+      const gamma = 0.85;
+      const map = new Map<string | number, any>();
+      for (const m of mergedAB) map.set(m.id, m);
+      for (const r of resC) {
+        const existing = map.get(r.id);
+        if (existing) {
+          existing.merged_score = (existing.merged_score ?? existing.score ?? 0) + gamma * (r.score ?? 0);
+        } else {
+          map.set(r.id, { ...r, merged_score: gamma * (r.score ?? 0) });
+        }
+      }
+      // Integrate D (cardinality boost) with higher gamma if intent
+      if (resD.length) {
+        const delta = 0.95;
+        for (const r of resD) {
+          const existing = map.get(r.id);
+          if (existing) {
+            existing.merged_score = (existing.merged_score ?? existing.score ?? 0) + delta * (r.score ?? 0);
+          } else {
+            map.set(r.id, { ...r, merged_score: delta * (r.score ?? 0) });
+          }
+        }
+      }
+
+      let merged = [...map.values()];
+      // Apply payload/domain boosts
+      for (const p of merged) {
+        p.merged_score = (p.merged_score ?? p.score ?? 0) + this.payloadBoost(p);
+        // Extra cardinality signal boost if intent and element appears
+        if (cardinalityIntent) {
+          const txt = (p.payload?.contextual_content || p.payload?.text || p.payload?.content || '').toUpperCase();
+          if (/6411/.test(txt) && /PRI\+CAL/.test(txt)) p.merged_score += 0.05;
+        }
+      }
+      // Sort & return top limit * 2 (to allow downstream re-ranking) but slice to limit at end
       merged.sort((a, b) => (b.merged_score ?? 0) - (a.merged_score ?? 0));
       return merged.slice(0, limit);
     } catch (error) {
       console.error('Error in semanticSearchGuided:', error);
       // Fallback to simple vector search
       try {
-        const v = await providerEmbedding(query);
+  const v = await this.getEmbeddingCached(query);
         const results = await client.search(QDRANT_COLLECTION_NAME, { vector: v, limit } as any);
         return results as any[];
       } catch (e) {
@@ -251,7 +337,7 @@ export class QdrantService {
   }
 
   async upsertDocument(document: UserDocument, text: string) {
-    const embedding = await providerEmbedding(text);
+  const embedding = await QdrantService.getEmbeddingCached(text);
 
     await this.client.upsert(QDRANT_COLLECTION_NAME, {
       wait: true,
@@ -287,7 +373,7 @@ export class QdrantService {
   }
 
   async search(userId: string, queryText: string, limit: number = 10) {
-    const queryVector = await providerEmbedding(queryText);
+  const queryVector = await QdrantService.getEmbeddingCached(queryText);
 
     const results = await this.client.search(QDRANT_COLLECTION_NAME, {
       vector: queryVector,
@@ -310,7 +396,7 @@ export class QdrantService {
   // Instance method for searching by text (used in message-analyzer and quiz services)
   async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.3) {
     try {
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await QdrantService.getEmbeddingCached(query);
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -333,7 +419,7 @@ export class QdrantService {
     chunkIndex: number
   ) {
     try {
-      const embedding = await providerEmbedding(text);
+  const embedding = await QdrantService.getEmbeddingCached(text);
       await this.client.upsert(QDRANT_COLLECTION_NAME, {
         wait: true,
         points: [
@@ -471,12 +557,16 @@ export class QdrantService {
     useHyDE: boolean = true
   ) {
     try {
+  // Environment override to disable HyDE globally (e.g. to mitigate quota / rate limits)
+  const disableHydeEnv = (process.env.DISABLE_HYDE || '').toLowerCase();
+  const hydeGloballyDisabled = disableHydeEnv === '1' || disableHydeEnv === 'true' || disableHydeEnv === 'yes';
+  const hydeEnabled = useHyDE && !hydeGloballyDisabled;
       // 1. Verwende QueryAnalysisService für intelligente Analyse
       const analysisResult = QueryAnalysisService.analyzeQuery(query, this.abbreviationIndex);
       
       // 2. HyDE: Generiere hypothetische Antwort
       let searchQuery = analysisResult.expandedQuery;
-      if (useHyDE) {
+  if (hydeEnabled) {
         try {
           const hypotheticalAnswer = await providerHyde(analysisResult.expandedQuery);
           searchQuery = hypotheticalAnswer;
@@ -492,7 +582,7 @@ export class QdrantService {
       const filter = QueryAnalysisService.createQdrantFilter(analysisResult, latestVersions);
 
       // 5. Embedding generieren und suchen
-      const queryVector = await providerEmbedding(searchQuery);
+  const queryVector = await QdrantService.getEmbeddingCached(searchQuery);
       
       const searchParams: any = {
         vector: queryVector,
@@ -523,7 +613,9 @@ export class QdrantService {
                 filter_summary: QueryAnalysisService.createFilterSummary(analysisResult),
               },
               filter_applied: filter ? Object.keys(filter) : [],
-              used_hyde: useHyDE,
+                used_hyde: hydeEnabled,
+                hyde_param_requested: useHyDE,
+                hyde_disabled_env: hydeGloballyDisabled,
               latest_versions_available: latestVersions.length,
             },
           },
@@ -550,7 +642,7 @@ export class QdrantService {
       // Combine all FAQ content for embedding
       const fullContent = `${title}\n\n${description}\n\n${context}\n\n${answer}\n\n${additionalInfo}`.trim();
       
-      const embedding = await providerEmbedding(fullContent);
+  const embedding = await QdrantService.getEmbeddingCached(fullContent);
       
       await this.client.upsert(QDRANT_COLLECTION_NAME, {
         wait: true,
@@ -617,7 +709,7 @@ export class QdrantService {
   // Method for searching FAQs specifically
   async searchFAQs(query: string, limit: number = 10, scoreThreshold: number = 0.3) {
     try {
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await QdrantService.getEmbeddingCached(query);
       
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
@@ -645,7 +737,7 @@ export class QdrantService {
   // CR-CS30: Search in cs30 collection for additional context
   async searchCs30(query: string, limit: number = 3, scoreThreshold: number = 0.80): Promise<any[]> {
     try {
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await QdrantService.getEmbeddingCached(query);
       const results = await this.client.search(CS30_COLLECTION_NAME, {
         vector: queryVector,
         limit,
@@ -686,7 +778,7 @@ export class QdrantService {
       console.log(`🔍 Performing hybrid search with alpha=${alpha}`);
       
       // Generate embedding for the query
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await QdrantService.getEmbeddingCached(query);
       
       // Set up search parameters for hybrid search
       const searchParams: any = {
@@ -768,7 +860,7 @@ export class QdrantService {
       console.error('Error in hybrid search:', error);
       // Fall back to regular vector search
       console.log('Falling back to regular vector search');
-      const queryVector = await providerEmbedding(query);
+  const queryVector = await QdrantService.getEmbeddingCached(query);
       const fallbackResults = await this.client.search(QDRANT_COLLECTION_NAME, {
         vector: queryVector,
         limit,

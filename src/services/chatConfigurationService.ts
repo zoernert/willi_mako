@@ -7,6 +7,96 @@ import m2cRoleService from './m2cRoleService';
 const ENV_VECTOR_LIMIT = parseInt(process.env.CHAT_VECTOR_LIMIT || '', 10);
 const ENV_SCORE_THRESHOLD = parseFloat(process.env.CHAT_VECTOR_SCORE_THRESHOLD || '');
 
+// --- Kardinalitäts-Frage (Segment/Element) Erkennung & Query-Strategien ---
+interface CardinalityIntent {
+  isCardinality: boolean;
+  processes: string[];            // z.B. 31002, 31003
+  segment?: string;               // z.B. PRI+CAL
+  segmentQualifier?: string;      // z.B. 00043
+  dataElements: string[];         // z.B. 6411
+  versionHints: string[];         // z.B. 2.5d
+  docHints: string[];             // z.B. INVOIC, REMADV, AHB
+}
+
+function detectCardinalityIntent(text: string): CardinalityIntent {
+  const processes = Array.from(new Set((text.match(/\b31\d{3}\b/g) || [])));
+  const segmentMatch = text.match(/\bPRI\s*\+\s*CAL\b/i); // fokus hier speziell
+  const segmentQualifier = (text.match(/PRI\+CAL[^0-9]*(\d{5})/) || [])[1];
+  const dataElements = Array.from(new Set((text.match(/\b(\d{4})\b/g) || []).filter(d => /^6\d{3}$/.test(d))));
+  const versionHints = Array.from(new Set((text.match(/\b2\.5d\b|\b2\.5[a-z]\b/gi) || [])));
+  const docHints = Array.from(new Set((text.match(/INVOIC|REMADV|AHB|EDIFACT/gi) || [])));
+  const hasCardMarkers = /(\bM\[\d+\]|\bX\[\d+\])/.test(text);
+  const isCardinality = hasCardMarkers && !!(segmentMatch || dataElements.length) && processes.length > 0;
+  return { isCardinality, processes, segment: segmentMatch?.[0], segmentQualifier, dataElements, versionHints, docHints };
+}
+
+function buildCardinalityQueries(intent: CardinalityIntent): string[] {
+  if (!intent.isCardinality) return [];
+  const baseSeg = intent.segment ? intent.segment.replace(/\s+/g,'') : '';
+  const processes = intent.processes.join(' ');
+  const elements = intent.dataElements.join(' ');
+  const version = intent.versionHints[0] || '2.5d';
+  const docs = intent.docHints.length ? intent.docHints.join(' ') : 'INVOIC REMADV AHB';
+  const qualifier = intent.segmentQualifier || '';
+  const core = `${docs} ${version} Segment ${baseSeg} ${qualifier} Elemente ${elements} Prozesse ${processes}`.trim();
+  const q: string[] = [];
+  q.push(`${core} Kardinalität Pflicht oder bedingt M oder X`);
+  q.push(`${docs} ${version} ${baseSeg} ${qualifier} DE ${elements} Prozesse ${processes} Mandatory vs Conditional`);
+  q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} ${processes} M X Definition`);
+  q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} Prozesse ${processes} Gültigkeitsregeln`);
+  q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} Nutzungsvoraussetzungen`);
+  return q;
+}
+
+function ensureCoverage(results: any[], intent: CardinalityIntent): boolean {
+  if (!intent.isCardinality) return true;
+  const seg = intent.segment?.toUpperCase();
+  const has = results.some(r => {
+    const payload = r.payload || {};
+    const text = (payload.contextual_content || payload.text || payload.content || '').toUpperCase();
+    const segOk = seg ? text.includes(seg) : true;
+    const elemOk = intent.dataElements.length ? intent.dataElements.some(d => text.includes(d)) : true;
+    return segOk && elemOk;
+  });
+  return has;
+}
+
+// Simple token overlap for MMR style diversity
+function tokenOverlap(a: string, b: string): number {
+  const ta = new Set(a.split(/\W+/).filter(x=>x.length>2).map(x=>x.toLowerCase()));
+  const tb = new Set(b.split(/\W+/).filter(x=>x.length>2).map(x=>x.toLowerCase()));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0; ta.forEach(t=>{ if (tb.has(t)) inter++; });
+  return inter / Math.min(ta.size, tb.size);
+}
+
+function reRankDiverse(results: any[], limit: number, lambda: number = 0.75): any[] {
+  if (results.length <= limit) return results;
+  const scored = results.map(r => ({ r, s: (r.merged_score ?? r.score ?? 0) }));
+  scored.sort((a,b)=> b.s - a.s);
+  const chosen: any[] = [];
+  const chosenTexts: string[] = [];
+  while (scored.length && chosen.length < limit) {
+    let bestIdx = 0; let bestScore = -Infinity;
+    for (let i=0;i<scored.length;i++) {
+      const candText = (scored[i].r.payload?.contextual_content || scored[i].r.payload?.text || scored[i].r.payload?.content || '').slice(0,1200);
+      let maxSim = 0;
+      for (const ct of chosenTexts) {
+        const sim = tokenOverlap(candText, ct);
+        if (sim > maxSim) maxSim = sim;
+        if (maxSim > 0.95) break; // early break
+      }
+      const mmr = lambda * scored[i].s - (1-lambda) * maxSim;
+      if (mmr > bestScore) { bestScore = mmr; bestIdx = i; }
+    }
+    const picked = scored.splice(bestIdx,1)[0];
+    chosen.push(picked.r);
+    const text = (picked.r.payload?.contextual_content || picked.r.payload?.text || picked.r.payload?.content || '').slice(0,1200);
+    chosenTexts.push(text);
+  }
+  return chosen;
+}
+
 export enum SearchType {
   SEMANTIC = 'semantic',
   HYBRID = 'hybrid',
@@ -143,25 +233,36 @@ export class ChatConfigurationService {
         let allResults: any[] = [];
         let searchDetails: any[] = [];
 
+        // 2.1 Intent Detection (Cardinality)
+        const cardinalityIntent = detectCardinalityIntent(query);
+        if (cardinalityIntent.isCardinality) {
+          processingSteps[processingSteps.length - 1].intent = {
+            type: 'cardinality',
+            processes: cardinalityIntent.processes,
+            segment: cardinalityIntent.segment,
+            segmentQualifier: cardinalityIntent.segmentQualifier,
+            dataElements: cardinalityIntent.dataElements,
+            versionHints: cardinalityIntent.versionHints,
+            docHints: cardinalityIntent.docHints
+          };
+        }
+
         // Always use optimized guided retrieval
         try {
-          const guidedResults = await QdrantService.semanticSearchGuided(
+          const baseGuided = await QdrantService.semanticSearchGuided(
             query,
             {
-              // Use configured limit (already potentially overridden by env below), no artificial *2
-              limit: config.config.vectorSearch.limit,
+              limit: Math.max(config.config.vectorSearch.limit, 20),
               outlineScoping: true,
               excludeVisual: true
             }
           );
-
-          allResults = guidedResults;
-
+          allResults = baseGuided;
           searchDetails.push({
             query: query,
-            searchType: 'guided',
-            resultsCount: guidedResults.length,
-            results: guidedResults.slice(0, 5).map((r: any) => ({
+            searchType: 'guided_base',
+            resultsCount: baseGuided.length,
+            results: baseGuided.slice(0, 5).map((r: any) => ({
               id: r.id,
               score: r.score ?? r.merged_score,
               title: r.payload?.title || r.payload?.source_document || 'Unknown',
@@ -171,6 +272,35 @@ export class ChatConfigurationService {
               content: (r.payload?.text || r.payload?.content || '').substring(0, 300)
             }))
           });
+
+          // 2.2 Strukturierte Zusatzqueries bei Kardinalitäts-Intent
+          if (cardinalityIntent.isCardinality) {
+            const cardQueries = buildCardinalityQueries(cardinalityIntent);
+            const secondaryResults: any[] = [];
+            for (const cq of cardQueries.slice(0, 5)) { // begrenzen
+              const r = await QdrantService.semanticSearchGuided(cq, {
+                limit: Math.max(15, Math.floor(config.config.vectorSearch.limit * 0.75)),
+                outlineScoping: true,
+                excludeVisual: true
+              });
+              secondaryResults.push(...r);
+              searchDetails.push({
+                query: cq,
+                searchType: 'guided_structured',
+                resultsCount: r.length,
+                results: r.slice(0, 3).map((x: any) => ({
+                  id: x.id,
+                  score: x.score ?? x.merged_score,
+                  title: x.payload?.title || x.payload?.source_document || 'Unknown',
+                  source: x.payload?.document_metadata?.document_base_name || 'Unknown',
+                  chunk_type: x.payload?.chunk_type || 'paragraph',
+                  chunk_index: x.payload?.chunk_index || 0,
+                  content: (x.payload?.text || x.payload?.content || '').substring(0, 200)
+                }))
+              });
+            }
+            allResults.push(...secondaryResults);
+          }
         } catch (error) {
           console.error('Guided search failed, falling back to standard search:', error);
           // Fallback zur Standard-Suche
@@ -200,7 +330,45 @@ export class ChatConfigurationService {
         }
 
         // Remove duplicates
-        const uniqueResults = this.removeDuplicates(allResults);
+        let uniqueResults = this.removeDuplicates(allResults);
+
+        // 2.3 Coverage Check & Fallback (gezielte Plain Vector Suchen, falls Segment/Element fehlen)
+        if (!ensureCoverage(uniqueResults, cardinalityIntent) && cardinalityIntent.isCardinality) {
+          const coverageQueries: string[] = [];
+            if (cardinalityIntent.segment && cardinalityIntent.dataElements.length) {
+              for (const de of cardinalityIntent.dataElements) {
+                coverageQueries.push(`${cardinalityIntent.segment} ${de} Kardinalität`);
+                coverageQueries.push(`${cardinalityIntent.segment} ${cardinalityIntent.segmentQualifier || ''} DE ${de}`.trim());
+              }
+            }
+            for (const cq of coverageQueries.slice(0,4)) {
+              try {
+                const r = await this.qdrantService.searchByText(cq, Math.max(12, config.config.vectorSearch.limit/2), Math.min(0.25, config.config.vectorSearch.scoreThreshold));
+                uniqueResults.push(...r);
+                searchDetails.push({
+                  query: cq,
+                  searchType: 'coverage_vector',
+                  resultsCount: r.length,
+                  results: r.slice(0,2).map((x: any) => ({ id: x.id, score: x.score, chunk_type: x.payload?.chunk_type || 'paragraph' }))
+                });
+              } catch(e) {
+                console.warn('Coverage vector search failed:', e);
+              }
+            }
+            uniqueResults = this.removeDuplicates(uniqueResults);
+        }
+
+        // 2.4 Diversitäts-ReRanking (MMR style) – nur wenn viele Treffer
+        if (uniqueResults.length > config.config.vectorSearch.limit) {
+          const before = uniqueResults.length;
+          uniqueResults = reRankDiverse(uniqueResults, config.config.vectorSearch.limit, 0.8);
+          searchDetails.push({
+            query: '[RE-RANK]',
+            searchType: 'mmr_diversity',
+            resultsCount: uniqueResults.length,
+            note: `Reduced from ${before} to ${uniqueResults.length}`
+          });
+        }
 
         // Berechne erweiterte Metriken
         const scores = uniqueResults.map((r: any) => (r.score ?? r.merged_score)).filter((s: any) => s !== undefined);
@@ -213,7 +381,12 @@ export class ChatConfigurationService {
           uniqueResultsUsed: uniqueResults.length,
           scoreThreshold: config.config.vectorSearch.scoreThreshold,
           avgScore: avgScore,
-          searchType: 'guided'
+          searchType: 'guided+enhanced',
+          cardinalityIntent: cardinalityIntent.isCardinality,
+          coverageSatisfied: ensureCoverage(uniqueResults, cardinalityIntent),
+          processesDetected: cardinalityIntent.processes,
+          segmentDetected: cardinalityIntent.segment,
+          elementsDetected: cardinalityIntent.dataElements
         };
 
         // Step 3: Context Optimization (if enabled)

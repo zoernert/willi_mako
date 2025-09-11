@@ -838,7 +838,10 @@ router.post('/semantic-search', asyncHandler(async (req: AuthenticatedRequest, r
     } else if (m === 'hybrid') {
       result = await svc.searchWithHybrid(query, lim, thr, a, userId, teamId);
     } else if (m === 'optimized') {
-      result = await svc.searchWithOptimizations(query, lim, thr, true);
+  // Respect DISABLE_HYDE env flag while allowing explicit override via query param in future
+  const disableHydeEnv = (process.env.DISABLE_HYDE || '').toLowerCase();
+  const hydeGloballyDisabled = disableHydeEnv === '1' || disableHydeEnv === 'true' || disableHydeEnv === 'yes';
+  result = await svc.searchWithOptimizations(query, lim, thr, !hydeGloballyDisabled);
     } else if (m === 'faqs') {
       result = await svc.searchFAQs(query, lim, thr);
     } else if (m === 'cs30') {
