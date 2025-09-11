@@ -29,6 +29,13 @@ GENERATE_SOURCEMAP=false
 LEGACYENVEOF
 npm run build && cd ..
 
+# Validierung: Enthält der Legacy Build das neue 'Semantic Search Lab' Feature?
+if grep -R "Semantic Search Lab" app-legacy/build/static/js >/dev/null 2>&1; then
+    echo "✅ Legacy Build enthält 'Semantic Search Lab'"
+else
+    echo "❌ 'Semantic Search Lab' String nicht im Legacy Build gefunden (möglicher Cache oder Build Problem)"
+fi
+
 # Füge Plausible Analytics Tracking Code zur Legacy App hinzu
 echo "📊 Füge Plausible Analytics Tracking Code zur Legacy App hinzu..."
 if [ -f "app-legacy/build/index.html" ]; then
@@ -471,6 +478,9 @@ transfer_files() {
     echo "🔍 Validiere dist Verzeichnis auf Produktivserver..."
     ssh $PROD_SERVER "ls -la $DEPLOY_DIR/dist/ && echo '✅ dist Verzeichnis gefunden' || echo '❌ dist Verzeichnis fehlt'"
     ssh $PROD_SERVER "ls -la $DEPLOY_DIR/dist/lib/ && echo '✅ dist/lib Verzeichnis gefunden' || echo '❌ dist/lib Verzeichnis fehlt'"
+
+    # Remote Validierung: Enthält übertragener Legacy Build das Search Lab Feature?
+    ssh $PROD_SERVER "grep -R 'Semantic Search Lab' $DEPLOY_DIR/public/app/static/js 2>/dev/null >/dev/null && echo '✅ Remote Legacy Build enthält Semantic Search Lab' || echo '❌ Remote Legacy Build enthält Semantic Search Lab NICHT'"
     
     # Prüfe VERSION & Marker
     ssh $PROD_SERVER "echo 'Root-Inhalt nach rsync:'; ls -1 $DEPLOY_DIR | head; [ -f $DEPLOY_DIR/VERSION ] && echo '✅ VERSION vorhanden' || echo '❌ VERSION fehlt'; [ -f $DEPLOY_DIR/dist/BUILD_INFO.json ] && echo '✅ BUILD_INFO.json vorhanden' || echo '❌ BUILD_INFO.json fehlt'"
@@ -685,6 +695,26 @@ curl -s "http://localhost:$FRONTEND_PORT/api/codes-new?query=test&_ts=\$(date +%
 echo "Prüfe ob Antwort Felder bdewCodes oder contacts enthält:"
 curl -s "http://localhost:$FRONTEND_PORT/api/codes?query=test" | grep -q 'bdewCodes' && echo '✅ bdewCodes in /api/codes' || echo '❌ bdewCodes fehlen in /api/codes'
 curl -s "http://localhost:$FRONTEND_PORT/api/codes-new?query=test" | grep -q 'bdewCodes' && echo '✅ bdewCodes in /api/codes-new' || echo '❌ bdewCodes fehlen in /api/codes-new'
+
+echo ""
+echo "Legacy Admin Endpoint Kompatibilitätstest (/admin vs /api/admin):"
+ADMIN_STATUS_API=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$FRONTEND_PORT/admin/api-keys/usage)
+if [ "$ADMIN_STATUS_API" = "401" ] || [ "$ADMIN_STATUS_API" = "403" ]; then
+    echo "✅ /admin/api-keys/usage erreichbar (erwarteter geschützter Status $ADMIN_STATUS_API)"
+elif [ "$ADMIN_STATUS_API" = "404" ]; then
+    echo "❌ /admin/api-keys/usage nicht gefunden (Legacy Admin Alias fehlt)"
+else
+    echo "⚠️ /admin/api-keys/usage Status: $ADMIN_STATUS_API (unerwartet)"
+fi
+
+ADMIN_STATUS_API_V2=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$FRONTEND_PORT/api/admin/api-keys/usage)
+if [ "$ADMIN_STATUS_API_V2" = "401" ] || [ "$ADMIN_STATUS_API_V2" = "403" ]; then
+    echo "✅ /api/admin/api-keys/usage erreichbar (erwarteter geschützter Status $ADMIN_STATUS_API_V2)"
+elif [ "$ADMIN_STATUS_API_V2" = "404" ]; then
+    echo "❌ /api/admin/api-keys/usage nicht gefunden"
+else
+    echo "⚠️ /api/admin/api-keys/usage Status: $ADMIN_STATUS_API_V2 (unerwartet)"
+fi
 
 echo ""
 echo "FAQ API Test:"

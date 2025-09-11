@@ -153,7 +153,11 @@ app.use('/api/v2/quiz', quizRoutesV2);
 app.use('/api/admin/quizzes', adminQuizRoutes);
 
 // Admin routes
+// Admin routes (primary path)
 app.use('/api/admin', adminRoutes);
+// Legacy compatibility: some legacy React admin components still call /admin/* without /api prefix
+// Provide alias so older deployed frontend bundles keep working after backend refactors.
+app.use('/admin', adminRoutes);
 
 // Team routes  
 app.use('/api/teams', teamRoutes);
@@ -164,6 +168,8 @@ app.use('/api/processes', processRoutes);
 // Community routes (with feature flag protection)
 app.use('/api/community', initializeCommunityRoutes(db));
 app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
+// Legacy compatibility alias for community admin endpoints
+app.use('/admin/community', initializeCommunityAdminRoutes(db));
 
 // Legacy routes (still active)
 app.use('/api/chat', authenticateToken, chatRoutes);
