@@ -44,15 +44,16 @@ if (!dev) {
       index: ['index.html'],
       maxAge: '30d',
       fallthrough: true,
+      redirect: false, // do not auto-redirect /app -> /app/
     })
   );
 
   // Redirect entry to login (as requested) and canonicalize trailing slash
-  expressApp.get('/app', (req, res) => {
+  expressApp.all('/app', (req, res) => {
     // Temporary redirect to allow flexibility
     res.redirect(302, '/app/login');
   });
-  expressApp.get('/app/', (req, res) => {
+  expressApp.all('/app/', (req, res) => {
     res.redirect(302, '/app/login');
   });
   expressApp.get('/app/index.html', (req, res) => {
@@ -61,7 +62,8 @@ if (!dev) {
   });
 
   // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
-  expressApp.get(/^\/app(?!\/static\/).+/, (req, res) => {
+  // Support GET and HEAD by responding with index.html; for HEAD we just send headers
+  expressApp.all(/^\/app(?!\/static\/).+/, (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(legacyDir, 'index.html'));
   });
