@@ -740,7 +740,10 @@ router.post('/semantic-search', (0, errorHandler_1.asyncHandler)(async (req, res
             result = await svc.searchWithHybrid(query, lim, thr, a, userId, teamId);
         }
         else if (m === 'optimized') {
-            result = await svc.searchWithOptimizations(query, lim, thr, true);
+            // Respect DISABLE_HYDE env flag while allowing explicit override via query param in future
+            const disableHydeEnv = (process.env.DISABLE_HYDE || '').toLowerCase();
+            const hydeGloballyDisabled = disableHydeEnv === '1' || disableHydeEnv === 'true' || disableHydeEnv === 'yes';
+            result = await svc.searchWithOptimizations(query, lim, thr, !hydeGloballyDisabled);
         }
         else if (m === 'faqs') {
             result = await svc.searchFAQs(query, lim, thr);

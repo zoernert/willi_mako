@@ -17,6 +17,9 @@ const nextConfig = {
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
+  // Legacy app SPA fallback: serve index.html for client routes under /app (except static assets)
+  { source: '/app/login', destination: '/app/index.html' },
+  { source: '/app/:path((?!static/).*)', destination: '/app/index.html' },
   // Keep root files as-is; legacy app assets are served by Express
       ],
       // Rewrites applied after checking filesystem and pages
@@ -40,6 +43,12 @@ const nextConfig = {
         source: '/client/:path*',
         destination: '/app/:path*',
         permanent: true,
+      },
+      // Ensure /app lands on the login route (URL stays /app/login; content served via rewrite)
+      {
+        source: '/app',
+        destination: '/app/login',
+        permanent: false,
       },
       // Normalize legacy topic URLs that contain spaces or special chars
       // e.g., /wissen/thema/Fehlercode%20Z20 -> /wissen/thema/fehlercode-z20

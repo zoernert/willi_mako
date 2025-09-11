@@ -11,6 +11,94 @@ const m2cRoleService_1 = __importDefault(require("./m2cRoleService"));
 // Environment overrides for vector retrieval tuning
 const ENV_VECTOR_LIMIT = parseInt(process.env.CHAT_VECTOR_LIMIT || '', 10);
 const ENV_SCORE_THRESHOLD = parseFloat(process.env.CHAT_VECTOR_SCORE_THRESHOLD || '');
+function detectCardinalityIntent(text) {
+    const processes = Array.from(new Set((text.match(/\b31\d{3}\b/g) || [])));
+    const segmentMatch = text.match(/\bPRI\s*\+\s*CAL\b/i); // fokus hier speziell
+    const segmentQualifier = (text.match(/PRI\+CAL[^0-9]*(\d{5})/) || [])[1];
+    const dataElements = Array.from(new Set((text.match(/\b(\d{4})\b/g) || []).filter(d => /^6\d{3}$/.test(d))));
+    const versionHints = Array.from(new Set((text.match(/\b2\.5d\b|\b2\.5[a-z]\b/gi) || [])));
+    const docHints = Array.from(new Set((text.match(/INVOIC|REMADV|AHB|EDIFACT/gi) || [])));
+    const hasCardMarkers = /(\bM\[\d+\]|\bX\[\d+\])/.test(text);
+    const isCardinality = hasCardMarkers && !!(segmentMatch || dataElements.length) && processes.length > 0;
+    return { isCardinality, processes, segment: segmentMatch === null || segmentMatch === void 0 ? void 0 : segmentMatch[0], segmentQualifier, dataElements, versionHints, docHints };
+}
+function buildCardinalityQueries(intent) {
+    if (!intent.isCardinality)
+        return [];
+    const baseSeg = intent.segment ? intent.segment.replace(/\s+/g, '') : '';
+    const processes = intent.processes.join(' ');
+    const elements = intent.dataElements.join(' ');
+    const version = intent.versionHints[0] || '2.5d';
+    const docs = intent.docHints.length ? intent.docHints.join(' ') : 'INVOIC REMADV AHB';
+    const qualifier = intent.segmentQualifier || '';
+    const core = `${docs} ${version} Segment ${baseSeg} ${qualifier} Elemente ${elements} Prozesse ${processes}`.trim();
+    const q = [];
+    q.push(`${core} Kardinalität Pflicht oder bedingt M oder X`);
+    q.push(`${docs} ${version} ${baseSeg} ${qualifier} DE ${elements} Prozesse ${processes} Mandatory vs Conditional`);
+    q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} ${processes} M X Definition`);
+    q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} Prozesse ${processes} Gültigkeitsregeln`);
+    q.push(`${docs} ${version} ${baseSeg} ${qualifier} ${elements} Nutzungsvoraussetzungen`);
+    return q;
+}
+function ensureCoverage(results, intent) {
+    var _a;
+    if (!intent.isCardinality)
+        return true;
+    const seg = (_a = intent.segment) === null || _a === void 0 ? void 0 : _a.toUpperCase();
+    const has = results.some(r => {
+        const payload = r.payload || {};
+        const text = (payload.contextual_content || payload.text || payload.content || '').toUpperCase();
+        const segOk = seg ? text.includes(seg) : true;
+        const elemOk = intent.dataElements.length ? intent.dataElements.some(d => text.includes(d)) : true;
+        return segOk && elemOk;
+    });
+    return has;
+}
+// Simple token overlap for MMR style diversity
+function tokenOverlap(a, b) {
+    const ta = new Set(a.split(/\W+/).filter(x => x.length > 2).map(x => x.toLowerCase()));
+    const tb = new Set(b.split(/\W+/).filter(x => x.length > 2).map(x => x.toLowerCase()));
+    if (!ta.size || !tb.size)
+        return 0;
+    let inter = 0;
+    ta.forEach(t => { if (tb.has(t))
+        inter++; });
+    return inter / Math.min(ta.size, tb.size);
+}
+function reRankDiverse(results, limit, lambda = 0.75) {
+    var _a, _b, _c, _d, _e, _f;
+    if (results.length <= limit)
+        return results;
+    const scored = results.map(r => { var _a, _b; return ({ r, s: ((_b = (_a = r.merged_score) !== null && _a !== void 0 ? _a : r.score) !== null && _b !== void 0 ? _b : 0) }); });
+    scored.sort((a, b) => b.s - a.s);
+    const chosen = [];
+    const chosenTexts = [];
+    while (scored.length && chosen.length < limit) {
+        let bestIdx = 0;
+        let bestScore = -Infinity;
+        for (let i = 0; i < scored.length; i++) {
+            const candText = (((_a = scored[i].r.payload) === null || _a === void 0 ? void 0 : _a.contextual_content) || ((_b = scored[i].r.payload) === null || _b === void 0 ? void 0 : _b.text) || ((_c = scored[i].r.payload) === null || _c === void 0 ? void 0 : _c.content) || '').slice(0, 1200);
+            let maxSim = 0;
+            for (const ct of chosenTexts) {
+                const sim = tokenOverlap(candText, ct);
+                if (sim > maxSim)
+                    maxSim = sim;
+                if (maxSim > 0.95)
+                    break; // early break
+            }
+            const mmr = lambda * scored[i].s - (1 - lambda) * maxSim;
+            if (mmr > bestScore) {
+                bestScore = mmr;
+                bestIdx = i;
+            }
+        }
+        const picked = scored.splice(bestIdx, 1)[0];
+        chosen.push(picked.r);
+        const text = (((_d = picked.r.payload) === null || _d === void 0 ? void 0 : _d.contextual_content) || ((_e = picked.r.payload) === null || _e === void 0 ? void 0 : _e.text) || ((_f = picked.r.payload) === null || _f === void 0 ? void 0 : _f.content) || '').slice(0, 1200);
+        chosenTexts.push(text);
+    }
+    return chosen;
+}
 var SearchType;
 (function (SearchType) {
     SearchType["SEMANTIC"] = "semantic";
@@ -88,20 +176,32 @@ class ChatConfigurationService {
                 });
                 let allResults = [];
                 let searchDetails = [];
+                // 2.1 Intent Detection (Cardinality)
+                const cardinalityIntent = detectCardinalityIntent(query);
+                if (cardinalityIntent.isCardinality) {
+                    processingSteps[processingSteps.length - 1].intent = {
+                        type: 'cardinality',
+                        processes: cardinalityIntent.processes,
+                        segment: cardinalityIntent.segment,
+                        segmentQualifier: cardinalityIntent.segmentQualifier,
+                        dataElements: cardinalityIntent.dataElements,
+                        versionHints: cardinalityIntent.versionHints,
+                        docHints: cardinalityIntent.docHints
+                    };
+                }
                 // Always use optimized guided retrieval
                 try {
-                    const guidedResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
-                        // Use configured limit (already potentially overridden by env below), no artificial *2
-                        limit: config.config.vectorSearch.limit,
+                    const baseGuided = await qdrant_1.QdrantService.semanticSearchGuided(query, {
+                        limit: Math.max(config.config.vectorSearch.limit, 20),
                         outlineScoping: true,
                         excludeVisual: true
                     });
-                    allResults = guidedResults;
+                    allResults = baseGuided;
                     searchDetails.push({
                         query: query,
-                        searchType: 'guided',
-                        resultsCount: guidedResults.length,
-                        results: guidedResults.slice(0, 5).map((r) => {
+                        searchType: 'guided_base',
+                        resultsCount: baseGuided.length,
+                        results: baseGuided.slice(0, 5).map((r) => {
                             var _a, _b, _c, _d, _e, _f, _g, _h, _j;
                             return ({
                                 id: r.id,
@@ -114,6 +214,37 @@ class ChatConfigurationService {
                             });
                         })
                     });
+                    // 2.2 Strukturierte Zusatzqueries bei Kardinalitäts-Intent
+                    if (cardinalityIntent.isCardinality) {
+                        const cardQueries = buildCardinalityQueries(cardinalityIntent);
+                        const secondaryResults = [];
+                        for (const cq of cardQueries.slice(0, 5)) { // begrenzen
+                            const r = await qdrant_1.QdrantService.semanticSearchGuided(cq, {
+                                limit: Math.max(15, Math.floor(config.config.vectorSearch.limit * 0.75)),
+                                outlineScoping: true,
+                                excludeVisual: true
+                            });
+                            secondaryResults.push(...r);
+                            searchDetails.push({
+                                query: cq,
+                                searchType: 'guided_structured',
+                                resultsCount: r.length,
+                                results: r.slice(0, 3).map((x) => {
+                                    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+                                    return ({
+                                        id: x.id,
+                                        score: (_a = x.score) !== null && _a !== void 0 ? _a : x.merged_score,
+                                        title: ((_b = x.payload) === null || _b === void 0 ? void 0 : _b.title) || ((_c = x.payload) === null || _c === void 0 ? void 0 : _c.source_document) || 'Unknown',
+                                        source: ((_e = (_d = x.payload) === null || _d === void 0 ? void 0 : _d.document_metadata) === null || _e === void 0 ? void 0 : _e.document_base_name) || 'Unknown',
+                                        chunk_type: ((_f = x.payload) === null || _f === void 0 ? void 0 : _f.chunk_type) || 'paragraph',
+                                        chunk_index: ((_g = x.payload) === null || _g === void 0 ? void 0 : _g.chunk_index) || 0,
+                                        content: (((_h = x.payload) === null || _h === void 0 ? void 0 : _h.text) || ((_j = x.payload) === null || _j === void 0 ? void 0 : _j.content) || '').substring(0, 200)
+                                    });
+                                })
+                            });
+                        }
+                        allResults.push(...secondaryResults);
+                    }
                 }
                 catch (error) {
                     console.error('Guided search failed, falling back to standard search:', error);
@@ -141,7 +272,44 @@ class ChatConfigurationService {
                     }
                 }
                 // Remove duplicates
-                const uniqueResults = this.removeDuplicates(allResults);
+                let uniqueResults = this.removeDuplicates(allResults);
+                // 2.3 Coverage Check & Fallback (gezielte Plain Vector Suchen, falls Segment/Element fehlen)
+                if (!ensureCoverage(uniqueResults, cardinalityIntent) && cardinalityIntent.isCardinality) {
+                    const coverageQueries = [];
+                    if (cardinalityIntent.segment && cardinalityIntent.dataElements.length) {
+                        for (const de of cardinalityIntent.dataElements) {
+                            coverageQueries.push(`${cardinalityIntent.segment} ${de} Kardinalität`);
+                            coverageQueries.push(`${cardinalityIntent.segment} ${cardinalityIntent.segmentQualifier || ''} DE ${de}`.trim());
+                        }
+                    }
+                    for (const cq of coverageQueries.slice(0, 4)) {
+                        try {
+                            const r = await this.qdrantService.searchByText(cq, Math.max(12, config.config.vectorSearch.limit / 2), Math.min(0.25, config.config.vectorSearch.scoreThreshold));
+                            uniqueResults.push(...r);
+                            searchDetails.push({
+                                query: cq,
+                                searchType: 'coverage_vector',
+                                resultsCount: r.length,
+                                results: r.slice(0, 2).map((x) => { var _a; return ({ id: x.id, score: x.score, chunk_type: ((_a = x.payload) === null || _a === void 0 ? void 0 : _a.chunk_type) || 'paragraph' }); })
+                            });
+                        }
+                        catch (e) {
+                            console.warn('Coverage vector search failed:', e);
+                        }
+                    }
+                    uniqueResults = this.removeDuplicates(uniqueResults);
+                }
+                // 2.4 Diversitäts-ReRanking (MMR style) – nur wenn viele Treffer
+                if (uniqueResults.length > config.config.vectorSearch.limit) {
+                    const before = uniqueResults.length;
+                    uniqueResults = reRankDiverse(uniqueResults, config.config.vectorSearch.limit, 0.8);
+                    searchDetails.push({
+                        query: '[RE-RANK]',
+                        searchType: 'mmr_diversity',
+                        resultsCount: uniqueResults.length,
+                        note: `Reduced from ${before} to ${uniqueResults.length}`
+                    });
+                }
                 // Berechne erweiterte Metriken
                 const scores = uniqueResults.map((r) => { var _a; return ((_a = r.score) !== null && _a !== void 0 ? _a : r.merged_score); }).filter((s) => s !== undefined);
                 const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -152,7 +320,12 @@ class ChatConfigurationService {
                     uniqueResultsUsed: uniqueResults.length,
                     scoreThreshold: config.config.vectorSearch.scoreThreshold,
                     avgScore: avgScore,
-                    searchType: 'guided'
+                    searchType: 'guided+enhanced',
+                    cardinalityIntent: cardinalityIntent.isCardinality,
+                    coverageSatisfied: ensureCoverage(uniqueResults, cardinalityIntent),
+                    processesDetected: cardinalityIntent.processes,
+                    segmentDetected: cardinalityIntent.segment,
+                    elementsDetected: cardinalityIntent.dataElements
                 };
                 // Step 3: Context Optimization (if enabled)
                 if (this.isStepEnabled(config, 'context_optimization')) {

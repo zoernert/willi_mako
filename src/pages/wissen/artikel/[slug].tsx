@@ -12,7 +12,7 @@ import Layout from '../../../components/Layout';
 
 interface ArticleDetailProps {
 	article: Article;
-	whitepaperTitle?: string;
+	whitepaperTitle?: string | null;
 }
 
 const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTitle }) => {
@@ -94,13 +94,13 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 	if (!article) {
 		return { notFound: true };
 	}
-	let whitepaperTitle: string | undefined;
+	const props: { article: Article; whitepaperTitle?: string | null } = { article };
 	if (article.whitepaperSlug) {
 		const wp = getWhitepaperBySlug(article.whitepaperSlug);
-		whitepaperTitle = wp?.title;
+		props.whitepaperTitle = wp?.title || null;
 	}
 	return {
-		props: { article, whitepaperTitle },
+		props,
 		revalidate: 60,
 	};
 };

@@ -4,6 +4,9 @@ export declare class QdrantService {
     private abbreviationIndex;
     private hybridSearchSupported;
     constructor();
+    private static embeddingCache;
+    private static maxCacheEntries;
+    private static getEmbeddingCached;
     static createCollection(): Promise<void>;
     static searchByText(query: string, limit?: number, scoreThreshold?: number): Promise<{
         id: string | number;
