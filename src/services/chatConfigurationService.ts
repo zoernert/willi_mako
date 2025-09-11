@@ -3,6 +3,10 @@ import llm from './llmProvider';
 import { QdrantService } from './qdrant';
 import m2cRoleService from './m2cRoleService';
 
+// Environment overrides for vector retrieval tuning
+const ENV_VECTOR_LIMIT = parseInt(process.env.CHAT_VECTOR_LIMIT || '', 10);
+const ENV_SCORE_THRESHOLD = parseFloat(process.env.CHAT_VECTOR_SCORE_THRESHOLD || '');
+
 export enum SearchType {
   SEMANTIC = 'semantic',
   HYBRID = 'hybrid',
@@ -144,7 +148,8 @@ export class ChatConfigurationService {
           const guidedResults = await QdrantService.semanticSearchGuided(
             query,
             {
-              limit: config.config.vectorSearch.limit * 2,
+              // Use configured limit (already potentially overridden by env below), no artificial *2
+              limit: config.config.vectorSearch.limit,
               outlineScoping: true,
               excludeVisual: true
             }
@@ -533,8 +538,10 @@ export class ChatConfigurationService {
         systemPrompt: 'Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du hilfst bei technischen Fragen zu APERAK, UTILMD, MSCONS und anderen EDI-Nachrichten. Erkläre komplexe Sachverhalte verständlich und gehe auf spezifische Fehlercodes und deren Ursachen ein. Nutze die bereitgestellten Dokumenteninformationen, um präzise und praxisnahe Antworten zu geben.',
         vectorSearch: {
           maxQueries: 3,
-          limit: 10,
-          scoreThreshold: 0.5,
+          // Increased default limit for richer context (user observation: low scores, need broader recall)
+          limit: (!isNaN(ENV_VECTOR_LIMIT) && ENV_VECTOR_LIMIT > 0 ? ENV_VECTOR_LIMIT : 20),
+          // Lowered default threshold to retain useful but lower-scoring matches
+          scoreThreshold: (!isNaN(ENV_SCORE_THRESHOLD) && ENV_SCORE_THRESHOLD >= 0 ? ENV_SCORE_THRESHOLD : 0.3),
           useQueryExpansion: true,
           searchType: SearchType.HYBRID,
           hybridAlpha: 0.3,

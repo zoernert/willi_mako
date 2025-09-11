@@ -56,7 +56,7 @@ class QdrantService {
         }
     }
     // Static method for searching by text (used in faq.ts)
-    static async searchByText(query, limit = 10, scoreThreshold = 0.5) {
+    static async searchByText(query, limit = 10, scoreThreshold = 0.3) {
         const client = new js_client_rest_1.QdrantClient({
             url: QDRANT_URL,
             apiKey: QDRANT_API_KEY,
@@ -301,7 +301,7 @@ class QdrantService {
         return results;
     }
     // Instance method for searching by text (used in message-analyzer and quiz services)
-    async searchByText(query, limit = 10, scoreThreshold = 0.5) {
+    async searchByText(query, limit = 10, scoreThreshold = 0.3) {
         try {
             const queryVector = await (0, embeddingProvider_1.generateEmbedding)(query);
             const results = await this.client.search(QDRANT_COLLECTION_NAME, {
@@ -442,7 +442,7 @@ class QdrantService {
     /**
      * Optimierte Suchfunktion mit Pre-Filtering und Query-Transformation
      */
-    async searchWithOptimizations(query, limit = 10, scoreThreshold = 0.5, useHyDE = true) {
+    async searchWithOptimizations(query, limit = 10, scoreThreshold = 0.3, useHyDE = true) {
         try {
             // 1. Verwende QueryAnalysisService für intelligente Analyse
             const analysisResult = queryAnalysisService_1.QueryAnalysisService.analyzeQuery(query, this.abbreviationIndex);
@@ -561,7 +561,7 @@ class QdrantService {
         }
     }
     // Method for searching FAQs specifically
-    async searchFAQs(query, limit = 10, scoreThreshold = 0.5) {
+    async searchFAQs(query, limit = 10, scoreThreshold = 0.3) {
         try {
             const queryVector = await (0, embeddingProvider_1.generateEmbedding)(query);
             const results = await this.client.search(QDRANT_COLLECTION_NAME, {

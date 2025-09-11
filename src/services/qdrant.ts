@@ -64,7 +64,7 @@ export class QdrantService {
   }
 
   // Static method for searching by text (used in faq.ts)
-  static async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+  static async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.3) {
     const client = new QdrantClient({ 
       url: QDRANT_URL,
       apiKey: QDRANT_API_KEY,
@@ -308,7 +308,7 @@ export class QdrantService {
   }
 
   // Instance method for searching by text (used in message-analyzer and quiz services)
-  async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+  async searchByText(query: string, limit: number = 10, scoreThreshold: number = 0.3) {
     try {
       const queryVector = await providerEmbedding(query);
       const results = await this.client.search(QDRANT_COLLECTION_NAME, {
@@ -467,7 +467,7 @@ export class QdrantService {
   async searchWithOptimizations(
     query: string, 
     limit: number = 10, 
-    scoreThreshold: number = 0.5,
+  scoreThreshold: number = 0.3,
     useHyDE: boolean = true
   ) {
     try {
@@ -615,7 +615,7 @@ export class QdrantService {
   }
 
   // Method for searching FAQs specifically
-  async searchFAQs(query: string, limit: number = 10, scoreThreshold: number = 0.5) {
+  async searchFAQs(query: string, limit: number = 10, scoreThreshold: number = 0.3) {
     try {
       const queryVector = await providerEmbedding(query);
       

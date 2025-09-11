@@ -137,7 +137,11 @@ app.use('/api/v2/user', user_routes_1.default); // v2 user endpoints
 app.use('/api/v2/quiz', quiz_routes_1.default);
 app.use('/api/admin/quizzes', quiz_routes_2.default);
 // Admin routes
+// Admin routes (primary path)
 app.use('/api/admin', admin_1.default);
+// Legacy compatibility: some legacy React admin components still call /admin/* without /api prefix
+// Provide alias so older deployed frontend bundles keep working after backend refactors.
+app.use('/admin', admin_1.default);
 // Team routes  
 app.use('/api/teams', teams_1.teamRoutes);
 // Process routes
@@ -145,6 +149,8 @@ app.use('/api/processes', processes_1.default);
 // Community routes (with feature flag protection)
 app.use('/api/community', (0, community_1.initializeCommunityRoutes)(database_1.default));
 app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
+// Legacy compatibility alias for community admin endpoints
+app.use('/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 // Legacy routes (still active)
 app.use('/api/chat', auth_2.authenticateToken, chat_1.default);
 app.use('/api', faq_1.default); // Some FAQ routes are public
