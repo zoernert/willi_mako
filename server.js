@@ -47,14 +47,17 @@ if (!dev) {
     })
   );
 
-  // Serve index.html with no-cache to avoid stale hashed asset references
+  // Redirect entry to login (as requested) and canonicalize trailing slash
   expressApp.get('/app', (req, res) => {
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(legacyDir, 'index.html'));
+    // Temporary redirect to allow flexibility
+    res.redirect(302, '/app/login');
+  });
+  expressApp.get('/app/', (req, res) => {
+    res.redirect(302, '/app/login');
   });
   expressApp.get('/app/index.html', (req, res) => {
     // Canonicalize to /app/ so the SPA routing doesn't treat /index.html as an unknown route
-    res.redirect(301, '/app/');
+    res.redirect(301, '/app/login');
   });
 
   // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
