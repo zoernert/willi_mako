@@ -111,7 +111,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
             variant="outlined"
             size="large"
             component={Link}
-            href="/app"
+            href="/app/login"
             startIcon={<EnergyIcon />}
             sx={{ px: 4 }}
           >
@@ -242,7 +242,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
           variant="contained"
           size="large"
           component={Link}
-          href="/app"
+          href="/app/login"
           sx={{ 
             mt: 2,
             bgcolor: 'white', 
