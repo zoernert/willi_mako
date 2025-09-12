@@ -46,9 +46,9 @@ app.prepare().then(() => {
     express.static(legacyDir, {
       index: ['index.html'],
       maxAge: dev ? 0 : '30d',
-      // Important: do NOT fall through on missing static files, otherwise Next.js
-      // may serve /app/index.html for /app/static/*.css and trigger MIME errors
-      fallthrough: false,
+  // Allow fallthrough so our SPA fallback can serve index.html for client routes like /app/login
+  // We still protect /app/static with an explicit 404 handler below
+  fallthrough: true,
       redirect: false,
     })
   );
@@ -64,8 +64,9 @@ app.prepare().then(() => {
   );
 
   // Serve index.html as SPA fallback for client-side routes (login page will mount there)
-  // Exclude static assets to prevent HTML being returned for CSS/JS
-  expressApp.all(/^\/app(?!\/static\/).+/, (req, res) => {
+  // Only trigger when previous static middleware didn't answer (fallthrough)
+  expressApp.use('/app', (req, res, next) => {
+    if (req.path.startsWith('/static/')) return next();
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(legacyDir, 'index.html'));
   });

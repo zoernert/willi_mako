@@ -17,8 +17,6 @@ const nextConfig = {
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
-  // Legacy app SPA fallback: serve index.html for client routes under /app (except static assets)
-  { source: '/app/:path((?!static/).*)', destination: '/app/index.html' },
   // Keep root files as-is; legacy app assets are served by Express
       ],
       // Rewrites applied after checking filesystem and pages
