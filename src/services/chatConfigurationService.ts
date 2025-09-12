@@ -97,6 +97,54 @@ function reRankDiverse(results: any[], limit: number, lambda: number = 0.75): an
   return chosen;
 }
 
+// --- Tiny Cardinality Answer Validator ---
+interface CardinalityValidationItem {
+  process: string;
+  found: boolean;
+  marker?: string; // e.g., M[12] or X[12]
+}
+
+interface CardinalityValidationResult {
+  ok: boolean;
+  items: CardinalityValidationItem[];
+  disclaimerDetected: boolean;
+  issues: string[];
+}
+
+function validateCardinalityAnswerText(text: string, intent: CardinalityIntent): CardinalityValidationResult {
+  const items: CardinalityValidationItem[] = [];
+  const lower = text.toLowerCase();
+  const disclaimerDetected = /(kein(en)?\s+zugriff|kann.*nicht\s+(be)?antworten|nicht\s+zugänglich|nicht\s+verfügbar)/.test(lower);
+  const markerRegex = /(M|X)\s*\[\s*(\d+)\s*\]/i;
+
+  for (const p of intent.processes || []) {
+    const idx = text.indexOf(p);
+    if (idx === -1) {
+      items.push({ process: p, found: false });
+      continue;
+    }
+    // Look for marker within +/- 120 chars window around process mention
+    const start = Math.max(0, idx - 120);
+    const end = Math.min(text.length, idx + 120);
+    const window = text.slice(start, end);
+    const m = window.match(markerRegex);
+    if (m) {
+      items.push({ process: p, found: true, marker: m[0] });
+    } else {
+      // If not in window, as a fallback check anywhere
+      const mm = text.match(markerRegex);
+      items.push({ process: p, found: !!mm, marker: mm?.[0] });
+    }
+  }
+
+  const missing = items.filter(i => !i.found).map(i => i.process);
+  const issues: string[] = [];
+  if (missing.length) issues.push(`Missing per-process marker for: ${missing.join(', ')}`);
+  if (disclaimerDetected) issues.push('Contains disclaimer about missing access');
+
+  return { ok: issues.length === 0, items, disclaimerDetected, issues };
+}
+
 export enum SearchType {
   SEMANTIC = 'semantic',
   HYBRID = 'hybrid',
@@ -201,6 +249,8 @@ export class ChatConfigurationService {
     const processingSteps: any[] = [];
     let searchQueries: string[] = [query];
     let contextUsed = '';
+  // Persist intent across steps
+  let detectedCardinality: CardinalityIntent | null = null;
 
     try {
       // Step 1: Query Understanding (if enabled)
@@ -234,8 +284,9 @@ export class ChatConfigurationService {
         let searchDetails: any[] = [];
 
         // 2.1 Intent Detection (Cardinality)
-        const cardinalityIntent = detectCardinalityIntent(query);
-        if (cardinalityIntent.isCardinality) {
+  const cardinalityIntent = detectCardinalityIntent(query);
+  detectedCardinality = cardinalityIntent;
+  if (cardinalityIntent.isCardinality) {
           processingSteps[processingSteps.length - 1].intent = {
             type: 'cardinality',
             processes: cardinalityIntent.processes,
@@ -249,12 +300,13 @@ export class ChatConfigurationService {
 
         // Always use optimized guided retrieval
         try {
+      const isCard = detectedCardinality?.isCardinality;
           const baseGuided = await QdrantService.semanticSearchGuided(
             query,
             {
-              limit: Math.max(config.config.vectorSearch.limit, 20),
+              limit: Math.max(config.config.vectorSearch.limit, isCard ? 40 : 20),
               outlineScoping: true,
-              excludeVisual: true
+        excludeVisual: true
             }
           );
           allResults = baseGuided;
@@ -279,7 +331,7 @@ export class ChatConfigurationService {
             const secondaryResults: any[] = [];
             for (const cq of cardQueries.slice(0, 5)) { // begrenzen
               const r = await QdrantService.semanticSearchGuided(cq, {
-                limit: Math.max(15, Math.floor(config.config.vectorSearch.limit * 0.75)),
+                limit: Math.max(20, Math.floor(config.config.vectorSearch.limit * 0.9)),
                 outlineScoping: true,
                 excludeVisual: true
               });
@@ -389,7 +441,7 @@ export class ChatConfigurationService {
           elementsDetected: cardinalityIntent.dataElements
         };
 
-        // Step 3: Context Optimization (if enabled)
+  // Step 3: Context Optimization (if enabled)
         if (this.isStepEnabled(config, 'context_optimization')) {
           processingSteps.push({
             name: 'Context Optimization',
@@ -469,6 +521,17 @@ export class ChatConfigurationService {
                 : rawContext;
             }
 
+            // If this is a cardinality question, prepend a short primer so the LLM reliably interprets M[n]/X[n]
+            if (detectedCardinality?.isCardinality) {
+              const primer = [
+                '[Kardinalitäts-Glossar]',
+                'M[n] = Mandatory (Pflicht) mit maximaler Wiederholung n.',
+                'C[n]/X[n] = Conditional/Bedingt (optional bzw. abhängig von Bedingungen) mit maximaler Wiederholung n.',
+                'Die konkrete Pflicht/Bedingung ergibt sich aus AHB/Prozess-Varianten. Nutze ausschließlich den untenstehenden Kontextausschnitt als Quelle.',
+              ].join('\n');
+              contextUsed = primer + '\n\n' + contextUsed;
+            }
+
             // Truncate if necessary
             if (contextUsed.length > config.config.contextSynthesis.maxLength) {
               contextUsed = contextUsed.substring(0, config.config.contextSynthesis.maxLength) + '...';
@@ -499,7 +562,7 @@ export class ChatConfigurationService {
       // Step 3.5: M2C Role Context (if enabled)
       let roleContext = '';
       let roleDetails: any = null;
-      if (this.isStepEnabled(config, 'response_generation')) {
+  if (this.isStepEnabled(config, 'response_generation')) {
         processingSteps.push({
           name: 'M2C Role Context',
           startTime: Date.now(),
@@ -563,15 +626,15 @@ export class ChatConfigurationService {
 
       // Step 4: Response Generation (if enabled)
       let response = '';
-      if (this.isStepEnabled(config, 'response_generation')) {
+  if (this.isStepEnabled(config, 'response_generation')) {
         processingSteps.push({
           name: 'Response Generation',
           startTime: Date.now(),
           enabled: true
         });
 
-        // Prepare messages with custom system prompt
-        const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
+  // Prepare messages with custom system prompt – inject concrete instructions as first assistant message
+  const messages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
         messages.push({ role: 'user', content: query });
 
         // Use the configured system prompt and context mode
@@ -584,12 +647,36 @@ export class ChatConfigurationService {
           contextMode = 'system-only';
         }
 
-        // Enhanced system prompt with role context
+        // Enhanced system prompt with role context and domain-specific directives
         let enhancedSystemPrompt = config.config.systemPrompt;
         let roleContextAppliedToPrompt = false;
         if (roleContext) {
           enhancedSystemPrompt += '\n\n[Benutzer-Rollenkontext]\n' + roleContext;
           roleContextAppliedToPrompt = true;
+        }
+
+        // Cardinality-aware answering directives
+        const cardinalityDirectives = detectedCardinality?.isCardinality ? (
+          [
+            '[Antwort-Richtlinie – Kardinalität]',
+            'Aufgabe: Beantworte die Frage direkt und präzise anhand des bereitgestellten Kontexts.',
+            'Wenn für die Vorgänge unterschiedliche Regeln gelten, liste pro Vorgang (z. B. 31002, 31003, 31009) die Markierung für DE 6411 im Segment PRI+CAL 00043 (z. B. M[12] oder X[12]) samt relevanter Bedingungen auf.',
+            'Erkläre kurz die Bedeutung der Markierungen (M/X) nur falls nötig.',
+            'Sage niemals, dass du keinen Zugriff auf das Dokument hast – der relevante Auszug liegt im Kontext vor.',
+            'Wenn der Kontext keine eindeutige Aussage zulässt, gib die wahrscheinlichste Interpretation mit kurzer Begründung aus dem Kontext an und markiere die Unsicherheit explizit.',
+            'Am Ende: gib eine knappe Belegliste (Quelle: Dokumentname/Chunk) aus dem Kontext an.'
+          ].join('\n')
+        ) : '';
+
+        const systemDirectives = [
+          '[Systemhinweis]',
+          enhancedSystemPrompt,
+          cardinalityDirectives
+        ].filter(Boolean).join('\n\n');
+
+        // Prepend as an assisting instruction message
+        if (systemDirectives.trim().length > 0) {
+          messages.unshift({ role: 'assistant', content: systemDirectives });
         }
 
         // Create enhanced context with role information
@@ -607,6 +694,41 @@ export class ChatConfigurationService {
           false,
           contextMode
         );
+
+        // Simple retry logic for cardinality intent: avoid "kein Zugriff" and too-generic answers
+        const needsRetry = (() => {
+          if (!detectedCardinality?.isCardinality) return false;
+          const text = (response || '').toLowerCase();
+          const hasDisclaimers = /kein(en)?\s+zugriff|kann.*nicht\s+(be)?antworten|nicht\s+zugänglich|nicht\s+verfügbar/.test(text);
+          const tooShort = response.trim().length < 120;
+          const missingMarkers = !/(m\s*\[\d+\]|x\s*\[\d+\])/i.test(response);
+          return hasDisclaimers || (tooShort && missingMarkers);
+        })();
+
+        if (needsRetry) {
+          const retryDirectives = [
+            '[Korrektur – Antworte präzise aus dem Kontext]',
+            'Formatiere die Antwort als kurze Liste je Vorgang (31002, 31003, 31009):',
+            '- Vorgang XXXX: DE 6411 im Segment PRI+CAL 00043 = M[12] | X[12] (kurze Begründung aus Kontext)',
+            'Vermeide jegliche Hinweise auf fehlenden Zugriff; nutze den bereitgestellten Kontext. Wenn uneindeutig, gib die wahrscheinlichste Zuordnung mit Begründung an.'
+          ].join('\n');
+
+          const retryMessages = previousMessages.map(msg => ({ role: msg.role, content: msg.content }));
+          retryMessages.unshift({ role: 'assistant', content: retryDirectives });
+          retryMessages.push({ role: 'user', content: query });
+
+          const retried = await llm.generateResponse(
+            retryMessages,
+            enhancedContext,
+            userPreferences,
+            true, // enhanced
+            contextMode
+          );
+
+          if (retried && retried.trim().length > response.trim().length * 0.8) {
+            response = retried;
+          }
+        }
 
         processingSteps[processingSteps.length - 1].endTime = Date.now();
         processingSteps[processingSteps.length - 1].output = { 
@@ -654,6 +776,15 @@ export class ChatConfigurationService {
               validationIssues.push('Potential uncertainty detected');
             }
           }
+          // Cardinality validator: ensure per-process coverage and presence of M/X markers
+          if (detectedCardinality?.isCardinality) {
+            const cardEval = validateCardinalityAnswerText(response, detectedCardinality);
+            if (!cardEval.ok) {
+              validationIssues.push(...cardEval.issues);
+            }
+            // Attach details to step output later
+            (processingSteps[processingSteps.length - 1] as any).cardinality = cardEval;
+          }
         }
 
         processingSteps[processingSteps.length - 1].endTime = Date.now();
@@ -666,6 +797,83 @@ export class ChatConfigurationService {
         // For now, we just log the issues
         if (validationIssues.length > 0) {
           console.warn('Response validation issues:', validationIssues);
+        }
+
+        // Auto-correct loop for cardinality: reformat into strict per-process answer if validator failed
+        if (detectedCardinality?.isCardinality) {
+          const cardMeta: any = (processingSteps[processingSteps.length - 1] as any).cardinality;
+          if (cardMeta && cardMeta.ok === false) {
+            const beforeIssues = Array.isArray(validationIssues) ? [...validationIssues] : [];
+            const processesList = detectedCardinality.processes.join(', ');
+            const seg = detectedCardinality.segment || 'PRI+CAL';
+            const qual = detectedCardinality.segmentQualifier ? ` ${detectedCardinality.segmentQualifier}` : '';
+            const elements = detectedCardinality.dataElements.length ? detectedCardinality.dataElements.join(', ') : '6411';
+
+            const correctionDirectives = [
+              '[Auto-Korrektur – Kardinalität]',
+              'Erzeuge eine knappe, faktenbasierte Antwort AUSSCHLIESSLICH aus dem bereitgestellten Kontext.',
+              `Pro Vorgang (${processesList}) ausgeben: DE ${elements} in Segment ${seg}${qual} = M[12] oder X[12] (1 Satz Begründung aus Kontext).`,
+              'Formatiere als Liste, eine Zeile je Vorgang. Keine allgemeinen Erläuterungen voranstellen.',
+              'Keine Hinweise auf fehlenden Zugriff; nutze den Kontext unten. Wenn uneindeutig, wahrscheinlichste Zuordnung inkl. kurzer Begründung markieren.',
+              'Am Ende: Belege: maximal 2 knappe Quellhinweise aus dem Kontext (Kapitel/Abschnitt/Quelle), falls erkennbar.'
+            ].join('\n');
+
+            // Recompute context mode similar to response_generation block
+            let contextMode2: 'workspace-only' | 'standard' | 'system-only' = 'standard';
+            if (contextSettings?.useWorkspaceOnly) {
+              contextMode2 = 'workspace-only';
+            } else if (contextSettings && !contextSettings.includeSystemKnowledge) {
+              contextMode2 = 'workspace-only';
+            } else if (contextSettings && !contextSettings.includeUserDocuments && !contextSettings.includeUserNotes) {
+              contextMode2 = 'system-only';
+            }
+
+            const correctionMessages = [
+              { role: 'assistant' as const, content: correctionDirectives },
+              { role: 'user' as const, content: query }
+            ];
+
+            try {
+              const corrected = await llm.generateResponse(
+                correctionMessages,
+                contextUsed,
+                userPreferences,
+                true,
+                contextMode2
+              );
+
+              const afterEval = validateCardinalityAnswerText(corrected, detectedCardinality);
+              const improved = afterEval.ok || (Array.isArray(afterEval.issues) && afterEval.issues.length < beforeIssues.length);
+
+              processingSteps.push({
+                name: 'Auto-correct (Cardinality)',
+                startTime: Date.now(),
+                enabled: true,
+                endTime: Date.now(),
+                output: {
+                  applied: true,
+                  improved,
+                  beforeIssues,
+                  afterIssues: afterEval.issues,
+                  disclaimerRemoved: !!cardMeta.disclaimerDetected && !afterEval.disclaimerDetected,
+                  preview: corrected.substring(0, 300)
+                }
+              });
+
+              if (improved && corrected.trim().length >= Math.min(120, response.trim().length)) {
+                response = corrected;
+              }
+            } catch (e) {
+              console.warn('Auto-correct (Cardinality) failed:', e);
+              processingSteps.push({
+                name: 'Auto-correct (Cardinality)',
+                startTime: Date.now(),
+                enabled: true,
+                endTime: Date.now(),
+                output: { applied: false, error: e instanceof Error ? e.message : String(e) }
+              });
+            }
+          }
         }
       }
 
@@ -711,10 +919,10 @@ export class ChatConfigurationService {
         systemPrompt: 'Du bist Mako Willi, ein AI-Coach für die Energiewirtschaft und Marktkommunikation von Stromhaltig. Du hilfst bei technischen Fragen zu APERAK, UTILMD, MSCONS und anderen EDI-Nachrichten. Erkläre komplexe Sachverhalte verständlich und gehe auf spezifische Fehlercodes und deren Ursachen ein. Nutze die bereitgestellten Dokumenteninformationen, um präzise und praxisnahe Antworten zu geben.',
         vectorSearch: {
           maxQueries: 3,
-          // Increased default limit for richer context (user observation: low scores, need broader recall)
+          // Increased default limit for richer context (keep at least 20)
           limit: (!isNaN(ENV_VECTOR_LIMIT) && ENV_VECTOR_LIMIT > 0 ? ENV_VECTOR_LIMIT : 20),
-          // Lowered default threshold to retain useful but lower-scoring matches
-          scoreThreshold: (!isNaN(ENV_SCORE_THRESHOLD) && ENV_SCORE_THRESHOLD >= 0 ? ENV_SCORE_THRESHOLD : 0.3),
+          // Lowered default threshold (retain more candidates for synthesis)
+          scoreThreshold: (!isNaN(ENV_SCORE_THRESHOLD) && ENV_SCORE_THRESHOLD >= 0 ? ENV_SCORE_THRESHOLD : 0.25),
           useQueryExpansion: true,
           searchType: SearchType.HYBRID,
           hybridAlpha: 0.3,

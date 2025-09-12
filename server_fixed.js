@@ -3,6 +3,7 @@ const { parse } = require('url');
 const next = require('next');
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
@@ -16,8 +17,12 @@ app.prepare().then(() => {
   // Use an Express app to serve Next static assets explicitly
   const expressApp = express();
 
+  // Resolve base directory depending on runtime (project root vs dist)
+  const baseDir = fs.existsSync(path.join(__dirname, '.next'))
+    ? __dirname
+    : path.join(__dirname, '..');
   // Serve Legacy CRA app (public/app) with correct content types
-  const legacyDir = path.join(__dirname, 'public', 'app');
+  const legacyDir = path.join(baseDir, 'public', 'app');
   // Mark responses to help diagnose proxy path
   expressApp.use('/app', (req, res, next) => {
     res.set('X-App-Origin', 'node-4100');
@@ -56,7 +61,7 @@ app.prepare().then(() => {
   // Serve Next build assets with proper cache headers
   expressApp.use(
     '/_next/static',
-    express.static(path.join(__dirname, '.next', 'static'), {
+    express.static(path.join(baseDir, '.next', 'static'), {
       immutable: true,
       maxAge: dev ? 0 : '1y',
       fallthrough: true,
