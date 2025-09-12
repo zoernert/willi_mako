@@ -32,6 +32,9 @@ app.prepare().then(() => {
   expressApp.all('/app/', (req, res) => {
     res.redirect(302, '/app/login');
   });
+  expressApp.all('/app/index', (req, res) => {
+    res.redirect(301, '/app/login');
+  });
   expressApp.all('/app/index.html', (req, res) => {
     // Canonicalize deep links to index.html
     res.redirect(301, '/app/login');

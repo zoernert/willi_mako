@@ -151,7 +151,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
               variant="contained"
               size="large"
               component={Link}
-              href="/app"
+              href="/app/login"
               sx={{ 
                 px: 6,
                 py: 2,
@@ -411,7 +411,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
               variant="contained"
               size="large"
               component={Link}
-              href="/app"
+              href="/app/login"
               sx={{ 
                 px: 6,
                 py: 2,

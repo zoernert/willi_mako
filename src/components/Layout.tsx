@@ -135,7 +135,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
       <Box sx={{ p: 2 }}>
         <ListItemButton
           component={Link}
-          href="/app"
+          href="/app/login"
           sx={{ 
             borderRadius: 2, 
             bgcolor: '#ee7f4b',
@@ -286,7 +286,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
                     Nutzungsbedingungen
                   </Typography>
                 </Link>
-                <Link href="/app" style={{ textDecoration: 'none' }}>
+                <Link href="/app/login" style={{ textDecoration: 'none' }}>
                   <Typography variant="body2" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
                     Zur Anwendung
                   </Typography>

@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 export default function AppLegacyRedirect() {
   useEffect(() => {
     // Use replace to avoid keeping the intermediate Next page in history
-    window.location.replace('/app/index.html');
+  window.location.replace('/app/login');
   }, []);
 
   // Minimal fallback content for a split-second before redirect
@@ -21,7 +21,7 @@ export default function AppLegacyRedirect() {
       <noscript>
         JavaScript ist deaktiviert. Bitte öffnen Sie
         {' '}
-        <a href="/app/index.html">/app/index.html</a>
+  <a href="/app/login">/app/login</a>
         {' '}manuell.
       </noscript>
     </div>
