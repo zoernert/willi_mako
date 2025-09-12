@@ -38,6 +38,11 @@ if (!dev) {
 
   // Legacy CRA build served from public/app with correct content types
   const legacyDir = path.join(__dirname, 'public', 'app');
+  // Diagnostic header to confirm responses originate from Node server
+  expressApp.use('/app', (req, res, next) => {
+    res.set('X-App-Origin', 'node-4100');
+    next();
+  });
   expressApp.use(
     '/app',
     express.static(legacyDir, {
