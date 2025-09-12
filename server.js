@@ -43,6 +43,20 @@ if (!dev) {
     res.set('X-App-Origin', 'node-4100');
     next();
   });
+
+  // Redirect entry to login (as requested) and canonicalize trailing slash
+  // Place BEFORE static middleware so file matches like /app/index.html don't bypass the redirect
+  expressApp.all('/app', (req, res) => {
+    // Temporary redirect to allow flexibility
+    res.redirect(302, '/app/login');
+  });
+  expressApp.all('/app/', (req, res) => {
+    res.redirect(302, '/app/login');
+  });
+  expressApp.all('/app/index.html', (req, res) => {
+    // Canonicalize to /app/login so deep-links to index.html are avoided
+    res.redirect(301, '/app/login');
+  });
   expressApp.use(
     '/app',
     express.static(legacyDir, {
@@ -52,19 +66,6 @@ if (!dev) {
       redirect: false, // do not auto-redirect /app -> /app/
     })
   );
-
-  // Redirect entry to login (as requested) and canonicalize trailing slash
-  expressApp.all('/app', (req, res) => {
-    // Temporary redirect to allow flexibility
-    res.redirect(302, '/app/login');
-  });
-  expressApp.all('/app/', (req, res) => {
-    res.redirect(302, '/app/login');
-  });
-  expressApp.get('/app/index.html', (req, res) => {
-    // Canonicalize to /app/ so the SPA routing doesn't treat /index.html as an unknown route
-    res.redirect(301, '/app/login');
-  });
 
   // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
   // Support GET and HEAD by responding with index.html; for HEAD we just send headers
