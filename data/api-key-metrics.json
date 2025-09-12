@@ -1,17 +1,19 @@
 {
   "free": {
     "dailyUsage": {
-      "2025-8-11": 230
+      "2025-8-11": 230,
+      "2025-8-12": 26
     },
-    "totalUsage": 230,
+    "totalUsage": 256,
     "lastReset": null,
     "currentDayUsage": 0
   },
   "paid": {
     "dailyUsage": {
-      "2025-8-11": 3221
+      "2025-8-11": 3221,
+      "2025-8-12": 59
     },
-    "totalUsage": 3221,
+    "totalUsage": 3280,
     "lastReset": null,
     "currentDayUsage": 0
   },

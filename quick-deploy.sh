@@ -742,6 +742,126 @@ fi
 EOF
 }
 
+# Diagnose: Prüfe Proxy-Layer Unterschiede (Node:4100 vs. öffentliches Domain-Frontend)
+diagnose_proxy_layer() {
+        echo "\n🔎 Diagnostiziere Proxy-Layer und Routing für /app..."
+        ssh $PROD_SERVER << 'EOF'
+set -e
+FRONTEND_PORT=${FRONTEND_PORT:-4100}
+DOMAIN="stromhaltig.de"
+
+echo "\nLokale Node-Instanz (direkt):"
+curl -s -I http://127.0.0.1:$FRONTEND_PORT/app/ | sed -n '1p;/X-App-Origin/p;/Location/p'
+
+echo "\nLokale Node-Instanz (Login-Redirect):"
+curl -s -I http://127.0.0.1:$FRONTEND_PORT/app | sed -n '1p;/X-App-Origin/p;/Location/p'
+
+echo "\nÖffentliches Domain (über Nginx/Proxy):"
+curl -s -I https://$DOMAIN/app/ | sed -n '1p;/X-App-Origin/p;/Location/p'
+curl -s -I https://$DOMAIN/app | sed -n '1p;/X-App-Origin/p;/Location/p'
+
+echo "\nÖffentliches Admin (sollte aktuellen Build haben):"
+ADMIN_HEAD=$(curl -s https://$DOMAIN/app/admin | head -c 400)
+if echo "$ADMIN_HEAD" | grep -q "Semantic Search Lab"; then
+    echo "✅ 'Semantic Search Lab' Marker im öffentlichen /app/admin gefunden"
+else
+    echo "❌ 'Semantic Search Lab' Marker fehlt auf öffentlichem /app/admin (vermutlich alter Build oder falsche Root)"
+fi
+
+echo "\nSitemap/Feed Vergleich (lokal vs. öffentlich):"
+echo "— Lokal sitemap.xml (Header):"
+curl -s -I http://127.0.0.1:$FRONTEND_PORT/sitemap.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+echo "— Öffentlich sitemap.xml (Header):"
+curl -s -I https://$DOMAIN/sitemap.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+echo "— Lokal feed.xml (Header):"
+curl -s -I http://127.0.0.1:$FRONTEND_PORT/feed.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+echo "— Öffentlich feed.xml (Header):"
+curl -s -I https://$DOMAIN/feed.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+echo "— Lokal atom.xml (Header):"
+curl -s -I http://127.0.0.1:$FRONTEND_PORT/atom.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+echo "— Öffentlich atom.xml (Header):"
+curl -s -I https://$DOMAIN/atom.xml | sed -n '1p;/Content-Type/p;/Cache-Control/p;/X-App-Origin/p'
+EOF
+}
+
+# Versuche typische Nginx-Docroots zu erkennen, in denen evtl. alte Legacy-Builds liegen
+find_nginx_static_roots() {
+        echo "\n🔎 Suche nach möglichen Nginx Static-Roots, die /app ausliefern könnten..."
+        ssh $PROD_SERVER << 'EOF'
+set -e
+SEARCH_DIRS=(/usr/share/nginx/html /var/www/html /data /srv/www /opt/nginx /etc/nginx)
+FOUND=0
+for d in "${SEARCH_DIRS[@]}"; do
+    [ -d "$d" ] || continue
+    echo "Durchsuche: $d"
+    # Nur flach bzw. moderat tief suchen, um Laufzeit zu begrenzen
+    sudo find "$d" -maxdepth 4 -type f -name "index.html" 2>/dev/null | while read f; do
+        if grep -q "Semantic Search Lab" "$f" 2>/dev/null; then
+            echo "✅ Neuer Marker gefunden in: $f"
+            FOUND=1
+        else
+            if grep -qi "react" "$f" 2>/dev/null; then
+                echo "⚠️ Mögliche Legacy-Index ohne neuen Marker: $f"
+                FOUND=1
+            fi
+        fi
+    done
+done
+if [ "$FOUND" = "0" ]; then
+    echo "ℹ️  Keine offensichtlichen Nginx-Docroots mit Legacy-Index gefunden. Nginx Proxy Manager nutzt evtl. Container-Volumes."
+    echo "    Bitte prüfen Sie die Nginx Proxy Manager Host-Konfiguration für stromhaltig.de und stellen Sie sicher, dass /app → http://127.0.0.1:$FRONTEND_PORT proxied wird."
+fi
+EOF
+}
+
+# Optional: Synchronisiere Legacy-Build in gefundene Docroots (nur wenn explizit aktiviert)
+sync_legacy_to_nginx_docroot() {
+        if [ "${SYNC_NGINX_DOCROOT}" != "1" ]; then
+                echo "\nℹ️  SYNC_NGINX_DOCROOT!=1 – Überspringe Sync in Nginx Docroot"
+                return 0
+        fi
+                echo "\n📤 Versuche Legacy-Build nach Nginx Docroot zu synchronisieren (Best-Effort)..."
+        ssh $PROD_SERVER << 'EOF'
+set -e
+DEPLOY_DIR="/opt/willi_mako"
+LEGACY_SRC="$DEPLOY_DIR/public/app"
+[ -d "$LEGACY_SRC" ] || { echo "❌ Legacy Source fehlt: $LEGACY_SRC"; exit 0; }
+
+TARGETS=(/usr/share/nginx/html/app /var/www/html/app)
+for t in "${TARGETS[@]}"; do
+    if [ -d "$(dirname "$t")" ]; then
+        echo "→ Sync nach $t"
+        sudo mkdir -p "$t"
+        sudo rsync -a --delete "$LEGACY_SRC/" "$t/"
+        sudo chown -R root:root "$t" 2>/dev/null || true
+    fi
+done
+
+echo "\n📄 Optional: Exportiere dynamische SEO-Dateien als statische Schnappschüsse (falls Proxy statisch ausliefert)..."
+SNAP_DIR="$DEPLOY_DIR/public/_snapshots"
+mkdir -p "$SNAP_DIR"
+curl -s http://127.0.0.1:${FRONTEND_PORT:-4100}/sitemap.xml -o "$SNAP_DIR/sitemap.xml" || true
+curl -s http://127.0.0.1:${FRONTEND_PORT:-4100}/feed.xml -o "$SNAP_DIR/feed.xml" || true
+curl -s http://127.0.0.1:${FRONTEND_PORT:-4100}/atom.xml -o "$SNAP_DIR/atom.xml" || true
+echo "Exportierte Dateien:"; ls -l "$SNAP_DIR" || true
+
+SEO_TARGETS=(/usr/share/nginx/html /var/www/html)
+for s in "${SEO_TARGETS[@]}"; do
+    if [ -d "$s" ]; then
+        echo "→ Sync SEO Snapshots nach $s"
+        sudo rsync -a "$SNAP_DIR/" "$s/"
+    fi
+done
+
+echo "\nNginx Reload (falls direkt installiert, nicht bei Proxy Manager Container):"
+if command -v nginx >/dev/null 2>&1; then
+    sudo nginx -t && sudo systemctl reload nginx || true
+else
+    echo "ℹ️  nginx binary nicht auf Host – wahrscheinlich Nginx Proxy Manager Container. Manuelles Reload/Deploy erforderlich."
+fi
+EOF
+}
+
 # Cleanup
 cleanup() {
     if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
@@ -778,6 +898,9 @@ main() {
     run_database_migrations
     start_application
     check_status
+    diagnose_proxy_layer
+    find_nginx_static_roots
+    sync_legacy_to_nginx_docroot
     
     echo ""
     echo "🎉 Deployment erfolgreich abgeschlossen!"

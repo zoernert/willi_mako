@@ -97,6 +97,10 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
+            key: 'X-App-Origin',
+            value: 'next-4100',
+          },
+          {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
