@@ -18,14 +18,35 @@ app.prepare().then(() => {
 
   // Serve Legacy CRA app (public/app) with correct content types
   const legacyDir = path.join(__dirname, 'public', 'app');
+  // Mark responses to help diagnose proxy path
+  expressApp.use('/app', (req, res, next) => {
+    res.set('X-App-Origin', 'node-4100');
+    next();
+  });
+
+  // Redirect entry points to login BEFORE static file middleware
+  // Catch both GET and HEAD (and others) to ensure consistent behavior
+  expressApp.all('/app', (req, res) => {
+    res.redirect(302, '/app/login');
+  });
+  expressApp.all('/app/', (req, res) => {
+    res.redirect(302, '/app/login');
+  });
+  expressApp.all('/app/index.html', (req, res) => {
+    // Canonicalize deep links to index.html
+    res.redirect(301, '/app/login');
+  });
+
+  // Now serve legacy static assets under /app
   expressApp.use(
     '/app',
     express.static(legacyDir, {
       index: ['index.html'],
       maxAge: dev ? 0 : '30d',
-  // Important: do NOT fall through on missing static files, otherwise Next.js
-  // may serve /app/index.html for /app/static/*.css and trigger MIME errors
-  fallthrough: false,
+      // Important: do NOT fall through on missing static files, otherwise Next.js
+      // may serve /app/index.html for /app/static/*.css and trigger MIME errors
+      fallthrough: false,
+      redirect: false,
     })
   );
 
@@ -39,25 +60,16 @@ app.prepare().then(() => {
     })
   );
 
-  // Serve index.html with no-cache to avoid stale hashed asset references
-  expressApp.get('/app', (req, res) => {
+  // Serve index.html as SPA fallback for client-side routes (login page will mount there)
+  // Exclude static assets to prevent HTML being returned for CSS/JS
+  expressApp.all(/^\/app(?!\/static\/).+/, (req, res) => {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(legacyDir, 'index.html'));
-  });
-  expressApp.get('/app/index.html', (req, res) => {
-    // Canonicalize to /app/ to avoid SPA login redirect from unknown pathname
-    res.redirect(301, '/app/');
   });
 
   // Simple health endpoint for frontend service
   expressApp.get('/api/health', (_req, res) => {
     res.json({ ok: true, service: 'frontend', ts: Date.now() });
-  });
-
-  // SPA fallback for legacy client routes but exclude static assets to prevent HTML for CSS/JS
-  expressApp.get(/^\/app(?!\/static\/).+/, (req, res) => {
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(legacyDir, 'index.html'));
   });
 
   // Explicit 404 for unknown assets under /app/static to avoid serving HTML by mistake
