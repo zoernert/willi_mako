@@ -1,5 +1,7 @@
 // client/src/pages/MessageAnalyzer.tsx
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Container,
   Typography,
@@ -8,25 +10,11 @@ import {
   CircularProgress,
   Paper,
   Box,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-  Tooltip,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { messageAnalyzerApi, AnalysisResult, AIExplanationResult } from '../services/messageAnalyzerApi';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import CreateFromContextButton from '../components/BilateralClarifications/CreateFromContextButton';
-import { MessageAnalyzerContext } from '../types/bilateral';
 
 const MessageAnalyzerPage: React.FC = () => {
   const [message, setMessage] = useState('');
@@ -36,58 +24,33 @@ const MessageAnalyzerPage: React.FC = () => {
   const [aiExplanationLoading, setAiExplanationLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
 
-  const handleAnalyze = async () => {
-    if (!message.trim()) {
-      showSnackbar('Please enter a message to analyze.', 'warning');
-      return;
-    }
-    setLoading(true);
-    setResult(null);
-    setAiExplanation(null);
-    
-    // Show a progress message for long-running analysis
-    const progressTimer = setTimeout(() => {
-      showSnackbar('Analysis in progress... This may take up to 60 seconds for complex messages.', 'info');
-    }, 5000);
-    
-    try {
-      const analysisResult = await messageAnalyzerApi.analyze(message);
-      clearTimeout(progressTimer);
-      console.log('📄 Analysis Result:', analysisResult);
-      setResult(analysisResult);
-      showSnackbar('Analysis completed successfully!', 'success');
-    } catch (error: any) {
-      clearTimeout(progressTimer);
-      const errorMessage = error.response?.data?.error?.message || 
-                          error.message || 
-                          'Failed to analyze message. Please check if the message format is correct.';
-      showSnackbar(errorMessage, 'error');
-      console.error('Analysis error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Hinweis: Die klassische Struktur-Analyse wird nicht mehr separat angeboten.
+  // Es bleibt nur die KI-Analyse (Erklärung) erhalten.
 
   const handleAIExplanation = async () => {
     if (!message.trim()) {
-      showSnackbar('Please enter a message to get AI explanation.', 'warning');
+      showSnackbar('Bitte geben Sie eine Nachricht für die KI-Analyse ein.', 'warning');
       return;
     }
     setAiExplanationLoading(true);
+    setLoading(true);
+    setResult(null);
+    setAiExplanation(null);
     
     try {
       const explanationResult = await messageAnalyzerApi.getAIExplanation(message);
       console.log('🤖 AI Explanation Result:', explanationResult);
       setAiExplanation(explanationResult);
-      showSnackbar('KI-Erklärung erfolgreich generiert!', 'success');
+      showSnackbar('KI-Analyse erfolgreich durchgeführt!', 'success');
     } catch (error: any) {
       const errorMessage = error.response?.data?.error?.message || 
                           error.message || 
-                          'Fehler beim Generieren der KI-Erklärung.';
+                          'Fehler bei der KI-Analyse.';
       showSnackbar(errorMessage, 'error');
       console.error('AI Explanation error:', error);
     } finally {
       setAiExplanationLoading(false);
+      setLoading(false);
     }
   };
 
@@ -101,7 +64,7 @@ const MessageAnalyzerPage: React.FC = () => {
           EDIFACT oder XML Nachricht eingeben
         </Typography>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-          Sie können hier EDIFACT- oder XML-Nachrichten analysieren. Nutzen Sie den "KI-Erklärung" Button für eine verständliche Interpretation der Marktmeldung - genauso wie im Chat mit dem Prompt "Erkläre mir den Inhalt folgender Marktmeldung: ...".
+          Sie können hier EDIFACT- oder XML-Nachrichten analysieren. Nutzen Sie die "KI-Analyse" für eine verständliche Interpretation der Marktmeldung – genauso wie im Chat mit dem Prompt "Erkläre mir den Inhalt folgender Marktmeldung: ...".
         </Typography>
         <TextField
           multiline
@@ -116,20 +79,12 @@ const MessageAnalyzerPage: React.FC = () => {
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
           <Button
             variant="contained"
-            onClick={handleAnalyze}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
-          >
-            {loading ? 'Analysiere... (bis zu 60s)' : 'Nachricht analysieren'}
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
+            color="primary"
             onClick={handleAIExplanation}
             disabled={aiExplanationLoading}
             startIcon={aiExplanationLoading ? <CircularProgress size={20} /> : <SmartToyIcon />}
           >
-            {aiExplanationLoading ? 'KI arbeitet...' : 'KI-Erklärung'}
+            {aiExplanationLoading ? 'KI analysiert...' : 'KI-Analyse'}
           </Button>
           
           {/* Bilaterale Klärung Button */}
@@ -153,8 +108,7 @@ const MessageAnalyzerPage: React.FC = () => {
         </Box>
         {(loading || aiExplanationLoading) && (
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            {loading && 'EDIFACT-Struktur wird analysiert und mit Dokumentation angereichert... Bitte warten.'}
-            {aiExplanationLoading && 'KI generiert eine verständliche Erklärung der Marktmeldung... Bitte warten.'}
+            {aiExplanationLoading && 'KI erstellt eine verständliche Analyse der Marktmeldung... Bitte warten.'}
           </Typography>
         )}
       </Paper>
@@ -164,111 +118,42 @@ const MessageAnalyzerPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <SmartToyIcon color="secondary" />
             <Typography variant="h6" color="secondary">
-              KI-Erklärung der Marktmeldung
+              Ergebnis der KI-Analyse
             </Typography>
           </Box>
-          <Alert severity="info" sx={{ whiteSpace: 'pre-wrap' }}>
-            {aiExplanation.explanation}
-          </Alert>
+          {/* Markdown wird als HTML gerendert */}
+          <Box
+            sx={{
+              "& h1, & h2, & h3": { fontWeight: 600, mt: 2 },
+              "& p": { mb: 1.5 },
+              "& ul, & ol": { pl: 3, mb: 1.5 },
+              "& code": {
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '4px',
+                px: 0.5,
+              },
+              "& pre": {
+                backgroundColor: '#f8f9fa',
+                p: 2,
+                borderRadius: 1,
+                overflowX: 'auto',
+                border: '1px solid',
+                borderColor: 'divider',
+              },
+              "& a": { color: 'primary.main' },
+              m: 0,
+            }}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {aiExplanation.explanation}
+            </ReactMarkdown>
+          </Box>
         </Paper>
       )}
 
-      {result && (
-        <Box>
-          {/* Debug info */}
-          <Paper sx={{ p: 1, mb: 2, bgcolor: '#f5f5f5' }}>
-            <Typography variant="caption">
-              Debug: Result format = {result.format}, Summary length = {result.summary?.length || 0}, 
-              Checks count = {result.plausibilityChecks?.length || 0}, 
-              Segments count = {result.structuredData?.segments?.length || 0}
-            </Typography>
-          </Paper>
-
-          <Accordion defaultExpanded>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">KI-Zusammenfassung & Plausibilität</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Zusammenfassung
-                </Typography>
-                <Alert severity="info" sx={{ mb: 2 }}>{result.summary}</Alert>
-
-                <Typography variant="subtitle1" gutterBottom>
-                  Plausibilitätsprüfungen
-                </Typography>
-                {result.plausibilityChecks.length > 0 ? (
-                  result.plausibilityChecks.map((check, index) => (
-                    <Alert severity="warning" key={index} sx={{ mb: 1 }}>
-                      {check}
-                    </Alert>
-                  ))
-                ) : (
-                  <Alert severity="success">Keine Probleme gefunden.</Alert>
-                )}
-              </Paper>
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">Strukturierte Daten ({result.format})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Segment</TableCell>
-                      <TableCell>Beschreibung</TableCell>
-                      <TableCell>Elemente</TableCell>
-                      <TableCell>Aufgelöste Codes</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {result.structuredData.segments.map((segment, index) => (
-                      <TableRow key={index}>
-                        <TableCell sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{segment.tag}</TableCell>
-                        <TableCell>{segment.description}</TableCell>
-                        <TableCell sx={{ fontFamily: 'monospace' }}>{segment.elements.join(' : ')}</TableCell>
-                        <TableCell>
-                          {segment.resolvedCodes && Object.keys(segment.resolvedCodes).length > 0 ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              {Object.entries(segment.resolvedCodes).map(([code, companyName]) => (
-                                <Tooltip key={code} title={`Code: ${code}`} placement="top">
-                                  <Chip
-                                    label={`${code}: ${companyName}`}
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{ 
-                                      fontSize: '0.75rem',
-                                      maxWidth: '100%',
-                                      '& .MuiChip-label': {
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }
-                                    }}
-                                  />
-                                </Tooltip>
-                              ))}
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                              Keine Codes gefunden
-                            </Typography>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </AccordionDetails>
-          </Accordion>
-        </Box>
-      )}
+      {/* Strukturierte Detail-Ansichten der klassischen Analyse wurden entfernt */}
     </Container>
   );
 };

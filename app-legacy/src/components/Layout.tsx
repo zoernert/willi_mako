@@ -30,11 +30,9 @@ import {
   Menu as MenuIcon,
   ElectricBolt as EnergyIcon,
   QuestionAnswer as FAQIcon,
-  Quiz as QuizIcon,
   Rule as RuleIcon,
   Search as SearchIcon,
   Group as GroupIcon,
-  AccountTree as ProcessIcon,
   Groups as CommunityIcon,
   Work as WorkspaceIcon,
   PhotoCamera as PhotoIcon,
@@ -87,9 +85,7 @@ const Layout: React.FC = () => {
     { text: 'Bilaterale Klärung', icon: <GavelIcon />, path: '/bilateral-clarifications' },
     { text: 'Nachrichten-Analyzer', icon: <AnalyticsIcon />, path: '/message-analyzer' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
-    { text: 'Prozesse und Verfahren', icon: <ProcessIcon />, path: '/processes' },
     { text: 'FAQ', icon: <FAQIcon />, path: '/faq' },
-    { text: 'Wissens-Challenge', icon: <QuizIcon />, path: '/quiz' },
     // { text: 'Dokumente', icon: <DocumentsIcon />, path: '/documents' }, // Ausgeblendet - keine Dokumente im Augenblick
     ...(state.user?.role === 'admin' 
       ? [{ text: 'Admin', icon: <AdminIcon />, path: '/admin' }] 
