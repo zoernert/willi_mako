@@ -39,6 +39,52 @@ const requireAdmin = (req: AuthenticatedRequest, res: any, next: any) => {
 };
 
 router.use(requireAdmin);
+/**
+ * POST /api/admin/community/threads/:id/publish
+ * Publish a read-only snapshot of a thread with a chosen slug
+ */
+router.post('/threads/:id/publish', async (req: AuthenticatedRequest, res) => {
+  try {
+    const adminUserId = req.user!.id;
+    const threadId = req.params.id;
+    const { slug, title, summary } = req.body || {};
+
+    if (!slug || typeof slug !== 'string') {
+      return res.status(400).json({ success: false, message: 'slug is required' });
+    }
+
+    const publication = await communityService.publishThreadSnapshot(threadId, slug.trim(), adminUserId, { title, summary });
+
+    res.status(201).json({ success: true, data: publication });
+  } catch (error: any) {
+    console.error('Error publishing thread snapshot:', error);
+    if (String(error.message || '').includes('Invalid slug')) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    if (String(error.message || '').includes('not found')) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    if (String(error.message || '').includes('duplicate key')) {
+      return res.status(409).json({ success: false, message: 'Slug already in use' });
+    }
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/community/threads/:id/publications
+ * List publications for a thread
+ */
+router.get('/threads/:id/publications', async (req: AuthenticatedRequest, res) => {
+  try {
+    const threadId = req.params.id;
+    const pubs = await communityService.listPublicationsByThread(threadId);
+    res.json({ success: true, data: pubs });
+  } catch (error) {
+    console.error('Error listing publications:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 /**
  * POST /api/admin/community/create-faq-from-thread

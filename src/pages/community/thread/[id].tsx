@@ -4,6 +4,7 @@
 // Datum: 2025-08-09
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
@@ -30,6 +31,7 @@ interface LivingDocument {
 
 interface SolutionProposal {
   id: string;
+  title: string;
   content: string;
   created_by: string;
   created_at: string;
@@ -60,6 +62,7 @@ const ThreadDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [newProposalTitle, setNewProposalTitle] = useState('');
   const [newProposalContent, setNewProposalContent] = useState('');
   const [commentingOn, setCommentingOn] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -145,13 +148,13 @@ const ThreadDetailPage: React.FC = () => {
   };
 
   const addProposal = async () => {
-    if (!thread || !newProposalContent.trim()) return;
+  if (!thread || !newProposalContent.trim() || !newProposalTitle.trim()) return;
 
     try {
       const operations = [{
         op: 'add',
         path: '/solution_proposals/-',
-        value: { content: newProposalContent.trim() }
+  value: { title: newProposalTitle.trim(), content: newProposalContent.trim() }
       }];
 
       const response = await fetch(`/api/community/threads/${id}/document`, {
@@ -172,7 +175,8 @@ const ThreadDetailPage: React.FC = () => {
 
       const data = await response.json();
       setThread(data.data);
-      setNewProposalContent('');
+  setNewProposalTitle('');
+  setNewProposalContent('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Hinzufügen');
     }
@@ -422,7 +426,22 @@ const ThreadDetailPage: React.FC = () => {
                 {thread.document_content.solution_proposals?.map((proposal) => (
                   <div key={proposal.id} className="border-l-4 border-blue-200 pl-4">
                     <div className="bg-blue-50 p-4 rounded-md">
-                      <p className="text-gray-800 whitespace-pre-wrap">{proposal.content}</p>
+                      {proposal.title && (
+                        <h3 className="text-blue-900 font-semibold mb-2">{proposal.title}</h3>
+                      )}
+                      <div className="prose prose-sm max-w-none text-gray-800">
+                        <ReactMarkdown
+                          components={{
+                            a: ({ href, children, ...props }) => (
+                              <a href={href as string} target="_blank" rel="noopener noreferrer" {...props}>
+                                {children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {proposal.content}
+                        </ReactMarkdown>
+                      </div>
                       <div className="mt-2 text-sm text-gray-600">
                         Von: {proposal.created_by} • {new Date(proposal.created_at).toLocaleDateString('de-DE')}
                       </div>
@@ -478,6 +497,12 @@ const ThreadDetailPage: React.FC = () => {
                 {/* Add new proposal */}
                 {thread.status !== 'final' && (
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <input
+                      value={newProposalTitle}
+                      onChange={(e) => setNewProposalTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                      placeholder="Titel des Lösungsvorschlags"
+                    />
                     <textarea
                       value={newProposalContent}
                       onChange={(e) => setNewProposalContent(e.target.value)}
@@ -487,7 +512,7 @@ const ThreadDetailPage: React.FC = () => {
                     />
                     <button
                       onClick={addProposal}
-                      disabled={!newProposalContent.trim()}
+                      disabled={!newProposalTitle.trim() || !newProposalContent.trim()}
                       className="mt-2 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark disabled:opacity-50"
                     >
                       Vorschlag hinzufügen
@@ -608,7 +633,19 @@ const DocumentSection: React.FC<DocumentSectionProps> = ({
       ) : (
         <div>
           {content ? (
-            <p className="text-gray-800 whitespace-pre-wrap">{content}</p>
+            <div className="prose prose-sm max-w-none text-gray-800">
+              <ReactMarkdown
+                components={{
+                  a: ({ href, children, ...props }) => (
+                    <a href={href as string} target="_blank" rel="noopener noreferrer" {...props}>
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
           ) : (
             <p className="text-gray-500 italic">Noch nicht ausgefüllt</p>
           )}

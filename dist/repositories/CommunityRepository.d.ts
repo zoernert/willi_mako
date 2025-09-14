@@ -99,5 +99,13 @@ export declare class CommunityRepository {
      * Map database row to CommunityInitiative
      */
     private mapRowToInitiative;
+    /**
+     * Normalize document content to ensure each proposal has a title.
+     */
+    private normalizeDocumentContent;
+    /**
+     * Derive a short title from proposal content if none provided.
+     */
+    private deriveProposalTitle;
 }
 //# sourceMappingURL=CommunityRepository.d.ts.map

@@ -52,9 +52,10 @@ const ResetPassword: React.FC = () => {
   const validateToken = async () => {
     try {
       setValidating(true);
-      const response = await apiClient.get(`/auth/validate-reset-token/${token}`) as any;
-      setTokenValid(true);
-      setUserInfo(response.data);
+      // apiClient.get unwraps data when API returns {data: ...}
+      const data = await apiClient.get<{ email: string; name: string; valid: boolean }>(`/auth/validate-reset-token/${token}`);
+      setTokenValid(!!data?.valid);
+      setUserInfo({ email: data.email, name: data.name });
     } catch (error: any) {
       console.error('Token validation error:', error);
       setTokenValid(false);

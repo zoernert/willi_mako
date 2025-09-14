@@ -150,11 +150,11 @@ export class CommunityEventManager {
           case 'solution_proposals':
             if (document_content.solution_proposals) {
               for (const proposal of document_content.solution_proposals) {
-                sectionsToUpdate.push({
-                  section_key: 'proposal',
-                  content: proposal.content,
-                  proposal_id: proposal.id
-                });
+                  sectionsToUpdate.push({
+                    section_key: 'proposal',
+                    content: proposal.title ? `${proposal.title}\n\n${proposal.content}` : proposal.content,
+                    proposal_id: proposal.id
+                  });
               }
             }
             break;

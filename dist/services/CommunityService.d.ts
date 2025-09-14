@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { CommunityQdrantService } from './CommunityQdrantService';
 import { CommunityThread, DocumentComment, ThreadSummary, CreateThreadRequest, UpdateDocumentRequest, ThreadStatus, CommunityInitiative, CreateInitiativeRequest, UpdateInitiativeRequest, InitiativeStatus } from '../types/community';
+import { CommunityThreadPublication } from '../repositories/CommunityPublicationRepository';
 export declare class CommunityService {
     private db;
     private repository;
@@ -11,6 +12,15 @@ export declare class CommunityService {
      * Create a new community thread
      */
     createThread(request: CreateThreadRequest, userId: string): Promise<CommunityThread>;
+    /**
+     * Publish a read-only snapshot of a community thread for public display
+     */
+    publishThreadSnapshot(threadId: string, slug: string, publishedByUserId: string, opts?: {
+        title?: string;
+        summary?: string;
+    }): Promise<CommunityThreadPublication>;
+    getPublicationBySlug(slug: string): Promise<CommunityThreadPublication | null>;
+    listPublicationsByThread(threadId: string): Promise<CommunityThreadPublication[]>;
     /**
      * Get thread by ID with access control
      */

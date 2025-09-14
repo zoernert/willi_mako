@@ -59,6 +59,7 @@ interface CommunityThread {
     analysis?: string;
     solution_proposals?: Array<{
       id: string;
+  title?: string;
       content: string;
       created_by: string;
       created_at: string;
@@ -91,6 +92,7 @@ const CommunityThreadDetail: React.FC = () => {
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [sectionContent, setSectionContent] = useState('');
   const [newProposal, setNewProposal] = useState('');
+  const [newProposalTitle, setNewProposalTitle] = useState('');
   const [showProposalDialog, setShowProposalDialog] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [threadInitiative, setThreadInitiative] = useState<CommunityInitiative | null>(null);
@@ -240,6 +242,7 @@ const CommunityThreadDetail: React.FC = () => {
           op: 'add',
           path: '/solution_proposals/-',
           value: {
+            title: newProposalTitle.trim(),
             content: newProposal,
           },
         },
@@ -259,6 +262,7 @@ const CommunityThreadDetail: React.FC = () => {
         const data = await response.json();
         setThread(data.data);
         setNewProposal('');
+  setNewProposalTitle('');
         setShowProposalDialog(false);
         showSnackbar('Lösungsvorschlag hinzugefügt', 'success');
       } else if (response.status === 409) {
@@ -419,6 +423,11 @@ const CommunityThreadDetail: React.FC = () => {
             {value ? (
               <ReactMarkdown
                 components={{
+                  a: ({ href, children, ...props }) => (
+                    <a href={href as string} target="_blank" rel="noopener noreferrer" {...props}>
+                      {children}
+                    </a>
+                  ),
                   p: ({ children }) => (
                     <Typography variant="body1" sx={{ mb: 1 }}>
                       {children}
@@ -522,6 +531,11 @@ const CommunityThreadDetail: React.FC = () => {
     return (
       <ReactMarkdown
         components={{
+          a: ({ href, children, ...props }) => (
+            <a href={href as string} target="_blank" rel="noopener noreferrer" {...props}>
+              {children}
+            </a>
+          ),
           p: ({ children }) => (
             <Typography variant="body1" sx={{ mb: 1 }}>
               {children}
@@ -774,14 +788,14 @@ const CommunityThreadDetail: React.FC = () => {
               
               {thread.document_content?.solution_proposals && thread.document_content.solution_proposals.length > 0 ? (
                 <List>
-                  {thread.document_content?.solution_proposals?.map((proposal, index) => (
+      {thread.document_content?.solution_proposals?.map((proposal, index) => (
                     <React.Fragment key={proposal.id}>
                       <ListItem>
                         <ListItemText
                           primary={
                             <MarkdownRenderer content={proposal.content} />
                           }
-                          secondary={`Vorschlag ${index + 1} • ${new Date(proposal.created_at).toLocaleDateString('de-DE')}`}
+        secondary={`${proposal.title || `Vorschlag ${index + 1}`} • ${new Date(proposal.created_at).toLocaleDateString('de-DE')}`}
                         />
                       </ListItem>
                       {index < (thread.document_content.solution_proposals?.length || 0) - 1 && <Divider />}
@@ -876,6 +890,14 @@ const CommunityThreadDetail: React.FC = () => {
       <Dialog open={showProposalDialog} onClose={() => setShowProposalDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>Neuen Lösungsvorschlag hinzufügen</DialogTitle>
         <DialogContent>
+          <TextField
+            fullWidth
+            label="Titel"
+            value={newProposalTitle}
+            onChange={(e) => setNewProposalTitle(e.target.value)}
+            placeholder="Kurzer prägnanter Titel"
+            sx={{ mb: 2 }}
+          />
           <Box sx={{ mt: 1 }}>
             <MarkdownEditor
               value={newProposal}
@@ -892,7 +914,7 @@ const CommunityThreadDetail: React.FC = () => {
           <Button 
             onClick={handleAddProposal} 
             variant="contained"
-            disabled={!newProposal.trim()}
+            disabled={!newProposalTitle.trim() || !newProposal.trim()}
           >
             Vorschlag hinzufügen
           </Button>

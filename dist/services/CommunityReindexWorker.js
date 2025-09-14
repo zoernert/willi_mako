@@ -92,7 +92,7 @@ class CommunityReindexWorker {
                             for (const proposal of document_content.solution_proposals) {
                                 sectionsToUpdate.push({
                                     section_key: 'proposal',
-                                    content: proposal.content,
+                                    content: proposal.title ? `${proposal.title}\n\n${proposal.content}` : proposal.content,
                                     proposal_id: proposal.id
                                 });
                             }

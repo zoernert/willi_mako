@@ -20,6 +20,7 @@ import {
   UpdateInitiativeRequest,
   InitiativeStatus
 } from '../types/community';
+import { CommunityPublicationRepository, CommunityThreadPublication } from '../repositories/CommunityPublicationRepository';
 import { 
   validateStatusTransition,
   isValidThreadStatus,
@@ -69,6 +70,54 @@ export class CommunityService {
     });
 
     return thread;
+  }
+
+  /**
+   * Publish a read-only snapshot of a community thread for public display
+   */
+  async publishThreadSnapshot(
+    threadId: string,
+    slug: string,
+    publishedByUserId: string,
+    opts?: { title?: string; summary?: string }
+  ): Promise<CommunityThreadPublication> {
+    const thread = await this.repository.getThreadById(threadId);
+    if (!thread) throw new Error('Thread not found');
+
+    // Optional business rule: allow publishing regardless of status; admin UI controls cadence
+    // Normalize content (titles for proposals are ensured by repository on read)
+
+    // Basic slug validation
+    if (!/^[a-z0-9\-]+$/.test(slug)) {
+      throw new Error('Invalid slug. Use lowercase letters, numbers, and dashes.');
+    }
+
+    const pubRepo = new CommunityPublicationRepository(this.db);
+    const publication = await pubRepo.createPublication({
+      thread,
+      slug,
+      title: opts?.title,
+      summary: opts?.summary,
+      publishedByUserId,
+    });
+
+    this.emitEvent('community.thread.published', {
+      thread_id: threadId,
+      slug,
+      published_by: publishedByUserId,
+    });
+
+    return publication;
+  }
+
+  async getPublicationBySlug(slug: string): Promise<CommunityThreadPublication | null> {
+    const pubRepo = new CommunityPublicationRepository(this.db);
+    return pubRepo.getBySlug(slug);
+  }
+
+  async listPublicationsByThread(threadId: string): Promise<CommunityThreadPublication[]> {
+    const pubRepo = new CommunityPublicationRepository(this.db);
+    return pubRepo.listByThread(threadId);
   }
 
   /**
@@ -461,12 +510,12 @@ export class CommunityService {
     }
 
     // Index proposals
-    if (doc.solution_proposals) {
+  if (doc.solution_proposals) {
       for (const proposal of doc.solution_proposals) {
         sections.push({
           thread_id: thread.id,
           section_key: 'proposal',
-          content: proposal.content,
+      content: proposal.title ? `${proposal.title}\n\n${proposal.content}` : proposal.content,
           proposal_id: proposal.id,
           created_at: proposal.created_at
         });

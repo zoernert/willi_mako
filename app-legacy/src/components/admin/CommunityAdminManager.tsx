@@ -52,6 +52,7 @@ import {
   Assessment as StatsIcon,
   TrendingUp as TrendingUpIcon,
   Group as CommunityIcon,
+  Public as PublicIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../../contexts/SnackbarContext';
 import apiClient from '../../services/apiClient';
@@ -103,6 +104,11 @@ const CommunityAdminManager: React.FC = () => {
   const [initiatives, setInitiatives] = useState<CommunityInitiative[]>([]);
   const [selectedThread, setSelectedThread] = useState<CommunityThread | null>(null);
   const [showThreadDialog, setShowThreadDialog] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishSlug, setPublishSlug] = useState('');
+  const [publishSummary, setPublishSummary] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [threadPublications, setThreadPublications] = useState<any[]>([]);
   const [showFAQDialog, setShowFAQDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [faqCreationLoading, setFaqCreationLoading] = useState(false);
@@ -170,6 +176,58 @@ const CommunityAdminManager: React.FC = () => {
       setThreads([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPublications = async (threadId: string) => {
+    try {
+      const pubs = await apiClient.get(`/admin/community/threads/${threadId}/publications`) as any;
+      setThreadPublications(pubs || []);
+      return pubs || [];
+    } catch (e) {
+      setThreadPublications([]);
+      return [] as any[];
+    }
+  };
+
+  const handleOpenPublish = async (thread: CommunityThread) => {
+    setSelectedThread(thread);
+    setPublishSlug('');
+    setPublishSummary('');
+    const pubs = await fetchPublications(thread.id);
+    if (pubs && pubs.length > 0) {
+      // Prefill with the most recent publication's slug (by published_at desc)
+      const latest = [...pubs].sort((a, b) => {
+        const da = a.published_at ? new Date(a.published_at).getTime() : 0;
+        const db = b.published_at ? new Date(b.published_at).getTime() : 0;
+        return db - da;
+      })[0];
+      if (latest?.slug) {
+        setPublishSlug(latest.slug);
+      }
+      if (latest?.summary) {
+        setPublishSummary(latest.summary);
+      }
+    }
+    setShowPublishDialog(true);
+  };
+
+  const handlePublish = async () => {
+    if (!selectedThread) return;
+    const slug = publishSlug.trim();
+    if (!slug) {
+      showSnackbar('Bitte eine URL-Kennung (Slug) angeben, z.B. utilmd-2025-abschluss', 'warning');
+      return;
+    }
+    try {
+      setPublishing(true);
+      const created = await apiClient.post(`/admin/community/threads/${selectedThread.id}/publish`, { slug, summary: publishSummary }) as any;
+      showSnackbar('Veröffentlicht. Öffentliche Seite ist verfügbar.', 'success');
+      await fetchPublications(selectedThread.id);
+    } catch (e: any) {
+      showSnackbar(e?.message || 'Veröffentlichung fehlgeschlagen', 'error');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -552,6 +610,16 @@ const CommunityAdminManager: React.FC = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+
+                      <Tooltip title="Öffentlich veröffentlichen (Read-Only)">
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleOpenPublish(thread)}
+                        >
+                          <PublicIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       
                       <Tooltip title="Thread löschen">
                         <IconButton
@@ -582,6 +650,59 @@ const CommunityAdminManager: React.FC = () => {
           </Table>
         </TableContainer>
       )}
+
+      {/* Publish Dialog */}
+      <Dialog open={showPublishDialog} onClose={() => setShowPublishDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Thread veröffentlichen (Read-Only)</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Erzeuge einen öffentlichen, schreibgeschützten Stand dieses Threads. Besucher sehen nur diesen Stand.
+          </Typography>
+          <TextField
+            label="URL-Kennung (Slug)"
+            placeholder="z.B. utilmd-2025-abschluss"
+            fullWidth
+            size="small"
+            value={publishSlug}
+            onChange={(e) => setPublishSlug(e.target.value.replace(/[^a-z0-9-]/g, '').toLowerCase())}
+            helperText="Nur Kleinbuchstaben, Zahlen und Bindestriche."
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Kurze Zusammenfassung (optional)"
+            fullWidth
+            size="small"
+            multiline
+            minRows={2}
+            value={publishSummary}
+            onChange={(e) => setPublishSummary(e.target.value)}
+          />
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" gutterBottom>Bereits veröffentlichte Stände</Typography>
+          {threadPublications.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">Keine Veröffentlichungen vorhanden.</Typography>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {threadPublications.map((p) => (
+                <Box key={p.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>{p.title}</Typography>
+                    <Typography variant="caption" color="text.secondary">Slug: {p.slug} • Veröffentlicht: {new Date(p.published_at).toLocaleDateString('de-DE')}</Typography>
+                  </Box>
+                  <Button href={`/community/public/${p.slug}`} target="_blank" rel="noopener noreferrer" size="small">Öffnen</Button>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowPublishDialog(false)}>Schließen</Button>
+          <Button onClick={handlePublish} disabled={publishing || !publishSlug} variant="contained">
+            {publishing ? 'Veröffentlichen…' : 'Veröffentlichen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 

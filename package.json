@@ -31,11 +31,6 @@
     "test:e2e:debug": "playwright test --debug",
     "test:all": "npm run test:coverage && npm run test:integration && npm run test:e2e",
     "test:seo": "lighthouse --output json --output html",
-    "lint": "eslint src/ --ext .ts,.js",
-    "lint:fix": "eslint src/ --ext .ts,.js --fix",
-  "db:migrate": "psql -f db/migrations/$(ls db/migrations/ | tail -1)",
-  "db:migrate:url": "./run-sql-with-url.sh db/migrations/$(ls db/migrations/ | tail -1)",
-  "db:migrate:env": "./psql-env.sh \\\n+      -f db/migrations/$(ls db/migrations/ | tail -1)",
     "seed:m2c-roles": "npx tsx scripts/seed-m2c-roles.ts",
     "setup:m2c": "npm run db:migrate && npm run seed:m2c-roles",
     "type-check": "tsc --noEmit",
@@ -44,7 +39,9 @@
     "timeline:migrate": "psql $DATABASE_URL -f migrations/timeline_system.sql",
     "timeline:stats": "node -e \"require('./workers/timelineProcessor.ts').timelineProcessor.getQueueStats().then(console.log)\"",
   "reindex:providers": "npx tsx scripts/reindex-providers.ts",
-  "export:marktpartnersuche": "npx tsx scripts/export-marketpartnersuche-dataset.ts"
+  "export:marktpartnersuche": "npx tsx scripts/export-marketpartnersuche-dataset.ts",
+  "ingest:consultation": "npx tsx scripts/ingest-consultation-sources.ts",
+  "ingest:consultation:slug": "npx tsx scripts/ingest-consultation-by-slug.ts --slug mitteilung-53"
   },
   "repository": {
     "type": "git",
@@ -97,6 +94,7 @@
     "pdf-parse": "^1.1.1",
     "pg": "^8.11.3",
     "puppeteer": "^24.16.2",
+  "docx": "^9.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",

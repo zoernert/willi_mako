@@ -19,7 +19,9 @@ export const authenticateToken = (
     return next(new AppError('Access token required', 401));
   }
 
-  jwt.verify(token, process.env.JWT_SECRET!, (err, decoded) => {
+  // Use same fallback as token issuance to avoid local dev mismatch
+  const secret = process.env.JWT_SECRET || 'fallback-secret';
+  jwt.verify(token, secret as any, (err, decoded) => {
     if (err) {
       return next(new AppError('Invalid token', 403));
     }

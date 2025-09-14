@@ -9,13 +9,20 @@ export default function Sitemap() {
   return null;
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   try {
-  const [faqs, tags, whitepapers, articles] = await Promise.all([
+  const protocol = (req.headers['x-forwarded-proto'] as string) || 'http';
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
+  const origin = `${protocol}://${host}`;
+  const [faqs, tags, whitepapers, articles, submissions, publicThreads] = await Promise.all([
       getAllPublicFAQs(),
       getAllTags(),
       Promise.resolve(getAllWhitepapers()),
       Promise.resolve(getAllArticles()),
+      // Fetch published submissions for mitteilung-53 (extend if more slugs later)
+      fetch(`${origin}/api/public/community/consultations/mitteilung-53/submissions`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
+      // Fetch public community thread publications
+      fetch(`${origin}/api/public/community/threads`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
     ]);
   const datasets = loadDatasets();
 
@@ -95,6 +102,32 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     const lastmod = d.dateModified || d.datePublished || new Date().toISOString();
     return `\n  <url>\n    <loc>${url}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`;
   }).join('')}
+
+  <!-- Konsultation: Mitteilung 53 -->
+  <url>
+    <loc>https://stromhaltig.de/konsultation/mitteilung-53</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Community Threads (Öffentlich veröffentlichte Stände) -->
+  ${publicThreads.map((t: any) => `
+  <url>
+    <loc>https://stromhaltig.de/community/public/${t.slug}</loc>
+    <lastmod>${t.published_at || new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>`).join('')}
+
+  <!-- Eingereichte öffentliche Rückmeldungen (Mitteilung 53) -->
+  ${submissions.map((s: any) => `
+  <url>
+    <loc>https://stromhaltig.de/konsultation/mitteilung-53/rueckmeldung/${s.id}</loc>
+    <lastmod>${s.createdAt}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>`).join('')}
 
   <!-- RSS/Atom Feeds -->
   <url>

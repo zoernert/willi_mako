@@ -1,0 +1,6 @@
+{
+  "overrides": {
+    
+  },
+  "notes": "Map GitHub issue numbers (as strings) to consultation chapter keys used in payload (e.g., ch1, ch3_2, ch9_1_1)."
+}

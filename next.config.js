@@ -17,6 +17,11 @@ const nextConfig = {
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
+        // Dev proxy for public community APIs -> Express backend (fixes PDF/DOCX export in dev)
+        {
+          source: '/api/public/community/:path*',
+          destination: 'http://localhost:3009/api/public/community/:path*',
+        },
   // Keep root files as-is; legacy app assets are served by Express
       ],
       // Rewrites applied after checking filesystem and pages
@@ -29,7 +34,14 @@ const nextConfig = {
         },
       ],
       // Apply SPA fallback only if no page or static file matched
-  fallback: [],
+  fallback: [
+        // Legacy CRA: serve index.html for client-routed paths like /app/login
+        // Static assets (e.g., /app/static/*) will be handled by filesystem first, so they won't hit this fallback
+        {
+          source: '/app/:path*',
+          destination: '/app/index.html',
+        },
+      ],
     };
   },
 

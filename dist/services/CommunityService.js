@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommunityService = void 0;
 const CommunityRepository_1 = require("../repositories/CommunityRepository");
 const CommunityQdrantService_1 = require("./CommunityQdrantService");
+const CommunityPublicationRepository_1 = require("../repositories/CommunityPublicationRepository");
 const communityValidation_1 = require("../utils/communityValidation");
 const featureFlags_1 = require("../utils/featureFlags");
 const llmProvider_1 = __importDefault(require("./llmProvider"));
@@ -39,6 +40,42 @@ class CommunityService {
             created_by: userId
         });
         return thread;
+    }
+    /**
+     * Publish a read-only snapshot of a community thread for public display
+     */
+    async publishThreadSnapshot(threadId, slug, publishedByUserId, opts) {
+        const thread = await this.repository.getThreadById(threadId);
+        if (!thread)
+            throw new Error('Thread not found');
+        // Optional business rule: allow publishing regardless of status; admin UI controls cadence
+        // Normalize content (titles for proposals are ensured by repository on read)
+        // Basic slug validation
+        if (!/^[a-z0-9\-]+$/.test(slug)) {
+            throw new Error('Invalid slug. Use lowercase letters, numbers, and dashes.');
+        }
+        const pubRepo = new CommunityPublicationRepository_1.CommunityPublicationRepository(this.db);
+        const publication = await pubRepo.createPublication({
+            thread,
+            slug,
+            title: opts === null || opts === void 0 ? void 0 : opts.title,
+            summary: opts === null || opts === void 0 ? void 0 : opts.summary,
+            publishedByUserId,
+        });
+        this.emitEvent('community.thread.published', {
+            thread_id: threadId,
+            slug,
+            published_by: publishedByUserId,
+        });
+        return publication;
+    }
+    async getPublicationBySlug(slug) {
+        const pubRepo = new CommunityPublicationRepository_1.CommunityPublicationRepository(this.db);
+        return pubRepo.getBySlug(slug);
+    }
+    async listPublicationsByThread(threadId) {
+        const pubRepo = new CommunityPublicationRepository_1.CommunityPublicationRepository(this.db);
+        return pubRepo.listByThread(threadId);
     }
     /**
      * Get thread by ID with access control
@@ -335,7 +372,7 @@ class CommunityService {
                 sections.push({
                     thread_id: thread.id,
                     section_key: 'proposal',
-                    content: proposal.content,
+                    content: proposal.title ? `${proposal.title}\n\n${proposal.content}` : proposal.content,
                     proposal_id: proposal.id,
                     created_at: proposal.created_at
                 });

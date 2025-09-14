@@ -12,7 +12,9 @@ const authenticateToken = (req, res, next) => {
     if (!token) {
         return next(new errors_1.AppError('Access token required', 401));
     }
-    jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    // Use same fallback as token issuance to avoid local dev mismatch
+    const secret = process.env.JWT_SECRET || 'fallback-secret';
+    jsonwebtoken_1.default.verify(token, secret, (err, decoded) => {
         if (err) {
             return next(new errors_1.AppError('Invalid token', 403));
         }

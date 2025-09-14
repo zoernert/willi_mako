@@ -24,6 +24,7 @@ const teams_1 = require("./routes/teams");
 const processes_1 = __importDefault(require("./routes/processes"));
 const community_1 = require("./routes/community");
 const community_2 = require("./routes/admin/community");
+const public_community_1 = __importDefault(require("./routes/public-community"));
 const m2cRoles_1 = __importDefault(require("./routes/m2cRoles"));
 const bilateral_clarifications_simple_1 = __importDefault(require("./routes/bilateral-clarifications-simple"));
 const llm_1 = __importDefault(require("./routes/llm"));
@@ -36,6 +37,7 @@ const problemReport_1 = __importDefault(require("./routes/problemReport"));
 const timeline_1 = __importDefault(require("./routes/timeline")); // Timeline-Routes
 const timeline_stats_1 = __importDefault(require("./routes/timeline-stats")); // Timeline-Stats-Routes
 const timeline_activity_1 = __importDefault(require("./routes/timeline-activity")); // Timeline-Activity-Capture-Routes
+const consultation_submissions_1 = __importDefault(require("./routes/admin/consultation-submissions"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -139,6 +141,8 @@ app.use('/api/admin/quizzes', quiz_routes_2.default);
 // Admin routes
 // Admin routes (primary path)
 app.use('/api/admin', admin_1.default);
+// Admin moderation for consultation submissions
+app.use('/api/admin/public-community', consultation_submissions_1.default);
 // Legacy compatibility: some legacy React admin components still call /admin/* without /api prefix
 // Provide alias so older deployed frontend bundles keep working after backend refactors.
 app.use('/admin', admin_1.default);
@@ -149,6 +153,7 @@ app.use('/api/processes', processes_1.default);
 // Community routes (with feature flag protection)
 app.use('/api/community', (0, community_1.initializeCommunityRoutes)(database_1.default));
 app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
+app.use('/api/public/community', public_community_1.default);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 // Legacy routes (still active)

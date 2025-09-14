@@ -144,6 +144,9 @@ class CommunityRepository {
                             }
                             const newProposal = {
                                 id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                title: typeof op.value === 'object' && op.value.title
+                                    ? op.value.title
+                                    : this.deriveProposalTitle(typeof op.value === 'object' ? op.value.content : String(op.value)),
                                 content: typeof op.value === 'object' ? op.value.content : op.value,
                                 created_by: userId,
                                 created_at: new Date().toISOString()
@@ -160,11 +163,16 @@ class CommunityRepository {
                             const proposalIndex = documentContent.solution_proposals.findIndex((p) => p.id === op.proposalId);
                             if (proposalIndex >= 0) {
                                 // Update existing
+                                const existing = documentContent.solution_proposals[proposalIndex];
                                 documentContent.solution_proposals[proposalIndex] = {
-                                    ...documentContent.solution_proposals[proposalIndex],
+                                    ...existing,
                                     ...op.value,
                                     id: op.proposalId // Preserve ID
                                 };
+                                // Backfill title if missing
+                                if (!documentContent.solution_proposals[proposalIndex].title) {
+                                    documentContent.solution_proposals[proposalIndex].title = this.deriveProposalTitle(documentContent.solution_proposals[proposalIndex].content || '');
+                                }
                             }
                             else {
                                 // Create new
@@ -172,6 +180,9 @@ class CommunityRepository {
                                     id: op.proposalId,
                                     created_by: userId,
                                     created_at: new Date().toISOString(),
+                                    title: op.value.title
+                                        ? op.value.title
+                                        : this.deriveProposalTitle(op.value.content || ''),
                                     ...op.value
                                 };
                                 documentContent.solution_proposals.push(newProposal);
@@ -448,7 +459,7 @@ class CommunityRepository {
             title: row.title,
             status: row.status,
             tags: row.tags || [],
-            document_content: row.document_content || {},
+            document_content: this.normalizeDocumentContent(row.document_content || {}),
             created_by_user_id: row.created_by_user_id,
             created_at: row.created_at.toISOString(),
             updated_at: row.updated_at.toISOString()
@@ -500,6 +511,28 @@ class CommunityRepository {
             updated_at: row.updated_at.toISOString(),
             submitted_at: (_a = row.submitted_at) === null || _a === void 0 ? void 0 : _a.toISOString()
         };
+    }
+    /**
+     * Normalize document content to ensure each proposal has a title.
+     */
+    normalizeDocumentContent(doc) {
+        if (doc && Array.isArray(doc.solution_proposals)) {
+            doc.solution_proposals = doc.solution_proposals.map((p) => ({
+                title: p.title || this.deriveProposalTitle(p.content || ''),
+                ...p
+            }));
+        }
+        return doc;
+    }
+    /**
+     * Derive a short title from proposal content if none provided.
+     */
+    deriveProposalTitle(content) {
+        if (!content)
+            return 'Lösungsvorschlag';
+        const text = String(content).replace(/[#>*_`\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const firstLine = text.split(/\n/)[0] || text;
+        return firstLine.length > 80 ? firstLine.slice(0, 77) + '…' : firstLine;
     }
 }
 exports.CommunityRepository = CommunityRepository;

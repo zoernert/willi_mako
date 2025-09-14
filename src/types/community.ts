@@ -27,6 +27,8 @@ export interface LivingDocument {
 
 export interface SolutionProposal {
   id: string;
+  /** Kurzer prägnanter Titel des Lösungsvorschlags */
+  title: string;
   content: string;
   created_by: string;
   created_at: string;

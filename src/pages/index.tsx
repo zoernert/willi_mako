@@ -232,8 +232,42 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
         </Box>
       </Container>
 
-      {/* Exclusive Content Section */}
-      
+      {/* Consultation Teaser */}
+      <Container maxWidth="lg" sx={{ mb: 8 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, alignItems: 'stretch' }}>
+          <Card sx={{ p: 3 }}>
+            <CardContent>
+              <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 700 }}>
+                Mitteilung Nr. 53: API‑Webdienste im MaBiS‑Hub
+              </Typography>
+              <Typography variant="body1" color="text.secondary" paragraph>
+                Öffentliche Lesefassung inkl. GitHub‑Referenzen. Warum das für EVU wichtig ist und was jetzt zu tun ist.
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <Button component={Link} href="/konsultation/mitteilung-53" variant="contained" color="primary">
+                  Zur Konsultationsseite
+                </Button>
+                <Button component={Link} href="/konsultation/mitteilung-53#warum-wichtig" variant="outlined" color="primary">
+                  Warum wichtig für EVU
+                </Button>
+                <Button component={Link} href="/konsultation/mitteilung-53#handlungs-empfehlungen" variant="outlined" color="primary">
+                  Handlungsempfehlungen
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+          <Paper elevation={0} sx={{ p: 3, bgcolor: '#f7f9ff', border: '1px solid #e8ecff', borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+              Nächste Frist
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Einreichung an die BNetzA bis <strong>15.10.2025</strong>. Bereiten Sie Ihre Rückmeldung rechtzeitig vor.
+            </Typography>
+            <Button component={Link} href="/konsultation/mitteilung-53#ch10_1" size="small">Rückmeldung Kap. 1–8</Button>
+            <Button component={Link} href="/konsultation/mitteilung-53#ch10_2" size="small" sx={{ ml: 1 }}>Rückmeldung Kap. 9</Button>
+          </Paper>
+        </Box>
+      </Container>
 
       {/* Expert Team Section */}
       <Paper sx={{ bgcolor: '#ee7f4b', py: 6, mb: 6 }}>

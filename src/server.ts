@@ -20,6 +20,7 @@ import { teamRoutes } from './routes/teams';
 import processRoutes from './routes/processes';
 import { initializeCommunityRoutes } from './routes/community';
 import { initializeCommunityAdminRoutes } from './routes/admin/community';
+import publicCommunityRoutes from './routes/public-community';
 import m2cRolesRoutes from './routes/m2cRoles';
 import bilateralClarificationsRoutes from './routes/bilateral-clarifications-simple';
 import llmRoutes from './routes/llm';
@@ -32,6 +33,7 @@ import problemReportRoutes from './routes/problemReport';
 import { default as timelineRoutes } from './routes/timeline'; // Timeline-Routes
 import timelineStatsRoutes from './routes/timeline-stats'; // Timeline-Stats-Routes
 import timelineActivityRoutes from './routes/timeline-activity'; // Timeline-Activity-Capture-Routes
+import adminConsultationSubmissionsRoutes from './routes/admin/consultation-submissions';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -155,6 +157,8 @@ app.use('/api/admin/quizzes', adminQuizRoutes);
 // Admin routes
 // Admin routes (primary path)
 app.use('/api/admin', adminRoutes);
+// Admin moderation for consultation submissions
+app.use('/api/admin/public-community', adminConsultationSubmissionsRoutes);
 // Legacy compatibility: some legacy React admin components still call /admin/* without /api prefix
 // Provide alias so older deployed frontend bundles keep working after backend refactors.
 app.use('/admin', adminRoutes);
@@ -168,6 +172,7 @@ app.use('/api/processes', processRoutes);
 // Community routes (with feature flag protection)
 app.use('/api/community', initializeCommunityRoutes(db));
 app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
+app.use('/api/public/community', publicCommunityRoutes);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', initializeCommunityAdminRoutes(db));
 

@@ -108,6 +108,22 @@ export const validatePatchOperation = (op: any): PatchOperation => {
     }
   }
   
+  if (op.op === 'add') {
+    const validAddPaths = ['/solution_proposals/-'];
+    if (!op.path || !validAddPaths.includes(op.path)) {
+      throw new Error(`Invalid path for add operation: ${op.path}`);
+    }
+    // When adding a proposal, require object with at least content; title optional but recommended
+    if (typeof op.value !== 'object') {
+      throw new Error('add operation value must be an object with content and optional title');
+    }
+    const val: any = op.value;
+    validateString(val.content, 'proposal.content', { required: true, minLength: 5, maxLength: 5000 });
+    if (val.title !== undefined) {
+      validateString(val.title, 'proposal.title', { required: true, minLength: 3, maxLength: 200 });
+    }
+  }
+  
   if (op.op === 'upsertProposal' && !op.proposalId) {
     throw new Error('upsertProposal operation requires proposalId');
   }
