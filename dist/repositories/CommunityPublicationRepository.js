@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommunityPublicationRepository = void 0;
+const crypto_1 = require("crypto");
 class CommunityPublicationRepository {
     constructor(db) {
         this.db = db;
@@ -26,7 +27,7 @@ class CommunityPublicationRepository {
             return;
         await this.db.query(`
       CREATE TABLE IF NOT EXISTS community_thread_publications (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY,
         thread_id UUID NOT NULL REFERENCES community_threads(id) ON DELETE CASCADE,
         slug TEXT NOT NULL,
         title TEXT NOT NULL,
@@ -49,8 +50,8 @@ class CommunityPublicationRepository {
         const selectSQL = `SELECT * FROM community_thread_publications WHERE slug = $1 LIMIT 1`;
         const insertSQL = `
       INSERT INTO community_thread_publications (
-        thread_id, slug, title, summary, published_content, source_thread_updated_at, published_by_user_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        id, thread_id, slug, title, summary, published_content, source_thread_updated_at, published_by_user_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
         const updateSQL = `
@@ -67,6 +68,7 @@ class CommunityPublicationRepository {
     `;
         const nowContent = JSON.stringify(input.thread.document_content);
         const srcUpdatedAt = new Date(input.thread.updated_at).toISOString();
+        const newId = (0, crypto_1.randomUUID)();
         try {
             const existing = await this.db.query(selectSQL, [input.slug]);
             if (existing.rows.length > 0) {
@@ -87,6 +89,7 @@ class CommunityPublicationRepository {
             }
             else {
                 const res = await this.db.query(insertSQL, [
+                    newId,
                     input.thread.id,
                     input.slug,
                     input.title || input.thread.title,
@@ -120,6 +123,7 @@ class CommunityPublicationRepository {
                 }
                 else {
                     const res2 = await this.db.query(insertSQL, [
+                        newId,
                         input.thread.id,
                         input.slug,
                         input.title || input.thread.title,
