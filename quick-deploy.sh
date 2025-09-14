@@ -64,7 +64,7 @@ ENVEOF
 
 npm run build:legacy
 npm run move:legacy
-NODE_ENV=production npm run build:next
+NEXT_SKIP_DB=1 NODE_ENV=production npm run build:next
 ls -la .next/
 
 echo "✅ Alle Builds erfolgreich"

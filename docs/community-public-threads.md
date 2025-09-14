@@ -19,6 +19,14 @@ Key files
 - src/routes/public-community.ts: public read-only fetch by slug.
 - src/pages/community/public/[slug].tsx: Next.js SSR page.
 
+Troubleshooting (Prod)
+- If a published page returns 404, verify the publication exists on production and is visible:
+	- Inspect: GET /api/admin/community/publications/inspect/{slug}
+	- Force visible: GET /api/admin/community/publications/inspect/{slug}?forcePublic=1
+	- Both endpoints require admin auth and ignore caches.
+- After forcing visibility, open /community/public/{slug} again; SSR uses no-store caching and should reflect immediately.
+- If inspect returns 404, the snapshot wasn’t created in the prod DB. Re-publish from the Admin (ensure you’re on the production app) and retry.
+
 Notes
 - Slug must be lowercase letters, numbers, and dashes.
 - Multiple publications per thread are allowed; each has its own slug.

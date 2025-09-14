@@ -9,6 +9,7 @@ import { CommunityService } from '../../services/CommunityService';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
 import { requireCommunityFeature } from '../../utils/featureFlags';
 import pool from '../../config/database';
+import { CommunityPublicationRepository } from '../../repositories/CommunityPublicationRepository';
 
 const router = express.Router();
 
@@ -73,6 +74,30 @@ router.post('/threads/:id/publish', async (req: AuthenticatedRequest, res) => {
     if (String(error.message || '').includes('duplicate key')) {
       return res.status(409).json({ success: false, message: 'Slug already in use' });
     }
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/community/publications/inspect/:slug
+ * Admin-only diagnostic: fetch a publication by slug regardless of visibility.
+ * Optional query: forcePublic=1 to set is_public=TRUE for recovery.
+ */
+router.get('/publications/inspect/:slug', async (req: AuthenticatedRequest, res) => {
+  try {
+    const slug = req.params.slug;
+    const forcePublic = (req.query.forcePublic as string) === '1';
+    const pubRepo = new CommunityPublicationRepository(pool as any);
+    const pub = await pubRepo.getAnyBySlug(slug);
+    if (!pub) return res.status(404).json({ success: false, message: 'Not found' });
+    if (forcePublic && !pub.is_public) {
+      await (pool as any).query('UPDATE community_thread_publications SET is_public = TRUE WHERE slug = $1', [slug]);
+      const refreshed = await pubRepo.getAnyBySlug(slug);
+      return res.json({ success: true, data: refreshed, changed: true });
+    }
+    return res.json({ success: true, data: pub });
+  } catch (error) {
+    console.error('Admin inspect publication failed:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

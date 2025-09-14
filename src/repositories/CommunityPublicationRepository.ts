@@ -158,6 +158,24 @@ export class CommunityPublicationRepository {
     }
   }
 
+  // Admin diagnostic: fetch publication by slug regardless of is_public
+  async getAnyBySlug(slug: string): Promise<CommunityThreadPublication | null> {
+    await this.ensureTable();
+    try {
+      const res = await this.db.query('SELECT * FROM community_thread_publications WHERE slug = $1', [slug]);
+      if (res.rows.length === 0) return null;
+      return this.map(res.rows[0]);
+    } catch (e: any) {
+      if (e?.code === '42P01') {
+        await this.ensureTable();
+        const res2 = await this.db.query('SELECT * FROM community_thread_publications WHERE slug = $1', [slug]);
+        if (res2.rows.length === 0) return null;
+        return this.map(res2.rows[0]);
+      }
+      throw e;
+    }
+  }
+
   async listByThread(threadId: string): Promise<CommunityThreadPublication[]> {
   await this.ensureTable();
     try {
