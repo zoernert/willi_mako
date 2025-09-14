@@ -78,6 +78,8 @@ build_application() {
     cat > .env.production << 'ENVEOF'
 NODE_ENV=production
 API_URL=http://127.0.0.1:4101
+# Prefer internal backend for SSR self-calls in prod
+INTERNAL_API_BASE_URL=http://127.0.0.1:4101
 ENVEOF
     
     # Next.js Build mit Produktionsumgebung
@@ -203,9 +205,15 @@ EOF
         cp next.config.js "$TEMP_DIR/"
     fi
     
-    # .env.production kopieren (für Next.js Runtime)
+    # .env.production kopieren/erstellen (für Next.js Runtime)
     if [ -f ".env.production" ]; then
         cp .env.production "$TEMP_DIR/"
+    else
+        cat > "$TEMP_DIR/.env.production" << EOF
+NODE_ENV=production
+API_URL=http://127.0.0.1:$BACKEND_PORT
+INTERNAL_API_BASE_URL=http://127.0.0.1:$BACKEND_PORT
+EOF
     fi
     
     # server.js für Production kopieren (Next.js-kompatibel)
@@ -258,6 +266,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: $FRONTEND_PORT
       },
+    env_file: '$DEPLOY_DIR/.env.production',
       error_file: '$DEPLOY_DIR/logs/frontend_4100_err.log',
       out_file: '$DEPLOY_DIR/logs/frontend_4100_out.log',
       log_file: '$DEPLOY_DIR/logs/frontend_4100_combined.log',

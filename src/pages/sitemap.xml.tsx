@@ -11,16 +11,17 @@ export default function Sitemap() {
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   try {
+  const internalBase = process.env.INTERNAL_API_BASE_URL || 'http://127.0.0.1:3009';
   const protocol = (req.headers['x-forwarded-proto'] as string) || 'https';
   const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
-  const origin = `${protocol}://${host}`;
+  const origin = internalBase || `${protocol}://${host}`;
   const [faqs, tags, whitepapers, articles, submissions, publicThreads] = await Promise.all([
       getAllPublicFAQs(),
       getAllTags(),
       Promise.resolve(getAllWhitepapers()),
       Promise.resolve(getAllArticles()),
       // Fetch published submissions for mitteilung-53 (extend if more slugs later)
-      fetch(`${origin}/api/public/community/consultations/mitteilung-53/submissions?t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
+  fetch(`${origin}/api/public/community/consultations/mitteilung-53/submissions?fast=1&t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
       // Fetch public community thread publications
       fetch(`${origin}/api/public/community/threads?t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
     ]);

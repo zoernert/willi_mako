@@ -60,6 +60,8 @@ echo "🔧 Erstelle .env.production für Next.js Build..."
 cat > .env.production << 'ENVEOF'
 NODE_ENV=production
 API_URL=http://127.0.0.1:4101
+# Prefer internal backend for SSR self-calls in prod
+INTERNAL_API_BASE_URL=http://127.0.0.1:4101
 ENVEOF
 
 npm run build:legacy
@@ -335,10 +337,12 @@ EOF
         cp next.config.js "$TEMP_DIR/"
     fi
     
-    # .env.production kopieren (für Next.js Runtime) mit Feature Flags ergänzen
+    # .env.production erstellen (für Next.js Runtime) mit Feature Flags und INTERNAL_API_BASE_URL
     cat > "$TEMP_DIR/.env.production" << EOF
 NODE_ENV=production
 API_URL=http://127.0.0.1:$BACKEND_PORT
+# Prefer internal backend for SSR self-calls in prod
+INTERNAL_API_BASE_URL=http://127.0.0.1:$BACKEND_PORT
 FEATURE_COMMUNITY_HUB=true
 ENABLE_M2C_ROLES=true
 GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
@@ -421,7 +425,8 @@ module.exports = {
       cwd: '$DEPLOY_DIR',
       instances: 1,
       exec_mode: 'cluster',
-      env: { NODE_ENV: 'production', PORT: $FRONTEND_PORT },
+    env: { NODE_ENV: 'production', PORT: $FRONTEND_PORT },
+    env_file: '$DEPLOY_DIR/.env.production',
       error_file: '$DEPLOY_DIR/logs/frontend_4100_err.log',
       out_file: '$DEPLOY_DIR/logs/frontend_4100_out.log',
       log_file: '$DEPLOY_DIR/logs/frontend_4100_combined.log',

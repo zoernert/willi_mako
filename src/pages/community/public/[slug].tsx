@@ -41,7 +41,7 @@ const PublicCommunityThreadPage: React.FC<Props> = ({ data }) => {
   return (
     <>
       <Head>
-        <title>{data.title} – Community Hub (Öffentlich)</title>
+  <title>{`${data.title} – Community Hub (Öffentlich)`}</title>
         <meta name="robots" content="index,follow" />
       </Head>
   <Layout title={`Community (Öffentlich) – ${data.title}`}>
@@ -139,11 +139,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   try {
   // Ensure the HTML is not cached by intermediaries
   try { (ctx.res as any)?.setHeader?.('Cache-Control', 'no-store'); } catch {}
+  // Prefer an internal API base to avoid reverse proxy/self-call issues in production
+  const internalBase = process.env.INTERNAL_API_BASE_URL || 'http://127.0.0.1:3009';
   const proto = (ctx.req.headers['x-forwarded-proto'] as string) || 'https';
   const host = ctx.req.headers.host;
   const derivedBase = host ? `${proto}://${host}` : '';
-  // Prefer the site origin in SSR to avoid localhost env misconfiguration in production
-  const base = derivedBase || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:3009';
+  const base = internalBase || derivedBase || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:3009';
   // Add a cache-busting query to avoid stale CDN/proxy caches just after republish
   const res = await fetch(`${base}/api/public/community/threads/${encodeURIComponent(slug)}?t=${Date.now()}`);
     if (!res.ok) return { props: { data: null } };

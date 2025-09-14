@@ -13,6 +13,7 @@ const CommunityService_1 = require("../../services/CommunityService");
 const auth_1 = require("../../middleware/auth");
 const featureFlags_1 = require("../../utils/featureFlags");
 const database_1 = __importDefault(require("../../config/database"));
+const CommunityPublicationRepository_1 = require("../../repositories/CommunityPublicationRepository");
 const router = express_1.default.Router();
 // Initialize service (will be set by factory function)
 let communityService;
@@ -70,6 +71,31 @@ router.post('/threads/:id/publish', async (req, res) => {
         if (String(error.message || '').includes('duplicate key')) {
             return res.status(409).json({ success: false, message: 'Slug already in use' });
         }
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+/**
+ * GET /api/admin/community/publications/inspect/:slug
+ * Admin-only diagnostic: fetch a publication by slug regardless of visibility.
+ * Optional query: forcePublic=1 to set is_public=TRUE for recovery.
+ */
+router.get('/publications/inspect/:slug', async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const forcePublic = req.query.forcePublic === '1';
+        const pubRepo = new CommunityPublicationRepository_1.CommunityPublicationRepository(database_1.default);
+        const pub = await pubRepo.getAnyBySlug(slug);
+        if (!pub)
+            return res.status(404).json({ success: false, message: 'Not found' });
+        if (forcePublic && !pub.is_public) {
+            await database_1.default.query('UPDATE community_thread_publications SET is_public = TRUE WHERE slug = $1', [slug]);
+            const refreshed = await pubRepo.getAnyBySlug(slug);
+            return res.json({ success: true, data: refreshed, changed: true });
+        }
+        return res.json({ success: true, data: pub });
+    }
+    catch (error) {
+        console.error('Admin inspect publication failed:', error);
         return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });

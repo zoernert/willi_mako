@@ -25,6 +25,7 @@ export declare class CommunityPublicationRepository {
         publishedByUserId: string;
     }): Promise<CommunityThreadPublication>;
     getBySlug(slug: string): Promise<CommunityThreadPublication | null>;
+    getAnyBySlug(slug: string): Promise<CommunityThreadPublication | null>;
     listByThread(threadId: string): Promise<CommunityThreadPublication[]>;
     listAllPublic(): Promise<Pick<CommunityThreadPublication, 'slug' | 'title' | 'published_at' | 'source_thread_updated_at'>[]>;
     private map;
