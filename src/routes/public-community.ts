@@ -41,7 +41,8 @@ router.get('/threads/:slug', async (req, res) => {
       // Legacy app path for authenticated detail view
       privateThreadUrl: `/app/community/${publication.thread_id}`,
     };
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
+  // Dynamic content that can change on re-publish: disable caching to avoid stale 404s
+  res.setHeader('Cache-Control', 'no-store');
     return res.json({ success: true, data });
   } catch (e: any) {
     console.error('Public thread fetch failed:', e);

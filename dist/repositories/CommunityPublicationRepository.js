@@ -45,30 +45,91 @@ class CommunityPublicationRepository {
     }
     async createPublication(input) {
         await this.ensureTable();
-        const query = `
+        // Upsert-like behavior: if slug exists for the same thread, update it; otherwise insert.
+        const selectSQL = `SELECT * FROM community_thread_publications WHERE slug = $1 LIMIT 1`;
+        const insertSQL = `
       INSERT INTO community_thread_publications (
         thread_id, slug, title, summary, published_content, source_thread_updated_at, published_by_user_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
-        const values = [
-            input.thread.id,
-            input.slug,
-            input.title || input.thread.title,
-            input.summary || '',
-            JSON.stringify(input.thread.document_content),
-            new Date(input.thread.updated_at).toISOString(),
-            input.publishedByUserId,
-        ];
+        const updateSQL = `
+      UPDATE community_thread_publications
+         SET title = $2,
+             summary = $3,
+             published_content = $4,
+             source_thread_updated_at = $5,
+             published_by_user_id = $6,
+             published_at = NOW(),
+             is_public = TRUE
+       WHERE slug = $1
+       RETURNING *
+    `;
+        const nowContent = JSON.stringify(input.thread.document_content);
+        const srcUpdatedAt = new Date(input.thread.updated_at).toISOString();
         try {
-            const res = await this.db.query(query, values);
-            return this.map(res.rows[0]);
+            const existing = await this.db.query(selectSQL, [input.slug]);
+            if (existing.rows.length > 0) {
+                const row = existing.rows[0];
+                if (row.thread_id !== input.thread.id) {
+                    // Slug belongs to another thread; do not override.
+                    throw new Error('Slug already in use by another thread');
+                }
+                const res = await this.db.query(updateSQL, [
+                    input.slug,
+                    input.title || input.thread.title,
+                    input.summary || '',
+                    nowContent,
+                    srcUpdatedAt,
+                    input.publishedByUserId,
+                ]);
+                return this.map(res.rows[0]);
+            }
+            else {
+                const res = await this.db.query(insertSQL, [
+                    input.thread.id,
+                    input.slug,
+                    input.title || input.thread.title,
+                    input.summary || '',
+                    nowContent,
+                    srcUpdatedAt,
+                    input.publishedByUserId,
+                ]);
+                return this.map(res.rows[0]);
+            }
         }
         catch (e) {
             if ((e === null || e === void 0 ? void 0 : e.code) === '42P01') {
                 await this.ensureTable();
-                const res2 = await this.db.query(query, values);
-                return this.map(res2.rows[0]);
+                // Retry once after ensuring table
+                const existing2 = await this.db.query(selectSQL, [input.slug]);
+                if (existing2.rows.length > 0) {
+                    const row = existing2.rows[0];
+                    if (row.thread_id !== input.thread.id) {
+                        throw new Error('Slug already in use by another thread');
+                    }
+                    const res2 = await this.db.query(updateSQL, [
+                        input.slug,
+                        input.title || input.thread.title,
+                        input.summary || '',
+                        nowContent,
+                        srcUpdatedAt,
+                        input.publishedByUserId,
+                    ]);
+                    return this.map(res2.rows[0]);
+                }
+                else {
+                    const res2 = await this.db.query(insertSQL, [
+                        input.thread.id,
+                        input.slug,
+                        input.title || input.thread.title,
+                        input.summary || '',
+                        nowContent,
+                        srcUpdatedAt,
+                        input.publishedByUserId,
+                    ]);
+                    return this.map(res2.rows[0]);
+                }
             }
             throw e;
         }

@@ -137,8 +137,11 @@ const Section: React.FC<{ title: string; text?: string }> = ({ title, text }) =>
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const slug = ctx.params?.slug as string;
   try {
+  // Ensure the HTML is not cached by intermediaries
+  try { (ctx.res as any)?.setHeader?.('Cache-Control', 'no-store'); } catch {}
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:3009';
-    const res = await fetch(`${base}/api/public/community/threads/${encodeURIComponent(slug)}`);
+  // Add a cache-busting query to avoid stale CDN/proxy caches just after republish
+  const res = await fetch(`${base}/api/public/community/threads/${encodeURIComponent(slug)}?t=${Date.now()}`);
     if (!res.ok) return { props: { data: null } };
     const json = await res.json();
     return { props: { data: json.data as PublicationPayload } };

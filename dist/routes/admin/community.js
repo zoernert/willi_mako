@@ -61,6 +61,12 @@ router.post('/threads/:id/publish', async (req, res) => {
         if (String(error.message || '').includes('not found')) {
             return res.status(404).json({ success: false, message: error.message });
         }
+        if (String(error.message || '').toLowerCase().includes('slug already in use')) {
+            return res.status(409).json({ success: false, message: 'Slug already in use' });
+        }
+        if (String(error.message || '').toLowerCase().includes('another thread')) {
+            return res.status(409).json({ success: false, message: 'Slug already in use' });
+        }
         if (String(error.message || '').includes('duplicate key')) {
             return res.status(409).json({ success: false, message: 'Slug already in use' });
         }
