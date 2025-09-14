@@ -142,7 +142,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const proto = (ctx.req.headers['x-forwarded-proto'] as string) || 'https';
   const host = ctx.req.headers.host;
   const derivedBase = host ? `${proto}://${host}` : '';
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || derivedBase || 'http://localhost:3009';
+  // Prefer the site origin in SSR to avoid localhost env misconfiguration in production
+  const base = derivedBase || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:3009';
   // Add a cache-busting query to avoid stale CDN/proxy caches just after republish
   const res = await fetch(`${base}/api/public/community/threads/${encodeURIComponent(slug)}?t=${Date.now()}`);
     if (!res.ok) return { props: { data: null } };

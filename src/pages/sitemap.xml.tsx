@@ -11,7 +11,7 @@ export default function Sitemap() {
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   try {
-  const protocol = (req.headers['x-forwarded-proto'] as string) || 'http';
+  const protocol = (req.headers['x-forwarded-proto'] as string) || 'https';
   const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
   const origin = `${protocol}://${host}`;
   const [faqs, tags, whitepapers, articles, submissions, publicThreads] = await Promise.all([
@@ -20,9 +20,9 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       Promise.resolve(getAllWhitepapers()),
       Promise.resolve(getAllArticles()),
       // Fetch published submissions for mitteilung-53 (extend if more slugs later)
-      fetch(`${origin}/api/public/community/consultations/mitteilung-53/submissions`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
+      fetch(`${origin}/api/public/community/consultations/mitteilung-53/submissions?t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
       // Fetch public community thread publications
-      fetch(`${origin}/api/public/community/threads`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
+      fetch(`${origin}/api/public/community/threads?t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
     ]);
   const datasets = loadDatasets();
 
@@ -145,8 +145,9 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   </url>
 </urlset>`;
 
-    res.setHeader('Content-Type', 'text/xml; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+  res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+  // Reflect new publications immediately; adjust if needed later
+  res.setHeader('Cache-Control', 'no-store');
     res.write(sitemap);
     res.end();
 
