@@ -13,6 +13,7 @@ const ConsultationSearchService_1 = require("../services/ConsultationSearchServi
 const mongoRepository_1 = require("../modules/consultationSubmissions/mongoRepository");
 const CommunityService_1 = require("../services/CommunityService");
 const database_1 = __importDefault(require("../config/database"));
+const CommunityPublicationRepository_1 = require("../repositories/CommunityPublicationRepository");
 const router = express_1.default.Router();
 const readLimiter = (0, express_rate_limit_1.default)({ windowMs: 60 * 1000, max: 60 });
 const exportLimiter = (0, express_rate_limit_1.default)({ windowMs: 5 * 60 * 1000, max: 20 });
@@ -38,7 +39,8 @@ router.get('/threads/:slug', async (req, res) => {
             published_at: publication.published_at,
             source_thread_updated_at: publication.source_thread_updated_at,
             content: publication.published_content,
-            privateThreadUrl: `/community/thread/${publication.thread_id}`,
+            // Legacy app path for authenticated detail view
+            privateThreadUrl: `/app/community/${publication.thread_id}`,
         };
         res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
         return res.json({ success: true, data });
@@ -46,6 +48,19 @@ router.get('/threads/:slug', async (req, res) => {
     catch (e) {
         console.error('Public thread fetch failed:', e);
         return res.status(500).json({ success: false, message: 'Failed to fetch publication' });
+    }
+});
+// List all published community thread slugs (for sitemap and simple listings)
+router.get('/threads', async (req, res) => {
+    try {
+        const repo = new CommunityPublicationRepository_1.CommunityPublicationRepository(database_1.default);
+        const items = await repo.listAllPublic();
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
+        return res.json({ success: true, data: items });
+    }
+    catch (e) {
+        console.error('Public threads list failed:', e);
+        return res.status(500).json({ success: false, message: 'Failed to list publications' });
     }
 });
 // GET /api/public/community/consultations/:slug

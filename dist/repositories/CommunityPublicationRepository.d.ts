@@ -15,6 +15,8 @@ export interface CommunityThreadPublication {
 export declare class CommunityPublicationRepository {
     private db;
     constructor(db: Pool);
+    private ensured;
+    private ensureTable;
     createPublication(input: {
         thread: CommunityThread;
         slug: string;
@@ -24,6 +26,7 @@ export declare class CommunityPublicationRepository {
     }): Promise<CommunityThreadPublication>;
     getBySlug(slug: string): Promise<CommunityThreadPublication | null>;
     listByThread(threadId: string): Promise<CommunityThreadPublication[]>;
+    listAllPublic(): Promise<Pick<CommunityThreadPublication, 'slug' | 'title' | 'published_at' | 'source_thread_updated_at'>[]>;
     private map;
 }
 //# sourceMappingURL=CommunityPublicationRepository.d.ts.map
