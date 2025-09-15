@@ -99,14 +99,6 @@ const Layout: React.FC = () => {
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
         <EnergyIcon color="primary" />
-        <Box>
-          <Typography variant="h6" component="div" color="primary" fontWeight="bold">
-            Stromhaltig
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Willi Mako
-          </Typography>
-        </Box>
       </Box>
       <Divider />
       <List>
