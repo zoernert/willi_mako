@@ -261,6 +261,12 @@ router.get('/consultations/:slug/submissions', readLimiter, async (req, res) => 
     if (!payload)
         return res.status(404).json({ success: false, message: 'Consultation not found' });
     try {
+        const fast = req.query.fast === '1' || req.query.fast === 'true';
+        if (fast) {
+            // Fast mode for sitemap and health checks: avoid Mongo dependency/timeouts
+            res.setHeader('Cache-Control', 'no-store');
+            return res.json({ success: true, data: [] });
+        }
         const chapterKey = typeof req.query.chapterKey === 'string' ? req.query.chapterKey : undefined;
         const limit = Math.min(200, Math.max(1, Number(req.query.limit || 50)));
         const repo = new mongoRepository_1.ConsultationSubmissionsRepository();
@@ -286,7 +292,7 @@ router.get('/consultations/:slug/submissions/:id', readLimiter, async (req, res)
         const item = await repo.getPublicById(id);
         if (!item)
             return res.status(404).json({ success: false, message: 'Not found' });
-        res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=300');
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120');
         return res.json({ success: true, data: item });
     }
     catch (e) {
