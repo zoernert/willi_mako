@@ -69,7 +69,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
   const drawer = (
     <Box>
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <EnergyIcon color="primary" />
+        <Box sx={{ width: 36, height: 36, position: 'relative' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/media/logo.png"
+            alt="Willi-Mako"
+            width={36}
+            height={36}
+            style={{ objectFit: 'contain' }}
+          />
+        </Box>
         <Box>
           <Typography variant="h6" component="div" color="primary" fontWeight="bold">
             Stromhaltig
@@ -182,9 +191,21 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
+            <Box sx={{ width: 28, height: 28, flex: '0 0 auto' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/media/logo.png"
+                alt="Willi-Mako"
+                width={28}
+                height={28}
+                style={{ objectFit: 'contain' }}
+              />
+            </Box>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, minWidth: 0 }}>
+              {title}
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
 
