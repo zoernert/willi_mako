@@ -6,6 +6,13 @@
     <description>Aktuelle Audio-Inhalte von Willi Mako</description>
     <language>de-de</language>
     <item>
+      <title>MaBiS Hub - Status Quo</title>
+      <description>Zusammenfassung des aktuellen Status Quo in der Marktkommunikation des MaBiS Hubs</description>
+      <enclosure url="/media/mabishub.mp4" length="0" type="audio/mpeg" />
+      <guid isPermaLink="false">mmabushub.mp4</guid>
+      <pubDate>Mon, 15 Sep 2025 11:00:00 GMT</pubDate>
+    </item>
+    <item>
       <title>M2C und die Stammdaten</title>
       <description>Ein kurzer Beitrag zur aktuellen Lage in der MaKo.</description>
       <enclosure url="/media/m2c_stammdaten.mp4" length="0" type="audio/mpeg" />
