@@ -79,14 +79,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
             style={{ objectFit: 'contain' }}
           />
         </Box>
-        <Box>
-          <Typography variant="h6" component="div" color="primary" fontWeight="bold">
-            Stromhaltig
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Willi Mako
-          </Typography>
-        </Box>
       </Box>
       <Divider />
       <List>
