@@ -1,0 +1,15 @@
+{
+  "name": "Marktpartnersuche (Willi‑Mako)",
+  "hubId": "market-partner-search",
+  "version": "1.0.0",
+  "description": "Sucht Marktpartner über die öffentliche Willi‑Mako API.",
+  "author": "stromhaltig.de",
+  "variables": [
+    {
+      "key": "API_BASE_URL",
+      "label": "API Base URL",
+      "required": true,
+      "description": "Basis‑URL zur öffentlichen API, z. B. https://stromhaltig.de"
+    }
+  ]
+}

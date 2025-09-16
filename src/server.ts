@@ -34,6 +34,7 @@ import { default as timelineRoutes } from './routes/timeline'; // Timeline-Route
 import timelineStatsRoutes from './routes/timeline-stats'; // Timeline-Stats-Routes
 import timelineActivityRoutes from './routes/timeline-activity'; // Timeline-Activity-Capture-Routes
 import adminConsultationSubmissionsRoutes from './routes/admin/consultation-submissions';
+import publicMarketPartnersRoutes from './routes/public-market-partners';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -173,6 +174,7 @@ app.use('/api/processes', processRoutes);
 app.use('/api/community', initializeCommunityRoutes(db));
 app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
 app.use('/api/public/community', publicCommunityRoutes);
+app.use('/api/public/market-partners', publicMarketPartnersRoutes);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', initializeCommunityAdminRoutes(db));
 
