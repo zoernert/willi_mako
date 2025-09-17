@@ -92,7 +92,7 @@ class AdvancedReasoningService {
             const retrievalStart = Date.now();
             // Simple search first for speed (use optimized guided search)
             const quickResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
-                limit: 12,
+                limit: 24,
                 outlineScoping: true,
                 excludeVisual: true
             });
@@ -130,6 +130,17 @@ class AdvancedReasoningService {
             // Check if we have enough context for a direct response
             if (contextAnalysis.contextQuality > 0.5 || quickResults.length >= 5) {
                 console.log('✅ Sufficient context found, generating direct response');
+                // Re-rank the quick results to maximize relevance
+                const rerankStart = Date.now();
+                const topN = Math.min(12, quickResults.length);
+                const rerankedQuick = await this.rerankResultsLLM(query, quickResults, topN);
+                reasoningSteps.push({
+                    step: 'rerank',
+                    description: `LLM re-ranking applied to quick results (top ${topN})`,
+                    timestamp: rerankStart,
+                    duration: Date.now() - rerankStart,
+                    qdrantResults: rerankedQuick.length
+                });
                 // Check admin override for iterative refinement
                 const override = contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.overridePipeline;
                 if (override === null || override === void 0 ? void 0 : override.useIterativeRefinement) {
@@ -139,9 +150,9 @@ class AdvancedReasoningService {
                         confidenceThreshold: (_b = override.confidenceThreshold) !== null && _b !== void 0 ? _b : 0.8,
                         reason: 'Admin override iterative refinement'
                     };
-                    return await this.generateRefinedResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, decisions, useDetailedIntentAnalysis);
+                    return await this.generateRefinedResponse(query, rerankedQuick, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, decisions, useDetailedIntentAnalysis);
                 }
-                return await this.generateDirectResponse(query, quickResults, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, {
+                return await this.generateDirectResponse(query, rerankedQuick, previousMessages, userPreferences, reasoningSteps, 1, qaAnalysis, contextAnalysis, {
                     useIterativeRefinement: false,
                     maxIterations: 1,
                     confidenceThreshold: 0.8,
@@ -153,7 +164,18 @@ class AdvancedReasoningService {
             const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
             apiCallsUsed++;
             const enhancedResults = await this.performParallelSearch(searchQueries.slice(0, 4));
-            const combinedResults = [...quickResults, ...enhancedResults].slice(0, 15); // Limit total results
+            const combinedResultsRaw = [...quickResults, ...enhancedResults].slice(0, 30); // Limit total results
+            // Apply re-ranking on combined results
+            const rerankStart2 = Date.now();
+            const topNCombined = Math.min(12, combinedResultsRaw.length);
+            const combinedResults = await this.rerankResultsLLM(query, combinedResultsRaw, topNCombined);
+            reasoningSteps.push({
+                step: 'rerank',
+                description: `LLM re-ranking applied to combined results (top ${topNCombined})`,
+                timestamp: rerankStart2,
+                duration: Date.now() - rerankStart2,
+                qdrantResults: combinedResults.length
+            });
             reasoningSteps.push({
                 step: 'enhanced_retrieval',
                 description: `Enhanced search with ${searchQueries.length} queries`,
@@ -184,7 +206,7 @@ class AdvancedReasoningService {
             console.error('❌ Error in advanced reasoning:', error);
             // Fast fallback: Simple response generation
             try {
-                const fallbackResults = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 8, outlineScoping: true, excludeVisual: true });
+                const fallbackResults = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
                 const contextText = fallbackResults.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
                 const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), contextText, userPreferences);
                 console.log('✅ Fallback response generated successfully');
@@ -365,7 +387,7 @@ class AdvancedReasoningService {
         try {
             // Perform searches using optimized guided retrieval
             console.log(`🔍 Performing parallel guided searches for ${queries.length} queries`);
-            const searchPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 10, outlineScoping: true, excludeVisual: true }));
+            const searchPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20, outlineScoping: true, excludeVisual: true }));
             const searchResults = await Promise.all(searchPromises);
             // Flatten and process results
             let allResults = [];
@@ -384,12 +406,12 @@ class AdvancedReasoningService {
             // Sort by score descending
             uniqueResults.sort((a, b) => { var _a, _b, _c, _d; return ((_b = (_a = b.score) !== null && _a !== void 0 ? _a : b.merged_score) !== null && _b !== void 0 ? _b : 0) - ((_d = (_c = a.score) !== null && _c !== void 0 ? _c : a.merged_score) !== null && _d !== void 0 ? _d : 0); });
             console.log(`✅ Found ${uniqueResults.length} unique results across ${queries.length} queries`);
-            return uniqueResults.slice(0, 20); // Limit to top 20 results
+            return uniqueResults.slice(0, 40); // Limit to top 40 results for richer context
         }
         catch (error) {
             console.error('❌ Error in parallel guided search:', error);
             // Fallback to most basic search if all else fails
-            const fallbackPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 10 }));
+            const fallbackPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20 }));
             const fallbackResults = await Promise.all(fallbackPromises);
             const flattenedResults = fallbackResults.flat();
             // Remove duplicates
@@ -401,7 +423,7 @@ class AdvancedReasoningService {
                 seen.add(id);
                 return true;
             });
-            return uniqueResults.slice(0, 20); // Limit to top 20 results
+            return uniqueResults.slice(0, 40); // Limit to top 40 results
         }
     }
     analyzeContext(results, query) {
@@ -498,6 +520,65 @@ Provide an improved version:`;
             apiCallsUsed,
             steps
         };
+    }
+    // Re-rank retrieved results using LLM to pick best matching snippets
+    async rerankResultsLLM(query, results, topN = 12) {
+        var _a, _b, _c;
+        try {
+            if (!Array.isArray(results) || results.length === 0)
+                return [];
+            if (results.length <= topN)
+                return results;
+            // Build compact candidates list
+            const candidates = results.slice(0, Math.min(results.length, 40)).map((r, idx) => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+                const id = String((_c = (_a = r.id) !== null && _a !== void 0 ? _a : (_b = r.payload) === null || _b === void 0 ? void 0 : _b.id) !== null && _c !== void 0 ? _c : idx);
+                const title = (((_d = r.payload) === null || _d === void 0 ? void 0 : _d.title) || ((_e = r.payload) === null || _e === void 0 ? void 0 : _e.document_name) || ((_f = r.payload) === null || _f === void 0 ? void 0 : _f.document_base_name) || '').toString();
+                const chunk = (((_g = r.payload) === null || _g === void 0 ? void 0 : _g.contextual_content) || ((_h = r.payload) === null || _h === void 0 ? void 0 : _h.text) || ((_j = r.payload) === null || _j === void 0 ? void 0 : _j.content) || '').toString();
+                const snippet = chunk.replace(/\s+/g, ' ').slice(0, 350);
+                const ctype = (((_k = r.payload) === null || _k === void 0 ? void 0 : _k.chunk_type) || 'n/a').toString();
+                const page = ((_l = r.payload) === null || _l === void 0 ? void 0 : _l.page_number) != null ? `p.${r.payload.page_number}` : '';
+                return { id, title, ctype, page, snippet };
+            });
+            const list = candidates.map(c => `- id: ${c.id}\n  title: ${c.title}\n  type: ${c.ctype} ${c.page}\n  snippet: ${c.snippet}`).join('\n\n');
+            const prompt = `Wähle die ${topN} relevantesten Einträge zur Beantwortung der Nutzerfrage und gib die IDs in Reihenfolge zurück.
+Nutzerfrage: ${query}
+Kandidaten:\n${list}
+
+Antworte ausschließlich als valides JSON ohne Markdown:
+{"rankedIds": ["id1", "id2", ...]}`;
+            const ranked = await llmProvider_1.default.generateStructuredOutput(prompt);
+            const ids = Array.isArray(ranked === null || ranked === void 0 ? void 0 : ranked.rankedIds) ? ranked.rankedIds.map((x) => String(x)) : [];
+            if (!ids.length)
+                return results.slice(0, topN);
+            // Map by id (string) for quick lookup
+            const byId = new Map();
+            for (const r of results) {
+                const key = String((_c = (_a = r.id) !== null && _a !== void 0 ? _a : (_b = r.payload) === null || _b === void 0 ? void 0 : _b.id) !== null && _c !== void 0 ? _c : '');
+                if (key)
+                    byId.set(key, r);
+            }
+            const ordered = [];
+            for (const id of ids) {
+                const item = byId.get(String(id));
+                if (item)
+                    ordered.push(item);
+            }
+            // Append any missing items by original order to fill topN
+            if (ordered.length < topN) {
+                for (const r of results) {
+                    if (ordered.length >= topN)
+                        break;
+                    if (!ordered.includes(r))
+                        ordered.push(r);
+                }
+            }
+            return ordered.slice(0, topN);
+        }
+        catch (e) {
+            console.warn('Re-ranking failed, using original order:', (e === null || e === void 0 ? void 0 : e.message) || e);
+            return results.slice(0, topN);
+        }
     }
     async assessResponseQuality(query, response, context, userPreferences) {
         const prompt = `Rate the quality of this response on a scale of 0-1:

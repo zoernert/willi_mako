@@ -389,14 +389,17 @@ router.post('/documents', upload.single('file'), (0, errorHandler_1.asyncHandler
                     apiKey: process.env.QDRANT_API_KEY,
                     checkCompatibility: false
                 });
-                const base = process.env.QDRANT_COLLECTION || 'ewilli';
+                const base = process.env.QDRANT_COLLECTION || 'willi_mako';
                 const collection = (0, embeddingProvider_1.getCollectionName)(base);
                 const points = [];
                 let idx = 0;
                 for (const c of chunks) {
                     const vector = await (0, embeddingProvider_1.generateEmbedding)(c);
+                    // Deterministic UUIDv5 based on doc id + chunk index
+                    const { v5: uuidv5 } = require('uuid');
+                    const pid = uuidv5(`admin-doc:${insertId}:${idx}`, uuidv5.URL);
                     points.push({
-                        id: `admin-doc-${insertId}-${idx}`,
+                        id: pid,
                         vector,
                         payload: {
                             content_type: 'admin_document',
@@ -476,7 +479,7 @@ router.delete('/documents/:documentId', (0, errorHandler_1.asyncHandler)(async (
                 apiKey: process.env.QDRANT_API_KEY,
                 checkCompatibility: false
             });
-            const base = process.env.QDRANT_COLLECTION || 'ewilli';
+            const base = process.env.QDRANT_COLLECTION || 'willi_mako';
             const collection = (0, embeddingProvider_1.getCollectionName)(base);
             await client.delete(collection, {
                 filter: { must: [
@@ -860,15 +863,42 @@ router.post('/vector-content/markdown', (0, errorHandler_1.asyncHandler)(async (
     const { title, content } = body;
     if (!title || !content)
         throw new errors_1.AppError('title and content are required', 400);
-    const result = await MarkdownIngestService_1.default.upsertMarkdown({
-        title: String(title),
-        slug: body.slug ? String(body.slug) : undefined,
-        content: String(content),
-        type: body.type || 'guide',
-        tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
-        createdByUserId: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id
-    });
-    return response_1.ResponseUtils.success(res, result, 'Markdown ingested into vector store');
+    try {
+        const result = await MarkdownIngestService_1.default.upsertMarkdown({
+            title: String(title),
+            slug: body.slug ? String(body.slug) : undefined,
+            content: String(content),
+            type: body.type || 'guide',
+            tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+            createdByUserId: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id
+        });
+        return response_1.ResponseUtils.success(res, result, 'Markdown ingested into vector store');
+    }
+    catch (e) {
+        const msg = (e === null || e === void 0 ? void 0 : e.message) || 'Markdown ingest failed';
+        // Provide clearer 400s for common misconfigurations
+        if (/vector size|embedding size|collection/i.test(msg)) {
+            throw new errors_1.AppError(msg, 400);
+        }
+        throw e;
+    }
+}));
+// Admin: Vector configuration diagnostics
+router.get('/vector-config', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+    const provider = (0, embeddingProvider_1.getEmbeddingProvider)();
+    const dim = (0, embeddingProvider_1.getEmbeddingDimension)();
+    const base = process.env.QDRANT_COLLECTION || 'willi_mako';
+    const collection = (0, embeddingProvider_1.getCollectionName)(base);
+    const qdrantUrl = process.env.QDRANT_URL || 'http://localhost:6333';
+    const client = new js_client_rest_1.QdrantClient({ url: qdrantUrl, apiKey: process.env.QDRANT_API_KEY, checkCompatibility: false });
+    let qdrantSize = null;
+    try {
+        const info = await client.getCollection(collection);
+        qdrantSize = (_l = (_e = (_d = (_c = (_b = (_a = info === null || info === void 0 ? void 0 : info.result) === null || _a === void 0 ? void 0 : _a.config) === null || _b === void 0 ? void 0 : _b.params) === null || _c === void 0 ? void 0 : _c.vectors) === null || _d === void 0 ? void 0 : _d.size) !== null && _e !== void 0 ? _e : (_k = (_j = (_h = (_g = (_f = info === null || info === void 0 ? void 0 : info.result) === null || _f === void 0 ? void 0 : _f.config) === null || _g === void 0 ? void 0 : _g.params) === null || _h === void 0 ? void 0 : _h.vectors_config) === null || _j === void 0 ? void 0 : _j.params) === null || _k === void 0 ? void 0 : _k.size) !== null && _l !== void 0 ? _l : null;
+    }
+    catch (_) { }
+    return response_1.ResponseUtils.success(res, { provider, expectedDimension: dim, collection, qdrantUrl, qdrantConfiguredSize: qdrantSize }, 'Vector configuration');
 }));
 // Admin: Delete all markdown vectors by slug
 router.delete('/vector-content/markdown/:slug', (0, errorHandler_1.asyncHandler)(async (req, res) => {

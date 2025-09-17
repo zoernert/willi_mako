@@ -2,11 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MarkdownIngestService = void 0;
 const js_client_rest_1 = require("@qdrant/js-client-rest");
+const uuid_1 = require("uuid");
 const embeddingProvider_1 = require("./embeddingProvider");
 const embeddingProvider_2 = require("./embeddingProvider");
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
-const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'ewilli';
+const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'willi_mako';
 const COLLECTION_NAME = (0, embeddingProvider_2.getCollectionName)(BASE_COLLECTION);
 class MarkdownIngestService {
     constructor() {
@@ -21,6 +22,7 @@ class MarkdownIngestService {
      * Returns number of chunks and ids used.
      */
     async upsertMarkdown(req) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         const slug = (req.slug || this.slugify(req.title)).slice(0, 120);
         const type = (req.type || 'guide');
         const tags = req.tags || [];
@@ -30,11 +32,33 @@ class MarkdownIngestService {
         const chunks = this.chunkMarkdown(req.content);
         const points = [];
         let index = 0;
+        // Preflight: generate a single embedding to detect vector length and validate collection config
+        let vectorLength = null;
+        try {
+            const sampleText = (((_a = abbreviationEntries[0]) === null || _a === void 0 ? void 0 : _a.value) || ((_b = this.chunkMarkdown(req.content)[0]) === null || _b === void 0 ? void 0 : _b.text) || req.content || '').slice(0, 1000);
+            if (sampleText) {
+                const v = await (0, embeddingProvider_1.generateEmbedding)(sampleText);
+                vectorLength = Array.isArray(v) ? v.length : null;
+                // Check collection config
+                if (vectorLength) {
+                    const info = await this.client.getCollection(COLLECTION_NAME).catch(() => null);
+                    const configuredSize = (_g = (_f = (_e = (_d = (_c = info === null || info === void 0 ? void 0 : info.result) === null || _c === void 0 ? void 0 : _c.config) === null || _d === void 0 ? void 0 : _d.params) === null || _e === void 0 ? void 0 : _e.vectors) === null || _f === void 0 ? void 0 : _f.size) !== null && _g !== void 0 ? _g : (_m = (_l = (_k = (_j = (_h = info === null || info === void 0 ? void 0 : info.result) === null || _h === void 0 ? void 0 : _h.config) === null || _j === void 0 ? void 0 : _j.params) === null || _k === void 0 ? void 0 : _k.vectors_config) === null || _l === void 0 ? void 0 : _l.params) === null || _m === void 0 ? void 0 : _m.size;
+                    if (configuredSize && configuredSize !== vectorLength) {
+                        throw new Error(`Qdrant collection '${COLLECTION_NAME}' vector size (${configuredSize}) mismatches embedding size (${vectorLength}). Ensure EMBEDDING_PROVIDER and collection are aligned (recreate collection or use correct provider).`);
+                    }
+                }
+            }
+        }
+        catch (preErr) {
+            console.error('Markdown ingest preflight failed:', preErr);
+            throw preErr;
+        }
         // 1) Abbreviations as dedicated points (chunk_type = 'abbreviation')
         for (const abbr of abbreviationEntries) {
             const text = `${abbr.key}: ${abbr.value}`;
             const vector = await (0, embeddingProvider_1.generateEmbedding)(text);
-            const id = `md-${slug}-abbr-${abbr.key}`;
+            // Use deterministic UUIDv5 for stable IDs per Qdrant requirements
+            const id = (0, uuid_1.v5)(`md:${slug}:abbr:${abbr.key}`, uuid_1.v5.URL);
             points.push({
                 id,
                 vector,
@@ -62,7 +86,8 @@ class MarkdownIngestService {
             if (text.length < 12 && /[:\-]/.test(text) && /[A-Za-z]{2,8}/.test(text))
                 continue;
             const vector = await (0, embeddingProvider_1.generateEmbedding)(text);
-            const id = `md-${slug}-${index++}`;
+            const id = (0, uuid_1.v5)(`md:${slug}:chunk:${index}`, uuid_1.v5.URL);
+            index++;
             points.push({
                 id,
                 vector,
@@ -83,10 +108,25 @@ class MarkdownIngestService {
         }
         if (!points.length)
             return { chunks: 0, ids: [], slug };
-        await this.client.upsert(COLLECTION_NAME, {
-            wait: true,
-            points
-        });
+        try {
+            await this.client.upsert(COLLECTION_NAME, {
+                wait: true,
+                points
+            });
+        }
+        catch (err) {
+            // Surface Qdrant error details for easier diagnosis (e.g., vector size mismatch)
+            let detail = undefined;
+            try {
+                // Common shapes: err.response.data, err.data, err.message
+                detail = ((_o = err === null || err === void 0 ? void 0 : err.response) === null || _o === void 0 ? void 0 : _o.data) || (err === null || err === void 0 ? void 0 : err.data) || (err === null || err === void 0 ? void 0 : err.message) || err;
+            }
+            catch (_p) { }
+            const hint = vectorLength
+                ? ` | embeddingSize=${vectorLength} collection='${COLLECTION_NAME}'`
+                : '';
+            throw new Error(`Qdrant upsert failed: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}${hint}`);
+        }
         return { chunks: points.length, ids: points.map(p => p.id), slug };
     }
     /** Delete all vectors for a given markdown slug */

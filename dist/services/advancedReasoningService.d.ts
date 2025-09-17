@@ -55,6 +55,7 @@ declare class AdvancedReasoningService {
     private analyzeContext;
     private performQAAnalysis;
     private performIterativeRefinement;
+    private rerankResultsLLM;
     private assessResponseQuality;
 }
 declare const _default: AdvancedReasoningService;

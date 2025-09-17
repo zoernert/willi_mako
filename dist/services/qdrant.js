@@ -9,7 +9,7 @@ const embeddingProvider_2 = require("./embeddingProvider");
 const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
 // Provider selection and derived config (centralized via embeddingProvider)
-const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'ewilli';
+const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'willi_mako';
 const QDRANT_COLLECTION_NAME = (0, embeddingProvider_2.getCollectionName)(BASE_COLLECTION);
 const COLLECTION_EMBED_DIM = (0, embeddingProvider_2.getEmbeddingDimension)();
 const EMBEDDING_PROVIDER = (0, embeddingProvider_2.getEmbeddingProvider)();

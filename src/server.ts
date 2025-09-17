@@ -21,6 +21,7 @@ import processRoutes from './routes/processes';
 import { initializeCommunityRoutes } from './routes/community';
 import { initializeCommunityAdminRoutes } from './routes/admin/community';
 import publicCommunityRoutes from './routes/public-community';
+import publicEdifactRoutes from './routes/public-edifact';
 import m2cRolesRoutes from './routes/m2cRoles';
 import bilateralClarificationsRoutes from './routes/bilateral-clarifications-simple';
 import llmRoutes from './routes/llm';
@@ -174,6 +175,7 @@ app.use('/api/processes', processRoutes);
 app.use('/api/community', initializeCommunityRoutes(db));
 app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
 app.use('/api/public/community', publicCommunityRoutes);
+app.use('/api/public/edifact', publicEdifactRoutes);
 app.use('/api/public/market-partners', publicMarketPartnersRoutes);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', initializeCommunityAdminRoutes(db));

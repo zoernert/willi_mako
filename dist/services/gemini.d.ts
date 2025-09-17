@@ -11,6 +11,11 @@ export declare class GeminiService {
     private lastUsedModelName;
     constructor();
     /**
+     * Resolve generation config from environment with safe defaults.
+     * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7).
+     */
+    private getGenerationConfig;
+    /**
      * Get the last used Gemini model name (for diagnostics/metrics)
      */
     getLastUsedModel(): string | null;

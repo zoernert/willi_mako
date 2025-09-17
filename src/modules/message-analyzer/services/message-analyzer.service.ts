@@ -6,6 +6,7 @@ import { QdrantService } from '../../../services/qdrant';
 import { AppError } from '../../../utils/errors';
 import pool from '../../../config/database';
 import { PostgresCodeLookupRepository } from '../../codelookup/repositories/postgres-codelookup.repository';
+import { MongoCodeLookupRepository } from '../../codelookup/repositories/mongo-codelookup.repository';
 import { CodeLookupService } from '../../codelookup/services/codelookup.service';
 
 export class MessageAnalyzerService implements IMessageAnalyzerService {
@@ -15,9 +16,16 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
   constructor() {
     this.qdrantService = new QdrantService();
     
-    // Initialize code lookup service
-    const codeLookupRepository = new PostgresCodeLookupRepository(pool);
-    this.codeLookupService = new CodeLookupService(codeLookupRepository);
+    // Initialize code lookup service (prefer Mongo for richer metadata)
+    try {
+      const mongoRepo = new MongoCodeLookupRepository();
+      this.codeLookupService = new CodeLookupService(mongoRepo);
+      console.log('MessageAnalyzer: CodeLookup using Mongo repository');
+    } catch (e) {
+      console.warn('MessageAnalyzer: Mongo repository unavailable, falling back to Postgres');
+      const postgresRepo = new PostgresCodeLookupRepository(pool);
+      this.codeLookupService = new CodeLookupService(postgresRepo);
+    }
   }
 
   public async analyze(message: string): Promise<AnalysisResult> {
@@ -208,11 +216,29 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
           
           if (this.isPotentialEnergyCode(code)) {
             try {
-              const result = await this.codeLookupService.lookupSingleCode(code);
-              if (result) {
-                resolvedCodes[code] = result.companyName;
-                // Erweitere die Beschreibung für NAD-Segmente
-                enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${result.companyName} (${code})`;
+              // Verwende erweiterte Suche um Rollen/Metadaten zu erhalten
+              const results = await this.codeLookupService.searchCodes(code);
+              const primary = results && results[0];
+              if (primary) {
+                // Ermittele Rollen aus contacts passend zum Code
+                const roles = (primary.contacts || [])
+                  .filter(c => (c.BdewCode === code) || !c.BdewCode)
+                  .map(c => c.BdewCodeFunction)
+                  .filter(Boolean) as string[];
+                const uniqueRoles = Array.from(new Set(roles));
+                const roleText = uniqueRoles.length ? ` [${uniqueRoles.join(', ')}]` : '';
+                resolvedCodes[code] = `${primary.companyName}${roleText}`;
+                // Erweitere Beschreibung
+                enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${primary.companyName} (${code})${roleText}`;
+                // Hänge aussagekräftige Hinweise an
+                (enrichedSegment as any).resolved_meta = {
+                  partyQualifier,
+                  code,
+                  companyName: primary.companyName,
+                  roles: uniqueRoles,
+                  contactSheetUrl: primary.contactSheetUrl,
+                  allSoftwareSystems: primary.allSoftwareSystems
+                };
               }
             } catch (error) {
               console.warn(`⚠️ Failed to resolve NAD code ${code}:`, error);
@@ -230,6 +256,23 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     
     console.log('✅ Code lookup enrichment completed');
     return enrichedSegments;
+  }
+
+  private buildResolvedPartnersContext(segments: EdiSegment[]): string {
+    try {
+      const lines: string[] = [];
+      for (const s of segments) {
+        if (s.tag !== 'NAD') continue;
+        const meta = (s as any).resolved_meta;
+        if (meta && meta.companyName) {
+          const roles = Array.isArray(meta.roles) && meta.roles.length ? ` Rollen: ${meta.roles.join(', ')}` : '';
+          lines.push(`- NAD+${meta.partyQualifier}: ${meta.code} → ${meta.companyName}.${roles}`);
+        }
+      }
+      return lines.length ? lines.join('\n') : '';
+    } catch {
+      return '';
+    }
   }
 
   /**
@@ -405,6 +448,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     const messageText = parsedMessage.segments.map(s => s.original).join('\n');
     const segmentCount = parsedMessage.segments.length;
     const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
+    const partnerCtx = this.buildResolvedPartnersContext(parsedMessage.segments);
     
     return `Du bist EDIFACT-Experte für deutsche Energiewirtschaft. Analysiere diese ${context.messageType}-Nachricht (${segmentCount} Segmente):
 
@@ -413,6 +457,9 @@ ${messageText}
 SCHEMA-INFO: ${context.schemaContext.substring(0, 800)}
 
 SEGMENTE: ${context.segmentContext.substring(0, 1200)}
+
+MARKTPARTNER-AUFLÖSUNG:
+${partnerCtx || '(keine zusätzlichen Informationen gefunden)'}
 
 ANTWORT-FORMAT (deutsch):
 ZUSAMMENFASSUNG: [Geschäftszweck, Parteien, Dateninhalt in 2-3 Sätzen]
@@ -460,9 +507,9 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
     let cleanedResponse = rawAnalysis.trim();
     
     // Try German keywords first
-    let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*(.*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/s);
+    let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/);
     if (!summaryMatch) {
-      summaryMatch = cleanedResponse.match(/SUMMARY:\s*(.*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/s);
+      summaryMatch = cleanedResponse.match(/SUMMARY:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/);
     }
     
     let summary = summaryMatch ? summaryMatch[1].trim() : '';

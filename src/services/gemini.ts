@@ -4,6 +4,7 @@ import pool from '../config/database';
 import { PostgresCodeLookupRepository } from '../modules/codelookup/repositories/postgres-codelookup.repository';
 import { CodeLookupService } from '../modules/codelookup/services/codelookup.service';
 import { safeParseJsonResponse } from '../utils/aiResponseUtils';
+// Note: Use dynamic import for EDIFACT tool to avoid circular init at module load time
 
 dotenv.config();
 
@@ -104,6 +105,28 @@ export class GeminiService {
                     },
                     required: ['code']
                   }
+                },
+                {
+                  name: 'edifact_analyze_message',
+                  description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                  parameters: {
+                    type: FunctionDeclarationSchemaType.OBJECT,
+                    properties: {
+                      message: { type: FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' }
+                    },
+                    required: ['message']
+                  }
+                },
+                {
+                  name: 'edifact_explain_segment',
+                  description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                  parameters: {
+                    type: FunctionDeclarationSchemaType.OBJECT,
+                    properties: {
+                      fragment: { type: FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' }
+                    },
+                    required: ['fragment']
+                  }
                 }
               ]
             }
@@ -160,6 +183,28 @@ export class GeminiService {
                     }
                   },
                   required: ['code']
+                }
+              },
+              {
+                name: 'edifact_analyze_message',
+                description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                parameters: {
+                  type: FunctionDeclarationSchemaType.OBJECT,
+                  properties: {
+                    message: { type: FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' }
+                  },
+                  required: ['message']
+                }
+              },
+              {
+                name: 'edifact_explain_segment',
+                description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                parameters: {
+                  type: FunctionDeclarationSchemaType.OBJECT,
+                  properties: {
+                    fragment: { type: FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' }
+                  },
+                  required: ['fragment']
                 }
               }
             ]
@@ -260,6 +305,24 @@ export class GeminiService {
                       type: FunctionDeclarationSchemaType.OBJECT,
                       properties: { code: { type: FunctionDeclarationSchemaType.STRING, description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.' } },
                       required: ['code']
+                    }
+                  },
+                  {
+                    name: 'edifact_analyze_message',
+                    description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                    parameters: {
+                      type: FunctionDeclarationSchemaType.OBJECT,
+                      properties: { message: { type: FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' } },
+                      required: ['message']
+                    }
+                  },
+                  {
+                    name: 'edifact_explain_segment',
+                    description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                    parameters: {
+                      type: FunctionDeclarationSchemaType.OBJECT,
+                      properties: { fragment: { type: FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' } },
+                      required: ['fragment']
                     }
                   }
                 ]
@@ -399,6 +462,20 @@ export class GeminiService {
             message: 'Kein Unternehmen für diesen Code gefunden.'
           };
         }
+      case 'edifact_analyze_message': {
+        const msg: string = (args && (args.message || args.msg)) || '';
+        const input = typeof msg === 'string' ? msg.slice(0, 20000) : '';
+        const { edifactTool } = await import('./edifactTool');
+        const analysis = await edifactTool.analyzeMessage(input);
+        return analysis;
+      }
+      case 'edifact_explain_segment': {
+        const frag: string = (args && (args.fragment || args.seg || args.text)) || '';
+        const input = typeof frag === 'string' ? frag.slice(0, 2000) : '';
+        const { edifactTool } = await import('./edifactTool');
+        const explanation = await edifactTool.explainSegment(input);
+        return explanation;
+      }
       
       default:
         return { error: `Unbekannte Funktion: ${name}` };
