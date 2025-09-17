@@ -70,6 +70,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SearchIcon from '@mui/icons-material/Search';
 import BugReportIcon from '@mui/icons-material/BugReport';
+import ArticleIcon from '@mui/icons-material/Article';
+import vectorContentService, { MarkdownIngestType } from '../services/vectorContentService';
 
 // Admin components - Full implementation
 const AdminDashboard = () => {
@@ -2497,6 +2499,7 @@ const Admin: React.FC = () => {
     { label: 'Dokumente', icon: <DocumentsIcon />, component: <AdminDocuments /> },
   { label: 'FAQ', icon: <FAQIcon />, component: <AdminFAQ /> },
   { label: 'Artikel (MDX)', icon: <DocumentsIcon />, component: <AdminArticlesManager /> },
+  { label: 'Vector: Markdown', icon: <ArticleIcon />, component: <AdminVectorMarkdown /> },
     { label: 'Community', icon: <ForumIcon />, component: <CommunityAdminManager /> },
     { label: 'Quizzes', icon: <QuizIcon />, component: <AdminQuizManager /> },
   { label: 'Search Lab', icon: <SearchIcon />, component: <AdminSearchLab /> },
@@ -2548,6 +2551,137 @@ const Admin: React.FC = () => {
 
 
 export default Admin;
+// --- New: Admin Vector Markdown component ---
+const AdminVectorMarkdown: React.FC = () => {
+  const { showSnackbar } = useSnackbar();
+  const [title, setTitle] = useState('');
+  const [slug, setSlug] = useState('');
+  const [type, setType] = useState<MarkdownIngestType>('guide');
+  const [tags, setTags] = useState<string>('');
+  const [content, setContent] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  const handleIngest = async () => {
+    if (!title.trim() || !content.trim()) {
+      showSnackbar('Titel und Inhalt sind Pflichtfelder', 'warning');
+      return;
+    }
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await vectorContentService.ingestMarkdown({
+        title: title.trim(),
+        slug: slug.trim() || undefined,
+        content,
+        type,
+        tags: tags.split(',').map(t => t.trim()).filter(Boolean)
+      });
+      setResult(res);
+      showSnackbar(`Ingest erfolgreich: ${res.chunks} Chunks`, 'success');
+    } catch (e: any) {
+      showSnackbar(e.message || 'Ingest fehlgeschlagen', 'error');
+      setResult({ error: e.message || String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteBySlug = async () => {
+    if (!slug.trim()) {
+      showSnackbar('Bitte Slug angeben', 'warning');
+      return;
+    }
+    if (!window.confirm(`Alle Markdown-Vektoren für Slug "${slug}" löschen?`)) return;
+    setBusy(true);
+    try {
+      const r = await vectorContentService.deleteBySlug(slug.trim());
+      setResult(r);
+      showSnackbar('Markdown-Vektoren gelöscht', 'success');
+    } catch (e: any) {
+      showSnackbar(e.message || 'Löschen fehlgeschlagen', 'error');
+    } finally { setBusy(false); }
+  };
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    setBusy(true);
+    try {
+      const items = await vectorContentService.searchMarkdown(query.trim(), 10);
+      setSearchResults(items);
+    } catch (e: any) {
+      showSnackbar(e.message || 'Suche fehlgeschlagen', 'error');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Admin: Markdown → Vector Store
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Fügen Sie Glossar/Abkürzungen/Guides als Markdown hinzu. Beispiel: "EoG - Ersatz- oder Grundversorgung".
+      </Typography>
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+          <Box>
+            <TextField label="Titel *" fullWidth value={title} onChange={(e)=> setTitle(e.target.value)} sx={{ mb: 2 }} />
+            <TextField label="Slug (optional)" fullWidth value={slug} onChange={(e)=> setSlug(e.target.value)} sx={{ mb: 2 }} />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Typ</InputLabel>
+              <Select value={type} label="Typ" onChange={(e)=> setType(e.target.value as MarkdownIngestType)}>
+                <MenuItem value="glossary">glossary</MenuItem>
+                <MenuItem value="abbreviation">abbreviation</MenuItem>
+                <MenuItem value="guide">guide</MenuItem>
+                <MenuItem value="note">note</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField label="Tags (Komma-getrennt)" fullWidth value={tags} onChange={(e)=> setTags(e.target.value)} sx={{ mb: 2 }} />
+          </Box>
+          <Box>
+            <TextField label="Markdown Inhalt *" fullWidth multiline minRows={10} value={content} onChange={(e)=> setContent(e.target.value)} />
+          </Box>
+        </Box>
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button variant="contained" onClick={handleIngest} disabled={busy}>Ingest</Button>
+          <Button variant="outlined" color="error" onClick={handleDeleteBySlug} disabled={busy || !slug}>Delete by Slug</Button>
+        </Box>
+        {result && (
+          <Paper variant="outlined" sx={{ p: 2, mt: 2, bgcolor: 'background.default' }}>
+            <Typography variant="subtitle2" gutterBottom>Ergebnis</Typography>
+            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(result, null, 2)}</pre>
+          </Paper>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>Suche in Admin-Markdown</Typography>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <TextField fullWidth label="Suchbegriff (z.B. EoG)" value={query} onChange={(e)=> setQuery(e.target.value)} />
+          <Button variant="outlined" onClick={handleSearch} disabled={busy}>Suchen</Button>
+        </Box>
+        <List>
+          {searchResults.map((r: any, i: number) => (
+            <ListItem key={i} divider sx={{ display: 'block' }}>
+              <Typography variant="subtitle2">{r?.payload?.title} [{r?.payload?.slug}]</Typography>
+              <Typography variant="caption" color="text.secondary">{r?.payload?.chunk_type} • {typeof r?.score === 'number' ? r.score.toFixed(3) : r?.score}</Typography>
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{r?.payload?.text}</Typography>
+              </Box>
+            </ListItem>
+          ))}
+          {searchResults.length === 0 && (
+            <Typography variant="body2" color="text.secondary">Keine Ergebnisse</Typography>
+          )}
+        </List>
+      </Paper>
+    </Box>
+  );
+};
+
 
 // --- New: Admin Search Lab component ---
 const AdminSearchLab: React.FC = () => {
