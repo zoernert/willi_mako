@@ -134,7 +134,7 @@ class QdrantService {
             .sort((a, b) => { var _b, _c; return ((_b = b.merged_score) !== null && _b !== void 0 ? _b : 0) - ((_c = a.merged_score) !== null && _c !== void 0 ? _c : 0); });
     }
     static payloadBoost(p) {
-        var _b, _c, _d, _e, _f;
+        var _b, _c, _d, _e, _f, _g;
         const t = (((_b = p === null || p === void 0 ? void 0 : p.payload) === null || _b === void 0 ? void 0 : _b.chunk_type) || '');
         let b = 0;
         // Reduced pseudocode boosts (were dominating domain full text)
@@ -160,6 +160,12 @@ class QdrantService {
         // Mild boost for presence of any process numbers (31xxx) - fosters cardinality context
         if (/31\d{3}/.test(upper))
             b += 0.02;
+        // Boost admin-provided markdown content slightly to help intent grounding (e.g., glossary)
+        const ctype = (((_g = p === null || p === void 0 ? void 0 : p.payload) === null || _g === void 0 ? void 0 : _g.content_type) || '');
+        if (ctype === 'admin_markdown')
+            b += 0.03;
+        if (t === 'abbreviation')
+            b += 0.04;
         return b;
     }
     static async outlineScopePages(client, queryVector, topPages = 3) {

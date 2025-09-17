@@ -55,6 +55,7 @@ const userAIKeyService_1 = __importDefault(require("../services/userAIKeyService
 const database_2 = __importDefault(require("../config/database"));
 const qdrant_1 = require("../services/qdrant");
 const advancedReasoningService_1 = __importDefault(require("../services/advancedReasoningService"));
+const MarkdownIngestService_1 = __importDefault(require("../services/MarkdownIngestService"));
 const router = (0, express_1.Router)();
 // Admin middleware - require admin role
 const requireAdmin = (req, res, next) => {
@@ -760,6 +761,41 @@ router.post('/semantic-search', (0, errorHandler_1.asyncHandler)(async (req, res
         console.error('Error in semantic search:', error);
         throw new errors_1.AppError('Semantic search failed', 500);
     }
+}));
+// Admin: Ingest Markdown content into Qdrant (glossary/abbreviations/guides)
+router.post('/vector-content/markdown', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    var _a;
+    const body = req.body;
+    if (!body || typeof body !== 'object')
+        throw new errors_1.AppError('Invalid body', 400);
+    const { title, content } = body;
+    if (!title || !content)
+        throw new errors_1.AppError('title and content are required', 400);
+    const result = await MarkdownIngestService_1.default.upsertMarkdown({
+        title: String(title),
+        slug: body.slug ? String(body.slug) : undefined,
+        content: String(content),
+        type: body.type || 'guide',
+        tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+        createdByUserId: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id
+    });
+    return response_1.ResponseUtils.success(res, result, 'Markdown ingested into vector store');
+}));
+// Admin: Delete all markdown vectors by slug
+router.delete('/vector-content/markdown/:slug', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { slug } = req.params;
+    if (!slug)
+        throw new errors_1.AppError('slug is required', 400);
+    const result = await MarkdownIngestService_1.default.deleteBySlug(slug);
+    return response_1.ResponseUtils.success(res, { slug, ...result }, 'Markdown vectors deleted');
+}));
+// Admin: Search within admin_markdown
+router.post('/vector-content/markdown/search', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { query, limit } = req.body || {};
+    if (!query || typeof query !== 'string')
+        throw new errors_1.AppError('query is required', 400);
+    const results = await MarkdownIngestService_1.default.search(query, Math.max(1, Math.min(Number(limit) || 10, 50)));
+    return response_1.ResponseUtils.success(res, { results }, 'Markdown vector search complete');
 }));
 // Chatflow preview/steering for admins
 router.post('/chatflow/preview', (0, errorHandler_1.asyncHandler)(async (req, res) => {
