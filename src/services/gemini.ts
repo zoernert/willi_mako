@@ -52,6 +52,22 @@ export class GeminiService {
   }
 
   /**
+   * Resolve generation config from environment with safe defaults.
+   * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7).
+   */
+  private getGenerationConfig() {
+    const toNum = (v: string | undefined, d: number) => {
+      const n = v ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : d;
+    };
+    // Defaults: temperature 0.7, topP 0.95, maxOutputTokens 2048
+    const temperature = toNum(process.env.LLM_TEMPERATURE, 0.7);
+    const topP = toNum(process.env.LLM_TOP_P, 0.95);
+    const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 2048);
+    return { temperature, topP, maxOutputTokens } as const;
+  }
+
+  /**
    * Get the last used Gemini model name (for diagnostics/metrics)
    */
   public getLastUsedModel(): string | null {
@@ -71,6 +87,7 @@ export class GeminiService {
         // Default: system key via key manager
         const modelInstance = await googleAIKeyManager.getGenerativeModel({ 
           model: modelName,
+          generationConfig: this.getGenerationConfig(),
           tools: [
             {
               functionDeclarations: [
@@ -127,6 +144,7 @@ export class GeminiService {
       name: modelName,
       instance: genAI.getGenerativeModel({ 
         model: modelName,
+        generationConfig: this.getGenerationConfig(),
         tools: [
           {
             functionDeclarations: [
@@ -232,7 +250,7 @@ export class GeminiService {
           const genAI = new GoogleGenerativeAI(resolved.key);
           perRequestModels = this.models.map(m => ({
             ...m,
-            instance: genAI.getGenerativeModel({ model: m.name, tools: [
+            instance: genAI.getGenerativeModel({ model: m.name, generationConfig: this.getGenerationConfig(), tools: [
               {
                 functionDeclarations: [
                   {
@@ -279,7 +297,7 @@ export class GeminiService {
         // Track last used model for external diagnostics
         this.lastUsedModelName = selectedModel.name;
         
-        // Prepare system prompt with context
+  // Prepare system prompt with context
         const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
         
         // Format conversation history for function calling
@@ -293,6 +311,12 @@ export class GeminiService {
           { role: 'user' as const, parts: [{ text: systemPrompt }] },
           ...conversationHistory
         ];
+
+        // Log active generation config for visibility
+        try {
+          const cfg = this.getGenerationConfig();
+          console.log(`Gemini generationConfig: temperature=${cfg.temperature}, topP=${cfg.topP}, maxOutputTokens=${cfg.maxOutputTokens}`);
+        } catch {}
 
   const chat = selectedModel.instance.startChat({
           history: messagesWithSystem
@@ -968,7 +992,7 @@ Antworte nur als JSON ohne Markdown-Formatierung:
           const genAI = new GoogleGenerativeAI(resolved.key);
           modelsOverride = this.models.map(m => ({
             ...m,
-            instance: genAI.getGenerativeModel({ model: m.name })
+            instance: genAI.getGenerativeModel({ model: m.name, generationConfig: this.getGenerationConfig() })
           }));
         } else if (resolved.source === null) {
           throw new AppError('A personal Gemini API key is required. Please add it in your profile settings.', 403, true, { code: 'AI_KEY_REQUIRED' });

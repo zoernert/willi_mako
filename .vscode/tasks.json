@@ -21,6 +21,16 @@
 			"type": "shell",
 			"command": "npm run build:next",
 			"group": "build"
+		},
+		{
+			"label": "Type Check",
+			"type": "shell",
+			"command": "npm run type-check",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
 		}
 	]
 }

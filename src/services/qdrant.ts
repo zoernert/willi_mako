@@ -8,7 +8,7 @@ const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
 const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
 
 // Provider selection and derived config (centralized via embeddingProvider)
-const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'ewilli';
+const BASE_COLLECTION = process.env.QDRANT_COLLECTION || 'willi_mako';
 const QDRANT_COLLECTION_NAME = getCollectionName(BASE_COLLECTION);
 const COLLECTION_EMBED_DIM = getEmbeddingDimension();
 const EMBEDDING_PROVIDER = getEmbeddingProvider();
