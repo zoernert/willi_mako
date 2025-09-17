@@ -56,6 +56,9 @@ const database_2 = __importDefault(require("../config/database"));
 const qdrant_1 = require("../services/qdrant");
 const advancedReasoningService_1 = __importDefault(require("../services/advancedReasoningService"));
 const MarkdownIngestService_1 = __importDefault(require("../services/MarkdownIngestService"));
+const js_client_rest_1 = require("@qdrant/js-client-rest");
+const embeddingProvider_1 = require("../services/embeddingProvider");
+const textExtractor_1 = require("../utils/textExtractor");
 const router = (0, express_1.Router)();
 // Admin middleware - require admin role
 const requireAdmin = (req, res, next) => {
@@ -355,6 +358,72 @@ router.post('/documents', upload.single('file'), (0, errorHandler_1.asyncHandler
         ]);
         const insertId = result === null || result === void 0 ? void 0 : result.id;
         response_1.ResponseUtils.success(res, { id: insertId, title, filename: file.filename }, 'Document uploaded successfully');
+        // Fire-and-forget: Ingest the uploaded document into Qdrant
+        // Extract text (PDF/TXT/MD), chunk, embed and upsert with enriched payload
+        (async () => {
+            var _a;
+            try {
+                const extractor = (0, textExtractor_1.getTextExtractor)(file.mimetype);
+                const text = await extractor.extract(file.path);
+                if (!text || !text.trim())
+                    return;
+                // Chunk text into ~1000 char pieces on paragraph boundaries
+                const rawParas = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+                const chunks = [];
+                const MAX = 1000;
+                for (const p of rawParas) {
+                    if (p.length <= MAX) {
+                        chunks.push(p);
+                        continue;
+                    }
+                    let start = 0;
+                    while (start < p.length) {
+                        chunks.push(p.slice(start, start + MAX));
+                        start += MAX;
+                    }
+                }
+                if (!chunks.length)
+                    chunks.push(text.slice(0, MAX));
+                const client = new js_client_rest_1.QdrantClient({
+                    url: process.env.QDRANT_URL || 'http://localhost:6333',
+                    apiKey: process.env.QDRANT_API_KEY,
+                    checkCompatibility: false
+                });
+                const base = process.env.QDRANT_COLLECTION || 'ewilli';
+                const collection = (0, embeddingProvider_1.getCollectionName)(base);
+                const points = [];
+                let idx = 0;
+                for (const c of chunks) {
+                    const vector = await (0, embeddingProvider_1.generateEmbedding)(c);
+                    points.push({
+                        id: `admin-doc-${insertId}-${idx}`,
+                        vector,
+                        payload: {
+                            content_type: 'admin_document',
+                            document_id: insertId,
+                            title,
+                            description: description || '',
+                            uploaded_by: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || null,
+                            source: 'admin_upload',
+                            file_path: file.path,
+                            mime_type: file.mimetype,
+                            file_size: file.size,
+                            chunk_index: idx,
+                            text: c,
+                            created_at: new Date().toISOString()
+                        }
+                    });
+                    idx++;
+                }
+                if (points.length) {
+                    await client.upsert(collection, { wait: true, points });
+                    console.log(`Indexed admin document ${insertId} into Qdrant: ${points.length} chunks`);
+                }
+            }
+            catch (e) {
+                console.error('Admin document ingestion failed:', e);
+            }
+        })();
     }
     catch (error) {
         console.error('Error uploading document:', error);
@@ -399,6 +468,26 @@ router.delete('/documents/:documentId', (0, errorHandler_1.asyncHandler)(async (
         // Delete physical file
         if ((document === null || document === void 0 ? void 0 : document.file_path) && fs_1.default.existsSync(document.file_path)) {
             fs_1.default.unlinkSync(document.file_path);
+        }
+        // Cleanup Qdrant vectors for this admin document (best-effort)
+        try {
+            const client = new js_client_rest_1.QdrantClient({
+                url: process.env.QDRANT_URL || 'http://localhost:6333',
+                apiKey: process.env.QDRANT_API_KEY,
+                checkCompatibility: false
+            });
+            const base = process.env.QDRANT_COLLECTION || 'ewilli';
+            const collection = (0, embeddingProvider_1.getCollectionName)(base);
+            await client.delete(collection, {
+                filter: { must: [
+                        { key: 'content_type', match: { value: 'admin_document' } },
+                        { key: 'document_id', match: { value: documentId } }
+                    ] }
+            });
+            console.log(`Deleted Qdrant vectors for admin document ${documentId}`);
+        }
+        catch (e) {
+            console.warn('Failed to delete Qdrant vectors for admin document:', e);
         }
         response_1.ResponseUtils.success(res, { id: documentId }, 'Document deleted successfully');
     }
