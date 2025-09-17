@@ -30,32 +30,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? req.headers['x-forwarded-for'][0] 
       : req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     
-    const headers: Record<string, string> = {
-      // Only set Content-Type when a body is sent
-      ...(req.method !== 'GET' && req.method !== 'HEAD' && {
-        'Content-Type': (req.headers['content-type'] as string) || 'application/json'
-      }),
-      'Authorization': (req.headers.authorization as string) || '',
-      'x-forwarded-for': String(forwardedFor),
-      'x-forwarded-host': (req.headers.host as string) || '',
-    };
-    
-    // Forward the request
+    // Build forward headers: start from original headers, drop hop-by-hop/forbidden ones, and ensure auth stays
+    const forwardHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (!value) continue;
+      const lower = key.toLowerCase();
+      // Skip headers that shouldn't be forwarded/set by fetch
+      if (['host', 'connection', 'content-length', 'transfer-encoding'].includes(lower)) continue;
+      // Handle array headers
+      forwardHeaders[lower] = Array.isArray(value) ? value.join(', ') : String(value);
+    }
+    // Ensure Authorization and forwarded headers are present
+    forwardHeaders['authorization'] = (req.headers.authorization as string) || '';
+    forwardHeaders['x-forwarded-for'] = String(forwardedFor);
+    forwardHeaders['x-forwarded-host'] = (req.headers.host as string) || '';
+
+    // For GET/HEAD no body. For JSON, buffer and forward as Buffer (lets undici set Content-Length).
+    // For multipart/others, stream the raw request.
+    const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+    const contentTypeIncoming = (req.headers['content-type'] as string) || '';
+    let bodyToSend: any = undefined;
+    if (hasBody) {
+      if (contentTypeIncoming.includes('application/json')) {
+        // Buffer the incoming JSON body
+        const chunks: Buffer[] = [];
+        for await (const chunk of req as any as AsyncIterable<Buffer>) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        bodyToSend = Buffer.concat(chunks);
+      } else {
+        // Stream other bodies (e.g., multipart/form-data)
+        bodyToSend = req as any;
+      }
+    }
+
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers,
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+      headers: forwardHeaders,
+      body: bodyToSend,
+    } as any);
+
+    // Forward the response (handle JSON and non-JSON)
+    const contentType = response.headers.get('content-type') || '';
+    res.status(response.status);
+    // Copy response headers
+    response.headers.forEach((value, key) => {
+      // Avoid setting forbidden headers in Next response
+      if (!['content-encoding', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+        try { res.setHeader(key, value); } catch {}
+      }
     });
 
-    // Forward the response
-    const data = await response.json().catch(() => ({}));
-    
-    res.status(response.status);
-    Object.entries(response.headers).forEach(([key, value]) => {
-      if (value) res.setHeader(key, value);
-    });
-    
-    res.json(data);
+    if (response.status === 204) {
+      res.end();
+      return;
+    }
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json().catch(() => ({}));
+      res.json(data);
+    } else {
+      const arrayBuf = await response.arrayBuffer();
+      res.end(Buffer.from(arrayBuf));
+    }
   } catch (error) {
     console.error('API Proxy Error:', error);
     res.status(503).json({ 
@@ -64,3 +101,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+// Disable Next.js body parsing to allow streaming/proxying multipart and other bodies
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

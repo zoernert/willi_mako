@@ -15,6 +15,12 @@
 			"type": "shell",
 			"command": "npm run build:next",
 			"group": "build"
+		},
+		{
+			"label": "Build Next.js",
+			"type": "shell",
+			"command": "npm run build:next",
+			"group": "build"
 		}
 	]
 }

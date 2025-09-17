@@ -15,9 +15,13 @@ export default function VectorMarkdownAdmin() {
     setBusy(true);
     setResult(null);
     try {
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('authToken') || localStorage.getItem('token')) : null;
       const res = await fetch('/api/admin/vector-content/markdown', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ title, slug: slug || undefined, content, type, tags: tags.split(',').map(t => t.trim()).filter(Boolean) })
       });
       const data = await res.json();
@@ -32,9 +36,13 @@ export default function VectorMarkdownAdmin() {
   const runSearch = async () => {
     setBusy(true);
     try {
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('authToken') || localStorage.getItem('token')) : null;
       const res = await fetch('/api/admin/vector-content/markdown/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ query, limit: 8 })
       });
       const data = await res.json();
@@ -46,7 +54,13 @@ export default function VectorMarkdownAdmin() {
     if (!slug) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/vector-content/markdown/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('authToken') || localStorage.getItem('token')) : null;
+      const res = await fetch(`/api/admin/vector-content/markdown/${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       const data = await res.json();
       setResult(data);
     } finally { setBusy(false); }
