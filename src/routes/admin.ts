@@ -18,6 +18,7 @@ import UserAIKeyService from '../services/userAIKeyService';
 import pool from '../config/database';
 import { QdrantService } from '../services/qdrant';
 import advancedReasoningService from '../services/advancedReasoningService';
+import markdownIngestService, { MarkdownIngestRequest } from '../services/MarkdownIngestService';
 
 const router = Router();
 
@@ -855,6 +856,39 @@ router.post('/semantic-search', asyncHandler(async (req: AuthenticatedRequest, r
     console.error('Error in semantic search:', error);
     throw new AppError('Semantic search failed', 500);
   }
+}));
+
+// Admin: Ingest Markdown content into Qdrant (glossary/abbreviations/guides)
+router.post('/vector-content/markdown', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const body = req.body as Partial<MarkdownIngestRequest>;
+  if (!body || typeof body !== 'object') throw new AppError('Invalid body', 400);
+  const { title, content } = body;
+  if (!title || !content) throw new AppError('title and content are required', 400);
+  const result = await markdownIngestService.upsertMarkdown({
+    title: String(title),
+    slug: body.slug ? String(body.slug) : undefined,
+    content: String(content),
+    type: (body.type as any) || 'guide',
+    tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+    createdByUserId: req.user?.id
+  });
+  return ResponseUtils.success(res, result, 'Markdown ingested into vector store');
+}));
+
+// Admin: Delete all markdown vectors by slug
+router.delete('/vector-content/markdown/:slug', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { slug } = req.params;
+  if (!slug) throw new AppError('slug is required', 400);
+  const result = await markdownIngestService.deleteBySlug(slug);
+  return ResponseUtils.success(res, { slug, ...result }, 'Markdown vectors deleted');
+}));
+
+// Admin: Search within admin_markdown
+router.post('/vector-content/markdown/search', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { query, limit } = req.body || {};
+  if (!query || typeof query !== 'string') throw new AppError('query is required', 400);
+  const results = await markdownIngestService.search(query, Math.max(1, Math.min(Number(limit) || 10, 50)));
+  return ResponseUtils.success(res, { results }, 'Markdown vector search complete');
 }));
 
 // Chatflow preview/steering for admins

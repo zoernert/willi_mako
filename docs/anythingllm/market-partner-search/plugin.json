@@ -1,15 +1,39 @@
 {
-  "name": "Marktpartnersuche (Willi‑Mako)",
+  "active": true,
+  "schema": "skill-1.0.0",
   "hubId": "market-partner-search",
+  "name": "Marktpartnersuche (Willi‑Mako)",
   "version": "1.0.0",
   "description": "Sucht Marktpartner über die öffentliche Willi‑Mako API.",
   "author": "stromhaltig.de",
-  "variables": [
-    {
-      "key": "API_BASE_URL",
-      "label": "API Base URL",
-      "required": true,
-      "description": "Basis‑URL zur öffentlichen API, z. B. https://stromhaltig.de"
+  "author_url": "https://stromhaltig.de",
+  "license": "MIT",
+  "setup_args": {
+    "API_BASE_URL": {
+      "type": "string",
+      "required": false,
+      "input": {
+        "type": "text",
+        "default": "https://stromhaltig.de",
+        "placeholder": "https://stromhaltig.de",
+        "hint": "Basis-URL der öffentlichen Willi‑Mako API"
+      },
+      "value": "https://stromhaltig.de"
     }
-  ]
+  },
+  "examples": [
+    { "prompt": "Suche Marktpartner EWE", "call": "{\"query\": \"EWE\"}" },
+    { "prompt": "Finde BDEW Code von Stadtwerke Musterstadt", "call": "{\"query\": \"Stadtwerke Musterstadt\"}" },
+    { "prompt": "EIC 11XABCDEFGH1234", "call": "{\"query\": \"11XABCDEFGH1234\"}" }
+  ],
+  "entrypoint": {
+    "file": "handler.js",
+    "params": {
+      "query": {
+        "description": "Suchbegriff: Firmenname, BDEW- oder EIC-Code",
+        "type": "string"
+      }
+    }
+  },
+  "imported": true
 }

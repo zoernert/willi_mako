@@ -37,6 +37,7 @@ Produktiv erreichbar unter: http://stromhaltig.de/
   - Stellen Sie Fragen in natürlicher Sprache, fügen Sie Kontext an und erhalten Sie nachvollziehbare Antworten mit Quellen. Bei niedriger Sicherheit: Hinweis zur Community‑Eskalation.
 - FAQ & Wissensbasis
   - Kuratierte Antworten auf häufige Fragen. Die Suche ist semantisch – ähnlich formulierte Probleme werden gefunden.
+  - Admins können Glossar/Abkürzungen als Markdown in den Vektor‑Store ingestieren (z.B. „EoG - Ersatz- oder Grundversorgung“). Dadurch erkennt der Chat Intent/Begriffe besser.
 - Bilaterale Klärfälle
   - Klärfälle strukturiert anlegen, Marktpartner und Rollen zuordnen, DAR/Referenzen prüfen, E‑Mails verfassen/ablage, Status & Fristen steuern, Team‑Sichten nutzen.
 - Community Hub

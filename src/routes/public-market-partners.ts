@@ -43,19 +43,26 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
 
   const results = await codeLookupService.searchCodes(q);
 
-  // Map to compact public shape to avoid overexposure of contact details
-  const compact = results.slice(0, parsedLimit).map(r => ({
+  // Return richer public shape with available metadata from discovery
+  const enriched = results.slice(0, parsedLimit).map(r => ({
     code: r.code,
     companyName: r.companyName,
     codeType: r.codeType,
     source: r.source,
+    validFrom: r.validFrom || undefined,
+    validTo: r.validTo || undefined,
+    bdewCodes: r.bdewCodes || undefined,
+    contacts: r.contacts || undefined,
+    contactSheetUrl: r.contactSheetUrl || undefined,
+    markdown: r.markdown || undefined,
+    allSoftwareSystems: r.allSoftwareSystems || undefined,
   }));
 
   res.json({
     success: true,
     data: {
-      results: compact,
-      count: compact.length,
+      results: enriched,
+      count: enriched.length,
       query: q,
     }
   });

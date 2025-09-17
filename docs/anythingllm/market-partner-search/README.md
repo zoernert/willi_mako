@@ -21,6 +21,7 @@ Den Agent mit aktiviertem Skill befragen, z. B.:
 - "EIC 11XABCDEFGH1234"
 
 Das Skill ruft GET /api/public/market-partners/search?q=…&limit=5 auf und gibt eine textuelle Ergebnisliste zurück.
+Die API liefert neben code/companyName auch verfügbare Zusatzfelder wie bdewCodes, contacts, contactSheetUrl, markdown, allSoftwareSystems.
 
 ## Rückgabeformat
 
@@ -32,5 +33,5 @@ Top Ergebnisse zur Marktpartnersuche für "EWE":
 
 ## Hinweise
 
-- Die öffentliche API liefert bewusst nur kompakte Felder (code, companyName, codeType, source).
-- Für internen Gebrauch stehen detailliertere Endpunkte unter /api/v1/codes/* zur Verfügung (authentifiziert).
+- Die öffentliche API liefert jetzt erweiterte Informationen (soweit vorhanden): bdewCodes, contacts, contactSheetUrl, markdown, allSoftwareSystems.
+- Für genaue Detailabfragen kann alternativ /api/v1/codes/details/:code (authentifiziert) genutzt werden.

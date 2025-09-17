@@ -171,6 +171,11 @@ export class QdrantService {
   if (dataElems.includes('6411')) b += 0.04; // explicit boost for questioned element
     // Mild boost for presence of any process numbers (31xxx) - fosters cardinality context
     if (/31\d{3}/.test(upper)) b += 0.02;
+    
+  // Boost admin-provided markdown content slightly to help intent grounding (e.g., glossary)
+  const ctype = (p?.payload?.content_type || '') as string;
+  if (ctype === 'admin_markdown') b += 0.03;
+  if (t === 'abbreviation') b += 0.04;
     return b;
   }
   private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3): Promise<number[]> {
