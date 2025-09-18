@@ -357,7 +357,31 @@ Antwort:`;
                 contextMetrics
             }
         });
+        // Auto-continuation: if the answer looks truncated, request a short continuation
+        try {
+            const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+            const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
+            const trimmed = (response || '').trim();
+            const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;
+            if (looksTruncated) {
+                const contPrompt = `Setze die Antwort nahtlos fort, ohne Wiederholungen. Beginne direkt bei der letzten Überschrift/Liste. Halte Format und Stil bei. Falls eine Fristen-Liste angekündigt wurde, führe die wichtigsten GPKE-Fristen stichpunktartig aus.\n\nBisherige Antwort:\n${trimmed}\n\nKontext:\n${(domainIntro + '\n\n' + context).slice(0, 10000)}\n\nFortsetzung:`;
+                const withTimeout = (p, ms = 5000) => new Promise((resolve, reject) => {
+                    const t = setTimeout(() => resolve(undefined), ms);
+                    p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); resolve(undefined); });
+                });
+                const continuation = await withTimeout(llmProvider_1.default.generateText(contPrompt, userPreferences));
+                if (continuation && typeof continuation === 'string' && continuation.trim()) {
+                    response = `${trimmed}\n${continuation.trim()}`;
+                    reasoningSteps.push({ step: 'continuation', description: 'Auto-continue due to truncation', timestamp: Date.now(), result: { appendedChars: continuation.length } });
+                }
+            }
+        }
+        catch (_a) { }
         // Return the final result
+        // Heuristic fix: if response ends with a dangling heading like 'Fristen:' without content, add a closing hint
+        if (/\bFristen:\s*$/i.test(response.trim())) {
+            response += "\n- Bitte beachten: Fristen variieren je nach Prozess (z. B. 4 WT Abmeldeanfrage durch NB, 3 WT Antwort LFA, weitere GPKE-spezifische Fristen).";
+        }
         return {
             response,
             reasoningSteps,
@@ -411,8 +435,27 @@ Antwort:`;
         const hybridSearchMetadata = (_a = results.find((r) => r.hybridSearchMetadata)) === null || _a === void 0 ? void 0 : _a.hybridSearchMetadata;
         const usedHybridSearch = (hybridSearchMetadata === null || hybridSearchMetadata === void 0 ? void 0 : hybridSearchMetadata.hybridSearchUsed) || false;
         const hybridSearchAlpha = hybridSearchMetadata === null || hybridSearchMetadata === void 0 ? void 0 : hybridSearchMetadata.hybridSearchAlpha;
-        // Bei nur einer Iteration: direkt zurückgeben
+        // Bei nur einer Iteration: ggf. Auto-Continuation und dann direkt zurückgeben
         if (pipelineDecisions.maxIterations <= 1) {
+            try {
+                const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+                const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
+                const trimmed = (initialResponse || '').trim();
+                const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;
+                if (looksTruncated) {
+                    const contPrompt = `Setze die Antwort nahtlos fort, ohne Wiederholungen. Beginne direkt bei der letzten Überschrift/Liste. Halte Format und Stil bei. Falls eine Fristen-Liste angekündigt wurde, führe die wichtigsten GPKE-Fristen stichpunktartig aus.\n\nBisherige Antwort:\n${trimmed}\n\nKontext:\n${(domainIntro + '\n\n' + context).slice(0, 10000)}\n\nFortsetzung:`;
+                    const withTimeout = (p, ms = 5000) => new Promise((resolve, reject) => {
+                        const t = setTimeout(() => resolve(undefined), ms);
+                        p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); resolve(undefined); });
+                    });
+                    const continuation = await withTimeout(llmProvider_1.default.generateText(contPrompt, userPreferences));
+                    if (continuation && typeof continuation === 'string' && continuation.trim()) {
+                        initialResponse = `${trimmed}\n${continuation.trim()}`;
+                        reasoningSteps.push({ step: 'continuation', description: 'Auto-continue due to truncation', timestamp: Date.now(), result: { appendedChars: continuation.length } });
+                    }
+                }
+            }
+            catch (_c) { }
             reasoningSteps.push({
                 step: 'direct_response',
                 description: 'Antwort in einem Schritt generiert',
@@ -426,6 +469,10 @@ Antwort:`;
                     contextMetrics
                 }
             });
+            // Heuristic fix: patch dangling 'Fristen:' endings
+            if (/\bFristen:\s*$/i.test(initialResponse.trim())) {
+                initialResponse += "\n- Bitte beachten: Fristen variieren je nach Prozess (z. B. 4 WT Abmeldeanfrage durch NB, 3 WT Antwort LFA, weitere GPKE-spezifische Fristen).";
+            }
             return {
                 response: initialResponse,
                 reasoningSteps,

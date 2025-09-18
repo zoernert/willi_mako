@@ -493,9 +493,11 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     contextSettings
   );
 
-  // Add timeout protection (120 seconds for complex queries)
+  // Add timeout protection: use a budget slightly lower than server timeout to allow graceful fallback
+  const serverTimeoutMs = Number(process.env.CHAT_TIMEOUT_MS || '90000');
+  const reasoningBudgetMs = Math.max(15000, serverTimeoutMs - 5000); // keep 5s for fallback/write
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('REASONING_TIMEOUT')), 120000);
+    setTimeout(() => reject(new Error('REASONING_TIMEOUT')), reasoningBudgetMs);
   });
 
   let reasoningResult: any;

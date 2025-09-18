@@ -82,10 +82,10 @@ class GeminiService {
             const n = v ? Number(v) : NaN;
             return Number.isFinite(n) ? n : d;
         };
-        // Defaults: temperature 0.7, topP 0.95, maxOutputTokens 2048
+        // Defaults: temperature 0.7, topP 0.95, maxOutputTokens 8192 (can be overridden via env)
         const temperature = toNum(process.env.LLM_TEMPERATURE, 0.7);
         const topP = toNum(process.env.LLM_TOP_P, 0.95);
-        const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 2048);
+        const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 8192);
         return { temperature, topP, maxOutputTokens };
     }
     /**
