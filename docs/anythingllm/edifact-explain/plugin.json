@@ -1,0 +1,36 @@
+{
+  "active": true,
+  "schema": "skill-1.0.0",
+  "hubId": "edifact-explain",
+  "name": "EDIFACT Erklären (Willi‑Mako)",
+  "version": "1.0.0",
+  "description": "Erklärt EDIFACT Segmente/Fragmente über die öffentliche Willi‑Mako API.",
+  "author": "stromhaltig.de",
+  "author_url": "https://stromhaltig.de",
+  "license": "MIT",
+  "setup_args": {
+    "API_BASE_URL": {
+      "type": "string",
+      "required": false,
+      "input": {
+        "type": "text",
+        "default": "https://stromhaltig.de",
+        "placeholder": "https://stromhaltig.de",
+        "hint": "Basis-URL der öffentlichen Willi‑Mako API"
+      },
+      "value": "https://stromhaltig.de"
+    }
+  },
+  "examples": [
+    { "prompt": "Erkläre dieses EDIFACT Segment", "call": "{\"fragment\": \"NAD+MS+9906339000003::9'\"}" },
+    { "prompt": "Was bedeutet dieser Ausschnitt?", "call": "{\"text\": \"LOC+172+DE123456'\"}" }
+  ],
+  "entrypoint": {
+    "file": "handler.js",
+    "params": {
+      "fragment": { "description": "EDIFACT Segment/Fragment", "type": "string", "optional": true },
+      "text": { "description": "Alternative Eingabe", "type": "string", "optional": true }
+    }
+  },
+  "imported": true
+}

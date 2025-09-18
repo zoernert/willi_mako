@@ -72,9 +72,15 @@ export class MistralService {
     contextMode?: 'workspace-only' | 'standard' | 'system-only'
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
+    // Avoid duplicating the last user turn: treat the last user message as the query to send,
+    // and keep prior turns in the history only.
+    const hasLastUser = messages.length > 0 && messages[messages.length - 1].role === 'user';
+    const lastUserContent = hasLastUser ? messages[messages.length - 1].content : '';
+    const history = (hasLastUser ? messages.slice(0, -1) : messages).map(m => ({ role: m.role, content: m.content }));
     const msgs = [
       { role: 'system' as const, content: systemPrompt },
-      ...messages.map(m => ({ role: m.role, content: m.content }))
+      ...history,
+      ...(hasLastUser ? [{ role: 'user' as const, content: lastUserContent }] : [])
     ];
     return (await this.chat(msgs)).trim();
   }

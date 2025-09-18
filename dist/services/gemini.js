@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,6 +43,7 @@ const database_1 = __importDefault(require("../config/database"));
 const postgres_codelookup_repository_1 = require("../modules/codelookup/repositories/postgres-codelookup.repository");
 const codelookup_service_1 = require("../modules/codelookup/services/codelookup.service");
 const aiResponseUtils_1 = require("../utils/aiResponseUtils");
+// Note: Use dynamic import for EDIFACT tool to avoid circular init at module load time
 dotenv_1.default.config();
 // Importing the GoogleAIKeyManager for efficient key management
 const googleAIKeyManager = require('./googleAIKeyManager');
@@ -89,6 +123,28 @@ class GeminiService {
                                         },
                                         required: ['code']
                                     }
+                                },
+                                {
+                                    name: 'edifact_analyze_message',
+                                    description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                                    parameters: {
+                                        type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                        properties: {
+                                            message: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' }
+                                        },
+                                        required: ['message']
+                                    }
+                                },
+                                {
+                                    name: 'edifact_explain_segment',
+                                    description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                                    parameters: {
+                                        type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                        properties: {
+                                            fragment: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' }
+                                        },
+                                        required: ['fragment']
+                                    }
                                 }
                             ]
                         }
@@ -141,6 +197,28 @@ class GeminiService {
                                         }
                                     },
                                     required: ['code']
+                                }
+                            },
+                            {
+                                name: 'edifact_analyze_message',
+                                description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                                parameters: {
+                                    type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                    properties: {
+                                        message: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' }
+                                    },
+                                    required: ['message']
+                                }
+                            },
+                            {
+                                name: 'edifact_explain_segment',
+                                description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                                parameters: {
+                                    type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                    properties: {
+                                        fragment: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' }
+                                    },
+                                    required: ['fragment']
                                 }
                             }
                         ]
@@ -224,6 +302,24 @@ class GeminiService {
                                                 type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
                                                 properties: { code: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Der BDEW- oder EIC-Code, nach dem gesucht werden soll.' } },
                                                 required: ['code']
+                                            }
+                                        },
+                                        {
+                                            name: 'edifact_analyze_message',
+                                            description: 'Analysiert eine vollständige (oder weitgehend vollständige) EDIFACT-Nachricht aus der deutschen Marktkommunikation und liefert eine knappe Zusammenfassung mit Hinweisen.',
+                                            parameters: {
+                                                type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                                properties: { message: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Die EDIFACT-Nachricht (ggf. mehrzeilig).' } },
+                                                required: ['message']
+                                            }
+                                        },
+                                        {
+                                            name: 'edifact_explain_segment',
+                                            description: 'Erklärt ein einzelnes EDIFACT-Segment oder einen kurzen Fragmentausschnitt (z. B. CAV/CCI/DTM etc.).',
+                                            parameters: {
+                                                type: generative_ai_1.FunctionDeclarationSchemaType.OBJECT,
+                                                properties: { fragment: { type: generative_ai_1.FunctionDeclarationSchemaType.STRING, description: 'Das Segment oder Fragment (eine oder wenige Zeilen).' } },
+                                                required: ['fragment']
                                             }
                                         }
                                     ]
@@ -348,6 +444,20 @@ class GeminiService {
                         message: 'Kein Unternehmen für diesen Code gefunden.'
                     };
                 }
+            case 'edifact_analyze_message': {
+                const msg = (args && (args.message || args.msg)) || '';
+                const input = typeof msg === 'string' ? msg.slice(0, 20000) : '';
+                const { edifactTool } = await Promise.resolve().then(() => __importStar(require('./edifactTool')));
+                const analysis = await edifactTool.analyzeMessage(input);
+                return analysis;
+            }
+            case 'edifact_explain_segment': {
+                const frag = (args && (args.fragment || args.seg || args.text)) || '';
+                const input = typeof frag === 'string' ? frag.slice(0, 2000) : '';
+                const { edifactTool } = await Promise.resolve().then(() => __importStar(require('./edifactTool')));
+                const explanation = await edifactTool.explainSegment(input);
+                return explanation;
+            }
             default:
                 return { error: `Unbekannte Funktion: ${name}` };
         }

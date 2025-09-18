@@ -326,6 +326,48 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         <TableCell>Kontextquellen</TableCell>
                         <TableCell>{pipelineInfo.contextSources || pipelineInfo.sourceCount || 0}</TableCell>
                       </TableRow>
+                      {/* Aggregierte Kontext-Metriken über alle Schritte */}
+                      {Array.isArray(pipelineInfo.reasoningSteps) && pipelineInfo.reasoningSteps.length > 0 && (() => {
+                        // Aggregate context metrics across steps that expose them
+                        const agg = pipelineInfo.reasoningSteps.reduce((acc: any, step: any) => {
+                          const m = step?.result?.contextMetrics;
+                          if (!m) return acc;
+                          acc.totalSnippets += m.totalSnippets || 0;
+                          acc.contextChars += m.contextChars || 0;
+                          for (const [k, v] of Object.entries(m.bySource || {})) {
+                            if (!acc.bySource[k]) acc.bySource[k] = { count: 0, chars: 0 };
+                            acc.bySource[k].count += (v as any).count || 0;
+                            acc.bySource[k].chars += (v as any).chars || 0;
+                          }
+                          return acc;
+                        }, { totalSnippets: 0, contextChars: 0, bySource: {} as Record<string, { count: number; chars: number }> });
+                        const approxTokens = Math.max(1, Math.round(agg.contextChars / 4));
+                        const topSources = Object.entries(agg.bySource).sort((a: any, b: any) => b[1].count - a[1].count).slice(0, 5);
+                        return (
+                          <>
+                            <TableRow>
+                              <TableCell>Gesamt-Snippets (Summe über Schritte)</TableCell>
+                              <TableCell>{agg.totalSnippets}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>Gesamt-Kontextgröße</TableCell>
+                              <TableCell>{agg.contextChars.toLocaleString('de-DE')} Zeichen (~{approxTokens.toLocaleString('de-DE')} Tokens)</TableCell>
+                            </TableRow>
+                            {topSources.length > 0 && (
+                              <TableRow>
+                                <TableCell>Top-Quellen (nach Snippets)</TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {topSources.map(([src, v]: any) => (
+                                      <Chip key={src} label={`${src}: ${v.count}`} size="small" />
+                                    ))}
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })()}
                     </TableBody>
                   </Table>
                 </Box>
@@ -972,6 +1014,40 @@ const PipelineInfoDialog: React.FC<PipelineInfoDialogProps> = ({ pipelineInfo })
                         </Typography>
                       ) : null}
                     </Box>
+
+                    {/* Context metrics per step */}
+                    {step.result?.contextMetrics && (
+                      <Box sx={{ ml: 4, mt: 1, mb: 1 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Kontext in diesem Schritt
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                          <Chip
+                            label={`Snippets: ${step.result.contextMetrics.totalSnippets}`}
+                            size="small"
+                            variant="outlined"
+                          />
+                          <Chip
+                            label={`Größe: ${step.result.contextMetrics.contextChars.toLocaleString('de-DE')} Zeichen (~${step.result.contextMetrics.approxTokens.toLocaleString('de-DE')} Tokens)`}
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                          />
+                        </Box>
+                        {step.result.contextMetrics.bySource && Object.keys(step.result.contextMetrics.bySource).length > 0 && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Quellen (Snippets je Quelle):
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                              {Object.entries(step.result.contextMetrics.bySource).map(([src, m]: any) => (
+                                <Chip key={src} label={`${src}: ${m.count}`} size="small" />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                     
                     {index < (pipelineInfo.reasoningSteps?.length || 0) - 1 && (
                       <Divider sx={{ mt: 2 }} />

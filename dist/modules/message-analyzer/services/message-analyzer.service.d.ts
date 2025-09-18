@@ -13,6 +13,7 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
      * Löst BDEW/EIC-Codes in den analysierten Segmenten auf
      */
     private enrichSegmentsWithCodeLookup;
+    private buildResolvedPartnersContext;
     /**
      * Prüft ob ein String ein potentieller BDEW/EIC Code ist
      */

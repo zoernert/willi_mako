@@ -9,13 +9,22 @@ const llmProvider_1 = __importDefault(require("../../../services/llmProvider"));
 const qdrant_1 = require("../../../services/qdrant");
 const database_1 = __importDefault(require("../../../config/database"));
 const postgres_codelookup_repository_1 = require("../../codelookup/repositories/postgres-codelookup.repository");
+const mongo_codelookup_repository_1 = require("../../codelookup/repositories/mongo-codelookup.repository");
 const codelookup_service_1 = require("../../codelookup/services/codelookup.service");
 class MessageAnalyzerService {
     constructor() {
         this.qdrantService = new qdrant_1.QdrantService();
-        // Initialize code lookup service
-        const codeLookupRepository = new postgres_codelookup_repository_1.PostgresCodeLookupRepository(database_1.default);
-        this.codeLookupService = new codelookup_service_1.CodeLookupService(codeLookupRepository);
+        // Initialize code lookup service (prefer Mongo for richer metadata)
+        try {
+            const mongoRepo = new mongo_codelookup_repository_1.MongoCodeLookupRepository();
+            this.codeLookupService = new codelookup_service_1.CodeLookupService(mongoRepo);
+            console.log('MessageAnalyzer: CodeLookup using Mongo repository');
+        }
+        catch (e) {
+            console.warn('MessageAnalyzer: Mongo repository unavailable, falling back to Postgres');
+            const postgresRepo = new postgres_codelookup_repository_1.PostgresCodeLookupRepository(database_1.default);
+            this.codeLookupService = new codelookup_service_1.CodeLookupService(postgresRepo);
+        }
     }
     async analyze(message) {
         const trimmedMessage = message.trim();
@@ -176,11 +185,29 @@ class MessageAnalyzerService {
                 const code = segment.elements[2]; // Der eigentliche Code
                 if (this.isPotentialEnergyCode(code)) {
                     try {
-                        const result = await this.codeLookupService.lookupSingleCode(code);
-                        if (result) {
-                            resolvedCodes[code] = result.companyName;
-                            // Erweitere die Beschreibung für NAD-Segmente
-                            enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${result.companyName} (${code})`;
+                        // Verwende erweiterte Suche um Rollen/Metadaten zu erhalten
+                        const results = await this.codeLookupService.searchCodes(code);
+                        const primary = results && results[0];
+                        if (primary) {
+                            // Ermittele Rollen aus contacts passend zum Code
+                            const roles = (primary.contacts || [])
+                                .filter(c => (c.BdewCode === code) || !c.BdewCode)
+                                .map(c => c.BdewCodeFunction)
+                                .filter(Boolean);
+                            const uniqueRoles = Array.from(new Set(roles));
+                            const roleText = uniqueRoles.length ? ` [${uniqueRoles.join(', ')}]` : '';
+                            resolvedCodes[code] = `${primary.companyName}${roleText}`;
+                            // Erweitere Beschreibung
+                            enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${primary.companyName} (${code})${roleText}`;
+                            // Hänge aussagekräftige Hinweise an
+                            enrichedSegment.resolved_meta = {
+                                partyQualifier,
+                                code,
+                                companyName: primary.companyName,
+                                roles: uniqueRoles,
+                                contactSheetUrl: primary.contactSheetUrl,
+                                allSoftwareSystems: primary.allSoftwareSystems
+                            };
                         }
                     }
                     catch (error) {
@@ -195,6 +222,24 @@ class MessageAnalyzerService {
         }));
         console.log('✅ Code lookup enrichment completed');
         return enrichedSegments;
+    }
+    buildResolvedPartnersContext(segments) {
+        try {
+            const lines = [];
+            for (const s of segments) {
+                if (s.tag !== 'NAD')
+                    continue;
+                const meta = s.resolved_meta;
+                if (meta && meta.companyName) {
+                    const roles = Array.isArray(meta.roles) && meta.roles.length ? ` Rollen: ${meta.roles.join(', ')}` : '';
+                    lines.push(`- NAD+${meta.partyQualifier}: ${meta.code} → ${meta.companyName}.${roles}`);
+                }
+            }
+            return lines.length ? lines.join('\n') : '';
+        }
+        catch (_a) {
+            return '';
+        }
     }
     /**
      * Prüft ob ein String ein potentieller BDEW/EIC Code ist
@@ -334,6 +379,7 @@ class MessageAnalyzerService {
         const messageText = parsedMessage.segments.map(s => s.original).join('\n');
         const segmentCount = parsedMessage.segments.length;
         const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
+        const partnerCtx = this.buildResolvedPartnersContext(parsedMessage.segments);
         return `Du bist EDIFACT-Experte für deutsche Energiewirtschaft. Analysiere diese ${context.messageType}-Nachricht (${segmentCount} Segmente):
 
 ${messageText}
@@ -341,6 +387,9 @@ ${messageText}
 SCHEMA-INFO: ${context.schemaContext.substring(0, 800)}
 
 SEGMENTE: ${context.segmentContext.substring(0, 1200)}
+
+MARKTPARTNER-AUFLÖSUNG:
+${partnerCtx || '(keine zusätzlichen Informationen gefunden)'}
 
 ANTWORT-FORMAT (deutsch):
 ZUSAMMENFASSUNG: [Geschäftszweck, Parteien, Dateninhalt in 2-3 Sätzen]
@@ -384,9 +433,9 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
         // Clean the response first
         let cleanedResponse = rawAnalysis.trim();
         // Try German keywords first
-        let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*(.*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/s);
+        let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/);
         if (!summaryMatch) {
-            summaryMatch = cleanedResponse.match(/SUMMARY:\s*(.*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/s);
+            summaryMatch = cleanedResponse.match(/SUMMARY:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/);
         }
         let summary = summaryMatch ? summaryMatch[1].trim() : '';
         // Clean up summary - remove markdown and extra formatting

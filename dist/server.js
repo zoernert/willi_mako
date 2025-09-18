@@ -25,6 +25,7 @@ const processes_1 = __importDefault(require("./routes/processes"));
 const community_1 = require("./routes/community");
 const community_2 = require("./routes/admin/community");
 const public_community_1 = __importDefault(require("./routes/public-community"));
+const public_edifact_1 = __importDefault(require("./routes/public-edifact"));
 const m2cRoles_1 = __importDefault(require("./routes/m2cRoles"));
 const bilateral_clarifications_simple_1 = __importDefault(require("./routes/bilateral-clarifications-simple"));
 const llm_1 = __importDefault(require("./routes/llm"));
@@ -155,6 +156,7 @@ app.use('/api/processes', processes_1.default);
 app.use('/api/community', (0, community_1.initializeCommunityRoutes)(database_1.default));
 app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 app.use('/api/public/community', public_community_1.default);
+app.use('/api/public/edifact', public_edifact_1.default);
 app.use('/api/public/market-partners', public_market_partners_1.default);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));

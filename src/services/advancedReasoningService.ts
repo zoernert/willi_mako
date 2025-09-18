@@ -59,6 +59,45 @@ class AdvancedReasoningService {
     this.qdrantService = new QdrantService();
   }
 
+  // Build lightweight metrics about context usage per step
+  private buildContextMetrics(results: any[]) {
+    try {
+      const safeArray = Array.isArray(results) ? results : [];
+      const getText = (r: any) => (r?.payload?.text || r?.payload?.content || '') as string;
+      const getSourceLabel = (r: any) => {
+        const p = r?.payload || {};
+        // Prefer message_format grouping (e.g., BDEW, BNetzA, FAQ, Mein Workspace)
+        return (
+          p.message_format ||
+          p.type ||
+          p.source ||
+          p.document_name ||
+          'Unbekannt'
+        ) as string;
+      };
+      const totals = {
+        totalSnippets: safeArray.length,
+        contextChars: 0,
+        approxTokens: 0,
+        bySource: {} as Record<string, { count: number; chars: number }>
+      };
+      for (const r of safeArray) {
+        const txt = getText(r);
+        const chars = typeof txt === 'string' ? txt.length : 0;
+        totals.contextChars += chars;
+        const label = getSourceLabel(r);
+        if (!totals.bySource[label]) totals.bySource[label] = { count: 0, chars: 0 };
+        totals.bySource[label].count += 1;
+        totals.bySource[label].chars += chars;
+      }
+      // Rough token estimate (German text ~ 4 chars/token on average)
+      totals.approxTokens = Math.max(1, Math.round(totals.contextChars / 4));
+      return totals;
+    } catch {
+      return { totalSnippets: 0, contextChars: 0, approxTokens: 0, bySource: {} };
+    }
+  }
+
   async generateReasonedResponse(
     query: string,
     previousMessages: any[],
@@ -203,7 +242,11 @@ class AdvancedReasoningService {
         timestamp: retrievalStart,
         duration: Date.now() - retrievalStart,
         qdrantResults: quickResults.length,
-        result: { documentsFound: quickResults.length, quality: contextAnalysis.contextQuality }
+        result: { 
+          documentsFound: quickResults.length, 
+          quality: contextAnalysis.contextQuality,
+          contextMetrics: this.buildContextMetrics(quickResults)
+        }
       });
 
   // Response Generation
@@ -221,7 +264,8 @@ class AdvancedReasoningService {
           description: `LLM re-ranking applied to quick results (top ${topN})`,
           timestamp: rerankStart,
           duration: Date.now() - rerankStart,
-          qdrantResults: rerankedQuick.length
+          qdrantResults: rerankedQuick.length,
+          result: { contextMetrics: this.buildContextMetrics(rerankedQuick) }
         });
         // Check admin override for iterative refinement
         const override = contextSettings?.overridePipeline as Partial<PipelineDecision> | undefined;
@@ -280,7 +324,8 @@ class AdvancedReasoningService {
         description: `LLM re-ranking applied to combined results (top ${topNCombined})`,
         timestamp: rerankStart2,
         duration: Date.now() - rerankStart2,
-        qdrantResults: combinedResults.length
+  qdrantResults: combinedResults.length,
+  result: { contextMetrics: this.buildContextMetrics(combinedResults) }
       });
       
       reasoningSteps.push({
@@ -289,7 +334,8 @@ class AdvancedReasoningService {
         timestamp: responseStart,
         duration: Date.now() - responseStart,
         qdrantQueries: searchQueries,
-        qdrantResults: enhancedResults.length
+  qdrantResults: enhancedResults.length,
+  result: { contextMetrics: this.buildContextMetrics(enhancedResults) }
       });
 
       // Final response generation (with optional admin override)
@@ -340,7 +386,7 @@ class AdvancedReasoningService {
   const fallbackResults = await QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
         const contextText = fallbackResults.map(r => r.payload?.text || '').join('\n');
         const fallbackResponse = await llm.generateResponse(
-          previousMessages.concat([{ role: 'user', content: query }]),
+          previousMessages,
           contextText,
           userPreferences
         );
@@ -412,26 +458,29 @@ class AdvancedReasoningService {
   ): Promise<ReasoningResult> {
     const responseStart = Date.now();
     
-    // Synthesize context efficiently
-    const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
+  // Synthesize context efficiently
+  const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
+  const contextMetrics = this.buildContextMetrics(results);
     
     // Generate response directly
+    // Previous messages already include the most recent user turn from the DB
     const response = await llm.generateResponse(
-      previousMessages.concat([{ role: 'user', content: query }]),
+      previousMessages,
       context,
       userPreferences
     );
     
     // Record the step
-    reasoningSteps.push({
+  reasoningSteps.push({
       step: 'direct_response',
       description: 'Direct response generation',
       timestamp: responseStart,
       duration: Date.now() - responseStart,
       result: { 
-        response,
-        qaAnalysis,
-        usedDetailedIntentAnalysis
+    response,
+    qaAnalysis,
+    usedDetailedIntentAnalysis,
+    contextMetrics
       }
     });
     
@@ -464,12 +513,14 @@ class AdvancedReasoningService {
     // Implementierung für den iterativen Prozess
     const refinementStart = Date.now();
     
-    // Synthesize context efficiently
-    const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
+  // Synthesize context efficiently
+  const context = results.map(r => r.payload?.text || r.payload?.content || '').join('\n\n');
+  const contextMetrics = this.buildContextMetrics(results);
     
     // Erste Antwortgenerierung
-    const initialResponse = await llm.generateResponse(
-      previousMessages.concat([{ role: 'user', content: query }]),
+  // Previous messages already include the most recent user turn from the DB
+  const initialResponse = await llm.generateResponse(
+      previousMessages,
       context,
       userPreferences
     );
@@ -491,7 +542,8 @@ class AdvancedReasoningService {
           response: initialResponse, 
           confidence: 0.8,
           usedHybridSearch,
-          hybridSearchAlpha
+          hybridSearchAlpha,
+          contextMetrics
         }
       });
       
@@ -700,7 +752,7 @@ Required JSON format:
       if (i === 0) {
         // First iteration: Generate initial response
         currentResponse = await llm.generateResponse(
-          previousMessages.concat([{ role: 'user', content: query }]),
+          previousMessages,
           context,
           userPreferences,
           true

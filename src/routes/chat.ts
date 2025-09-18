@@ -39,7 +39,7 @@ async function generateCs30AdditionalResponse(
     console.log('🔍 CS30: Collection available, searching...');
     
     // Search cs30 collection for relevant content with lower threshold for testing
-    const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.60); // Lowered from 0.80 to 0.60
+  const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.75); // Require higher relevance to reduce noise
     
     console.log(`🔍 CS30: Found ${cs30Results.length} results`);
     if (cs30Results.length > 0) {
@@ -393,11 +393,63 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   }
   const chat = chatResult.rows[0];
   
-  // Save user message
-  const userMessage = await pool.query(
-    'INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
-    [chatId, 'user', content]
+  // Deduplicate rapid duplicate submissions (same content within a short window)
+  const norm = (s: string) => (s || '').trim();
+  const lastMsgRes = await pool.query(
+    'SELECT id, role, content, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 1',
+    [chatId]
   );
+  if (lastMsgRes.rows.length > 0) {
+    const last = lastMsgRes.rows[0];
+    const secondsSinceLast = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+    if (last.role === 'user' && norm(last.content) === norm(content) && secondsSinceLast <= 10) {
+      // Try to return the already produced assistant reply (if any) after that user turn
+      const prevAssistant = await pool.query(
+        `SELECT id, role, content, metadata, created_at
+         FROM messages 
+         WHERE chat_id = $1 AND role = 'assistant' AND created_at > $2
+         ORDER BY created_at ASC LIMIT 1`,
+        [chatId, last.created_at]
+      );
+      if (prevAssistant.rows.length > 0) {
+        return res.json({
+          success: true,
+          data: {
+            userMessage: last,
+            assistantMessage: prevAssistant.rows[0],
+            updatedChatTitle: null,
+            type: 'normal',
+            deduplicated: true
+          }
+        });
+      }
+      // If no assistant reply yet, fall through to normal processing (to produce one),
+      // but do not insert a second identical user message.
+    }
+  }
+
+  // Save user message (or reuse previous identical one if just submitted)
+  let userMessage: { rows: any[] };
+  let reusedPreviousUser = false;
+  if (lastMsgRes.rows.length > 0) {
+    const last = lastMsgRes.rows[0];
+    const secondsSinceLast = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+    if (last.role === 'user' && norm(last.content) === norm(content) && secondsSinceLast <= 10) {
+      // Reuse previous identical user message to avoid duplicates
+      userMessage = { rows: [last] } as any;
+      reusedPreviousUser = true;
+    } else {
+      userMessage = await pool.query(
+        'INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
+        [chatId, 'user', content]
+      );
+    }
+  } else {
+    userMessage = await pool.query(
+      'INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
+      [chatId, 'user', content]
+    );
+  }
   
   // Check if Flip Mode should be activated
   if (!chat.flip_mode_used) {
@@ -489,6 +541,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     contextSources: number;
     userContextUsed: boolean;
     contextReason: string;
+  chatHistoryTurns?: number;
     userDocumentsUsed?: number;
     userNotesUsed?: number;
     contextSummary?: string;
@@ -512,6 +565,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
     contextSources: reasoningResult.reasoningSteps.filter((step: any) => step.step === 'context_analysis').length,
     userContextUsed: false,
     contextReason: 'Advanced multi-step reasoning pipeline used',
+  chatHistoryTurns: (previousMessages.rows || []).length,
     reasoningSteps: reasoningResult.reasoningSteps,
     finalQuality: reasoningResult.finalQuality,
     iterationsUsed: reasoningResult.iterationsUsed,
@@ -622,8 +676,15 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   // Generate CS30 additional response asynchronously (don't block primary response)
   let cs30ResponsePromise: Promise<any> | null = null;
   if (userHasCs30Access) {
-    console.log(`🔍 Starting CS30 search for query: "${content}"`);
-    cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
+    // Only include CS30 additional response on the first user turn in a chat to avoid duplicate answers on follow-ups
+    const userTurnCountRes = await pool.query('SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2', [chatId, 'user']);
+    const userTurnCount = parseInt(userTurnCountRes.rows[0]?.count || '0', 10);
+    if (userTurnCount === 1) {
+      console.log(`🔍 Starting CS30 search for initial query: "${content}"`);
+      cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
+    } else {
+      console.log('🔍 Skipping CS30 additional response for follow-up turn');
+    }
   }
 
   // Prepare primary response data

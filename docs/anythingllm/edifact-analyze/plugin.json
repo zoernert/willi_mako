@@ -1,0 +1,36 @@
+{
+  "active": true,
+  "schema": "skill-1.0.0",
+  "hubId": "edifact-analyze",
+  "name": "EDIFACT Analyse (Willi‑Mako)",
+  "version": "1.0.0",
+  "description": "Analysiert EDIFACT Nachrichten über die öffentliche Willi‑Mako API.",
+  "author": "stromhaltig.de",
+  "author_url": "https://stromhaltig.de",
+  "license": "MIT",
+  "setup_args": {
+    "API_BASE_URL": {
+      "type": "string",
+      "required": false,
+      "input": {
+        "type": "text",
+        "default": "https://stromhaltig.de",
+        "placeholder": "https://stromhaltig.de",
+        "hint": "Basis-URL der öffentlichen Willi‑Mako API"
+      },
+      "value": "https://stromhaltig.de"
+    }
+  },
+  "examples": [
+    { "prompt": "Analysiere diese EDIFACT Nachricht", "call": "{\"message\": \"UNH+1+UTILMD:D:01B:UN:1.1e'...\"}" },
+    { "prompt": "Analysiere den Inhalt", "call": "{\"text\": \"UNA:+.? 'UNB+...\"}" }
+  ],
+  "entrypoint": {
+    "file": "handler.js",
+    "params": {
+      "message": { "description": "EDIFACT Nachricht", "type": "string", "optional": true },
+      "text": { "description": "Alternative Eingabe", "type": "string", "optional": true }
+    }
+  },
+  "imported": true
+}
