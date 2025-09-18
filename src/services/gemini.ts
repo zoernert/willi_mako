@@ -405,10 +405,18 @@ export class GeminiService {
             }
           ]);
           
-          return followUpResult.response.text();
+          {
+            const txt = (followUpResult.response && followUpResult.response.text && followUpResult.response.text()) || '';
+            const safe = (typeof txt === 'string' ? txt : '').trim();
+            return safe.length > 0 ? safe : 'Hinweis: Die Modellantwort war leer. Bitte wiederhole die Frage oder formuliere sie neu.';
+          }
         }
         
-        return response.text();
+        {
+          const txt = (response && response.text && response.text()) || '';
+          const safe = (typeof txt === 'string' ? txt : '').trim();
+          return safe.length > 0 ? safe : 'Hinweis: Die Modellantwort war leer. Bitte wiederhole die Frage oder formuliere sie neu.';
+        }
       } catch (error) {
         console.error(`Error generating response (attempt ${attemptCount}/${maxAttempts}):`, error);
         if (error instanceof Error) {

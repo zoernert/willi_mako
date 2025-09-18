@@ -464,11 +464,38 @@ class AdvancedReasoningService {
     
     // Generate response directly
     // Previous messages already include the most recent user turn from the DB
-    const response = await llm.generateResponse(
+    let response = await llm.generateResponse(
       previousMessages,
       context,
       userPreferences
     );
+
+    // Fallback: If empty response, try a plain text generation with explicit prompt
+    if (!response || !response.trim()) {
+      const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+
+Frage:
+${query}
+
+Kontext:
+${context.slice(0, 12000)}
+
+Antwort:`;
+      try {
+        const alt = await llm.generateText(fallbackPrompt, userPreferences);
+        if (alt && alt.trim()) {
+          response = alt.trim();
+          reasoningSteps.push({
+            step: 'direct_response_fallback',
+            description: 'Empty response fallback via generateText',
+            timestamp: Date.now(),
+            result: { usedFallback: true }
+          });
+        }
+      } catch (e) {
+        // keep response empty; will be handled by caller
+      }
+    }
     
     // Record the step
   reasoningSteps.push({
@@ -519,11 +546,35 @@ class AdvancedReasoningService {
     
     // Erste Antwortgenerierung
   // Previous messages already include the most recent user turn from the DB
-  const initialResponse = await llm.generateResponse(
+  let initialResponse = await llm.generateResponse(
       previousMessages,
       context,
       userPreferences
     );
+    // Fallback for empty initial response
+    if (!initialResponse || !initialResponse.trim()) {
+      const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+
+Frage:
+${query}
+
+Kontext:
+${context.slice(0, 12000)}
+
+Antwort:`;
+      try {
+        const alt = await llm.generateText(fallbackPrompt, userPreferences);
+        if (alt && alt.trim()) {
+          initialResponse = alt.trim();
+          reasoningSteps.push({
+            step: 'direct_response_fallback',
+            description: 'Empty response fallback via generateText',
+            timestamp: Date.now(),
+            result: { usedFallback: true }
+          });
+        }
+      } catch {}
+    }
     apiCallsUsed++;
     
     // Extract hybrid search metadata if available
