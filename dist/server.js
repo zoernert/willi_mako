@@ -141,6 +141,19 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 // Routes
+// Increase timeout for admin routes (default 90 seconds, configurable)
+app.use('/api/admin', (req, res, next) => {
+    const adminTimeoutMs = Number(process.env.ADMIN_FAQ_TIMEOUT_MS || process.env.CHAT_TIMEOUT_MS || '90000');
+    try {
+        req.setTimeout(adminTimeoutMs);
+    }
+    catch (_a) { }
+    try {
+        res.setTimeout(adminTimeoutMs);
+    }
+    catch (_b) { }
+    next();
+});
 // Use new authentication routes instead of legacy auth routes
 app.use('/api/auth', auth_1.default); // Updated auth routes
 app.use('/api/v2/user', user_routes_1.default); // v2 user endpoints

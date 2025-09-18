@@ -288,8 +288,12 @@ router.post('/admin/chats/:chatId/create-faq', auth_1.authenticateToken, require
     // Generate FAQ content using LLM with error handling
     console.log('Calling generateFAQContent with messages:', messages.length);
     let faqContent;
+    const adminTimeoutMs = Number(process.env.ADMIN_FAQ_TIMEOUT_MS || process.env.CHAT_TIMEOUT_MS || '90000');
+    const budgetMs = Math.max(10000, adminTimeoutMs - 5000);
     try {
-        faqContent = await llmProvider_1.default.generateFAQContent(messages);
+        const generation = llmProvider_1.default.generateFAQContent(messages);
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FAQ_TIMEOUT')), budgetMs));
+        faqContent = await Promise.race([generation, timeout]);
         console.log('Generated FAQ content successfully');
         // Validate the FAQ content structure
         if (!faqContent || typeof faqContent !== 'object') {
@@ -317,12 +321,13 @@ router.post('/admin/chats/:chatId/create-faq', auth_1.authenticateToken, require
             message: error.message,
             stack: (_b = error.stack) === null || _b === void 0 ? void 0 : _b.substring(0, 500)
         });
-        // Provide fallback content if AI generation fails
+        // Provide fallback content if AI generation fails or times out
+        const timedOut = (error === null || error === void 0 ? void 0 : error.message) === 'FAQ_TIMEOUT';
         faqContent = {
             title: 'FAQ aus Chat erstellt',
-            description: 'Automatisch generierter FAQ-Eintrag aus einem Chat-Verlauf',
+            description: timedOut ? 'Automatisch generierter FAQ-Eintrag (Timeout – Inhalt bitte ergänzen)' : 'Automatisch generierter FAQ-Eintrag aus einem Chat-Verlauf',
             context: 'Basierend auf einer Unterhaltung mit einem Nutzer',
-            answer: 'Detaillierte Antwort wird bei der nächsten Bearbeitung ergänzt',
+            answer: timedOut ? 'Die automatische Generierung hat das Zeitlimit überschritten. Bitte Inhalt manuell ergänzen.' : 'Detaillierte Antwort wird bei der nächsten Bearbeitung ergänzt',
             additionalInfo: 'Weitere Informationen können bei Bedarf ergänzt werden',
             tags: ['Energiewirtschaft', 'Chat-FAQ']
         };

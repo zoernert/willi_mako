@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-// Produktionsumgebung: Backend läuft auf Port 4101
-// Entwicklungsumgebung: Backend läuft auf Port 3009
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://127.0.0.1:4101' 
-  : (process.env.API_URL || 'http://127.0.0.1:3009');
+// Backend Base URL: prefer INTERNAL_API_BASE_URL in all envs; fallback differs by env
+// Default: 3009 (matching server.ts default and deploy scripts)
+const API_URL = process.env.INTERNAL_API_BASE_URL
+  || (process.env.NODE_ENV === 'production'
+      ? 'http://127.0.0.1:3009'
+      : (process.env.API_URL || 'http://127.0.0.1:3009'));
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -49,10 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // For GET/HEAD no body. For JSON, buffer and forward as Buffer (lets undici set Content-Length).
     // For multipart/others, stream the raw request.
-    const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
-    const contentTypeIncoming = (req.headers['content-type'] as string) || '';
+  const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+  const contentTypeIncoming = (req.headers['content-type'] as string) || '';
+  const contentLengthIncoming = Number((req.headers['content-length'] as string) || '0');
   let bodyToSend: any = undefined;
-    if (hasBody) {
+  if (hasBody) {
       if (contentTypeIncoming.includes('application/json')) {
         // Buffer the incoming JSON body
         const chunks: Buffer[] = [];
@@ -62,8 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const buffered = Buffer.concat(chunks);
     bodyToSend = buffered.length > 0 ? buffered : undefined; // don't send empty body
       } else {
-        // Stream other bodies (e.g., multipart/form-data)
-        bodyToSend = req as any;
+        // Stream other bodies (e.g., multipart/form-data); but avoid streaming when content-length is 0
+        bodyToSend = contentLengthIncoming > 0 ? (req as any) : undefined;
       }
     }
 
