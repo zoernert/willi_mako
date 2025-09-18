@@ -241,6 +241,7 @@ class AdvancedReasoningService {
         description: `Quick search found ${quickResults.length} relevant documents`,
         timestamp: retrievalStart,
         duration: Date.now() - retrievalStart,
+  qdrantQueries: [query],
         qdrantResults: quickResults.length,
         result: { 
           documentsFound: quickResults.length, 
@@ -464,21 +465,24 @@ class AdvancedReasoningService {
     
     // Generate response directly
     // Previous messages already include the most recent user turn from the DB
+    // Prepend a concise domain intro to guide style and context
+    const domainIntro = `Kurzkontext: EnWG als Rechtsrahmen; GPKE/WiM definieren Marktprozesse; UTILMD steuert Stammdaten- und Prozessmeldungen, MSCONS liefert Messwerte. Danach bitte die operativen Schritte klar und knapp darstellen.`;
+
     let response = await llm.generateResponse(
       previousMessages,
-      context,
+      domainIntro + (context ? `\n\n${context}` : ''),
       userPreferences
     );
 
     // Fallback: If empty response, try a plain text generation with explicit prompt
     if (!response || !response.trim()) {
-      const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+  const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
 
 Frage:
 ${query}
 
 Kontext:
-${context.slice(0, 12000)}
+${(domainIntro + '\n\n' + context).slice(0, 12000)}
 
 Antwort:`;
       try {
@@ -546,20 +550,21 @@ Antwort:`;
     
     // Erste Antwortgenerierung
   // Previous messages already include the most recent user turn from the DB
+  const domainIntro = `Kurzkontext: EnWG als Rechtsrahmen; GPKE/WiM definieren Marktprozesse; UTILMD steuert Stammdaten- und Prozessmeldungen, MSCONS liefert Messwerte. Danach bitte die operativen Schritte klar und knapp darstellen.`;
   let initialResponse = await llm.generateResponse(
       previousMessages,
-      context,
+      domainIntro + (context ? `\n\n${context}` : ''),
       userPreferences
     );
     // Fallback for empty initial response
     if (!initialResponse || !initialResponse.trim()) {
-      const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+  const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
 
 Frage:
 ${query}
 
 Kontext:
-${context.slice(0, 12000)}
+${(domainIntro + '\n\n' + context).slice(0, 12000)}
 
 Antwort:`;
       try {

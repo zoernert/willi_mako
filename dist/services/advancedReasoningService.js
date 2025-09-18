@@ -313,7 +313,34 @@ class AdvancedReasoningService {
         const contextMetrics = this.buildContextMetrics(results);
         // Generate response directly
         // Previous messages already include the most recent user turn from the DB
-        const response = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
+        let response = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
+        // Fallback: If empty response, try a plain text generation with explicit prompt
+        if (!response || !response.trim()) {
+            const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+
+Frage:
+${query}
+
+Kontext:
+${context.slice(0, 12000)}
+
+Antwort:`;
+            try {
+                const alt = await llmProvider_1.default.generateText(fallbackPrompt, userPreferences);
+                if (alt && alt.trim()) {
+                    response = alt.trim();
+                    reasoningSteps.push({
+                        step: 'direct_response_fallback',
+                        description: 'Empty response fallback via generateText',
+                        timestamp: Date.now(),
+                        result: { usedFallback: true }
+                    });
+                }
+            }
+            catch (e) {
+                // keep response empty; will be handled by caller
+            }
+        }
         // Record the step
         reasoningSteps.push({
             step: 'direct_response',
@@ -349,7 +376,32 @@ class AdvancedReasoningService {
         const contextMetrics = this.buildContextMetrics(results);
         // Erste Antwortgenerierung
         // Previous messages already include the most recent user turn from the DB
-        const initialResponse = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
+        let initialResponse = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
+        // Fallback for empty initial response
+        if (!initialResponse || !initialResponse.trim()) {
+            const fallbackPrompt = `Beantworte die folgende Fachfrage präzise, fachlich korrekt und im Kontext der deutschen Energiewirtschaft und Marktkommunikation. Nutze den gegebenen Kontext. Wenn der Kontext unzureichend ist, liefere die bestmögliche allgemeine Erklärung.
+
+Frage:
+${query}
+
+Kontext:
+${context.slice(0, 12000)}
+
+Antwort:`;
+            try {
+                const alt = await llmProvider_1.default.generateText(fallbackPrompt, userPreferences);
+                if (alt && alt.trim()) {
+                    initialResponse = alt.trim();
+                    reasoningSteps.push({
+                        step: 'direct_response_fallback',
+                        description: 'Empty response fallback via generateText',
+                        timestamp: Date.now(),
+                        result: { usedFallback: true }
+                    });
+                }
+            }
+            catch (_b) { }
+        }
         apiCallsUsed++;
         // Extract hybrid search metadata if available
         const hybridSearchMetadata = (_a = results.find((r) => r.hybridSearchMetadata)) === null || _a === void 0 ? void 0 : _a.hybridSearchMetadata;
