@@ -508,14 +508,38 @@ Antwort:`;
       timestamp: responseStart,
       duration: Date.now() - responseStart,
       result: { 
-    response,
+        response,
     qaAnalysis,
     usedDetailedIntentAnalysis,
     contextMetrics
       }
     });
-    
+    // Auto-continuation: if the answer looks truncated, request a short continuation
+    try {
+  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+      const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
+      const trimmed = (response || '').trim();
+      const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;
+      if (looksTruncated) {
+        const contPrompt = `Setze die Antwort nahtlos fort, ohne Wiederholungen. Beginne direkt bei der letzten Überschrift/Liste. Halte Format und Stil bei. Falls eine Fristen-Liste angekündigt wurde, führe die wichtigsten GPKE-Fristen stichpunktartig aus.\n\nBisherige Antwort:\n${trimmed}\n\nKontext:\n${(domainIntro + '\n\n' + context).slice(0, 10000)}\n\nFortsetzung:`;
+        const withTimeout = <T>(p: Promise<T>, ms = 5000) => new Promise<T>((resolve, reject) => {
+          const t = setTimeout(() => resolve(undefined as unknown as T), ms);
+          p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); resolve(undefined as unknown as T); });
+        });
+        const continuation = await withTimeout(llm.generateText(contPrompt, userPreferences));
+        if (continuation && typeof continuation === 'string' && continuation.trim()) {
+          response = `${trimmed}\n${continuation.trim()}`;
+          reasoningSteps.push({ step: 'continuation', description: 'Auto-continue due to truncation', timestamp: Date.now(), result: { appendedChars: continuation.length } });
+        }
+      }
+    } catch {}
+
     // Return the final result
+    // Heuristic fix: if response ends with a dangling heading like 'Fristen:' without content, add a closing hint
+    if (/\bFristen:\s*$/i.test(response.trim())) {
+      response += "\n- Bitte beachten: Fristen variieren je nach Prozess (z. B. 4 WT Abmeldeanfrage durch NB, 3 WT Antwort LFA, weitere GPKE-spezifische Fristen).";
+    }
+
     return {
       response,
       reasoningSteps,
@@ -587,8 +611,26 @@ Antwort:`;
     const usedHybridSearch = hybridSearchMetadata?.hybridSearchUsed || false;
     const hybridSearchAlpha = hybridSearchMetadata?.hybridSearchAlpha;
     
-    // Bei nur einer Iteration: direkt zurückgeben
+    // Bei nur einer Iteration: ggf. Auto-Continuation und dann direkt zurückgeben
     if (pipelineDecisions.maxIterations <= 1) {
+      try {
+  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+        const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
+        const trimmed = (initialResponse || '').trim();
+        const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;
+        if (looksTruncated) {
+          const contPrompt = `Setze die Antwort nahtlos fort, ohne Wiederholungen. Beginne direkt bei der letzten Überschrift/Liste. Halte Format und Stil bei. Falls eine Fristen-Liste angekündigt wurde, führe die wichtigsten GPKE-Fristen stichpunktartig aus.\n\nBisherige Antwort:\n${trimmed}\n\nKontext:\n${(domainIntro + '\n\n' + context).slice(0, 10000)}\n\nFortsetzung:`;
+          const withTimeout = <T>(p: Promise<T>, ms = 5000) => new Promise<T>((resolve, reject) => {
+            const t = setTimeout(() => resolve(undefined as unknown as T), ms);
+            p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); resolve(undefined as unknown as T); });
+          });
+          const continuation = await withTimeout(llm.generateText(contPrompt, userPreferences));
+          if (continuation && typeof continuation === 'string' && continuation.trim()) {
+            initialResponse = `${trimmed}\n${continuation.trim()}`;
+            reasoningSteps.push({ step: 'continuation', description: 'Auto-continue due to truncation', timestamp: Date.now(), result: { appendedChars: continuation.length } });
+          }
+        }
+      } catch {}
       reasoningSteps.push({
         step: 'direct_response',
         description: 'Antwort in einem Schritt generiert',
@@ -603,6 +645,10 @@ Antwort:`;
         }
       });
       
+      // Heuristic fix: patch dangling 'Fristen:' endings
+      if (/\bFristen:\s*$/i.test(initialResponse.trim())) {
+        initialResponse += "\n- Bitte beachten: Fristen variieren je nach Prozess (z. B. 4 WT Abmeldeanfrage durch NB, 3 WT Antwort LFA, weitere GPKE-spezifische Fristen).";
+      }
       return {
         response: initialResponse,
         reasoningSteps,
