@@ -121,10 +121,17 @@ app.use('/api/', express_1.default.raw({ type: 'application/json', limit: '50mb'
     next();
 });
 app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
-// Increase timeout for chat routes (45 seconds)
+// Increase timeout for chat routes (default 90 seconds, configurable via CHAT_TIMEOUT_MS)
 app.use('/api/chat', (req, res, next) => {
-    req.setTimeout(45000);
-    res.setTimeout(45000);
+    const chatTimeoutMs = Number(process.env.CHAT_TIMEOUT_MS || '90000');
+    try {
+        req.setTimeout(chatTimeoutMs);
+    }
+    catch (_a) { }
+    try {
+        res.setTimeout(chatTimeoutMs);
+    }
+    catch (_b) { }
     next();
 });
 // Static files

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Box,
   Paper,
@@ -19,6 +20,7 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper as MuiPaper } from '@mui/material';
 import {
   Send as SendIcon,
   Person as PersonIcon,
@@ -236,6 +238,19 @@ const Chat: React.FC = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Heuristic: unwrap tables mistakenly wrapped in code fences so they render as tables
+  const unwrapMarkdownCodeFence = (text: string): string => {
+    if (!text) return text;
+    const fenceMatch = text.match(/^```(markdown|md)?\n([\s\S]*?)\n```\s*$/i);
+    if (fenceMatch) {
+      const inner = fenceMatch[2] || '';
+      if (/\|.*\|/.test(inner) && /\n\s*\|?\s*-{3,}/.test(inner)) {
+        return inner.trim();
+      }
+    }
+    return text;
   };
 
   // Timer effect for loading elapsed time
@@ -909,6 +924,7 @@ const Chat: React.FC = () => {
                               <Box sx={{ flex: 1 }}>
                                 <div className="chat-message assistant-message">
                                   <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
                               components={{
                                 p: ({ children }) => (
                                   <Typography variant="body1" sx={{ mb: 1 }}>
@@ -1004,6 +1020,21 @@ const Chat: React.FC = () => {
                                     {children}
                                   </Paper>
                                 ),
+                                      // GFM tables
+                                      table: ({ children }) => (
+                                        <TableContainer component={MuiPaper} sx={{ mb: 2, overflow: 'auto' }}>
+                                          <Table size="small">{children}</Table>
+                                        </TableContainer>
+                                      ),
+                                      thead: ({ children }) => <TableHead>{children}</TableHead>,
+                                      tbody: ({ children }) => <TableBody>{children}</TableBody>,
+                                      tr: ({ children }) => <TableRow>{children}</TableRow>,
+                                      th: ({ children }) => (
+                                        <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.light', color: 'primary.contrastText' }}>
+                                          {children}
+                                        </TableCell>
+                                      ),
+                                      td: ({ children }) => <TableCell>{children}</TableCell>,
                               }}
                             >
                               {/* CR-CS30: Toggle-based content display */}
@@ -1029,7 +1060,7 @@ const Chat: React.FC = () => {
                                   });
                                 }
 
-                                return contentToShow;
+                                return unwrapMarkdownCodeFence(contentToShow || '');
                               })()}
                             </ReactMarkdown>
                             

@@ -314,8 +314,12 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
   console.log('Calling generateFAQContent with messages:', messages.length);
   
   let faqContent;
+  const adminTimeoutMs = Number(process.env.ADMIN_FAQ_TIMEOUT_MS || process.env.CHAT_TIMEOUT_MS || '90000');
+  const budgetMs = Math.max(10000, adminTimeoutMs - 5000);
   try {
-    faqContent = await llm.generateFAQContent(messages);
+    const generation = llm.generateFAQContent(messages);
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('FAQ_TIMEOUT')), budgetMs));
+    faqContent = await Promise.race([generation as unknown as Promise<any>, timeout]);
     console.log('Generated FAQ content successfully');
     
     // Validate the FAQ content structure
@@ -346,13 +350,13 @@ router.post('/admin/chats/:chatId/create-faq', authenticateToken, requireAdminFo
       message: error.message,
       stack: error.stack?.substring(0, 500)
     });
-    
-    // Provide fallback content if AI generation fails
+    // Provide fallback content if AI generation fails or times out
+    const timedOut = (error as any)?.message === 'FAQ_TIMEOUT';
     faqContent = {
       title: 'FAQ aus Chat erstellt',
-      description: 'Automatisch generierter FAQ-Eintrag aus einem Chat-Verlauf',
+      description: timedOut ? 'Automatisch generierter FAQ-Eintrag (Timeout – Inhalt bitte ergänzen)' : 'Automatisch generierter FAQ-Eintrag aus einem Chat-Verlauf',
       context: 'Basierend auf einer Unterhaltung mit einem Nutzer',
-      answer: 'Detaillierte Antwort wird bei der nächsten Bearbeitung ergänzt',
+      answer: timedOut ? 'Die automatische Generierung hat das Zeitlimit überschritten. Bitte Inhalt manuell ergänzen.' : 'Detaillierte Antwort wird bei der nächsten Bearbeitung ergänzt',
       additionalInfo: 'Weitere Informationen können bei Bedarf ergänzt werden',
       tags: ['Energiewirtschaft', 'Chat-FAQ']
     };

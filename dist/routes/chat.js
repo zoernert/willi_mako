@@ -435,9 +435,11 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     const userPreferences = await database_1.default.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userId]);
     // Use the advanced reasoning pipeline for better quality responses with timeout protection
     const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, { ...(userPreferences.rows[0] || {}), userId }, contextSettings);
-    // Add timeout protection (120 seconds for complex queries)
+    // Add timeout protection: use a budget slightly lower than server timeout to allow graceful fallback
+    const serverTimeoutMs = Number(process.env.CHAT_TIMEOUT_MS || '90000');
+    const reasoningBudgetMs = Math.max(15000, serverTimeoutMs - 5000); // keep 5s for fallback/write
     const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('REASONING_TIMEOUT')), 120000);
+        setTimeout(() => reject(new Error('REASONING_TIMEOUT')), reasoningBudgetMs);
     });
     let reasoningResult;
     try {

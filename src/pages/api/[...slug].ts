@@ -40,8 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Handle array headers
       forwardHeaders[lower] = Array.isArray(value) ? value.join(', ') : String(value);
     }
-    // Ensure Authorization and forwarded headers are present
-    forwardHeaders['authorization'] = (req.headers.authorization as string) || '';
+    // Ensure Authorization and forwarded headers are present (only set if provided)
+    if (req.headers.authorization) {
+      forwardHeaders['authorization'] = req.headers.authorization as string;
+    }
     forwardHeaders['x-forwarded-for'] = String(forwardedFor);
     forwardHeaders['x-forwarded-host'] = (req.headers.host as string) || '';
 
@@ -49,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // For multipart/others, stream the raw request.
     const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
     const contentTypeIncoming = (req.headers['content-type'] as string) || '';
-    let bodyToSend: any = undefined;
+  let bodyToSend: any = undefined;
     if (hasBody) {
       if (contentTypeIncoming.includes('application/json')) {
         // Buffer the incoming JSON body
@@ -57,7 +59,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         for await (const chunk of req as any as AsyncIterable<Buffer>) {
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
         }
-        bodyToSend = Buffer.concat(chunks);
+    const buffered = Buffer.concat(chunks);
+    bodyToSend = buffered.length > 0 ? buffered : undefined; // don't send empty body
       } else {
         // Stream other bodies (e.g., multipart/form-data)
         bodyToSend = req as any;
@@ -94,7 +97,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end(Buffer.from(arrayBuf));
     }
   } catch (error) {
-    console.error('API Proxy Error:', error);
+    try {
+      console.error('API Proxy Error:', { error, method: req.method, url: req.url });
+    } catch {
+      console.error('API Proxy Error:', error);
+    }
     res.status(503).json({ 
       error: 'API Gateway Error', 
       message: 'Backend service temporarily unavailable'
