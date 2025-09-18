@@ -93,9 +93,28 @@ export class QueryAnalysisService {
 
     // 3. Query-Expansion mit Abkürzungen
     let expandedQuery = query;
+
+    // Domain-Disambiguierung: "EoG" im Kontext der Marktkommunikation
+    // steht für "Ersatz und Grundversorgung" (nicht engl. Phrasen).
+    const eogRegex = /\bEoG\b/i;
+    if (eogRegex.test(query)) {
+      const eogHint = 'EoG (Ersatz und Grundversorgung) Ersatzversorgung Grundversorgung GPKE Kündigung Beendigung Fristen Kundenwechsel Prozess UTILMD';
+      expandedQuery = `${query} ${eogHint}`.trim();
+
+      // Falls bisher kein Dokumentbezug erkannt wurde, GPKE priorisieren
+      if (!documentReference) {
+        documentReference = 'GPKE';
+        filterCriteria.documentBaseName = this.DOCUMENT_MAPPINGS['GPKE'];
+      }
+      confidence = Math.min(confidence + 0.1, 1.0);
+      if (!filterCriteria.chunkTypes && intentType === 'general') {
+        filterCriteria.chunkTypes = ['abbreviation', 'definition'];
+      }
+    }
     if (abbreviationIndex) {
       for (const [abbreviation, fullTerm] of abbreviationIndex.entries()) {
-        const regex = new RegExp(`\\b${abbreviation}\\b`, 'gi');
+        const safe = abbreviation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${safe}\\b`, 'gi');
         if (regex.test(query)) {
           expandedQuery = expandedQuery.replace(regex, `${abbreviation} (${fullTerm})`);
         }
@@ -104,7 +123,7 @@ export class QueryAnalysisService {
 
     // 4. Erweitere Query basierend auf Intent
     if (intentType === 'definition') {
-      expandedQuery = `Definition und Bedeutung: ${expandedQuery}`;
+  expandedQuery = `Definition und Bedeutung (deutschsprachiger Kontext der Energiewirtschaft, keine englischen Abkürzungsauflösungen wie "Entry of Grid"): ${expandedQuery}`;
     } else if (intentType === 'table_data') {
       expandedQuery = `Tabellarische Daten und Listen: ${expandedQuery}`;
     }

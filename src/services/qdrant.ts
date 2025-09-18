@@ -157,12 +157,12 @@ export class QdrantService {
     else if (t.includes('pseudocode_flow')) b += 0.015;
     else if (t.includes('pseudocode_table_maps')) b += 0.01;
 
-    const kw: string[] = (p?.payload?.keywords || []) as string[];
-    if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS|INVOIC|REMADV/i.test(k))) b += 0.02;
+  const kw: string[] = (p?.payload?.keywords || []) as string[];
+  if (kw.some(k => /AHB|MIG|EDIFACT|ORDCHG|PRICAT|APERAK|IFTSTA|ORDERS|INVOIC|REMADV|GPKE/i.test(k))) b += 0.02;
 
     // Domain full/paragraph emphasis: detect EDIFACT segment & data element patterns
     const text: string = (p?.payload?.contextual_content || p?.payload?.text || p?.payload?.content || '') as string;
-    const upper = text.toUpperCase();
+  const upper = text.toUpperCase();
     if (/(PRI\+CAL|UNB\+|UNH\+|BGM\+|DTM\+)/i.test(text) && (t === 'full_page' || t === 'paragraph' || t === 'n/a')) {
       b += 0.05; // segment signal
     }
@@ -176,6 +176,10 @@ export class QdrantService {
   const ctype = (p?.payload?.content_type || '') as string;
   if (ctype === 'admin_markdown') b += 0.03;
   if (t === 'abbreviation') b += 0.04;
+  // Domain boost: Ersatz-/Grundversorgung/EoG-Kontext priorisieren
+  if (/\bERSATZVERSORGUNG\b/.test(upper) || /\bGRUNDVERSORGUNG\b/.test(upper) || /\bEOG\b/.test(upper)) {
+      b += 0.04;
+    }
     return b;
   }
   private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3): Promise<number[]> {
@@ -480,9 +484,10 @@ export class QdrantService {
 
       abbreviationResults.points.forEach((point: any) => {
         if (point.payload?.text) {
-          // Extrahiere Abkürzung aus dem Text (vereinfacht)
-          const match = point.payload.text.match(/([A-Z]{2,})\s*[:\-]\s*(.+)/);
+          // Extrahiere Abkürzung aus dem Text (robuster: erlaubt gemischte Groß-/Kleinschreibung wie "EoG")
+          const match = point.payload.text.match(/([A-Za-zÄÖÜäöüß]{2,})\s*[:\-]\s*(.+)/);
           if (match) {
+            // Schlüssel genau wie im Text speichern (Case bewahren), Lookup später case-insensitiv
             this.abbreviationIndex.set(match[1], match[2]);
           }
         }

@@ -41,6 +41,13 @@
 				"$tsc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Type Check (ad-hoc)",
+			"type": "shell",
+			"command": "npm run type-check",
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }
