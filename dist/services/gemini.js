@@ -357,15 +357,18 @@ class GeminiService {
                 this.lastUsedModelName = selectedModel.name;
                 // Prepare system prompt with context
                 const systemPrompt = this.buildSystemPrompt(context, userPreferences, isEnhancedQuery, contextMode);
-                // Format conversation history for function calling
-                const conversationHistory = messages.map(msg => ({
+                // Prepare conversation history: if the last message is a user turn, treat it as the new turn to send,
+                // and exclude it from the history to avoid duplicating the same user message twice.
+                const hasLastUser = messages.length > 0 && messages[messages.length - 1].role === 'user';
+                const lastUserContent = hasLastUser ? messages[messages.length - 1].content : '';
+                const historyForChat = (hasLastUser ? messages.slice(0, -1) : messages).map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'model',
                     parts: [{ text: msg.content }]
                 }));
-                // Add system prompt as first message
+                // Add system prompt as first message in the history
                 const messagesWithSystem = [
                     { role: 'user', parts: [{ text: systemPrompt }] },
-                    ...conversationHistory
+                    ...historyForChat
                 ];
                 // Log active generation config for visibility
                 try {
@@ -376,7 +379,7 @@ class GeminiService {
                 const chat = selectedModel.instance.startChat({
                     history: messagesWithSystem
                 });
-                const result = await chat.sendMessage(messages[messages.length - 1].content);
+                const result = await chat.sendMessage(lastUserContent);
                 const response = result.response; // Handle function calls
                 const functionCalls = response.functionCalls();
                 if (functionCalls && functionCalls.length > 0) {

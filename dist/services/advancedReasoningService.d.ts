@@ -47,6 +47,7 @@ declare class AdvancedReasoningService {
     private qdrantService;
     private maxApiCalls;
     constructor();
+    private buildContextMetrics;
     generateReasonedResponse(query: string, previousMessages: any[], userPreferences?: any, contextSettings?: any): Promise<ReasoningResult>;
     private generateDirectResponse;
     private generateRefinedResponse;

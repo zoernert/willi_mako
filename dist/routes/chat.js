@@ -65,7 +65,7 @@ async function generateCs30AdditionalResponse(userQuery, userHasCs30Access, user
         }
         console.log('🔍 CS30: Collection available, searching...');
         // Search cs30 collection for relevant content with lower threshold for testing
-        const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.60); // Lowered from 0.80 to 0.60
+        const cs30Results = await qdrantService.searchCs30(userQuery, 3, 0.75); // Require higher relevance to reduce noise
         console.log(`🔍 CS30: Found ${cs30Results.length} results`);
         if (cs30Results.length > 0) {
             console.log('🔍 CS30: Top result score:', cs30Results[0].score);
@@ -350,7 +350,7 @@ router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
 }));
 // Send message in chat
 router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     const { chatId } = req.params;
     const { content, contextSettings, timelineId } = req.body;
     const userId = req.user.id;
@@ -364,8 +364,52 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         throw new errorHandler_1.AppError('Chat not found', 404);
     }
     const chat = chatResult.rows[0];
-    // Save user message
-    const userMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at', [chatId, 'user', content]);
+    // Deduplicate rapid duplicate submissions (same content within a short window)
+    const norm = (s) => (s || '').trim();
+    const lastMsgRes = await database_1.default.query('SELECT id, role, content, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 1', [chatId]);
+    if (lastMsgRes.rows.length > 0) {
+        const last = lastMsgRes.rows[0];
+        const secondsSinceLast = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+        if (last.role === 'user' && norm(last.content) === norm(content) && secondsSinceLast <= 10) {
+            // Try to return the already produced assistant reply (if any) after that user turn
+            const prevAssistant = await database_1.default.query(`SELECT id, role, content, metadata, created_at
+         FROM messages 
+         WHERE chat_id = $1 AND role = 'assistant' AND created_at > $2
+         ORDER BY created_at ASC LIMIT 1`, [chatId, last.created_at]);
+            if (prevAssistant.rows.length > 0) {
+                return res.json({
+                    success: true,
+                    data: {
+                        userMessage: last,
+                        assistantMessage: prevAssistant.rows[0],
+                        updatedChatTitle: null,
+                        type: 'normal',
+                        deduplicated: true
+                    }
+                });
+            }
+            // If no assistant reply yet, fall through to normal processing (to produce one),
+            // but do not insert a second identical user message.
+        }
+    }
+    // Save user message (or reuse previous identical one if just submitted)
+    let userMessage;
+    let reusedPreviousUser = false;
+    if (lastMsgRes.rows.length > 0) {
+        const last = lastMsgRes.rows[0];
+        const secondsSinceLast = (Date.now() - new Date(last.created_at).getTime()) / 1000;
+        if (last.role === 'user' && norm(last.content) === norm(content) && secondsSinceLast <= 10) {
+            // Reuse previous identical user message to avoid duplicates
+            userMessage = { rows: [last] };
+            reusedPreviousUser = true;
+        }
+        else {
+            userMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at', [chatId, 'user', content]);
+        }
+    }
+    else {
+        userMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at', [chatId, 'user', content]);
+    }
     // Check if Flip Mode should be activated
     if (!chat.flip_mode_used) {
         const clarificationResult = await flip_mode_1.default.analyzeClarificationNeed(content, userId);
@@ -430,6 +474,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         contextSources: reasoningResult.reasoningSteps.filter((step) => step.step === 'context_analysis').length,
         userContextUsed: false,
         contextReason: 'Advanced multi-step reasoning pipeline used',
+        chatHistoryTurns: (previousMessages.rows || []).length,
         reasoningSteps: reasoningResult.reasoningSteps,
         finalQuality: reasoningResult.finalQuality,
         iterationsUsed: reasoningResult.iterationsUsed,
@@ -515,8 +560,16 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     // Generate CS30 additional response asynchronously (don't block primary response)
     let cs30ResponsePromise = null;
     if (userHasCs30Access) {
-        console.log(`🔍 Starting CS30 search for query: "${content}"`);
-        cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
+        // Only include CS30 additional response on the first user turn in a chat to avoid duplicate answers on follow-ups
+        const userTurnCountRes = await database_1.default.query('SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2', [chatId, 'user']);
+        const userTurnCount = parseInt(((_c = userTurnCountRes.rows[0]) === null || _c === void 0 ? void 0 : _c.count) || '0', 10);
+        if (userTurnCount === 1) {
+            console.log(`🔍 Starting CS30 search for initial query: "${content}"`);
+            cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
+        }
+        else {
+            console.log('🔍 Skipping CS30 additional response for follow-up turn');
+        }
     }
     // Prepare primary response data
     const primaryResponseData = {
@@ -534,9 +587,9 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                 const cs30Message = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', cs30Result.cs30Response, JSON.stringify({
                         type: 'cs30_additional',
                         sources: cs30Result.cs30Sources,
-                        sourceCount: ((_c = cs30Result.cs30Sources) === null || _c === void 0 ? void 0 : _c.length) || 0
+                        sourceCount: ((_d = cs30Result.cs30Sources) === null || _d === void 0 ? void 0 : _d.length) || 0
                     })]);
-                console.log(`✅ Added CS30 additional response with ${((_d = cs30Result.cs30Sources) === null || _d === void 0 ? void 0 : _d.length) || 0} sources`);
+                console.log(`✅ Added CS30 additional response with ${((_e = cs30Result.cs30Sources) === null || _e === void 0 ? void 0 : _e.length) || 0} sources`);
                 // Timeline-Integration (falls timelineId übergeben)
                 if (timelineId) {
                     try {

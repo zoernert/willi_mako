@@ -10,6 +10,44 @@ class AdvancedReasoningService {
         this.maxApiCalls = 10;
         this.qdrantService = new qdrant_1.QdrantService();
     }
+    // Build lightweight metrics about context usage per step
+    buildContextMetrics(results) {
+        try {
+            const safeArray = Array.isArray(results) ? results : [];
+            const getText = (r) => { var _a, _b; return (((_a = r === null || r === void 0 ? void 0 : r.payload) === null || _a === void 0 ? void 0 : _a.text) || ((_b = r === null || r === void 0 ? void 0 : r.payload) === null || _b === void 0 ? void 0 : _b.content) || ''); };
+            const getSourceLabel = (r) => {
+                const p = (r === null || r === void 0 ? void 0 : r.payload) || {};
+                // Prefer message_format grouping (e.g., BDEW, BNetzA, FAQ, Mein Workspace)
+                return (p.message_format ||
+                    p.type ||
+                    p.source ||
+                    p.document_name ||
+                    'Unbekannt');
+            };
+            const totals = {
+                totalSnippets: safeArray.length,
+                contextChars: 0,
+                approxTokens: 0,
+                bySource: {}
+            };
+            for (const r of safeArray) {
+                const txt = getText(r);
+                const chars = typeof txt === 'string' ? txt.length : 0;
+                totals.contextChars += chars;
+                const label = getSourceLabel(r);
+                if (!totals.bySource[label])
+                    totals.bySource[label] = { count: 0, chars: 0 };
+                totals.bySource[label].count += 1;
+                totals.bySource[label].chars += chars;
+            }
+            // Rough token estimate (German text ~ 4 chars/token on average)
+            totals.approxTokens = Math.max(1, Math.round(totals.contextChars / 4));
+            return totals;
+        }
+        catch (_a) {
+            return { totalSnippets: 0, contextChars: 0, approxTokens: 0, bySource: {} };
+        }
+    }
     async generateReasonedResponse(query, previousMessages, userPreferences = {}, contextSettings = {}) {
         var _a, _b, _c, _d;
         const startTime = Date.now();
@@ -123,7 +161,11 @@ class AdvancedReasoningService {
                 timestamp: retrievalStart,
                 duration: Date.now() - retrievalStart,
                 qdrantResults: quickResults.length,
-                result: { documentsFound: quickResults.length, quality: contextAnalysis.contextQuality }
+                result: {
+                    documentsFound: quickResults.length,
+                    quality: contextAnalysis.contextQuality,
+                    contextMetrics: this.buildContextMetrics(quickResults)
+                }
             });
             // Response Generation
             const responseStart = Date.now();
@@ -139,7 +181,8 @@ class AdvancedReasoningService {
                     description: `LLM re-ranking applied to quick results (top ${topN})`,
                     timestamp: rerankStart,
                     duration: Date.now() - rerankStart,
-                    qdrantResults: rerankedQuick.length
+                    qdrantResults: rerankedQuick.length,
+                    result: { contextMetrics: this.buildContextMetrics(rerankedQuick) }
                 });
                 // Check admin override for iterative refinement
                 const override = contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.overridePipeline;
@@ -174,7 +217,8 @@ class AdvancedReasoningService {
                 description: `LLM re-ranking applied to combined results (top ${topNCombined})`,
                 timestamp: rerankStart2,
                 duration: Date.now() - rerankStart2,
-                qdrantResults: combinedResults.length
+                qdrantResults: combinedResults.length,
+                result: { contextMetrics: this.buildContextMetrics(combinedResults) }
             });
             reasoningSteps.push({
                 step: 'enhanced_retrieval',
@@ -182,7 +226,8 @@ class AdvancedReasoningService {
                 timestamp: responseStart,
                 duration: Date.now() - responseStart,
                 qdrantQueries: searchQueries,
-                qdrantResults: enhancedResults.length
+                qdrantResults: enhancedResults.length,
+                result: { contextMetrics: this.buildContextMetrics(enhancedResults) }
             });
             // Final response generation (with optional admin override)
             const override = contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.overridePipeline;
@@ -208,7 +253,7 @@ class AdvancedReasoningService {
             try {
                 const fallbackResults = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
                 const contextText = fallbackResults.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
-                const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), contextText, userPreferences);
+                const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages, contextText, userPreferences);
                 console.log('✅ Fallback response generated successfully');
                 return {
                     response: fallbackResponse,
@@ -265,8 +310,10 @@ class AdvancedReasoningService {
         const responseStart = Date.now();
         // Synthesize context efficiently
         const context = results.map(r => { var _a, _b; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.content) || ''; }).join('\n\n');
+        const contextMetrics = this.buildContextMetrics(results);
         // Generate response directly
-        const response = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
+        // Previous messages already include the most recent user turn from the DB
+        const response = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
         // Record the step
         reasoningSteps.push({
             step: 'direct_response',
@@ -276,7 +323,8 @@ class AdvancedReasoningService {
             result: {
                 response,
                 qaAnalysis,
-                usedDetailedIntentAnalysis
+                usedDetailedIntentAnalysis,
+                contextMetrics
             }
         });
         // Return the final result
@@ -298,8 +346,10 @@ class AdvancedReasoningService {
         const refinementStart = Date.now();
         // Synthesize context efficiently
         const context = results.map(r => { var _a, _b; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ((_b = r.payload) === null || _b === void 0 ? void 0 : _b.content) || ''; }).join('\n\n');
+        const contextMetrics = this.buildContextMetrics(results);
         // Erste Antwortgenerierung
-        const initialResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences);
+        // Previous messages already include the most recent user turn from the DB
+        const initialResponse = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences);
         apiCallsUsed++;
         // Extract hybrid search metadata if available
         const hybridSearchMetadata = (_a = results.find((r) => r.hybridSearchMetadata)) === null || _a === void 0 ? void 0 : _a.hybridSearchMetadata;
@@ -316,7 +366,8 @@ class AdvancedReasoningService {
                     response: initialResponse,
                     confidence: 0.8,
                     usedHybridSearch,
-                    hybridSearchAlpha
+                    hybridSearchAlpha,
+                    contextMetrics
                 }
             });
             return {
@@ -487,7 +538,7 @@ Required JSON format:
             const iterationStart = Date.now();
             if (i === 0) {
                 // First iteration: Generate initial response
-                currentResponse = await llmProvider_1.default.generateResponse(previousMessages.concat([{ role: 'user', content: query }]), context, userPreferences, true);
+                currentResponse = await llmProvider_1.default.generateResponse(previousMessages, context, userPreferences, true);
                 apiCallsUsed++;
             }
             else {
