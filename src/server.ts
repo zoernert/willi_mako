@@ -93,41 +93,33 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
-// Custom JSON parsing with error handling
+// Custom JSON parsing with error handling (robust for chunked/proxied requests)
 app.use('/api/', express.raw({ type: 'application/json', limit: '50mb' }), (req, res, next) => {
-  const contentLength = parseInt(req.get('content-length') || '0');
-  const contentType = req.get('content-type');
-  
-  // Handle empty or minimal JSON bodies
-  if (contentType && contentType.includes('application/json')) {
-    if (contentLength <= 2) {
-      console.log('Detected empty/minimal JSON body, content-length:', contentLength, 'body:', req.body?.toString());
+  const contentType = req.get('content-type') || '';
+  if (!contentType.includes('application/json')) return next();
+
+  try {
+    const buf: any = req.body;
+    if (!Buffer.isBuffer(buf) || (buf as Buffer).length === 0) {
       req.body = {};
       return next();
     }
-    
-    try {
-      const bodyStr = req.body.toString();
-      console.log('Parsing JSON body:', bodyStr);
-      
-      // Handle empty quotes or just whitespace
-      if (bodyStr === '""' || bodyStr.trim() === '') {
-        console.log('Empty quotes or whitespace detected, setting body to {}');
-        req.body = {};
-      } else {
-        req.body = JSON.parse(bodyStr);
-      }
-    } catch (err) {
-      console.error('JSON parsing error:', err.message);
-      console.error('Raw body:', req.body?.toString());
-      return res.status(400).json({
-        success: false,
-        error: { message: 'Invalid JSON in request body: ' + err.message }
-      });
+
+    const bodyStr = (buf as Buffer).toString('utf8').trim();
+    if (!bodyStr || bodyStr === '""') {
+      req.body = {};
+      return next();
     }
+
+    try {
+      req.body = JSON.parse(bodyStr);
+    } catch (e: any) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid JSON in request body' } });
+    }
+  } catch (e) {
+    req.body = {};
   }
-  
-  next();
+  return next();
 });
 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
