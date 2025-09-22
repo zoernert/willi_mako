@@ -14,22 +14,24 @@ const nextConfig = {
   
   // Legacy app integration and dataset file serving
   async rewrites() {
+    const isProd = process.env.NODE_ENV === 'production';
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
         // Map legacy CRA static/PWA assets when serving via Next in dev
         { source: '/static/:path*', destination: '/app/static/:path*' },
         { source: '/manifest.json', destination: '/app/manifest.json' },
-        // Dev proxy for backend API when running Next only (3003 → 3009)
-        {
-          source: '/api/:path*',
-          destination: 'http://localhost:3009/api/:path*',
-        },
-        // Dev proxy for public community APIs -> Express backend (fixes PDF/DOCX export in dev)
-        {
-          source: '/api/public/community/:path*',
-          destination: 'http://localhost:3009/api/public/community/:path*',
-        },
+        // Dev-only proxies for backend API when running Next without server.js
+        ...(!isProd ? [
+          {
+            source: '/api/:path*',
+            destination: 'http://localhost:3009/api/:path*',
+          },
+          {
+            source: '/api/public/community/:path*',
+            destination: 'http://localhost:3009/api/public/community/:path*',
+          },
+        ] : []),
   // Keep root files as-is; legacy app assets are served by Express
       ],
       // Rewrites applied after checking filesystem and pages

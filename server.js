@@ -15,7 +15,13 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT, 10) || 3003;
 const backendPort = parseInt(process.env.BACKEND_PORT || '3009', 10);
-const backendTarget = process.env.INTERNAL_API_BASE_URL || `http://localhost:${backendPort}`;
+// Resolve backend target:
+// 1) Prefer INTERNAL_API_BASE_URL (primary)
+// 2) Then API_BASE_URL / API_URL (compat)
+// 3) In production without explicit target, default to local 4101 (known prod backend)
+// 4) In dev, fallback to localhost:BACKEND_PORT (default 3009)
+const explicitTarget = process.env.INTERNAL_API_BASE_URL || process.env.API_BASE_URL || process.env.API_URL || '';
+const backendTarget = explicitTarget || (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:4101' : `http://localhost:${backendPort}`);
 
 // Next.js app
 const app = next({ dev, hostname, port });
