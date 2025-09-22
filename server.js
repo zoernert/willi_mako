@@ -7,13 +7,15 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const dotenv = require('dotenv');
 const path = require('path');
 
-// Initialize environment variables
-dotenv.config();
+// Initialize environment variables (prefer .env.production in production)
+const envFile = process.env.ENV_FILE || (process.env.NODE_ENV === 'production' ? '.env.production' : '.env');
+dotenv.config({ path: path.resolve(__dirname, envFile) });
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
 const port = parseInt(process.env.PORT, 10) || 3003;
-const backendPort = 3009;
+const backendPort = parseInt(process.env.BACKEND_PORT || '3009', 10);
+const backendTarget = process.env.INTERNAL_API_BASE_URL || `http://localhost:${backendPort}`;
 
 // Next.js app
 const app = next({ dev, hostname, port });
@@ -123,7 +125,7 @@ function startBackend() {
 // Setup API Proxy
 function setupAPIProxy() {
   const apiProxy = createProxyMiddleware({
-    target: `http://localhost:${backendPort}`,
+    target: backendTarget,
     changeOrigin: true,
     onError: (err, req, res) => {
       console.error('Proxy Error:', err.message);
@@ -140,13 +142,15 @@ function setupAPIProxy() {
   });
 
   expressApp.use('/api', apiProxy);
-  console.log('✅ API proxy configured');
+  console.log(`✅ API proxy configured → ${backendTarget}`);
 }
 
 app.prepare().then(async () => {
   try {
-    // Try to start backend first
-    await startBackend();
+    // In development, start backend locally. In production, assume external backend.
+    if (dev) {
+      await startBackend();
+    }
     setupAPIProxy();
   } catch (error) {
     console.log('⚠️  Backend not available - continuing with Next.js only');

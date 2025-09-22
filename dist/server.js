@@ -85,40 +85,33 @@ app.use('/api/', (req, res, next) => {
     console.log('Body (pre-parse):', req.body);
     next();
 });
-// Custom JSON parsing with error handling
+// Custom JSON parsing with error handling (robust for chunked/proxied requests)
 app.use('/api/', express_1.default.raw({ type: 'application/json', limit: '50mb' }), (req, res, next) => {
-    var _a, _b;
-    const contentLength = parseInt(req.get('content-length') || '0');
-    const contentType = req.get('content-type');
-    // Handle empty or minimal JSON bodies
-    if (contentType && contentType.includes('application/json')) {
-        if (contentLength <= 2) {
-            console.log('Detected empty/minimal JSON body, content-length:', contentLength, 'body:', (_a = req.body) === null || _a === void 0 ? void 0 : _a.toString());
+    const contentType = req.get('content-type') || '';
+    if (!contentType.includes('application/json'))
+        return next();
+    try {
+        const buf = req.body;
+        if (!Buffer.isBuffer(buf) || buf.length === 0) {
+            req.body = {};
+            return next();
+        }
+        const bodyStr = buf.toString('utf8').trim();
+        if (!bodyStr || bodyStr === '""') {
             req.body = {};
             return next();
         }
         try {
-            const bodyStr = req.body.toString();
-            console.log('Parsing JSON body:', bodyStr);
-            // Handle empty quotes or just whitespace
-            if (bodyStr === '""' || bodyStr.trim() === '') {
-                console.log('Empty quotes or whitespace detected, setting body to {}');
-                req.body = {};
-            }
-            else {
-                req.body = JSON.parse(bodyStr);
-            }
+            req.body = JSON.parse(bodyStr);
         }
-        catch (err) {
-            console.error('JSON parsing error:', err.message);
-            console.error('Raw body:', (_b = req.body) === null || _b === void 0 ? void 0 : _b.toString());
-            return res.status(400).json({
-                success: false,
-                error: { message: 'Invalid JSON in request body: ' + err.message }
-            });
+        catch (e) {
+            return res.status(400).json({ success: false, error: { message: 'Invalid JSON in request body' } });
         }
     }
-    next();
+    catch (e) {
+        req.body = {};
+    }
+    return next();
 });
 app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
 // Increase timeout for chat routes (default 90 seconds, configurable via CHAT_TIMEOUT_MS)
