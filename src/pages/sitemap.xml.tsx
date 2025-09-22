@@ -12,7 +12,7 @@ export default function Sitemap() {
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   try {
-  const internalBase = process.env.INTERNAL_API_BASE_URL || 'http://127.0.0.1:3009';
+  const internalBase = process.env.INTERNAL_API_BASE_URL || '';
   const protocol = (req.headers['x-forwarded-proto'] as string) || 'https';
   const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
   const origin = internalBase || `${protocol}://${host}`;

@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-// Backend Base URL: prefer INTERNAL_API_BASE_URL in all envs; fallback differs by env
-// Default: 3009 (matching server.ts default and deploy scripts)
+// Backend Base URL selection
+// - Prefer `INTERNAL_API_BASE_URL` when provided
+// - In production without explicit internal base, default to same-origin (empty base) so we hit the single-port server proxy
+// - In development, allow overriding via `API_URL`, otherwise default to localhost:3009
 const API_URL = process.env.INTERNAL_API_BASE_URL
-  || (process.env.NODE_ENV === 'production'
-      ? 'http://127.0.0.1:3009'
-      : (process.env.API_URL || 'http://127.0.0.1:3009'));
+  || (process.env.NODE_ENV === 'production' ? '' : (process.env.API_URL || 'http://127.0.0.1:3009'));
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -24,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
     const queryString = searchParams.toString();
-    const targetUrl = `${API_URL}/api/${path}${queryString ? `?${queryString}` : ''}`;
+  const base = API_URL || '';
+  const targetUrl = `${base}/api/${path}${queryString ? `?${queryString}` : ''}`;
     
     // Prepare headers
     const forwardedFor = Array.isArray(req.headers['x-forwarded-for']) 
