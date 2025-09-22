@@ -3,9 +3,10 @@
     "dailyUsage": {
       "2025-8-16": 20,
       "2025-8-17": 28,
-      "2025-8-18": 20
+      "2025-8-18": 20,
+      "2025-8-22": 12
     },
-    "totalUsage": 68,
+    "totalUsage": 80,
     "lastReset": null,
     "currentDayUsage": 0
   },

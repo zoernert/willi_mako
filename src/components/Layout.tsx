@@ -279,6 +279,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
                 flexWrap: 'wrap',
                 justifyContent: { xs: 'center', md: 'flex-end' }
               }}>
+                <Link href="/benutzerhandbuch" style={{ textDecoration: 'none' }}>
+                  <Typography variant="body2" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
+                    Benutzerhandbuch
+                  </Typography>
+                </Link>
                 <Link href="/data" style={{ textDecoration: 'none' }}>
                   <Typography variant="body2" color="primary" sx={{ '&:hover': { textDecoration: 'underline' } }}>
                     Daten

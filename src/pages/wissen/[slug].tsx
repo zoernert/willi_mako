@@ -236,6 +236,12 @@ export default function FAQDetail({ faq, relatedDatasets = [] }: FAQDetailProps)
 
         {/* Call to Action */}
         <Paper sx={{ p: 4, bgcolor: '#147a50', textAlign: 'center' }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 1 }}>
+            Tipp: Für einen praxisnahen Überblick besuchen Sie das{' '}
+            <Link href="/benutzerhandbuch" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              Benutzerhandbuch
+            </Link>.
+          </Typography>
           <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
             Haben Sie weitere Fragen?
           </Typography>

@@ -61,6 +61,12 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 						<MarkdownRenderer>{article.content}</MarkdownRenderer>
 					</div>
 				</Paper>
+				<Box sx={{ mb: 4 }}>
+					<Typography variant="body2" color="text.secondary">
+						Praxisleitfaden gesucht? Besuchen Sie das{' '}
+						<Link href="/benutzerhandbuch" style={{ textDecoration: 'underline' }}>Benutzerhandbuch</Link>.
+					</Typography>
+				</Box>
 				{article.whitepaperSlug && (
 					<Box sx={{ mt: 4 }}>
 						<Typography variant="h6" component="h2" gutterBottom>

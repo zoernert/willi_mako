@@ -17,6 +17,14 @@ const nextConfig = {
     return {
       // Rewrites applied before checking filesystem and pages
       beforeFiles: [
+        // Map legacy CRA static/PWA assets when serving via Next in dev
+        { source: '/static/:path*', destination: '/app/static/:path*' },
+        { source: '/manifest.json', destination: '/app/manifest.json' },
+        // Dev proxy for backend API when running Next only (3003 → 3009)
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:3009/api/:path*',
+        },
         // Dev proxy for public community APIs -> Express backend (fixes PDF/DOCX export in dev)
         {
           source: '/api/public/community/:path*',
@@ -34,11 +42,11 @@ const nextConfig = {
         },
       ],
       // Apply SPA fallback only if no page or static file matched
-  fallback: [
+      fallback: [
         // Legacy CRA: serve index.html for client-routed paths like /app/login
-        // Static assets (e.g., /app/static/*) will be handled by filesystem first, so they won't hit this fallback
+        // Explicitly exclude static assets to avoid returning HTML for JS/CSS
         {
-          source: '/app/:path*',
+          source: '/app/:path((?!static/).*)',
           destination: '/app/index.html',
         },
       ],

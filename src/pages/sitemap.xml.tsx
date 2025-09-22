@@ -4,6 +4,7 @@ import { loadDatasets } from '../../lib/datasets';
 import { getAllWhitepapers } from '../../lib/content/whitepapers';
 import { getAllArticles } from '../../lib/content/articles';
 import { calculateSitemapPriority, calculateChangeFreq } from '../../lib/seo-utils';
+import { parseManualSections, getManualMarkdown } from '../../lib/content/manual';
 
 export default function Sitemap() {
   return null;
@@ -26,6 +27,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       fetch(`${origin}/api/public/community/threads?t=${Date.now()}`).then(r => r.ok ? r.json() : { data: [] }).then(j => j.data || []).catch(() => []),
     ]);
   const datasets = loadDatasets();
+  const manualSections = parseManualSections(getManualMarkdown());
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -60,6 +62,23 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
+
+  <!-- Benutzerhandbuch -->
+  <url>
+    <loc>https://stromhaltig.de/benutzerhandbuch</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Benutzerhandbuch Kapitel -->
+  ${manualSections.map(s => `
+  <url>
+    <loc>https://stromhaltig.de/benutzerhandbuch/${s.slug}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`).join('')}
 
   <!-- Tag Pages -->
   ${tags.slice(0, 20).map(tag => `
