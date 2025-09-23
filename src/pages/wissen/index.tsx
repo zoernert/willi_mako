@@ -1,4 +1,4 @@
-import { GetStaticProps } from 'next';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { 
@@ -20,7 +20,47 @@ import {
   Description as DescriptionIcon
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
-import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../../lib/faq-api';
+
+// Local types to avoid importing DB-coupled modules
+interface RelatedFAQ {
+  id: string;
+  title: string;
+  slug: string;
+  similarity_score?: number;
+}
+
+interface StaticFAQData {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  answer: string;
+  additional_info?: string;
+  tags: string[];
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+  related_faqs: RelatedFAQ[];
+}
+
+interface FAQTag {
+  tag: string;
+  count: number;
+}
+
+// Slugify helper (mirrors generateFAQSlug in lib/faq-api without DB import)
+function slugifyTitle(title: string): string {
+  return (title || '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
 interface WissenIndexProps {
   faqs: StaticFAQData[];
@@ -274,31 +314,75 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
   );
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   try {
-    const [faqs, tags] = await Promise.all([
-      getAllPublicFAQs(),
-      getAllTags()
-    ]);
+    const envBase = process.env.INTERNAL_API_BASE_URL || process.env.API_BASE_URL || process.env.API_URL;
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3003';
+    const proto = (req.headers['x-forwarded-proto'] as string) || 'http';
+    const base = envBase || `${proto}://${host}`;
+
+    const headers: Record<string, string> = { 'accept': 'application/json' };
+
+    const faqsResp = await fetch(`${base}/api/faqs?limit=1000&offset=0`, { headers });
+    const faqsJson = await faqsResp.json().catch(() => ({ success: false }));
+
+    const faqsRawAll = Array.isArray(faqsJson?.data) ? faqsJson.data : [];
+    const faqsRaw = process.env.NODE_ENV === 'production'
+      ? (faqsRawAll || []).filter((f: any) => f?.is_public === true)
+      : faqsRawAll;
+
+    const faqs: StaticFAQData[] = (faqsRaw || []).map((faq: any) => ({
+      id: String(faq.id),
+      slug: slugifyTitle(faq.title || ''),
+      title: faq.title || '',
+      description: faq.description || '',
+      content: faq.context || faq.content || '',
+      answer: faq.answer || '',
+      additional_info: faq.additional_info,
+      tags: Array.isArray(faq.tags) ? faq.tags : (() => { try { return JSON.parse(faq.tags || '[]'); } catch { return []; } })(),
+      view_count: Number(faq.view_count || 0),
+      created_at: faq.created_at || new Date().toISOString(),
+      updated_at: faq.updated_at || new Date().toISOString(),
+      related_faqs: Array.isArray(faq.related_faqs) ? faq.related_faqs.map((r: any) => ({
+        id: String(r.id),
+        title: r.title || '',
+        slug: r.slug || slugifyTitle(r.title || ''),
+        similarity_score: typeof r.similarity_score === 'number' ? r.similarity_score : undefined,
+      })) : []
+    }));
+
+    // Build tag list with counts from the fetched FAQs
+    const tagCountMap = new Map<string, number>();
+    for (const f of faqs) {
+      for (const t of f.tags || []) {
+        const key = String(t);
+        tagCountMap.set(key, (tagCountMap.get(key) || 0) + 1);
+      }
+    }
+    const tags: FAQTag[] = Array.from(tagCountMap.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+      .slice(0, 20);
+
+    // Optional: mild caching hint for CDN/proxy
+    try { res?.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600'); } catch {}
 
     return {
       props: {
         faqs,
-        tags: tags.slice(0, 20), // Limite für Performance
-        totalCount: faqs.length
-      },
-      revalidate: 3600, // Revalidate every hour
+        tags,
+        totalCount: faqs.length,
+      }
     };
   } catch (error) {
-    console.error('Error in getStaticProps for /wissen:', error);
-    
+    console.error('Error in getServerSideProps for /wissen:', error);
+    try { res?.setHeader('Cache-Control', 'public, s-maxage=60'); } catch {}
     return {
       props: {
         faqs: [],
         tags: [],
-        totalCount: 0
-      },
-      revalidate: 60, // Retry more frequently on error
+        totalCount: 0,
+      }
     };
   }
 };
