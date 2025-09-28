@@ -1,0 +1,90 @@
+---
+title: "Prozessatlas Meter-2-Cash: Infografik für GPKE, GeLi Gas und WiM"
+slug: "prozessatlas-meter-2-cash-infografik"
+shortDescription: "Visualisieren Sie die Stationen des Meter-to-Cash-Prozesses – von der Anmeldung über den Lieferantenwechsel bis zur Abrechnung – und erfahren Sie, welche Marktrollen und EDIFACT-Nachrichten dabei zusammenspielen."
+whitepaperSlug: "prozessatlas-m2c"
+publishedDate: "2025-09-28"
+status: "published"
+seoTitle: "Prozessatlas Meter-2-Cash – Infografik für Marktkommunikation"
+seoDescription: "Infografik zum M2C-Prozess mit GPKE, GeLi Gas und WiM: Marktrollen, Prozessschritte, EDIFACT-Nachrichten und typische Fristen kompakt erklärt."
+canonicalUrl: "https://stromhaltig.de/wissen/artikel/prozessatlas-meter-2-cash-infografik"
+---
+
+# Prozessatlas Meter-2-Cash (M2C)
+
+Der Meter-to-Cash-Prozess (M2C) beschreibt den Weg von der Messung eines Energieverbrauchs bis zum Zahlungseingang. In Deutschland wird dieser Ablauf durch die Bundesnetzagentur (BNetzA) reguliert und über standardisierte Marktkommunikation – GPKE, GeLi Gas und WiM – zwischen allen Beteiligten synchronisiert. Die folgende Infografik überträgt diesen Ablauf in ein lesbares Format.
+
+## Marktrollen im Überblick
+
+| Icon | Rolle | Aufgaben entlang des M2C|
+| :---: | :--- | :--- |
+| 🏠 | **Endkunde (EK)** | Schließt Verträge, meldet Ein- und Auszug, begleicht Rechnungen. |
+| ⚡ | **Lieferant (LF)** | Beschafft Energie, führt Abrechnung durch, initiiert Marktkommunikation. |
+| 🌐 | **Netzbetreiber (NB)** | Betreibt das Netz, prüft An- und Abmeldungen, stellt Messwerte bereit. |
+| ⏲️ | **Messstellenbetreiber (MSB)** | Installiert und betreibt Zähler, liefert Messdaten. |
+
+## Kernprozesse und Nachrichten
+
+### 1. Anmeldung bei Einzug
+
+1. **Kunde → Neuer Lieferant (NLF):** übermittelt Einzugsdatum und Zählerdaten.
+2. **NLF → NB:** Anmeldung via **UTILMD (A11)**, fristgerecht und vollständig.
+3. **NB → NLF:** Bestätigung (**A13**) oder Ablehnung (**A99**) innerhalb eines Werktags.
+4. **NB → NLF:** Finale Bestätigung (**A15**) nach Prüfung.
+5. **MSB/NB → NLF:** Zählerstand zum Einzug per **MSCONS**.
+6. **Ergebnis:** Der Kunde wird ab bestätigtem Datum beliefert.
+
+### 2. Lieferantenwechsel
+
+1. **NLF → NB:** Wechselanmeldung via **UTILMD (A11)**, mindestens sieben Werktage vor Termin.
+2. **NB → Alter Lieferant (ALF):** Kündigungsinformation (**UTILMD A12**).
+3. **ALF → NB:** Reaktion mit Bestätigung oder Ablehnung (**A14**) binnen drei Werktagen.
+4. **NB → NLF & ALF:** Finale Bestätigung (**A15** an NLF, **A16** an ALF) binnen eines Werktags.
+5. **MSB/NB → NLF & ALF:** Bereitstellung des Wechseldatum-Zählerstands via **MSCONS**.
+6. **Ergebnis:** Nahtloser Übergang zur neuen Belieferung.
+
+### 3. Abmeldung bei Auszug
+
+1. **Kunde → Lieferant:** Meldet Auszug und Datum.
+2. **LF → NB:** Abmeldung via **UTILMD (A04)** unmittelbar nach Meldung.
+3. **NB → LF:** Bestätigung (**A05**) oder Ablehnung (**A99**) innerhalb von drei Werktagen.
+4. **MSB/NB → LF:** Auszugszählerstand via **MSCONS**.
+5. **LF → Kunde:** Erstellung der Schlussrechnung.
+
+### 4. Grund- und Ersatzversorgung
+
+1. **NB:** Stellt unversorgte Markt- oder Marktlokationen fest.
+2. **NB → Grundversorger (GV):** Beauftragt Ersatzversorgung via **UTILMD**.
+3. **Nach drei Monaten:** Automatischer Übergang in die Grundversorgung, sofern kein neuer Liefervertrag vorliegt.
+4. **GV → NB:** Meldet Ende Ersatzversorgung und Start Grundversorgung via **UTILMD**.
+
+## Datenaustausch und Abrechnung
+
+### Messdatenfluss
+
+1. **ORDERS:** Lieferant fordert historische oder aktuelle Messwerte an.
+2. **MSCONS:** MSB liefert Messwerte über den NB zurück an den Lieferanten.
+
+### Abrechnungsmodule
+
+- **PRICAT:** Netzbetreiber stellt Netznutzungsentgelte bereit.
+- **INVOIC:** NB und MSB senden Rechnungen an den Lieferanten.
+- **REMADV:** Lieferant kann Rechnungen widersprechen oder differenzieren.
+- **ORDERS / ORDRSP / IFTSTA:** Steuerung von Sperr- und Entsperrprozessen bei Zahlungsverzug.
+
+## Typische Prozessfristen (Werktage)
+
+| Prozessschritt | Frist |
+| :--- | ---: |
+| Anmeldung beim NB durch den neuen Lieferanten | 7 |
+| Reaktion des NB auf die Anmeldung (Rückmeldung an NLF/ALF) | 1 |
+| Reaktion des alten Lieferanten auf die Kündigung | 3 |
+| Finale Bestätigung des Wechsels durch den NB | 1 |
+| Rückmeldung des NB bei Abmeldung (Auszug) | 3 |
+| Messwertübermittlung nach Monatsende | 10 |
+
+Diese Fristen unterstreichen, wie entscheidend automatisierte Marktkommunikation ist: Verzögerungen gefährden den reibungslosen Übergang und erhöhen den Aufwand in der bilateralen Klärung.
+
+## Weiterführende Einordnung
+
+Der vollständige **Prozessatlas Meter-2-Cash** beleuchtet neben den hier dargestellten Kernschritten auch Stammdatenänderungen, Sperr-/Entsperrprozesse sowie die Integration in Abrechnung und Forderungsmanagement. Laden Sie das Whitepaper herunter und erfahren Sie, wie standardisierte IT-Lösungen und Automatisierung die finanzielle Performance von EVU absichern.
