@@ -1,0 +1,85 @@
+---
+title: "Prozessleitfaden: Stammdatenänderung"
+slug: "stammdatena-nderung"
+shortDescription: "Kurzbeschreibung für Stammdatenänderung."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Stammdatenänderung – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Stammdatenänderung."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/stammdatena-nderung"
+triggerQuestion: "Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B. eine Namens- oder Adressänderung des Kunden, in der Marktkommunikation abgewickelt? Beschreibe den Prozess und die Verwendung der UTILMD-Nachricht zur Übermittlung der geänderten Daten."
+followUpConcepts: ["UTILMD", "GPKE", "MaLo-ID", "SG12_NAD", "EnWG"]
+---
+```markdown
+# Prozess: Stammdatenänderung
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen den Geschäftsprozess der **Stammdatenänderung** an einer Marktlokation in der deutschen Energie-Marktkommunikation, insbesondere im Hinblick auf Namens- oder Adressänderungen des Kunden, und die Rolle der **UTILMD-Nachricht** dabei.
+
+### 1. Überblick und Zweck des Prozesses
+
+Stammdaten sind die grundlegenden, statischen Informationen, die für die Abwicklung der Energiebelieferung und Marktkommunikation unerlässlich sind. Wenn sich diese Daten ändern, müssen alle beteiligten Marktpartner (Lieferant, Netzbetreiber, ggf. Messstellenbetreiber) über diese Änderungen informiert werden, um die Datenkonsistenz sicherzustellen.
+
+**Zweck des Prozesses**: Sicherstellung, dass alle relevanten Stammdaten für eine Marktlokation bei allen beteiligten Marktpartnern korrekt und aktuell sind, um eine fehlerfreie Belieferung, Abrechnung und Kommunikation zu gewährleisten. Die UTILMD-Nachricht ist das zentrale EDIFACT-Format für den Austausch von Stammdaten und zur Steuerung von Geschäftsprozessen in der deutschen Energiewirtschaft. Die **MaLo-ID (Marktlokations-ID)** ist hierbei der eindeutige Identifikator der Marktlokation.
+
+### 2. Gesetzliche Grundlagen
+
+Die rechtliche Basis für die Marktkommunikation bildet das **Energiewirtschaftsgesetz (EnWG)**. Das EnWG ist der übergeordnete rechtliche Rahmen für die gesamte Energiewirtschaft in Deutschland und schafft die Grundlage für die Notwendigkeit und die Ausgestaltung dieses Prozesses. Die konkreten Prozesse und der Datenaustausch sind in den Festlegungen der Bundesnetzagentur, insbesondere der **GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität)** und der **WiM (Wechselprozesse im Messwesen)**, detailliert geregelt. Die GPKE standardisiert die Geschäftsprozesse und den Datenaustausch zwischen den Marktpartnern verbindlich.
+
+### 3. Beteiligte Marktrollen
+
+Die am Prozess beteiligten Marktrollen sind die, die die Stammdaten verwalten oder verwenden. Der "Verantwortliche" initiiert die Änderung, die "Empfänger" verarbeiten sie.
+
+*   **Verantwortlicher (LF, NB, MSB)**: Die Marktrolle, die die Notwendigkeit einer Stammdatenänderung erkennt und diese initiiert. Bei Namens- und Adressänderungen des Kunden ist dies in der Regel der **Lieferant (LF)**.
+*   **Empfänger (NB, LF, MSB)**: Die Marktrollen, die die geänderten Stammdaten vom Verantwortlichen erhalten und in ihren eigenen Systemen aktualisieren müssen. Wenn der Lieferant die Änderung initiiert, ist der **Netzbetreiber (NB)** der primäre Empfänger.
+
+### 4. Prozessschritte zur Stammdatenänderung
+
+Der Prozess der Stammdatenänderung ist wie folgt strukturiert:
+
+#### STEP 1: AENDERUNG_INITIIEREN
+*   **ACTOR**: Verantwortlicher (z.B. Lieferant bei Namens-/Adressänderung).
+*   **ACTION**: Erkennt die Notwendigkeit einer Stammdatenänderung an einer Marktlokation oder Messlokation (z.B. Kunde teilt neuen Namen/Adresse mit).
+*   **DECISION**: Ist die Änderung bilanzierungsrelevant? Gibt es Abhängigkeiten zu anderen Stammdaten? Welche Stammdaten sind betroffen (einzeln, gesamt, alle vorhandenen)? Diese Entscheidungen beeinflussen die Art der Übermittlung.
+
+#### STEP 2: UTILMD_AENDERUNGSSNACHRICHT_ERSTELLEN
+*   **ACTOR**: Verantwortlicher (z.B. Lieferant).
+*   **ACTION**: Erstellt eine **UTILMD-Nachricht** zur Stammdatenänderung.
+*   **RULE_APPLICATION**: Wendet spezifische Übermittlungsregeln an (einzeln, gesamt, alle) basierend auf der Relevanz und den Abhängigkeiten der Änderung.
+*   **CALL**: SendeNachricht(UTILMD_Nachricht).
+
+#### STEP 3: UTILMD_AENDERUNGSSNACHRICHT_EMPFANGEN_UND_VERARBEITEN
+*   **ACTOR**: Empfänger (z.B. Netzbetreiber).
+*   **ACTION**: Empfängt die UTILMD-Änderungsnachricht.
+*   **CALL**: ValidisiereNachricht(UTILMD_Nachricht).
+*   **ACTION**: Bei Gültigkeit: Aktualisiert die relevanten Stammdaten im eigenen System.
+*   **ACTION**: Bei Ungültigkeit: Leitet Fehlerbehandlung ein.
+*   **OPTIONAL_ACTION**: Sendet ggf. eine Antwortnachricht (z.B. Bestätigung, Ablehnung – hierfür wird in der Regel ebenfalls eine UTILMD-Nachricht verwendet).
+
+### 5. Einsatz der UTILMD-Nachricht im Detail
+
+Die UTILMD-Nachricht ist das zentrale Kommunikationsmittel für Stammdatenänderungen. Die GPKE schreibt die Verwendung von EDIFACT-Nachrichten (speziell UTILMD) vor.
+
+*   **Zweck der UTILMD**: Übermittlung der geänderten Stammdaten (z.B. Kundenname, Adressdaten) an die betroffenen Marktpartner und Aktualisierung deren Systeme.
+*   **Nachrichtentyp**: Es wird eine **UTILMD-Nachricht** verwendet, die spezielle Segmente und Qualifizierer für Stammdatenänderungen enthält. Der Kontext erwähnt "UTILMD Nachricht 5.2e", was auf eine spezifische Version der Anwendungshandbücher hinweist.
+*   **Inhalt der UTILMD bei Namens- oder Adressänderung**:
+    *   **MaLo-ID (Marktlokations-ID)**: Eindeutige Identifikation der Marktlokation, an der die Änderung erfolgt. Dies ist der Anker für die Änderung.
+    *   **MeLo-ID (Messlokations-ID)**: Falls relevant.
+    *   **Transaktionsgrund**: Ein spezifischer Code, der angibt, dass es sich um eine Stammdatenänderung handelt (z.B. "Änderung Kundenstamm").
+    *   **Betroffene Stammdaten**:
+        *   **Kundenname**: Die geänderten Namensdaten des Kunden (z.B. Vorname, Nachname, Titel) werden in den entsprechenden Segmenten (z.B. NAD-Segment für Name and Address) übermittelt.
+        *   **Kundenadresse**: Die geänderte Adresse der Marktlokation oder des Kunden (z.B. Straße, Hausnummer, Postleitzahl, Ort, Land). Hier kommt das **SG12_NAD** Segment mit den Feldern `CountryCode` und `PostalCode` zum Einsatz. SG12_NAD (Segmentgruppe 12 mit dem NAD-Segment) dient der Übermittlung von Informationen zu Name, Adresse und Ansprechpartner.
+    *   **Gültigkeitszeitraum**: Das Datum, ab dem die Änderung gültig ist.
+    *   **IDs der beteiligten Marktpartner**: Absender (Verantwortlicher) und Empfänger.
+*   **Fristen**: Die Übermittlung der Stammdatenänderung muss **unverzüglich** erfolgen, sobald der Verantwortliche Kenntnis von der Änderung hat und diese geprüft wurde. Die GPKE legt den Grundsatz der "Unverzüglichkeit" fest.
+
+### 6. Beispiel: Namensänderung durch Heirat (Initiierung durch Lieferant)
+
+1.  **Kunde informiert Lieferant**: Ein Kunde teilt seinem Lieferanten mit, dass sich sein Nachname durch Heirat geändert hat.
+2.  **Lieferant erstellt UTILMD**: Der Lieferant (Verantwortlicher) erstellt eine UTILMD-Nachricht. Er füllt die MaLo-ID aus, gibt den Transaktionsgrund "Stammdatenänderung" an und trägt im entsprechenden Segment den neuen Nachnamen des Kunden ein.
+3.  **Lieferant sendet UTILMD an Netzbetreiber**: Der Lieferant sendet die UTILMD-Nachricht an den zuständigen Netzbetreiber (Empfänger).
+4.  **Netzbetreiber empfängt und verarbeitet UTILMD**: Der Netzbetreiber validiert die Nachricht. Bei Gültigkeit aktualisiert er den Kundennamen in seinen Systemen für die betreffende Marktlokation.
+5.  **Ggf. Bestätigung**: Der Netzbetreiber kann optional eine Bestätigungs-UTILMD an den Lieferanten zurücksenden, um die erfolgreiche Verarbeitung zu bestätigen.
+
+Der Prozess der Stammdatenänderung mittels UTILMD ist somit entscheidend für die Aufrechterhaltung der Datenqualität und die reibungslose Abwicklung aller energiewirtschaftlichen Prozesse.
+```

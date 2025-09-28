@@ -1,0 +1,40 @@
+---
+title: "Zählerwechsel und Geräteübernahme meistern"
+slug: "zaehlerwechsel-geraeteuebernahme"
+shortDescription: "Leitfaden für den Gerätewechsel zwischen Messstellenbetreibern mit Rollenübersicht, EDIFACT-Nachrichten und Ablauf."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Zählerwechsel & Geräteübernahme – Prozessleitfaden für MSB"
+seoDescription: "So funktioniert die Geräteübernahme beim Messstellenbetreiberwechsel inklusive beteiligter Rollen und relevanter Nachrichten."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/zaehlerwechsel-geraeteuebernahme"
+---
+
+# Prozess: Zählerwechsel (Geräteübernahme)
+
+## 1. Zusammenfassung
+Der Prozess "Zählerwechsel (Geräteübernahme)" beschreibt die Übernahme eines Zählers durch einen neuen Messstellenbetreiber (MSB) im Rahmen eines MSB-Wechsels. Ziel ist es, dem neuen MSB die notwendigen Informationen und Werte für die Fortführung des Messstellenbetriebs zur Verfügung zu stellen. Beteiligte sind primär der alte MSB, der neue MSB, der Netzbetreiber (NB) und der Lieferant (LF). Das erwartete Ergebnis ist die korrekte Weitergabe der Zählerdaten und -werte vom alten zum neuen MSB, damit der neue MSB den Messstellenbetrieb ohne Unterbrechung fortführen kann.
+
+## 2. Beteiligte Marktrollen
+*   **Alter Messstellenbetreiber (MSB):** Übermittelt die Zählerstände und relevanten Daten zum Zeitpunkt des MSB-Wechsels.
+*   **Neuer Messstellenbetreiber (MSB):** Empfängt die Zählerstände und relevanten Daten und übernimmt den Messstellenbetrieb.
+*   **Netzbetreiber (NB):** Erhält Informationen über den Zählerwechsel und ist ggf. an der Datenverteilung beteiligt.
+*   **Lieferant (LF):** Erhält Informationen über den Zählerwechsel und ist ggf. an der Datenverteilung beteiligt.
+
+## 3. Gesetzliche Grundlage
+Die zur Verfügung gestellten Informationen enthalten keine expliziten Paragraphen aus Gesetzestexten.
+
+## 4. Prozessablauf (Schritt-für-Schritt)
+Der Prozessablauf lässt sich aus den bereitgestellten Informationen wie folgt ableiten:
+
+1.  **MSB-Wechsel wird vollzogen:** Der MSB-Wechsel ist der Auslöser für die Geräteübernahme. Die Informationen über den vollzogenen Wechsel werden im Segment STS (MSB-Wechselstatus) kommuniziert.
+2.  **Alter MSB übermittelt Zählerstände und relevante Daten:** Der alte MSB übermittelt die Zählerstände und relevanten Daten zum Zeitpunkt des MSB-Wechsels an den neuen MSB. Dies beinhaltet den Zeitpunkt des MSB-Wechsels (SG15 DTM+293 aus der IFTSTA BGM+Z09 SG15 STS+Z10+Z14).
+3.  **Verteilung der Werte durch MSB:** Der MSB verteilt die Werte. Der MSB der Messlokation leitet die Daten ggf. an den MSB der Marktlokation weiter. Der MSB der Marktlokation leitet die Daten an den Netzbetreiber (NB) und den Lieferanten (LF) weiter.
+4.  **Neuer MSB übernimmt den Messstellenbetrieb:** Der neue MSB übernimmt den Messstellenbetrieb und verwendet die übermittelten Daten zur Fortführung des Betriebs.
+
+## 5. Zugehörige Marktnachrichten
+*   **IFSTA:** Diese Nachricht wird indirekt im Zusammenhang mit dem Zeitpunkt des MSB-Wechsels erwähnt (IFTSTA BGM+Z09 SG15 STS+Z10+Z14).
+*   **MSCONS:** Diese Nachricht wird verwendet, um die Werte im Rahmen der Geräteübernahme zu übermitteln.
+
+## 6. Wichtige Fristen und Termine
+Die zur Verfügung gestellten Informationen enthalten keine expliziten Fristen. Es wird lediglich der Zeitpunkt des MSB-Wechsels als relevanter Termin genannt. Dieser wird über das Segment DTM (Datum/Uhrzeit/Zeitspanne) innerhalb der Gruppe SG15 (MSB-Wechselstatus) übermittelt.

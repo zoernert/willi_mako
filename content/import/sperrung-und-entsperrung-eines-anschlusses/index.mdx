@@ -1,0 +1,132 @@
+---
+title: "Prozessleitfaden: Sperrung und Entsperrung eines Anschlusses"
+slug: "sperrung-und-entsperrung-eines-anschlusses"
+shortDescription: "Kurzbeschreibung für Sperrung und Entsperrung eines Anschlusses."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Sperrung und Entsperrung eines Anschlusses – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Sperrung und Entsperrung eines Anschlusses."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/sperrung-und-entsperrung-eines-anschlusses"
+triggerQuestion: "Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses. Erläutere den Ablauf vom Sperrauftrag (ORDERS) des Lieferanten an den Netzbetreiber bis zur Rückmeldung über die Durchführung und den anschließenden Entsperrprozess."
+followUpConcepts: ["ORDERS", "ORDRSP", "IFTSTA", "MaLo-ID", "GPKE"]
+---
+```markdown
+# Prozess: Sperrung und Entsperrung eines Anschlusses
+
+Hallo! Als Mako Willi von Stromhaltig beschreibe ich Ihnen gerne den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses, von der Anweisung des Lieferanten bis zur Rückmeldung über die Durchführung und den anschließenden Entsperrprozess. Dieser Prozess ist in der deutschen Energiewirtschaft standardisiert und in den Regelwerken der Marktkommunikation (GPKE Strom) und den zugehörigen Gesetzen (EnWG) verankert.
+
+### 1. Überblick über den Sperr- und Entsperrprozess
+
+**Ziele des Prozesses**:
+
+*   Durchsetzung berechtigter Forderungen des Lieferanten.
+*   Einhaltung der gesetzlichen Vorgaben zum Schutz des Endkunden.
+*   Geordnete und transparente Abwicklung der Sperrung und Entsperrung.
+
+### 2. Beteiligte Marktrollen
+
+*   **Lieferant (LF)**: Initiiert den Sperrprozess bei Zahlungsverzug des Kunden.
+*   **Netzbetreiber (NB)**: Führt die physische Sperrung und Entsperrung durch.
+*   **Messstellenbetreiber (MSB)**: Gegebenenfalls beteiligt, wenn Zugang zum Zähler erforderlich ist.
+
+### 3. Voraussetzungen für die Sperrung
+
+Bevor ein Lieferant einen Sperrauftrag erteilen kann, müssen folgende Voraussetzungen erfüllt sein:
+
+*   **Zahlungsverzug des Kunden**: Erheblicher Betrag im Zahlungsverzug.
+*   **Sperrankündigung**: Mindestens 4 Wochen vorher schriftlich.
+*   **Information über Beratungsstellen**: Hinweis auf Hilfsangebote.
+*   **Verhältnismäßigkeit**: Ausstehender Betrag muss in angemessenem Verhältnis zu den Kosten der Sperrung stehen.
+
+### 4. Prozessablauf Sperrung (End-to-End)
+
+#### 4.1. Sperrauftrag durch den Lieferanten
+
+*   **Aktion des LF**: Erteilung eines Sperrauftrags an den Netzbetreiber.
+*   **EDIFACT-Nachricht**: **ORDERS** (Bestellung) mit Geschäftszweck "Sperrung" (BGM DE 1001 = 220 mit Qualifizierer Z23).
+    *   **Inhalt der ORDERS**:
+        *   MaLo-ID (Marktlokations-ID)
+        *   Vertragsnummer
+        *   Auszugsdatum der Androhung (optional)
+        *   Datum, zu dem die Sperrung durchgeführt werden soll
+        *   Referenz auf die vorangegangene Androhung
+        *   Begründung für die Sperrung
+        *   Informationen zum Ansprechpartner beim Lieferanten
+*   **Frist**: I.d.R. mindestens 3 Werktage vor dem gewünschten Sperrtermin.
+
+Die ORDERS-Nachricht ist das zentrale EDIFACT-Format, mit dem der Lieferant (LF) dem Netzbetreiber (NB) einen verbindlichen Auftrag zur Durchführung einer Aktion am Netzanschluss erteilt.  Sie ist der formelle Auslöser für die physische Durchführung der Sperrung. Der EDIFACT-Standard ist UN D.09B S3.
+
+#### 4.2. Prüfung des Sperrauftrags durch den Netzbetreiber
+
+*   **Aktion des NB**: Prüfung auf formale Richtigkeit und Plausibilität.
+*   **Rückmeldung des NB an den LF**:
+    *   Bei positiver Prüfung: Keine explizite Bestätigung, der NB plant die Sperrung ein.
+    *   Bei negativer Prüfung: Ablehnung des Sperrauftrags mit Begründung.
+    *   **EDIFACT-Nachricht**: **ORDRSP** (Bestellantwort) mit Status "abgelehnt" und Begründung.
+*   **Frist**: I.d.R. innerhalb von 1-2 Werktagen.
+
+Die ORDRSP-Nachricht ist die Antwort des Netzbetreibers auf die ORDERS-Nachricht des Lieferanten und markiert den Abschluss der Auftragsprüfung durch den NB. Der EDIFACT-Standard ist UN D.10A S3.
+
+#### 4.3. Durchführung der Sperrung
+
+*   **Aktion des NB**: Physische Sperrung des Netzanschlusses.
+*   **Anwesenheit des MSB**: Gegebenenfalls erforderlich.
+*   **Hinweis**: Schonende Durchführung und Vermeidung unnötiger Beeinträchtigungen.
+
+#### 4.4. Rückmeldung über die Durchführung der Sperrung
+
+*   **Aktion des NB**: Information des Lieferanten über die erfolgreiche Durchführung.
+*   **EDIFACT-Nachricht**: **IFTSTA** (Auskunft über Auftragsstatus) mit dem Status "Sperrung durchgeführt".
+    *   **Inhalt der IFTSTA**:
+        *   MaLo-ID
+        *   Referenz auf den Sperrauftrag (ORDERS)
+        *   Datum und Uhrzeit der Durchführung
+        *   Statuscode "Sperrung durchgeführt"
+*   **Frist**: I.d.R. innerhalb von 1-2 Werktagen.
+
+### 5. Prozessablauf Entsperrung (End-to-End)
+
+#### 5.1. Entsperrauftrag durch den Lieferanten
+
+*   **Voraussetzung**: Der Kunde hat die ausstehenden Forderungen beglichen oder eine Ratenzahlung vereinbart.
+*   **Aktion des LF**: Erteilung eines Entsperrauftrags an den Netzbetreiber.
+*   **EDIFACT-Nachricht**: **ORDERS** (Bestellung) mit Geschäftszweck "Entsperrung" (BGM DE 1001 = 220 mit Qualifizierer Z24).
+    *   **Inhalt der ORDERS**:
+        *   MaLo-ID (Marktlokations-ID)
+        *   Referenz zum ursprünglichen Sperrauftrag
+        *   Gewünschtes Entsperrdatum
+        *   Begründung für die Entsperrung
+        *   Informationen zum Ansprechpartner beim Lieferanten
+*   **Frist**: Unverzüglich nach Erfüllung der Voraussetzungen durch den Kunden.
+
+#### 5.2. Prüfung des Entsperrauftrags durch den Netzbetreiber
+
+*   **Aktion des NB**: Prüfung auf formale Richtigkeit und Plausibilität.
+*   **Rückmeldung des NB an den LF**:
+    *   Bei positiver Prüfung: Keine explizite Bestätigung, der NB plant die Entsperrung ein.
+    *   Bei negativer Prüfung: Ablehnung des Entsperrauftrags mit Begründung.
+    *   **EDIFACT-Nachricht**: **ORDRSP** (Bestellantwort) mit Status "abgelehnt" und Begründung.
+*   **Frist**: I.d.R. innerhalb von 1-2 Werktagen.
+
+#### 5.3. Durchführung der Entsperrung
+
+*   **Aktion des NB**: Physische Entsperrung des Netzanschlusses.
+*   **Anwesenheit des MSB**: Gegebenenfalls erforderlich.
+*   **Hinweis**: Schnellstmögliche Wiederherstellung der Versorgung.
+
+#### 5.4. Rückmeldung über die Durchführung der Entsperrung
+
+*   **Aktion des NB**: Information des Lieferanten über die erfolgreiche Durchführung.
+*   **EDIFACT-Nachricht**: **IFTSTA** (Auskunft über Auftragsstatus) mit dem Status "Entsperrung durchgeführt".
+    *   **Inhalt der IFTSTA**:
+        *   MaLo-ID
+        *   Referenz auf den Entsperrauftrag (ORDERS)
+        *   Datum und Uhrzeit der Durchführung
+        *   Statuscode "Entsperrung durchgeführt"
+*   **Frist**: I.d.R. innerhalb von 1-2 Werktagen.
+
+### 6. Die Rolle der GPKE
+
+Die GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität) ist das regulatorische Regelwerk, das die Geschäftsprozesse und den Datenaustausch zwischen den Marktpartnern verbindlich standardisiert und regelt. Sie stellt sicher, dass der Prozess der Sperrung und Entsperrung transparent, diskriminierungsfrei und verhältnismäßig abläuft und die Rechte des Endkunden gewahrt werden. Die GPKE schreibt die Verwendung von EDIFACT-Nachrichten vor, um eine transparente und diskriminierungsfreie Abwicklung zu gewährleisten. Die GPKE legt für den Sperr- und Entsperrprozess keine expliziten Fristen für alle Prozessschritte fest, sondern adressiert primär die Voraussetzungen und Rahmenbedingungen für die Durchführung.
+```

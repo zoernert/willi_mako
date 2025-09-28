@@ -1,0 +1,101 @@
+---
+title: "Prozessleitfaden: Grund- und Ersatzversorgung"
+slug: "grund-und-ersatzversorgung"
+shortDescription: "Kurzbeschreibung für Grund- und Ersatzversorgung."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Grund- und Ersatzversorgung – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Grund- und Ersatzversorgung."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/grund-und-ersatzversorgung"
+triggerQuestion: "Definiere den Unterschied zwischen Grundversorgung und Ersatzversorgung. Beschreibe den Prozess, wie ein Kunde in die Ersatzversorgung fällt und wie die Anmeldung in der Grundversorgung durch den Grundversorger abläuft."
+followUpConcepts: ["UTILMD", "MSCONS", "StromGVV", "GasGVV", "§ 38 Abs. 2 EnWG"]
+---
+```markdown
+# Prozess: Grund- und Ersatzversorgung
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen gerne den Unterschied zwischen Grundversorgung und Ersatzversorgung und beschreibe die zugehörigen Prozesse.
+
+### 1. Definition und Unterschied zwischen Grundversorgung und Ersatzversorgung
+
+Grundversorgung und Ersatzversorgung sind beides gesetzlich verankerte Formen der Energiebelieferung, die in Deutschland die lückenlose Versorgung von Endkunden sicherstellen sollen. Sie unterscheiden sich jedoch in ihren Voraussetzungen und ihrer Dauer.
+
+#### 1.1. Grundversorgung (GV)
+*   **Definition**: Die Grundversorgung ist die gesetzlich garantierte Energieversorgung von Haushaltskunden (und in bestimmten Fällen auch Kleingewerbe) durch den Grundversorger eines Netzgebietes. Jeder Netzbetreiber ist verpflichtet, einen Grundversorger zu benennen, der in seinem Netzgebiet die meisten Haushaltskunden beliefert.
+*   **Zweck**: Sie dient als "Basistarif" für Kunden, die keinen speziellen Liefervertrag abgeschlossen haben oder deren Vertrag endet und kein neuer Vertrag zustande kommt. Sie soll sicherstellen, dass jeder Kunde Zugang zu einer Energieversorgung hat.
+*   **Vertragsgrundlage**: Die Grundversorgung wird in der Regel durch konkludentes Handeln begründet, d.h., der Kunde nimmt Energie aus dem Netz und schließt damit faktisch einen Vertrag mit dem Grundversorger zu den Bedingungen der Stromgrundversorgungsverordnung (StromGVV) oder Gasgrundversorgungsverordnung (GasGVV).
+*   **Dauer**: Die Grundversorgung ist unbefristet.
+
+#### 1.2. Ersatzversorgung (EV)
+*   **Definition**: Die Ersatzversorgung ist eine temporäre, gesetzlich angeordnete Energieversorgung, die automatisch greift, wenn ein Kunde Energie aus dem Netz entnimmt, aber kein gültiger Liefervertrag besteht oder der bestehende Vertrag plötzlich endet (z.B. bei Insolvenz des Lieferanten) und kein neuer Vertrag zustande kommt. Der Grundversorger ist auch der Ersatzversorger.
+*   **Zweck**: Sie dient als "Notfalllösung" oder "Sicherheitsnetz", um eine unterbrechungsfreie Energieversorgung in Übergangssituationen zu gewährleisten.
+*   **Vertragsgrundlage**: Die Ersatzversorgung wird ebenfalls durch konkludentes Handeln begründet und unterliegt den Bedingungen der StromGVV/GasGVV, oft mit höheren Preisen als die Grundversorgung.
+*   **Dauer**: Die Ersatzversorgung ist auf **maximal 3 Monate befristet (§ 38 Abs. 2 EnWG)**. Nach Ablauf dieser Frist fällt der Kunde automatisch in die Grundversorgung, sofern kein neuer Liefervertrag abgeschlossen wurde.
+
+**Kurz gesagt**: Die Ersatzversorgung ist eine kurzfristige Notlösung, die in die unbefristete Grundversorgung übergeht, wenn der Kunde nicht aktiv wird.
+
+### 2. Prozess, wie ein Kunde in die Ersatzversorgung fällt
+
+Ein Kunde fällt in die Ersatzversorgung, wenn er Energie aus dem Netz bezieht, aber kein gültiger Liefervertrag für seine Marktlokation vorliegt. Dies kann in verschiedenen Szenarien geschehen:
+
+1.  **Einzug ohne Liefervertrag**:
+    *   **Szenario**: Ein Kunde zieht in eine neue Wohnung ein und hat noch keinen Strom- oder Gasliefervertrag mit einem Anbieter seiner Wahl abgeschlossen.
+    *   **Prozess**: Der Netzbetreiber (NB) stellt fest, dass die Marktlokation nicht einem Lieferanten zugeordnet ist. Er ordnet die Marktlokation dem örtlichen Grundversorger (GV) für die Ersatzversorgung zu.
+    *   **Marktkommunikation**: Der NB sendet eine **UTILMD-Nachricht** an den Grundversorger, um den **Beginn der Ersatzversorgung** zu melden (Transaktionsgrund "Beginn Ersatzversorgung").
+
+2.  **Lieferanteninsolvenz / Unwirksamkeit des Liefervertrags**:
+    *   **Szenario**: Der bisherige Lieferant des Kunden wird insolvent, oder der Liefervertrag wird aus anderen Gründen unwirksam, und es ist kein neuer Lieferant beauftragt.
+    *   **Prozess**: Der Netzbetreiber erhält die Information über das Lieferende des alten Lieferanten. Da kein Nachfolgelieferant bekannt ist, ordnet er die Marktlokation dem Grundversorger für die Ersatzversorgung zu.
+    *   **Marktkommunikation**: Der NB sendet eine **UTILMD-Nachricht** an den Grundversorger, um den **Beginn der Ersatzversorgung** zu melden.
+
+### 3. Prozess der Anmeldung in der Grundversorgung durch den Grundversorger
+
+Die Anmeldung in der Grundversorgung ist kein aktiver "Anmeldeprozess" im Sinne einer Beauftragung durch den Kunden, sondern eine **automatische Zuordnung** durch den Grundversorger (GV), die auf einem gesetzlichen Mechanismus beruht.
+
+1.  **Übergang aus der Ersatzversorgung**:
+    *   **Szenario**: Ein Kunde befindet sich bereits in der Ersatzversorgung, hat aber innerhalb der 3-Monats-Frist keinen Liefervertrag mit einem neuen Lieferanten abgeschlossen.
+    *   **Prozess**: Nach Ablauf der 3 Monate geht die Ersatzversorgung **automatisch** in die Grundversorgung über. Der Grundversorger ist nun weiterhin für die Belieferung zuständig, aber zu den Konditionen der Grundversorgung.
+    *   **Marktkommunikation**:
+        *   Der Grundversorger sendet eine **UTILMD-Nachricht** an den Netzbetreiber, um das **Ende der Ersatzversorgung** zu melden.
+        *   Gleichzeitig sendet der Grundversorger (als nunmehr "Grundversorger") eine **UTILMD-Nachricht** an den Netzbetreiber, um den **Beginn der Grundversorgung** zu melden (Transaktionsgrund "Beginn Grundversorgung"). Dies ist eine interne Umstellung beim Grundversorger, die dem NB mitgeteilt wird.
+        *   **Messwerte (MSCONS)**: Zum Zeitpunkt des Übergangs von Ersatz- in Grundversorgung werden Zählerstände benötigt, die vom NB (vom MSB erhalten) an den Grundversorger übermittelt werden, um die Abrechnungsperioden abzugrenzen.
+
+2.  **Direkter Eintritt in die Grundversorgung (seltener)**:
+    *   **Szenario**: Ein Kunde zieht ein und meldet sich direkt beim Grundversorger an, ohne vorher in der Ersatzversorgung gewesen zu sein, oder er entscheidet sich bewusst für den Grundversorgungstarif. Dies ist weniger häufig, da die Ersatzversorgung oft als erster Schritt dient.
+    *   **Prozess**: Der Grundversorger meldet den Lieferbeginn beim Netzbetreiber an.
+    *   **Marktkommunikation**: Der Grundversorger sendet eine **UTILMD-Nachricht (A11)** an den Netzbetreiber, um den **Beginn der Grundversorgung** zu melden (Transaktionsgrund "Beginn Grundversorgung"). Der NB bestätigt dies mit einer **UTILMD (A15)**.
+
+### 4. Nachrichtenformate und Fristen
+
+Die Marktkommunikation im Rahmen der Grund- und Ersatzversorgung wird hauptsächlich durch die Nachrichtenformate UTILMD und MSCONS abgewickelt. Die GasGVV/StromGVV und § 38 Abs. 2 EnWG bilden den rechtlichen Rahmen.
+
+*   **UTILMD (Utility Master Data)**: Dient für die Meldungen über den Beginn/Ende der Ersatzversorgung und den Beginn der Grundversorgung an den Netzbetreiber.
+    *   **Zweck**: Austausch von Stammdaten und Steuerung von Geschäftsprozessen.
+    *   **Beteiligte Marktrollen**: Netzbetreiber (NB), Grundversorger (GV) / Ersatzversorger (EV).
+    *   **Nachrichten**:
+        *   **A11**: Anmeldung zum Lieferantenwechsel (Beginn Ersatz-/Grundversorgung).
+        *   **A04**: Abmeldung zur Beendigung der Netznutzung (Ende Ersatzversorgung).
+    *   **Fristen**:
+        *   Beginn Ersatzversorgung: **Unverzüglich** durch den NB.
+        *   Übergang Ersatz- in Grundversorgung: **Automatisiert und unverzüglich** nach 3 Monaten.
+        *   Reaktionsfristen NB: I.d.R. **1 Werktag** (z.B. mit A13 oder A15).
+    *   **Format**: EDIFACT (UN D.11A S3 oder aktuell gültige Version).
+
+*   **MSCONS (Metered Services Consumption Report)**: Dient der Übermittlung von Zählerständen zum Beginn/Ende der Ersatzversorgung und zum Übergang in die Grundversorgung.
+    *   **Zweck**: Übermittlung von Zählerständen zur Abrechnung und Abgrenzung von Belieferungszeiträumen.
+    *   **Beteiligte Marktrollen**: Messstellenbetreiber (MSB), Netzbetreiber (NB), Grundversorger (GV) / Ersatzversorger (EV).
+    *   **Inhalt**: MaLo-ID, MeLo-ID, Zählernummer, Messwert(e), Messperiode/Zeitpunkt, Statusinformationen.
+    *   **Fristen**: Spätestens zum **10. Werktag des Folgemonats** nach dem Ereignis.
+    *   **Format**: EDIFACT (UN D.04B S3).
+
+*   **GasGVV / StromGVV**: Rechtsverordnung, die die rechtlichen Rahmenbedingungen für die Grund- und Ersatzversorgung festlegt.
+    *   **Zweck**: Sicherstellung der unterbrechungsfreien Versorgung, transparente Bedingungen, Schutz der Verbraucherinteressen, Definition der Pflichten des Grundversorgers.
+    *   **Beteiligte Marktrollen**: Grundversorger (GV) / Ersatzversorger (EV), Endkunde (EK), indirekt Netzbetreiber (NB).
+    *   **Relevante Aspekte**: Dauer der Ersatzversorgung (max. 3 Monate), Sperrankündigung, Abrechnungsfristen.
+
+*   **§ 38 Abs. 2 EnWG**: Begrenzt die Dauer der Ersatzversorgung und regelt die Preiskalkulation.
+    *   **Zweck**: Begrenzung der Dauer der Ersatzversorgung (max. 3 Monate), Förderung des Übergangs in geordnete Lieferverhältnisse, Festlegung des Rahmens für die Preiskalkulation.
+    *   **Beteiligte Marktrollen**: Grundversorger (GV) / Ersatzversorger (EV), Endkunde (EK), indirekt Netzbetreiber (NB).
+
+Zusammenfassend sind Grund- und Ersatzversorgung wichtige Schutzmechanismen im Energiemarkt. Die Ersatzversorgung ist eine befristete Notlösung, die automatisch greift, während die Grundversorgung eine unbefristete Basisversorgung darstellt, in die Kunden nach Ablauf der Ersatzversorgung übergehen, wenn sie keine aktive Lieferantenwahl treffen. Die Marktkommunikation erfolgt primär über UTILMD und MSCONS, während GasGVV/StromGVV und § 38 Abs. 2 EnWG den rechtlichen Rahmen bilden.
+```

@@ -1,0 +1,88 @@
+---
+title: "Prozessleitfaden: Anforderung und Übermittlung von Messwerten"
+slug: "anforderung-und-u-bermittlung-von-messwerten"
+shortDescription: "Kurzbeschreibung für Anforderung und Übermittlung von Messwerten."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Anforderung und Übermittlung von Messwerten – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Anforderung und Übermittlung von Messwerten."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/anforderung-und-u-bermittlung-von-messwerten"
+triggerQuestion: "Wie kann ein Marktpartner (z.B. Lieferant) Messwerte wie Lastgänge oder Zählerstände von einem Messstellenbetreiber anfordern und wie werden diese übermittelt? Erkläre die Rollen von ORDERS und MSCONS in diesem Prozess."
+followUpConcepts: ["ORDERS", "MSCONS", "GPKE", "WiM", "MaLo-ID"]
+---
+```markdown
+# Prozess: Anforderung und Übermittlung von Messwerten
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen gerne, wie ein Marktpartner (z.B. ein Lieferant) Messwerte wie Lastgänge oder Zählerstände von einem Messstellenbetreiber anfordern und wie diese übermittelt werden. Dabei beleuchte ich die Rollen von ORDERS und MSCONS in diesem Prozess sowie die Bedeutung von GPKE, WiM und der MaLo-ID.
+
+### 1. Überblick über die Anforderung und Übermittlung von Messwerten
+
+Im deutschen Energiemarkt haben Lieferanten und andere berechtigte Marktpartner das Recht, Messwerte für die von ihnen versorgten (oder bilanzierungsrelevanten) Marktlokationen anzufordern. Dies ist entscheidend für die Abrechnung, Bilanzierung und Optimierung von Prozessen. Der Prozess ist in der GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität) und der WiM (Wechselprozesse im Messwesen) standardisiert.
+
+**Prozessziel**: Bereitstellung der angeforderten Messwerte (Lastgänge, Zählerstände) durch den zuständigen Messstellenbetreiber an den anfragenden Marktpartner.
+
+### 2. Beteiligte Marktrollen
+
+*   **Anfragender Marktpartner (z.B. Lieferant - LF)**: Initiiert die Anforderung von Messwerten.
+*   **Netzbetreiber (NB)**: Agiert als zentrale Kommunikationsschnittstelle. Er empfängt die Anfrage vom LF und leitet sie an den zuständigen Messstellenbetreiber weiter. Er empfängt die Messwerte vom MSB und leitet sie an den LF weiter.
+*   **Messstellenbetreiber (MSB)**: Ist für die Erfassung, Speicherung und Bereitstellung der Messwerte zuständig. Er empfängt die Anfrage vom NB und übermittelt die Messwerte an den NB.
+
+### 3. Prozessschritte und die Rolle von ORDERS und MSCONS
+
+#### 3.1. Anforderung von Messwerten (ORDERS)
+
+*   **Aktion des Anfragenden Marktpartners (LF)**: Der Lieferant benötigt Messwerte (z.B. Lastgänge für einen bestimmten Zeitraum oder einen aktuellen Zählerstand) für eine Marktlokation, die er beliefert. Er sendet eine formelle Anfrage an den Netzbetreiber.
+*   **EDIFACT-Nachricht**: **ORDERS (Order - Bestellung)**.  Im Kontext der Marktkommunikation wird sie auch für die **Anforderung von Daten** verwendet.  EDIFACT-Standard: **UN D.09B S3**.
+    *   **Zweck**: Formelle Anforderung von Messwerten (Lastgänge, Zählerstände) für eine bestimmte Marktlokation und einen bestimmten Zeitraum.
+    *   **Inhalt der ORDERS (Anforderung von Messwerten)**:
+        *   **MaLo-ID (Marktlokations-ID)**: Eindeutige Kennung der Marktlokation, für die die Messwerte angefordert werden.  Wird typischerweise im LOC-Segment übermittelt.
+        *   **MeLo-ID (Messlokations-ID)**: Eindeutige Kennung der Messstelle.
+        *   **Transaktionsgrund**: Ein spezifischer Code, der angibt, dass es sich um eine "Anforderung von Messwerten" handelt (z.B. BGM+7 DE1004, Kategorie 7 = Prozessdatenbericht).
+        *   **Zeitangaben (DTM-Segmente)**: Der gewünschte Zeitraum, für den die Messwerte benötigt werden (z.B. Messperiodenanfang (163) und -ende (164)).
+        *   **Art der Messwerte**: Angabe, ob Lastgangdaten (Z11) oder Zählerstände (Z12) angefordert werden sollen (oft in einem zweiten IMD-Segment).
+        *   IDs des Anfragenden und des Netzbetreibers.
+*   **Frist**: Für die Anforderung von Messwerten gibt es keine festen, regulatorisch vorgegebenen Fristen, aber die Anfrage sollte zeitnah erfolgen.
+
+#### 3.2. Weiterleitung der Anfrage und Messwertbereitstellung durch den MSB
+
+*   **Aktion des NB**: Der Netzbetreiber empfängt die ORDERS-Nachricht vom Lieferanten. Er prüft die Anfrage und leitet sie an den zuständigen Messstellenbetreiber (MSB) weiter, da dieser für die Messwertbereitstellung verantwortlich ist. Im Falle einer Ablehnung sendet der NB eine ORDRSP-Nachricht an den LF.
+*   **Aktion des MSB**: Der MSB erhält die Anfrage vom NB. Er ruft die angeforderten Messwerte aus seinen Systemen ab.
+*   **EDIFACT-Nachricht (MSB an NB)**: **MSCONS (Metered Services Consumption Report)**.
+
+#### 3.3. Übermittlung der Messwerte an den Anfragenden (MSCONS)
+
+*   **Aktion des NB**: Der Netzbetreiber empfängt die MSCONS-Nachricht vom MSB. Er prüft diese und leitet sie an den ursprünglich anfragenden Marktpartner (LF) weiter.
+*   **EDIFACT-Nachricht**: **MSCONS (Metered Services Consumption Report)**.  EDIFACT-Standard: **UN D.04B S3**.
+    *   **Zweck**: Übermittlung der angeforderten Messwerte (Lastgänge, Zählerstände) vom MSB über den NB an den LF.
+    *   **Inhalt der MSCONS**:
+        *   **MaLo-ID und MeLo-ID**: Eindeutige Identifikation der Lokation.  Die MaLo-ID findet sich typischerweise im LOC-Segment.
+        *   **Zählernummer**: Identifikation des Messgeräts.
+        *   **Messwert(e)**: Die angeforderten Lastgänge (als Zeitreihen von Viertelstunden- oder Stundenwerten) oder Zählerstände.
+        *   **Messperiode/Zeitpunkt**: Der Zeitraum, für den die Messwerte übermittelt werden.
+        *   **Statusinformationen**: Angaben zur Qualität des Messwerts (z.B. "gemessen", "geschätzt", "korrigiert").
+        *   **Referenz zur ORDERS-Anfrage**: Die MSCONS-Nachricht sollte eine Referenz zur ursprünglichen ORDERS-Anfrage enthalten (z.B. im BGM+Z28 DE1004 oder BGM+7 DE1004).
+*   **Frist**: Die Messwerte müssen **zeitnah** nach der Anforderung übermittelt werden. Für regelmäßige Messwertlieferungen gilt in der GPKE eine Frist von **spätestens zum 10. Werktag des Folgemonats**. Für Ad-hoc-Anforderungen können kürzere Fristen gelten, die bilateral vereinbart sind oder durch die WiM geregelt werden.
+
+### 4. Rollen von ORDERS und MSCONS im Überblick
+
+*   **ORDERS**: Dient als **Anfrage-Nachricht**. Sie fordert spezifische Messdaten (Lastgänge, Zählerstände) für einen bestimmten Zeitraum an.
+*   **MSCONS**: Dient als **Antwort-Nachricht**. Sie übermittelt die tatsächlich angeforderten Messwerte. Die MSCONS referenziert dabei die zugrundeliegende ORDERS-Anfrage, um die Zuordnung zu gewährleisten.
+
+### 5. Gesetzliche Grundlagen
+
+*   **Energiewirtschaftsgesetz (EnWG)**: Schafft den rechtlichen Rahmen.
+*   **GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität)**: Definiert die Prozesse für den Datenaustausch von Messwerten.  Regelt die Geschäftsprozesse und den Datenaustausch zwischen den Marktpartnern **verbindlich**.
+*   **WiM (Wechselprozesse im Messwesen)**: Regelt die Details der Messwertbereitstellung und -qualität.  Regelt die **Geschäftsprozesse und den Datenaustausch rund um das Messwesen im Strombereich** detailliert.
+*   **MsbG (Messstellenbetriebsgesetz)**: Regelt die Aufgaben und Pflichten des Messstellenbetreibers, wozu auch die Bereitstellung von Messwerten gehört.
+
+### 6. Bedeutung von GPKE und WiM für den Prozess
+
+Die GPKE und WiM sind **regulatorische Regelwerke**, die den Rahmen für die Anforderung und Übermittlung von Messwerten bilden. Sie stellen sicher, dass der Prozess transparent, diskriminierungsfrei und effizient abläuft. Sie definieren die Aufgaben, Verantwortlichkeiten und Informationspflichten der beteiligten Marktrollen sowie die zu verwendenden Nachrichtenformate (ORDERS und MSCONS). Die WiM legt zudem detaillierte Regeln für die Qualität und Plausibilisierung der Messwerte fest.
+
+### 7. Die Rolle der MaLo-ID
+
+Die **MaLo-ID (Marktlokations-ID)** ist der **eindeutige Identifikator einer Marktlokation**. Sie ist ein **obligatorischer Bestandteil** der ORDERS- und MSCONS-Nachrichten und stellt sicher, dass die Messwerte der richtigen Marktlokation zugeordnet werden. Sie ist das **Fundament für eine korrekte und effiziente Abwicklung** der Messwertanforderung und -übermittlung.
+
+Zusammenfassend ist die ORDERS-Nachricht der **Startpunkt** für die Anforderung von Messwerten, während die MSCONS-Nachricht die **Übermittlung der angeforderten Daten** darstellt. Beide Nachrichten sind essenziell für die transparente und effiziente Bereitstellung von Messwerten im deutschen Energiemarkt. Die GPKE und WiM bilden den regulatorischen Rahmen, und die MaLo-ID gewährleistet die korrekte Zuordnung der Messwerte.
+```

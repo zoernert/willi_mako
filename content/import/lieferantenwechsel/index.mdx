@@ -1,0 +1,117 @@
+---
+title: "Prozessleitfaden: Lieferantenwechsel"
+slug: "lieferantenwechsel"
+shortDescription: "Kurzbeschreibung für Lieferantenwechsel."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Lieferantenwechsel – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Lieferantenwechsel."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/lieferantenwechsel"
+triggerQuestion: "Beschreibe den vollständigen Prozess des Lieferantenwechsels in der deutschen Energie-Marktkommunikation gemäß GPKE. Erläutere den gesamten Ablauf von der Kündigung beim alten Lieferanten über die Anmeldung durch den neuen Lieferanten bis zur Bestätigung durch den Netzbetreiber, inklusive aller beteiligten Marktrollen, Fristen und der ausgetauschten EDIFACT-Nachrichten."
+followUpConcepts: ["GPKE", "UTILMD", "MSCONS", "MaLo-ID", "Netzbetreiber (NB)"]
+---
+```markdown
+# Prozess: Lieferantenwechsel
+
+Als Mako Willi von Stromhaltig präsentiere ich Ihnen eine vollständige und detaillierte Beschreibung des Lieferantenwechselprozesses in der deutschen Energie-Marktkommunikation, wie er gemäß der **GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität)** abläuft.
+
+### 1. Überblick über den Lieferantenwechselprozess
+
+Der Lieferantenwechsel ermöglicht Endkunden den Wechsel ihres Stromanbieters. Die GPKE standardisiert Abläufe und Datenaustausch, um einen reibungslosen Übergang zu gewährleisten. Die GPKE ist ein regulatorisches Regelwerk, das die Geschäftsprozesse und den Datenaustausch zwischen den Marktpartnern verbindlich standardisiert und regelt. Sie stellt sicher, dass der Prozess transparent, effizient, diskriminierungsfrei und verbraucherfreundlich abläuft.
+
+### 2. Beteiligte Marktrollen und ihre Aufgaben
+
+*   **Endkunde (EK)**: Initiator des Wechsels, beauftragt neuen Lieferanten.
+*   **Neuer Lieferant (NLF)**: Meldet Kunden an, übernimmt Belieferung und Kommunikation.
+*   **Alter Lieferant (ALF)**: Wird informiert, beendet Belieferung, erstellt Schlussrechnung.
+*   **Netzbetreiber (NB)**: Zentrale Koordination, prüft Anmeldungen, leitet Informationen weiter, bestätigt Wechsel, ist für Netznutzungsabrechnung zuständig.
+*   **Messstellenbetreiber (MSB)**: Erfasst und stellt Zählerstände bereit.
+
+### 3. Der vollständige Prozessablauf (Schritt-für-Schritt)
+
+Der Prozess beginnt mit der Entscheidung des Endkunden für einen neuen Lieferanten.
+
+#### 3.1. Kündigung des alten Vertrags und Beauftragung des neuen Lieferanten
+
+*   **Aktion des Endkunden**: Kündigung des bestehenden Vertrags beim ALF. Oft übernimmt der NLF die Kündigung im Namen des Kunden.
+*   **Hinweis**: Kündigungsfristen sind im Vertrag des Endkunden mit dem ALF geregelt.
+*   **EDIFACT-Nachricht**: Kein direkter EDIFACT-Nachrichtenaustausch in diesem Schritt.
+
+#### 3.2. Anmeldung beim Netzbetreiber durch den Neuen Lieferanten (NLF)
+
+*   **Aktion des NLF**: Der NLF sendet eine elektronische Anmeldung für die Belieferung der betreffenden Marktlokation an den zuständigen Netzbetreiber (NB).
+*   **EDIFACT-Nachricht**: **UTILMD (A11)** – "Anmeldung zum Lieferantenwechsel".
+    *   **Inhalt**: MaLo-ID, MeLo-ID, Kundendaten, gewünschter Lieferbeginn, Identifikationsdaten der Marktpartner.
+*   **Frist**: Die A11-Nachricht muss spätestens **7 Werktage** vor dem gewünschten Lieferbeginn beim NB eingehen.
+
+#### 3.3. Prüfung der Anmeldung und Weiterleitung durch den Netzbetreiber (NB)
+
+*   **Aktion des NB**: Prüfung der A11-Nachricht auf Plausibilität.
+    *   **Bei erfolgreicher Prüfung**:
+        *   Der NB sendet eine **Eingangsbestätigung der Anmeldung** an den NLF.
+        *   Der NB sendet eine **Abmeldung** an den **Alten Lieferanten (ALF)**.
+    *   **Bei Fehlern/Ablehnung**:
+        *   Der NB sendet eine **Ablehnung der Anmeldung** an den NLF mit Begründung.
+*   **EDIFACT-Nachrichten**:
+    *   An den NLF: **UTILMD (A13)** – "Eingangsbestätigung der Anmeldung".
+    *   An den ALF: **UTILMD (A12)** – "Abmeldung des Lieferanten".
+    *   Bei Ablehnung an den NLF: **UTILMD (A99)** – "Ablehnung der Anmeldung".
+*   **Frist**: Der NB muss innerhalb von **1 Werktag** auf die Anmeldung des NLF reagieren.
+
+#### 3.4. Reaktion des Alten Lieferanten (ALF)
+
+*   **Aktion des ALF**: Prüfung der A12-Nachricht.
+    *   **Bei Bestätigung der Abmeldung**: Der ALF bestätigt die Abmeldung gegenüber dem NB.
+    *   **Bei Ablehnung der Abmeldung**: Der ALF lehnt die Abmeldung ab und begründet dies.
+*   **EDIFACT-Nachricht**: **UTILMD (A14)** – "Bestätigung/Ablehnung der Abmeldung" an den NB.
+*   **Frist**: Der ALF muss innerhalb von **3 Werktagen** auf die Abmeldung des NB reagieren.
+
+#### 3.5. Finale Bestätigung durch den Netzbetreiber (NB)
+
+*   **Aktion des NB**: Nach Erhalt der Reaktion vom ALF, sendet der NB die finalen Bestätigungen an beide Lieferanten.
+    *   **Bei erfolgreichem Wechsel**: Der NB bestätigt den verbindlichen Lieferbeginn für den NLF und das Lieferende für den ALF.
+    *   **Bei Ablehnung des Wechsels**: Der NB informiert beide Lieferanten über die Ablehnung.
+*   **EDIFACT-Nachrichten**:
+    *   An den NLF: **UTILMD (A15)** – "Endgültige Bestätigung des Lieferbeginns".
+    *   An den ALF: **UTILMD (A16)** – "Endgültige Bestätigung des Lieferendes".
+*   **Frist**: Der NB muss innerhalb von **1 Werktag** nach Eingang der A14-Nachricht die finalen Bestätigungen versenden.
+
+#### 3.6. Messwertübermittlung zum Wechselstichtag
+
+*   **Aktion des MSB/NB**: Erfassung des aktuellen Zählerstandes zum Zeitpunkt des Lieferantenwechsels. Der NB leitet diesen Zählerstand an den alten und den neuen Lieferanten weiter.
+*   **EDIFACT-Nachricht**: **MSCONS** – "Metered Services Consumption Report".
+    *   **Inhalt**: Zählerstände zum Wechseldatum, MaLo-ID, MeLo-ID, Messwertstatus.
+*   **Frist**: Die Messwerte werden zeitnah zum Lieferantenwechsel übermittelt, um eine korrekte Abrechnung zu ermöglichen. Spätestens zum 10. Werktag des Folgemonats nach dem Wechsel.
+
+#### 3.7. Schlussrechnung des Alten Lieferanten (ALF)
+
+*   **Aktion des ALF**: Erstellung der Schlussrechnung für den Endkunden bis zum Lieferende.
+*   **EDIFACT-Nachricht**: Keine spezifische EDIFACT-Nachricht.
+
+### 4. Zusammenfassung der ausgetauschten EDIFACT-Nachrichten
+
+| Nachricht        | Beschreibung                                     | Absender | Empfänger |
+|-----------------|-------------------------------------------------|----------|-----------|
+| UTILMD (A11)    | Anmeldung des Lieferantenwechsels                | NLF      | NB        |
+| UTILMD (A12)    | Abmeldung des Lieferanten                         | NB       | ALF       |
+| UTILMD (A13)    | Eingangsbestätigung der Anmeldung                 | NB       | NLF       |
+| UTILMD (A14)    | Bestätigung/Ablehnung der Abmeldung              | ALF      | NB        |
+| UTILMD (A15)    | Endgültige Bestätigung des Lieferbeginns         | NB       | NLF       |
+| UTILMD (A16)    | Endgültige Bestätigung des Lieferendes           | NB       | ALF       |
+| UTILMD (A99)    | Ablehnung der Anmeldung                          | NB       | NLF       |
+| MSCONS          | Übermittlung der Zählerstände                     | MSB      | NB        |
+| MSCONS          | Weiterleitung der Zählerstände                    | NB       | NLF/ALF   |
+
+### 5. Übersicht der wesentlichen Fristen:
+
+| Aktion                                      | Frist                                                                     |
+|----------------------------------------------|---------------------------------------------------------------------------|
+| Anmeldung NLF an NB (UTILMD A11)             | Spätestens 7 Werktage vor gewünschtem Lieferbeginn.                         |
+| Reaktion NB auf Anmeldung (UTILMD A12/A13/A99) | Innerhalb von 1 Werktag.                                                  |
+| Reaktion ALF auf Abmeldung (UTILMD A14)        | Innerhalb von 3 Werktagen.                                                |
+| Finale Bestätigung NB an NLF/ALF (UTILMD A15/A16) | Innerhalb von 1 Werktag nach Erhalt der A14-Nachricht vom ALF.              |
+| Messwertübermittlung (MSCONS)                | Spätestens zum 10. Werktag des Folgemonats nach dem Wechsel.             |
+
+Dieser detaillierte Prozess gewährleistet, dass der Lieferantenwechsel in Deutschland effizient, transparent und unter Einhaltung aller regulatorischen Vorgaben abläuft und der Endkunde stets versorgt ist.
+```

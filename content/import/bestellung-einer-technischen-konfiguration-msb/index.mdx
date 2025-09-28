@@ -1,0 +1,114 @@
+---
+title: "Prozessleitfaden: Bestellung einer technischen Konfiguration (MSB)"
+slug: "bestellung-einer-technischen-konfiguration-msb"
+shortDescription: "Kurzbeschreibung für Bestellung einer technischen Konfiguration (MSB)."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Bestellung einer technischen Konfiguration (MSB) – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Bestellung einer technischen Konfiguration (MSB)."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/bestellung-einer-technischen-konfiguration-msb"
+triggerQuestion: "Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem. Welche Schritte sind von der Angebotsanfrage (REQOTE) über das Angebot (QUOTES) bis zur Bestellung (ORDERS) notwendig?"
+followUpConcepts: ["REQOTE", "QUOTES", "ORDERS", "ORDRSP", "ORDERS AHB"]
+---
+```markdown
+# Prozess: Bestellung einer technischen Konfiguration (MSB)
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen gerne den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem (iMsys).
+
+### 1. Überblick über den Prozess der Konfigurationsbestellung
+
+Die Bestellung einer technischen Konfiguration, insbesondere für ein intelligentes Messsystem, ist ein Geschäftsprozess, der im Wesentlichen im Anwendungsfall "Bestellung einer Konfiguration" abgebildet wird. Er ermöglicht es einem berechtigten Akteur (z.B. Lieferant oder Netzbetreiber) die Konfiguration eines Messsystems zu bestellen, die über die Mindestausstattung hinausgeht.
+
+**Prozessziel**: Die Bestellung einer spezifischen technischen Konfiguration beim MSB wird korrekt abgewickelt, sodass das iMsys entsprechend den Anforderungen des bestellenden Akteurs konfiguriert wird.
+
+### 2. Beteiligte Marktrollen
+
+*   **Besteller (z.B. Lieferant (LF) oder Netzbetreiber (NB))**: Der Akteur, der die spezifische Konfiguration des Messsystems benötigt und die Bestellung auslöst.
+*   **Messstellenbetreiber (MSB)**: Der MSB ist der Empfänger der Bestellung und für die Umsetzung der gewünschten Konfiguration verantwortlich.
+
+### 3. Prozessschritte von der Angebotsanfrage bis zur Bestellung
+
+Der Prozess folgt einem standardisierten Ablauf, der auf den EDIFACT-Nachrichten REQOTE, QUOTES und ORDERS basiert:
+
+#### 3.1. Angebotsanfrage (REQOTE)
+
+*   **Zweck**: Den MSB auffordern, ein Angebot für eine spezifische technische Konfiguration zu erstellen und ihm alle notwendigen Informationen zu übermitteln. Die REQOTE ist der formelle Startschuss des Prozesses.
+*   **Aktion des Bestellers (z.B. LF)**: Der Lieferant identifiziert den Bedarf und sendet eine Angebotsanfrage an den zuständigen MSB.
+*   **EDIFACT-Nachricht**: **REQOTE (Request for Quote)**.
+*   **Inhalt der REQOTE**:
+    *   **MaLo-ID (Marktlokations-ID)** und **MeLo-ID (Messlokations-ID)**: Zur Identifikation der Lokation.
+    *   **Spezifikation der gewünschten Konfiguration**: Detaillierte Beschreibung der technischen Anforderungen (Kommunikationsprotokolle, Datenbereitstellung, Funktionen, Schnittstellen, Schwellwerte).
+    *   **Gewünschter Umsetzungstermin**: Bis wann soll die Konfiguration eingerichtet sein?
+    *   **Referenzinformationen**: Eindeutige Kennzeichnung der Anfrage.
+*   **Beteiligte Marktrollen**:
+    *   **Absender**: Besteller (LF oder NB)
+    *   **Empfänger**: MSB
+*   **Fristen**: Keine festen, regulatorisch vorgegebenen Fristen. Bilaterale Vereinbarung oder Regelung in Rahmenverträgen. Übliche Frist für Angebotsabgabe (QUOTES) nach Eingang der REQOTE: 1-2 Wochen.
+*   **Nachrichtenformat**: EDIFACT, UN D.04B oder höher. Die genaue Ausgestaltung ist in den BDEW-Anwendungshandbüchern definiert. Verwendete Segmente: BGM, DTM, NAD, RFF, LIN, QTY, MOA, FTX, IMD. Konfigurationsprodukte aus der Codeliste in Kapitel 4.1 sind erlaubt.
+*   **Hinweis**: Die Wissensdatenbank verweist im Kontext von REQOTE explizit auf das ORDERS AHB.
+
+#### 3.2. Angebotsübermittlung (QUOTES)
+
+*   **Zweck**: Dem Besteller ein formelles und verbindliches Angebot für die Umsetzung der gewünschten Konfiguration zu unterbreiten.
+*   **Aktion des MSB**: Der MSB prüft die REQOTE und erstellt ein Angebot.
+*   **EDIFACT-Nachricht**: **QUOTES (Quote)**.
+*   **Inhalt der QUOTES**:
+    *   **Referenz zur REQOTE**: Eindeutige Verknüpfung zur ursprünglichen Anfrage.
+    *   **Beschreibung der angebotenen Konfiguration**: Detaillierte Beschreibung der technischen Konfiguration.
+    *   **Kosten**: Aufschlüsselung der Kosten.
+    *   **Umsetzungstermin**: Verbindlicher oder voraussichtlicher Termin.
+    *   **Gültigkeitsdauer des Angebots**: Bis wann kann das Angebot angenommen werden?
+*   **Beteiligte Marktrollen**:
+    *   **Absender**: MSB
+    *   **Empfänger**: Besteller (LF oder NB)
+*   **Fristen**: Keine festen, regulatorisch vorgegebenen Fristen für die Übermittlung. Das Angebot selbst enthält eine Gültigkeitsdauer.
+*   **Nachrichtenformat**: EDIFACT, UN D.10A S3. Die genaue Ausgestaltung ist in den BDEW-Anwendungshandbüchern definiert. Verwendete Segmente: BGM, DTM, NAD, RFF, LIN, QTY, MOA, TAX, FTX, IMD. Artikel-IDs zur Abrechnung des Messstellenbetriebs müssen erkennbar sein.
+*   **Hinweis**: Wenn sowohl Kauf als auch Nutzung angeboten werden, sind zwei separate Angebote (QUOTES) notwendig.
+
+#### 3.3. Bestellung (ORDERS)
+
+*   **Zweck**: Dem MSB die verbindliche Bestellung zur Umsetzung der gewünschten Konfiguration zu übermitteln.
+*   **Aktion des LF**: Der Lieferant prüft das QUOTES-Angebot und sendet eine Bestellung.
+*   **EDIFACT-Nachricht**: **ORDERS (Order)**.
+*   **Inhalt der ORDERS**:
+    *   **Referenz zur QUOTES**: Eindeutige Verknüpfung zum akzeptierten Angebot.
+    *   **MaLo-ID und MeLo-ID**: Zur Identifikation der Lokation.
+    *   **Bestätigung der Konfiguration**: Explizite Bestätigung der gewünschten technischen Konfiguration.
+    *   **Verbindlicher Umsetzungstermin**: Bestätigung des Umsetzungstermins.
+*   **Beteiligte Marktrollen**:
+    *   **Absender**: Besteller (LF oder NB)
+    *   **Empfänger**: MSB
+*   **Fristen**: Keine festen, regulatorisch vorgegebenen Fristen für die Übermittlung. Die Frist, innerhalb derer der Besteller das Angebot annehmen muss, wird durch die Gültigkeitsdauer des QUOTES-Angebots bestimmt.
+*   **Nachrichtenformat**: EDIFACT, UN D.09B S3. Die genaue Ausgestaltung ist in den BDEW-Anwendungshandbüchern definiert. Verwendete Segmente: BGM, DTM, NAD, RFF, LIN, QTY, MOA, TAX, FTX, IMD.
+*   **Hinweis**: Der Textabschnitt zur "Bestellung einer Konfiguration" verweist auf das ORDERS AHB.
+
+#### 3.4. Auftragsbestätigung (ORDRSP)
+
+*   **Zweck**: Dem Besteller die Bestätigung oder Ablehnung seiner Bestellung durch den MSB zu übermitteln.
+*   **Aktion des MSB**: Der MSB bestätigt den Eingang und die Annahme der Bestellung (oder lehnt sie ab).
+*   **EDIFACT-Nachricht**: **ORDRSP (Order Response)**.
+*   **Inhalt der ORDRSP**:
+    *   **Referenz zur ORDERS**: Eindeutige Verknüpfung zur Bestellung.
+    *   **Bestätigung der Annahme**: Explizite Bestätigung, dass die Bestellung angenommen wurde (oder Ablehnungsgrund).
+    *   **Verbindlicher Umsetzungstermin**: Bestätigung des verbindlichen Termins.
+*   **Beteiligte Marktrollen**:
+    *   **Absender**: MSB
+    *   **Empfänger**: Besteller (LF oder NB)
+*   **Fristen**: Keine festen, regulatorisch vorgegebenen Fristen für die Übermittlung. Die Frist wird bilateral vereinbart oder in Rahmenverträgen geregelt.
+*   **Nachrichtenformat**: EDIFACT, UN D.10A S3. Die genaue Ausgestaltung ist in den BDEW-Anwendungshandbüchern definiert. Verwendete Segmente: BGM, DTM, NAD, RFF, FTX, IMD (wird aus der ORDERS übernommen).
+*   **Hinweis**: IMD-Segmente und deren Inhalte, die in der Anfrage (ORDERS) enthalten sind, werden auch in der Antwort (ORDRSP) mitgegeben.
+
+#### 3.5. Umsetzung und Betrieb
+
+*   **Aktion des MSB**: Der MSB richtet die bestellte Konfiguration ein.
+
+### 4. Das "ORDERS AHB" (Anwendungshandbuch für Bestellungen)
+
+*   **Zweck**: Ein detailliertes Dokument, das die verbindlichen Spezifikationen und Geschäftsregeln für die Erstellung und den Austausch von ORDERS-Nachrichten festlegt. Es dient als einheitliche Anleitung für die Marktpartner.
+*   **Beteiligte Marktrollen**: Alle Marktrollen, die eine ORDERS-Nachricht im Kontext der Konfigurationsbestellung senden oder empfangen (Besteller und MSB).
+*   **Einsatz im Prozess**: Während der Vorbereitung und Verarbeitung der ORDERS-Nachricht.
+*   **Fristen**: Das ORDERS AHB selbst enthält keine Fristen.
+*   **Nachrichtenformate**: Das ORDERS AHB beschreibt die Struktur und den Inhalt der ORDERS-Nachricht (EDIFACT, UN D.09B S3).
+*   **Hinweis**: Das ORDERS AHB in der jeweils gültigen Fassung enthält Erläuterungen zur Bestellung einer Konfiguration.
+```

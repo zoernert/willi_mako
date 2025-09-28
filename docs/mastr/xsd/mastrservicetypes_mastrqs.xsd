@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+  targetNamespace="https://www.marktstammdatenregister.de/Services/Public/1_2/Modelle/Mastrqs"
+  elementFormDefault="qualified"
+  xmlns="http://www.w3.org/2001/XMLSchema"
+  xmlns:mastr="https://www.marktstammdatenregister.de/Services/Public/1_2/Modelle">
+  <import
+    schemaLocation="mastrbasetypes.xsd"
+    namespace="https://www.marktstammdatenregister.de/Services/Public/1_2/Modelle" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitAnlagenbetreiberRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitAnlagenbetreiberParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitAnlagenbetreiberResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitAnlagenbetreiberAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitWindRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitWindParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitWindResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitWindAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitSolarRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitSolarParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitSolarResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitSolarAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitBiomasseRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitBiomasseParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitBiomasseResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitBiomasseAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitWasserRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitWasserParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitWasserResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitWasserAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGeothermieGrubengasDruckentspannungRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGeothermieGrubengasDruckentspannungParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGeothermieGrubengasDruckentspannungResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGeothermieGrubengasDruckentspannungAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitVerbrennungRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitVerbrennungParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitVerbrennungResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitVerbrennungAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasSpeicherRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasSpeicherParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasSpeicherResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasSpeicherAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitStromVerbraucherRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitStromVerbraucherParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitStromVerbraucherResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitStromVerbraucherAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasErzeugerRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasErzeugerParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasErzeugerResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasErzeugerAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasVerbraucherRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasVerbraucherParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitGasVerbraucherResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitGasVerbraucherAntwort" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitStromSpeicherRequest"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitStromSpeicherParameter" />
+  <element
+    name="SetMastrqsKorrekturVorschlagEinheitStromSpeicherResponse"
+    type="mastr:SetMastrqsKorrekturVorschlagEinheitStromSpeicherAntwort" />
+  <element
+    name="MastrqsTicketBearbeiterZuweisenRequest"
+    type="mastr:MastrqsTicketBearbeiterZuweisenParameter" />
+  <element
+    name="MastrqsTicketBearbeiterZuweisenResponse"
+    type="mastr:MastrqsTicketBearbeiterZuweisenAntwort" />
+  <element
+    name="MastrqsStichwoerterAendernRequest"
+    type="mastr:MastrqsStichwoerterAendernParameter" />
+  <element
+    name="MastrqsStichwoerterAendernResponse"
+    type="mastr:MastrqsStichwoerterAendernAntwort" />
+  <element
+    name="MastrqsKorrekturvorschlagStornierenRequest"
+    type="mastr:MastrqsKorrekturvorschlagStornierenParameter" />
+  <element
+    name="MastrqsKorrekturvorschlagStornierenResponse"
+    type="mastr:MastrqsKorrekturvorschlagStornierenAntwort" />
+  <element
+    name="SetMastrqsNetzbetreiberzuordnungRequest"
+    type="mastr:SetMastrqsNetzbetreiberzuordnungParameter" />
+  <element
+    name="SetMastrqsNetzbetreiberzuordnungResponse"
+    type="mastr:SetMastrqsNetzbetreiberzuordnungAntwort" />
+  <element
+    name="GetKorrekturVorschlagRequest"
+    type="mastr:GetKorrekturVorschlagParameter" />
+  <element
+    name="GetKorrekturVorschlagResponse"
+    type="mastr:GetKorrekturVorschlagAntwort" />
+</schema>

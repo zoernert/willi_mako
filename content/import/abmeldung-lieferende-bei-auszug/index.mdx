@@ -1,0 +1,100 @@
+---
+title: "Prozessleitfaden: Abmeldung (Lieferende bei Auszug)"
+slug: "abmeldung-lieferende-bei-auszug"
+shortDescription: "Kurzbeschreibung für Abmeldung (Lieferende bei Auszug)."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Abmeldung (Lieferende bei Auszug) – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Abmeldung (Lieferende bei Auszug)."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/abmeldung-lieferende-bei-auszug"
+triggerQuestion: "Beschreibe den Abmeldeprozess bei einem Auszug eines Kunden. Welche Schritte muss der Lieferant einleiten, um die Belieferung an einer Marktlokation zu beenden, und wie wird dies dem Netzbetreiber per Marktnachricht mitgeteilt?"
+followUpConcepts: ["UTILMD", "GPKE", "MSCONS", "MaLo-ID", "WiM"]
+---
+```markdown
+# Prozess: Abmeldung (Lieferende bei Auszug)
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen gerne den Abmeldeprozess bei einem Auszug eines Kunden in der deutschen Energie-Marktkommunikation. Dieser Prozess wird durch die GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität) und die WiM (Wechselprozesse im Messwesen) geregelt. Ziel ist es, die Belieferungsverantwortung des ausziehenden Kunden korrekt zum Auszugsdatum zu beenden und eine saubere Abgrenzung für die nachfolgende Belieferung sicherzustellen.
+
+### 1. Überblick über den Abmeldeprozess bei Auszug
+
+Wenn ein Kunde aus einer Wohnung oder einem Haus auszieht, muss die Energiebelieferung an dieser Marktlokation durch den aktuellen Lieferanten (LF) beendet werden.  Dieser Prozess ist in den Regelwerken der Marktkommunikation, insbesondere der GPKE und der WiM, detailliert geregelt.
+
+### 2. Gesetzliche Grundlagen
+
+*   **Energiewirtschaftsgesetz (EnWG)**: Setzt den rechtlichen Rahmen für die Energieversorgung und die Marktkommunikation.
+*   **GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität)**: Definiert die detaillierten Prozesse und den Datenaustausch für die Stromversorgung, einschließlich der Abmeldung. Die GPKE ist ein regulatorisches Regelwerk, das die Geschäftsprozesse und den Datenaustausch zwischen den Marktpartnern verbindlich standardisiert und regelt. Sie stellt sicher, dass der Prozess der Abmeldung bei Auszug transparent, effizient und diskriminierungsfrei abläuft.
+*   **WiM (Wechselprozesse im Messwesen)**: Regelt die Prozesse rund um die Messung und Messwertbereitstellung, die für die Abgrenzung unerlässlich sind. Die WiM stellt die korrekte Erfassung, Plausibilisierung und Übermittlung des Zählerstands zum Auszugsdatum sicher.
+
+### 3. Beteiligte Marktrollen
+
+*   **Endkunde (EK)**: Informiert seinen Lieferanten über den Auszug und teilt das Auszugsdatum sowie idealerweise den Zählerstand mit.
+*   **Lieferant (LF)**: Der aktuelle Lieferant des ausziehenden Kunden. Er leitet die Abmeldung beim Netzbetreiber ein und erstellt die Schlussrechnung.
+*   **Netzbetreiber (NB)**: Bestätigt die Abmeldung, koordiniert die Nachfolge (z.B. Anmeldung eines neuen Lieferanten oder Ersatzversorgung) und ist für die Netznutzungsabrechnung zuständig.
+*   **Messstellenbetreiber (MSB)**: Erfasst den Zählerstand zum Auszugsdatum und übermittelt diesen an den Netzbetreiber.
+
+### 4. Schritte des Abmeldeprozesses bei Auszug (aus Sicht des Lieferanten)
+
+#### 4.1. Information des Lieferanten durch den Kunden
+
+*   **Aktion des Kunden**: Der Endkunde informiert seinen Lieferanten über den bevorstehenden Auszug. Er teilt das Auszugsdatum (welches dem gewünschten Lieferende entspricht) und die neue Adresse für die Zustellung der Schlussrechnung mit. Idealerweise übermittelt der Kunde auch den Zählerstand zum Auszugsdatum.
+*   **Aktion des Lieferanten**: Der Lieferant nimmt die Kundeninformationen entgegen, prüft die vertraglichen Kündigungsfristen und bereitet die Abmeldung vor.
+
+#### 4.2. Abmeldung beim Netzbetreiber durch den Lieferanten
+
+*   **Aktion des Lieferanten**: Der Lieferant leitet die Abmeldung der Belieferung für die betreffende Marktlokation beim zuständigen Netzbetreiber ein.
+*   **EDIFACT-Nachricht**: **UTILMD (A04)** – "Abmeldung zur Beendigung der Netznutzung". Die UTILMD-Nachricht ist das zentrale EDIFACT-Format, um das Ende der Energiebelieferung eines Kunden an einer Marktlokation aufgrund eines Auszugs zu kommunizieren und zu bestätigen.
+    *   **Inhalt der A04**:
+        *   **MaLo-ID (Marktlokations-ID)**: Eindeutige Kennung der Verbrauchsstelle. Die MaLo-ID ist der eindeutige, bundesweit einmalige Identifikator einer Marktlokation.
+        *   **MeLo-ID (Messlokations-ID)**: Eindeutige Kennung der Messstelle (falls abweichend von MaLo-ID).
+        *   **Lieferende (Auszugsdatum)**: Das Datum, zu dem die Belieferung beendet werden soll.
+        *   **Transaktionsgrund**: Ein spezifischer Code, der angibt, dass es sich um einen "Auszug" handelt (z.B. Z21).
+        *   IDs des Lieferanten und des Netzbetreibers.
+*   **Frist**: Der Lieferant sollte die Abmeldung **unverzüglich** nach Kenntnisnahme des Auszugsdatums an den Netzbetreiber senden. Die GPKE fordert hier eine zeitnahe Meldung.
+
+#### 4.3. Prüfung durch den Netzbetreiber und Reaktion
+
+*   **Aktion des NB**: Der Netzbetreiber prüft die empfangene UTILMD (A04) auf Plausibilität und Vollständigkeit.
+*   **Rückmeldung des NB an den LF**:
+    *   **Bei erfolgreicher Prüfung**: Bestätigung der Abmeldung.
+        *   **EDIFACT-Nachricht**: **UTILMD (A05)** – "Bestätigung der Abmeldung" an den Lieferanten.
+    *   **Bei Fehlern/Ablehnung**: Ablehnung der Abmeldung mit Begründung.
+        *   **EDIFACT-Nachricht**: **UTILMD (A99)** – "Ablehnung der Abmeldung" an den Lieferanten.
+*   **Frist**: Der Netzbetreiber muss innerhalb von **3 Werktagen** auf die A04-Nachricht reagieren.
+
+#### 4.4. Nachfolgeprozesse durch den Netzbetreiber
+
+*   **Aktion des NB**: Nach der Bestätigung der Abmeldung prüft der Netzbetreiber, ob für die Marktlokation eine Nachfolgebelieferung angemeldet wurde.
+    *   **Falls ein neuer Lieferant anmeldet**: Der NB koordiniert den Wechsel wie im "normalen" Lieferantenwechselprozess.
+    *   **Falls kein neuer Lieferant anmeldet**: Die Marktlokation fällt ab dem Auszugsdatum in die **Ersatzversorgung** des örtlichen Grundversorgers.
+
+#### 4.5. Messwertübermittlung zum Auszugsdatum
+
+*   **Aktion des MSB/NB**: Zum Auszugsdatum (Lieferende) wird ein finaler Zählerstand benötigt. Dieser wird vom Messstellenbetreiber (MSB) erfasst (z.B. durch tatsächliche Ablesung, Plausibilisierung einer Kundenmitteilung oder Schätzung gemäß WiM). Der MSB übermittelt diesen an den Netzbetreiber. Der NB leitet diesen Zählerstand an den Lieferanten weiter.
+*   **EDIFACT-Nachricht**: **MSCONS** – "Metered Services Consumption Report" an den Lieferanten. Die MSCONS-Nachricht dient der Übermittlung des Zählerstands zum Auszugsdatum.
+*   **Frist**: Die Messwerte müssen **zeitnah** nach dem Auszug übermittelt werden, spätestens zum **10. Werktag des Folgemonats** nach dem Lieferende.
+
+#### 4.6. Schlussrechnung des Lieferanten
+
+*   **Aktion des Lieferanten**: Basierend auf dem erhaltenen Zählerstand (via MSCONS) erstellt der Lieferant die Schlussrechnung für den ausziehenden Kunden bis zum Lieferende.
+*   **EDIFACT-Nachricht**: Für die Schlussrechnung selbst gibt es **keine spezifische EDIFACT-Nachricht**.
+
+### 5. Zusammenfassung der EDIFACT-Nachrichten im Abmeldeprozess bei Auszug
+
+| Nachricht     | Beschreibung                                               | Absender | Empfänger |
+|--------------|------------------------------------------------------------|----------|-----------|
+| UTILMD (A04) | Abmeldung zur Beendigung der Netznutzung                   | LF       | NB        |
+| UTILMD (A05) | Bestätigung der Abmeldung                                 | NB       | LF        |
+| UTILMD (A99) | Ablehnung der Abmeldung                                    | NB       | LF        |
+| MSCONS       | Übermittlung der Zählerstände                               | MSB      | NB, dann LF |
+
+### 6. Fristenübersicht
+
+| Aktion                                    | Frist                                                              |
+|--------------------------------------------|--------------------------------------------------------------------|
+| Abmeldung LF an NB (UTILMD A04)           | Unverzüglich nach Kenntnisnahme des Auszugs.                         |
+| Reaktion NB auf Abmeldung (UTILMD A05/A99) | Innerhalb von **3 Werktagen**.                                      |
+| Messwertübermittlung (MSCONS)              | Spätestens zum **10. Werktag des Folgemonats** nach dem Lieferende. |
+
+Der Abmeldeprozess bei Auszug ist somit ein klar definierter Ablauf, der durch die UTILMD-Nachrichten, die MSCONS-Nachricht, die MaLo-ID und die GPKE-Fristen gesteuert wird, um eine korrekte und transparente Beendigung der Belieferungsverantwortung des ausziehenden Kunden zu gewährleisten. Die WiM stellt die korrekte Erfassung, Plausibilisierung und Übermittlung des Zählerstands sicher.
+```

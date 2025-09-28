@@ -1,0 +1,110 @@
+---
+title: "Prozessleitfaden: Anmeldung (Lieferbeginn bei Einzug)"
+slug: "anmeldung-lieferbeginn-bei-einzug"
+shortDescription: "Kurzbeschreibung für Anmeldung (Lieferbeginn bei Einzug)."
+whitepaperSlug: "meter-to-cash-prozessatlas"
+publishedDate: "2025-09-28"
+status: "draft"
+seoTitle: "Anmeldung (Lieferbeginn bei Einzug) – Prozessleitfaden"
+seoDescription: "Kurzbeschreibung für Anmeldung (Lieferbeginn bei Einzug)."
+canonicalUrl: "https://stromhaltig.de/wissen/prozesse/anmeldung-lieferbeginn-bei-einzug"
+triggerQuestion: "Wie funktioniert der Anmeldeprozess für einen Lieferbeginn bei einem Einzug? Beschreibe die Schritte, die der Lieferant nach Beauftragung durch den Kunden durchführen muss, die Kommunikation mit dem Netzbetreiber mittels UTILMD und die gesetzlichen Grundlagen."
+followUpConcepts: ["UTILMD", "GPKE", "MaLo-ID", "MSCONS", "Ersatzversorgung"]
+---
+```markdown
+# Prozess: Anmeldung (Lieferbeginn bei Einzug)
+
+Hallo! Als Mako Willi von Stromhaltig erläutere ich Ihnen gerne den Anmeldeprozess für einen Lieferbeginn bei einem Einzug, inklusive der Schritte, Kommunikation mit dem Netzbetreiber und den gesetzlichen Grundlagen.
+
+### 1. Überblick über den Anmeldeprozess bei Einzug
+
+Wenn ein Kunde in eine neue Wohnung oder ein neues Haus einzieht und einen Stromliefervertrag mit einem Lieferanten seiner Wahl abschließt, muss dieser neue Lieferant (NLF) den Lieferbeginn beim zuständigen Netzbetreiber (NB) anmelden. Dieser Prozess ist in der deutschen Energie-Marktkommunikation klar geregelt, um eine unterbrechungsfreie Energieversorgung ab dem Einzugsdatum zu gewährleisten. Im Gegensatz zum klassischen Lieferantenwechsel gibt es hier in der Regel keinen "alten Lieferanten" im Prozess, da die Marktlokation als "unversorgt" oder in der Ersatzversorgung befindlich gilt.
+
+### 2. Gesetzliche Grundlagen
+
+Die rechtliche Basis für diesen Prozess bildet das **Energiewirtschaftsgesetz (EnWG)**. Die detaillierte Ausgestaltung der Geschäftsprozesse und des Datenaustauschs ist in der **GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität)** der Bundesnetzagentur festgelegt. Die GPKE standardisiert den Datenaustausch und die Verantwortlichkeiten der Marktpartner.
+
+### 3. Beteiligte Marktrollen
+
+*   **Endkunde (EK)**: Zieht ein, beauftragt einen Lieferanten.
+*   **Neuer Lieferant (NLF)**: Meldet den Lieferbeginn beim Netzbetreiber an und übernimmt die Belieferung.
+*   **Netzbetreiber (NB)**: Prüft die Anmeldung, bestätigt den Lieferbeginn und ist für die Netznutzung zuständig.
+*   **Messstellenbetreiber (MSB)**: Erfasst den Zählerstand zum Einzugsdatum (oft ist der NB auch der grundzuständige MSB).
+*   **Grundversorger (GV) / Ersatzversorger (EV)**: Springt ein, wenn kein Liefervertrag besteht oder die Anmeldung verzögert wird.
+
+### 4. Schritte des Anmeldeprozesses bei Einzug (aus Sicht des Neuen Lieferanten)
+
+#### 4.1. Beauftragung durch den Kunden und Datenerfassung
+
+*   **Aktion des Kunden**: Der Kunde schließt einen Stromliefervertrag mit dem neuen Lieferanten ab. Dabei teilt er dem Lieferanten wichtige Informationen mit:
+    *   Vollständige Adresse der neuen Verbrauchsstelle (Marktlokation).
+    *   Gewünschtes Einzugsdatum (dies ist der gewünschte Lieferbeginn).
+    *   Idealerweise die Zählernummer des vorhandenen Zählers.
+    *   Den Zählerstand zum Einzugsdatum (falls abgelesen).
+*   **Aktion des NLF**: Der Lieferant erfasst diese Daten intern und bereitet die elektronische Anmeldung vor.
+
+#### 4.2. Anmeldung beim Netzbetreiber (NB)
+
+*   **Aktion des NLF**: Der neue Lieferant sendet eine elektronische Anmeldung des Lieferbeginns an den zuständigen Netzbetreiber der Marktlokation.
+*   **EDIFACT-Nachricht**: **UTILMD (A11)** – "Anmeldung zum Lieferantenwechsel".
+    *   **Inhalt der A11**:
+        *   **MaLo-ID (Marktlokations-ID)**: Eindeutige Kennzeichnung der Verbrauchsstelle.  Falls dem NLF die MaLo-ID nicht bekannt ist, kann er diese über eine Adress- und/oder Zählernummernanfrage beim NB ermitteln. Die MaLo-ID ist obligatorisch.
+        *   **MeLo-ID (Messlokations-ID)**: Eindeutige Kennzeichnung der Messstelle.
+        *   **Kundendaten**: Name, Adresse, Kontaktdaten des einziehenden Kunden.
+        *   **Gewünschter Lieferbeginn**: Das Einzugsdatum des Kunden.
+        *   **Zählernummer**: Die Identifikation des Stromzählers an der Marktlokation.
+        *   **Transaktionsgrund**: Hier wird "Einzug" bzw. der entsprechende Code übermittelt.
+*   **Frist**: Bei einem Einzug ist die Einhaltung der standardmäßigen 7-Werktage-Frist für die A11-Nachricht oft nicht möglich. Die GPKE sieht in solchen Fällen vor, dass der Lieferant die Anmeldung **unverzüglich** nach Kenntnis des Einzugsdatums und der Beauftragung durch den Kunden sendet.
+
+#### 4.3. Prüfung durch den Netzbetreiber und Reaktion
+
+*   **Aktion des NB**: Der Netzbetreiber prüft die empfangene UTILMD (A11) auf Plausibilität und Vollständigkeit. Er überprüft, ob die MaLo-ID existiert, ob die Zählernummer korrekt ist und ob die Lokation zum gewünschten Lieferbeginn frei für eine Belieferung ist (d.h. nicht bereits einem anderen Lieferanten zugeordnet).
+*   **EDIFACT-Nachricht (bei erfolgreicher Prüfung)**:
+    *   **UTILMD (A13)** – "Eingangsbestätigung der Anmeldung" an den NLF. Diese Nachricht bestätigt den Empfang der Anmeldung.
+*   **EDIFACT-Nachricht (bei Fehlern/Ablehnung)**:
+    *   **UTILMD (A99)** – "Ablehnung der Anmeldung" an den NLF. Diese Nachricht enthält eine Begründung für die Ablehnung (z.B. falsche MaLo-ID, Lokation nicht frei).
+*   **Frist**: Der Netzbetreiber muss innerhalb von **1 Werktag** auf die A11-Nachricht reagieren.
+
+#### 4.4. Finale Bestätigung des Lieferbeginns
+
+*   **Aktion des NB**: Nach erfolgreicher Prüfung und sofern keine Ablehnungsgründe vorliegen, bestätigt der Netzbetreiber dem NLF den verbindlichen Lieferbeginn.
+*   **EDIFACT-Nachricht**: **UTILMD (A15)** – "Endgültige Bestätigung des Lieferbeginns" an den NLF. Diese Nachricht enthält das final bestätigte Datum, ab dem der NLF die Belieferungsverantwortung übernimmt.
+*   **Frist**: In der Regel innerhalb von **1 Werktag** nach der positiven internen Prüfung.
+
+#### 4.5. Belieferung des Kunden
+
+*   **Aktion des NLF**: Ab dem in der UTILMD A15 bestätigten Lieferbeginn übernimmt der neue Lieferant die Energiebelieferung des Kunden.
+
+#### 4.6. Übermittlung des Zählerstands
+
+*   **Aktion des MSB/NB**: Zum Lieferbeginn (Einzugsdatum) wird ein Zählerstand benötigt. Dieser wird vom Messstellenbetreiber (MSB) erfasst (z.B. durch Kundenmitteilung, Schätzung oder Ablesung) und an den Netzbetreiber übermittelt. Der NB leitet diesen Zählerstand an den NLF weiter.
+*   **EDIFACT-Nachricht**: **MSCONS** – "Metered Services Consumption Report" an den NLF.
+*   **Frist**: Die Messwerte müssen zeitnah nach dem Einzug übermittelt werden, spätestens zum **10. Werktag des Folgemonats** nach dem Lieferbeginn, um eine korrekte Abrechnung zu ermöglichen.
+
+### 5. Besonderheiten und Hinweise bei Einzug
+
+*   **Ersatzversorgung**: Wenn ein Kunde einzieht und keinen Liefervertrag abschließt oder der Prozess des Lieferbeginns nicht rechtzeitig abgeschlossen werden kann, fällt er automatisch in die **Ersatzversorgung** des örtlichen Grundversorgers. Der NLF muss daher bestrebt sein, den Prozess schnell abzuschließen. Die Ersatzversorgung dient als Sicherheitsnetz, um eine unterbrechungsfreie Versorgung zu gewährleisten.
+*   **Zählerstand**: Die Mitteilung eines initialen Zählerstands durch den Kunden zum Einzug ist wichtig, um eine korrekte Abrechnung zu gewährleisten und die Abgrenzung zur eventuellen Ersatzversorgung oder zum vorherigen Mieter/Eigentümer sicherzustellen. Der NLF sollte den Kunden hierzu anleiten.
+
+### 6. UTILMD im Detail
+
+Die UTILMD-Nachricht ist das zentrale EDIFACT-Format. Sie wird verwendet, um den Lieferbeginn bei Einzug zu initiieren und zu bestätigen. Der NLF meldet den Kunden an (A11), der NB bestätigt (A13, A15) oder lehnt ab (A99). Die Fristen sind kurz: A11 unverzüglich, A13/A99 innerhalb 1 Werktag, A15 innerhalb 1 Werktag nach Prüfung.
+
+### 7. GPKE im Detail
+
+Die GPKE ist das regulatorische Regelwerk, das die Geschäftsprozesse standardisiert. Sie definiert Aufgaben, Verantwortlichkeiten, Fristen und Nachrichtenformate. Die GPKE stellt sicher, dass der Prozess transparent, effizient und verbraucherfreundlich abläuft.
+
+### 8. MaLo-ID im Detail
+
+Die MaLo-ID ist der eindeutige Identifikator der Marktlokation. Sie ist obligatorisch in den UTILMD- und MSCONS-Nachrichten und dient der eindeutigen Zuordnung der Anmeldung und der Messwerte zur richtigen Verbrauchsstelle.
+
+### 9. MSCONS im Detail
+
+Die MSCONS-Nachricht dient der Übermittlung des Zählerstands zum Einzugsdatum. Der MSB erfasst den Zählerstand und übermittelt ihn über den NB an den NLF. Die Messwerte sollten spätestens zum 10. Werktag des Folgemonats vorliegen.
+
+### 10. Ersatzversorgung im Detail
+
+Die Ersatzversorgung greift, wenn kein Liefervertrag besteht oder die Anmeldung verzögert wird. Der NB ordnet die Marktlokation dem Grundversorger zu. Ziel ist die unterbrechungsfreie Energieversorgung.
+
+Der Anmeldeprozess bei Einzug ist somit ein klar definierter Ablauf, der durch die UTILMD-Nachrichten und die GPKE-Vristen gesteuert wird, um dem Kunden einen schnellen und reibungslosen Start der Energieversorgung in seinem neuen Zuhause zu ermöglichen.
+```
