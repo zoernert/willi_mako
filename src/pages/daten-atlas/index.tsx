@@ -35,10 +35,26 @@ type AtlasFilterState = {
   laws: string[];
 };
 
+type AtlasElementPreview = Pick<AtlasElement, 'slug' | 'edifactId' | 'elementName' | 'description'> & {
+  processes: Array<Pick<AtlasElement['processes'][number], 'slug' | 'name' | 'relevantLaws'>>;
+  messages: Array<Pick<AtlasElement['messages'][number], 'messageType'>>;
+};
+
+type AtlasProcessPreview = Pick<AtlasProcess, 'slug' | 'name' | 'summary' | 'messageTypes' | 'relevantLaws'>;
+
+type AtlasDiagramPreview = {
+  slug: string;
+  title: string;
+  description: string | null;
+  svgPath: string | null;
+  pdfPath: string | null;
+  pngPath: string | null;
+};
+
 interface DatenAtlasLandingProps {
-  atlasElements: AtlasElement[];
-  atlasProcesses: AtlasProcess[];
-  atlasDiagrams: AtlasDiagram[];
+  atlasElements: AtlasElementPreview[];
+  atlasProcesses: AtlasProcessPreview[];
+  atlasDiagrams: AtlasDiagramPreview[];
   searchItems: AtlasSearchItem[];
   processOptions: Array<{ slug: string; name: string }>;
   messageTypes: string[];
@@ -500,16 +516,45 @@ const DatenAtlasLanding = ({
 };
 
 export const getStaticProps: GetStaticProps<DatenAtlasLandingProps> = async () => {
-  let atlasElements: AtlasElement[] = [];
-  let atlasProcesses: AtlasProcess[] = [];
-  let atlasDiagrams: AtlasDiagram[] = [];
+  let atlasElements: AtlasElementPreview[] = [];
+  let atlasProcesses: AtlasProcessPreview[] = [];
+  let atlasDiagrams: AtlasDiagramPreview[] = [];
   let searchItems: AtlasSearchItem[] = [];
 
   try {
-  const data = loadAtlasData();
-  atlasElements = data.elements;
-  atlasProcesses = data.processes;
-  atlasDiagrams = data.diagrams;
+    const data = loadAtlasData();
+    atlasElements = data.elements.map((element) => ({
+      slug: element.slug,
+      edifactId: element.edifactId,
+      elementName: element.elementName,
+      description: element.description,
+      processes: element.processes.map((process) => ({
+        slug: process.slug,
+        name: process.name,
+        relevantLaws: process.relevantLaws,
+      })),
+      messages: element.messages.map((message) => ({
+        messageType: message.messageType,
+      })),
+    }));
+
+    atlasProcesses = data.processes.map((process) => ({
+      slug: process.slug,
+      name: process.name,
+      summary: process.summary,
+      messageTypes: process.messageTypes,
+      relevantLaws: process.relevantLaws,
+    }));
+
+    atlasDiagrams = data.diagrams.map((diagram) => ({
+      slug: diagram.slug,
+      title: diagram.title,
+      description: diagram.description ?? null,
+      svgPath: diagram.svgPath ?? null,
+      pdfPath: diagram.pdfPath ?? null,
+      pngPath: diagram.pngPath ?? null,
+    }));
+
     searchItems = loadAtlasSearchIndex();
   } catch (error) {
     console.warn(

@@ -25,10 +25,13 @@ import {
   createBreadcrumbStructuredData,
 } from '../../../lib/atlas/structuredData';
 
+type ProcessRelatedElement = Pick<AtlasElement, 'slug' | 'edifactId' | 'elementName'>;
+type ProcessRelatedDiagram = Pick<AtlasDiagram, 'slug' | 'title' | 'description'>;
+
 interface AtlasProcessPageProps {
   process: AtlasProcess;
-  relatedElements: AtlasElement[];
-  relatedDiagrams: AtlasDiagram[];
+  relatedElements: ProcessRelatedElement[];
+  relatedDiagrams: ProcessRelatedDiagram[];
 }
 
 const AtlasProcessPage = ({ process, relatedElements, relatedDiagrams }: AtlasProcessPageProps) => {
@@ -278,11 +281,21 @@ export const getStaticProps: GetStaticProps<AtlasProcessPageProps> = async ({ pa
 
     const relatedElements = process.elements
       .map((elementSlug) => getAtlasElementBySlug(elementSlug))
-      .filter(Boolean) as AtlasElement[];
+      .filter((element): element is AtlasElement => Boolean(element))
+      .map((element) => ({
+        slug: element.slug,
+        edifactId: element.edifactId,
+        elementName: element.elementName,
+      }));
 
     const relatedDiagrams = process.diagramIds
       .map((diagramId) => getAtlasDiagramById(diagramId))
-      .filter(Boolean) as AtlasDiagram[];
+      .filter((diagram): diagram is AtlasDiagram => Boolean(diagram))
+      .map((diagram) => ({
+        slug: diagram.slug,
+        title: diagram.title,
+        description: diagram.description,
+      }));
 
     return {
       props: {
