@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – DTM:0060
+class DTM_0060 {
+  Name: Vorgängerversion
+  Prozesse:
+    - Stammdatenänderung
+}
+class DTM_0060_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM, SG1
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+DTM_0060 --> DTM_0060_msg_1 : verwendet in
+class DTM_0060_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+DTM_0060 ..> DTM_0060_proc_1 : eingebettet in
+@enduml

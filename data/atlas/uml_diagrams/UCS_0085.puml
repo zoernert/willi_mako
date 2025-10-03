@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCS:0085
+class UCS_0085 {
+  Name: Syntax-Fehler, codiert
+}
+class UCS_0085_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: SG2:
+  Pflichtfeld: Ja
+  Codes: 13, 15, 16, 22, 35, 36, 999, OCR, SG1, SG2, UCD, UCM, UCS, UNA, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCS_0085 --> UCS_0085_msg_1 : verwendet in
+@enduml

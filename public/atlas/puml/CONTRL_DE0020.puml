@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CONTRL:DE0020
+class CONTRL_DE0020 {
+  Name: Eindeutige Referenznummer zur Identifizierung der Übertragungsdatei, auf die Bezug genommen wird.
+}
+class CONTRL_DE0020_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_DE0020 --> CONTRL_DE0020_msg_1 : verwendet in
+@enduml

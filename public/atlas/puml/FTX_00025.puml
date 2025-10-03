@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – FTX:00025
+class FTX_00025 {
+  Name: IP - Range des Absenders
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class FTX_00025_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, FTX, IP
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+FTX_00025 --> FTX_00025_msg_1 : verwendet in
+class FTX_00025_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+FTX_00025 ..> FTX_00025_proc_1 : eingebettet in
+class FTX_00025_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+FTX_00025 ..> FTX_00025_proc_2 : eingebettet in
+@enduml

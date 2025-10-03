@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCF:9308
+class UCF_9308 {
+  Name: Nachrichtenfehler-Kennzeichen
+}
+class UCF_9308_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: ein Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 13, 16, XML
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCF_9308 --> UCF_9308_msg_1 : verwendet in
+@enduml

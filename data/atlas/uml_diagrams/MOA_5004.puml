@@ -1,0 +1,71 @@
+@startuml
+title Datenatlas – MOA:5004
+class MOA_5004 {
+  Name: Geldbetrag
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class MOA_5004_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: 100, 35, 77, MOA, OCR
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+MOA_5004 --> MOA_5004_msg_1 : verwendet in
+class MOA_5004_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Bemerkung:
+  Pflichtfeld: Nein
+  Codes: 10, 115, 35, MOA, OCR
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+MOA_5004 --> MOA_5004_msg_2 : verwendet in
+class MOA_5004_msg_3 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 12, 35, MOA, Z02
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+MOA_5004 --> MOA_5004_msg_3 : verwendet in
+class MOA_5004_msg_4 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 13, 35, 999, MOA, OCR, SG5
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+MOA_5004 --> MOA_5004_msg_4 : verwendet in
+class MOA_5004_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+MOA_5004 ..> MOA_5004_proc_1 : eingebettet in
+class MOA_5004_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+MOA_5004 ..> MOA_5004_proc_2 : eingebettet in
+class MOA_5004_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+MOA_5004 ..> MOA_5004_proc_3 : eingebettet in
+class MOA_5004_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+MOA_5004 ..> MOA_5004_proc_4 : eingebettet in
+@enduml

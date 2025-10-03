@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – SG4:CUX
+class SG4_CUX {
+  Name: Währungsangaben
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class SG4_CUX_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 11, CUX, EUR, ISO, SG4
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+SG4_CUX --> SG4_CUX_msg_1 : verwendet in
+class SG4_CUX_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+SG4_CUX ..> SG4_CUX_proc_1 : eingebettet in
+@enduml

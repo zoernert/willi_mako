@@ -1,0 +1,71 @@
+@startuml
+title Datenatlas – PIA:C212
+class PIA_C212 {
+  Name: Waren-/Leistungsnummer, Identifikation
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Netznutzungsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class PIA_C212_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Beispiel einer Produktidentifikation mittels Medium:
+  Pflichtfeld: Nein
+  Codes: 27, 35, OCR, PIA, SG, SG5, SG6, SG9, SRW, Z02, Z08
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+PIA_C212 --> PIA_C212_msg_1 : verwendet in
+class PIA_C212_msg_2 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 1310   SG36   C   999999   R   999999   2   LIN - PIA - IMD - SG40
+  Pflichtfeld: Nein
+  Codes: 35, 99, IMD, LIN, OCR, PGI, PIA, Z06
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PIA_C212 --> PIA_C212_msg_2 : verwendet in
+class PIA_C212_msg_3 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 000, 200, 25, 35, OCR, PIA, Z11
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+PIA_C212 --> PIA_C212_msg_3 : verwendet in
+class PIA_C212_msg_4 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 25, 35, OCR, PIA, Z11
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+PIA_C212 --> PIA_C212_msg_4 : verwendet in
+class PIA_C212_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+PIA_C212 ..> PIA_C212_proc_1 : eingebettet in
+class PIA_C212_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PIA_C212 ..> PIA_C212_proc_2 : eingebettet in
+class PIA_C212_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PIA_C212 ..> PIA_C212_proc_3 : eingebettet in
+class PIA_C212_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+PIA_C212 ..> PIA_C212_proc_4 : eingebettet in
+@enduml

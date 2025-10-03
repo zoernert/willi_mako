@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – NAD:00008
+class NAD_00008 {
+  Name: Absender
+  Prozesse:
+    - Stammdatenänderung
+}
+class NAD_00008_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG3
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_00008 --> NAD_00008_msg_1 : verwendet in
+class NAD_00008_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_00008 ..> NAD_00008_proc_1 : eingebettet in
+@enduml

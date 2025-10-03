@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNT:0440
+class UNT_0440 {
+  Name: Nachrichten - Endesegment
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNT_0440_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: UNT
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNT_0440 --> UNT_0440_msg_1 : verwendet in
+class UNT_0440_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNT_0440 ..> UNT_0440_proc_1 : eingebettet in
+@enduml

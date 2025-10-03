@@ -1,0 +1,38 @@
+@startuml
+title Datenatlas – RFF:0060
+class RFF_0060 {
+  Name: Referenzangaben
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Stammdatenänderung
+}
+class RFF_0060_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+RFF_0060 --> RFF_0060_msg_1 : verwendet in
+class RFF_0060_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+RFF_0060 --> RFF_0060_msg_2 : verwendet in
+class RFF_0060_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+RFF_0060 ..> RFF_0060_proc_1 : eingebettet in
+class RFF_0060_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+RFF_0060 ..> RFF_0060_proc_2 : eingebettet in
+@enduml

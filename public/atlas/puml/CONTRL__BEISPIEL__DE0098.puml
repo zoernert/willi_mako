@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CONTRL (BEISPIEL):DE0098
+class CONTRL__BEISPIEL__DE0098 {
+  Name: Numerische Zählerposition des fehlerhaften Datenelements
+}
+class CONTRL__BEISPIEL__DE0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: 12, DE, UCM, UN, UNH, UNT, XYZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL__BEISPIEL__DE0098 --> CONTRL__BEISPIEL__DE0098_msg_1 : verwendet in
+@enduml

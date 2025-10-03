@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – S002:0004
+class S002_0004 {
+  Name: Absenderbezeichnung
+}
+class S002_0004_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: übermittelt wird.
+  Pflichtfeld: Ja
+  Codes: 14, 35, 500, 502, DE, GS1, ID, MP, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S002_0004 --> S002_0004_msg_1 : verwendet in
+@enduml

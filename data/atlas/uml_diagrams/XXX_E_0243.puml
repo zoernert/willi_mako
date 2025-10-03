@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – XXX:E_0243
+class XXX_E_0243 {
+  Name: EBD Nr. E_0243_Storno verarbeiten Codeliste zur Prüfung für die Antwort auf eine Stornierung (Abrechnung Messstellenbetrieb gegenüber dem LF)
+  Prozesse:
+    - Messstellenbetriebsabrechnung
+    - Netznutzungsabrechnung
+}
+class XXX_E_0243_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Messstellenbetriebsabrechnung, Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+XXX_E_0243 --> XXX_E_0243_msg_1 : verwendet in
+class XXX_E_0243_proc_1 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+XXX_E_0243 ..> XXX_E_0243_proc_1 : eingebettet in
+class XXX_E_0243_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+XXX_E_0243 ..> XXX_E_0243_proc_2 : eingebettet in
+@enduml

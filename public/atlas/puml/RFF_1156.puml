@@ -1,0 +1,45 @@
+@startuml
+title Datenatlas – RFF:1156
+class RFF_1156 {
+  Name: Zeilennummer
+  Prozesse:
+    - Stammdatenänderung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class RFF_1156_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, AGK, OCR, RFF, SG1
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+RFF_1156 --> RFF_1156_msg_1 : verwendet in
+class RFF_1156_msg_2 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, APF, OCR, RFF
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+RFF_1156 --> RFF_1156_msg_2 : verwendet in
+class RFF_1156_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+RFF_1156 ..> RFF_1156_proc_1 : eingebettet in
+class RFF_1156_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_1156 ..> RFF_1156_proc_2 : eingebettet in
+class RFF_1156_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_1156 ..> RFF_1156_proc_3 : eingebettet in
+@enduml

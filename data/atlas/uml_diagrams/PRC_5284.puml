@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PRC:5284
+class PRC_5284 {
+  Name: Nachlass-/Zuschlags-Kennzeichen
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PRC_5284_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 000, 100, 130, 15, 20, 200, 30, 31, 32, 40, 60, OCR, POG, Z21, Z22, Z23, Z24, Z25, Z28, Z29, Z30
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PRC_5284 --> PRC_5284_msg_1 : verwendet in
+class PRC_5284_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRC_5284 ..> PRC_5284_proc_1 : eingebettet in
+@enduml

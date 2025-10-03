@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – S005:0022
+class S005_0022 {
+  Name: Referenz oder Paßwort des Empfängers
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class S005_0022_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Übertragungsdatei, vergeben vom   Sender.
+  Pflichtfeld: Nein
+  Codes: 14, 35, EM, TL, VL
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+S005_0022 --> S005_0022_msg_1 : verwendet in
+class S005_0022_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+S005_0022 ..> S005_0022_proc_1 : eingebettet in
+@enduml

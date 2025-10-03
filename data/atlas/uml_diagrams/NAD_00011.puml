@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – NAD:00011
+class NAD_00011 {
+  Name: ID Empfänger
+  Prozesse:
+    - Stammdatenänderung
+}
+class NAD_00011_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG4
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+NAD_00011 --> NAD_00011_msg_1 : verwendet in
+class NAD_00011_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_00011 --> NAD_00011_msg_2 : verwendet in
+class NAD_00011_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_00011 ..> NAD_00011_proc_1 : eingebettet in
+@enduml

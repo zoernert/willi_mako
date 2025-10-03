@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – CTA:0300
+class CTA_0300 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Stammdatenänderung
+}
+class CTA_0300_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CTA_0300 --> CTA_0300_msg_1 : verwendet in
+class CTA_0300_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CTA_0300 ..> CTA_0300_proc_1 : eingebettet in
+@enduml

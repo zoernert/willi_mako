@@ -1,0 +1,55 @@
+@startuml
+title Datenatlas – RFF:0100
+class RFF_0100 {
+  Name: Prüfidentifikator
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class RFF_0100_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG2
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+RFF_0100 --> RFF_0100_msg_1 : verwendet in
+class RFF_0100_msg_2 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, ID, MP, RFF, SG3
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+RFF_0100 --> RFF_0100_msg_2 : verwendet in
+class RFF_0100_msg_3 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+RFF_0100 --> RFF_0100_msg_3 : verwendet in
+class RFF_0100_msg_4 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+RFF_0100 --> RFF_0100_msg_4 : verwendet in
+class RFF_0100_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_0100 ..> RFF_0100_proc_1 : eingebettet in
+class RFF_0100_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_0100 ..> RFF_0100_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – IMD:7083
+class IMD_7083 {
+  Name: Produktbeschreibung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class IMD_7083_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: abgerechnet.
+  Pflichtfeld: Ja
+  Codes: ESA, IMD, JVR, KON, LF, MMM, NB, Z06
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IMD_7083 --> IMD_7083_msg_1 : verwendet in
+class IMD_7083_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IMD_7083 ..> IMD_7083_proc_1 : eingebettet in
+class IMD_7083_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IMD_7083 ..> IMD_7083_proc_2 : eingebettet in
+@enduml

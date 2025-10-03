@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNT:00012
+class UNT_00012 {
+  Name: Nachrichten - Endesegment
+}
+class UNT_00012_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 07, 18, 26, UN, UNT
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+UNT_00012 --> UNT_00012_msg_1 : verwendet in
+@enduml

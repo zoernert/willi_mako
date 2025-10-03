@@ -1,0 +1,16 @@
+@startuml
+title Datenatlas – CONTRL:20
+class CONTRL_20 {
+  Name: Zeichen ungültig als Service - Zeichen
+Mitteilung, dass ein im UNA angezeigtes
+Zeichen als   Service - Zeichen ungültig ist.
+}
+class CONTRL_20_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Zeichen als   Service - Zeichen ungültig ist.
+  Pflichtfeld: Ja
+  Codes: 20, 21, MIG, UNA, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_20 --> CONTRL_20_msg_1 : verwendet in
+@enduml

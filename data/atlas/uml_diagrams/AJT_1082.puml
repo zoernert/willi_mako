@@ -1,0 +1,46 @@
+@startuml
+title Datenatlas – AJT:1082
+class AJT_1082 {
+  Name: Positionsnummer
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class AJT_1082_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: AJT, EBD, OCR, SG2
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+AJT_1082 --> AJT_1082_msg_1 : verwendet in
+class AJT_1082_msg_2 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 100, 17, AJT, EBD, OCR, SG5, SG7
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+AJT_1082 --> AJT_1082_msg_2 : verwendet in
+class AJT_1082_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+AJT_1082 ..> AJT_1082_proc_1 : eingebettet in
+class AJT_1082_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+AJT_1082 ..> AJT_1082_proc_2 : eingebettet in
+class AJT_1082_proc_3 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+AJT_1082 ..> AJT_1082_proc_3 : eingebettet in
+@enduml

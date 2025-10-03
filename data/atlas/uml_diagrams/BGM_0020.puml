@@ -1,0 +1,154 @@
+@startuml
+title Datenatlas – BGM:0020
+class BGM_0020 {
+  Name: Beginn der Nachricht
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class BGM_0020_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_1 : verwendet in
+class BGM_0020_msg_2 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_2 : verwendet in
+class BGM_0020_msg_3 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+BGM_0020 --> BGM_0020_msg_3 : verwendet in
+class BGM_0020_msg_4 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+BGM_0020 --> BGM_0020_msg_4 : verwendet in
+class BGM_0020_msg_5 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_5 : verwendet in
+class BGM_0020_msg_6 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_0020 --> BGM_0020_msg_6 : verwendet in
+class BGM_0020_msg_7 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+BGM_0020 --> BGM_0020_msg_7 : verwendet in
+class BGM_0020_msg_8 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_8 : verwendet in
+class BGM_0020_msg_9 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+BGM_0020 --> BGM_0020_msg_9 : verwendet in
+class BGM_0020_msg_10 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM, UNA, UNB
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_10 : verwendet in
+class BGM_0020_msg_11 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+BGM_0020 --> BGM_0020_msg_11 : verwendet in
+class BGM_0020_msg_12 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: BGM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+BGM_0020 --> BGM_0020_msg_12 : verwendet in
+class BGM_0020_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_0020 ..> BGM_0020_proc_1 : eingebettet in
+class BGM_0020_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_0020 ..> BGM_0020_proc_2 : eingebettet in
+class BGM_0020_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_0020 ..> BGM_0020_proc_3 : eingebettet in
+class BGM_0020_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+BGM_0020 ..> BGM_0020_proc_4 : eingebettet in
+class BGM_0020_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+BGM_0020 ..> BGM_0020_proc_5 : eingebettet in
+class BGM_0020_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+BGM_0020 ..> BGM_0020_proc_6 : eingebettet in
+@enduml

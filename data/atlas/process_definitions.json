@@ -1,0 +1,74 @@
+[
+  {
+    "process_name": "Lieferantenwechsel",
+    "trigger_question": "Beschreibe den vollständigen Prozess des Lieferantenwechsels in der deutschen Energie-Marktkommunikation gemäß GPKE. Erläutere den gesamten Ablauf von der Kündigung beim alten Lieferanten über die Anmeldung durch den neuen Lieferanten bis zur Bestätigung durch den Netzbetreiber, inklusive aller beteiligten Marktrollen, Fristen und der ausgetauschten EDIFACT-Nachrichten.",
+    "search_keywords": ["Lieferantenwechsel", "LF-Wechsel", "Lieferantenwechselprozess", "GPKE", "Anmeldung Lieferant", "Abmeldung Lieferant"],
+    "relevant_laws": ["StromNZV", "EnWG"]
+  },
+  {
+    "process_name": "Anmeldung (Lieferbeginn bei Einzug)",
+    "trigger_question": "Wie funktioniert der Anmeldeprozess für einen Lieferbeginn bei einem Einzug? Beschreibe die Schritte, die der Lieferant nach Beauftragung durch den Kunden durchführen muss, die Kommunikation mit dem Netzbetreiber mittels UTILMD und die gesetzlichen Grundlagen.",
+    "search_keywords": ["Anmeldung Lieferbeginn", "Einzug", "Neuanmeldung", "GPKE"],
+    "relevant_laws": ["StromGVV", "StromNZV"]
+  },
+  {
+    "process_name": "Abmeldung (Lieferende bei Auszug)",
+    "trigger_question": "Beschreibe den Abmeldeprozess bei einem Auszug eines Kunden. Welche Schritte muss der Lieferant einleiten, um die Belieferung an einer Marktlokation zu beenden, und wie wird dies dem Netzbetreiber per Marktnachricht mitgeteilt?",
+    "search_keywords": ["Abmeldung Lieferende", "Auszug", "Kündigung", "GPKE"],
+    "relevant_laws": ["StromGVV", "StromNZV"]
+  },
+  {
+    "process_name": "Zählerwechsel und Geräteübernahme (WiM)",
+    "trigger_question": "Erläutere den Geschäftsprozess 'Zählerwechsel' bzw. 'Geräteübernahme' im Rahmen der Wechselprozesse im Messwesen (WiM). Welche Marktrollen (alter MSB, neuer MSB, Netzbetreiber) sind beteiligt, welche Angebote (QUOTES) und Bestellungen (ORDERS) werden ausgetauscht und welche gesetzlichen Regelungen aus dem MsbG sind zu beachten?",
+    "search_keywords": ["Zählerwechsel", "Geräteübernahme", "Messstellenbetreiberwechsel", "MSB-Wechsel", "WiM"],
+    "relevant_laws": ["MsbG"]
+  },
+  {
+    "process_name": "Stammdatenänderung",
+    "trigger_question": "Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B. eine Namens- oder Adressänderung des Kunden, in der Marktkommunikation abgewickelt? Beschreibe den Prozess und die Verwendung der UTILMD-Nachricht zur Übermittlung der geänderten Daten.",
+    "search_keywords": ["Stammdatenänderung", "Änderung der Stammdaten", "UTILMD Stammdaten"],
+    "relevant_laws": []
+  },
+  {
+    "process_name": "Sperrung und Entsperrung eines Anschlusses",
+    "trigger_question": "Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses. Erläutere den Ablauf vom Sperrauftrag (ORDERS) des Lieferanten an den Netzbetreiber bis zur Rückmeldung über die Durchführung und den anschließenden Entsperrprozess.",
+    "search_keywords": ["Sperrung", "Entsperrung", "Unterbrechung der Anschlussnutzung", "Sperrauftrag", "ORDERS"],
+    "relevant_laws": ["StromGVV"]
+  },
+  {
+    "process_name": "Stilllegung eines Netzanschlusses",
+    "trigger_question": "Was sind die prozessualen Schritte zur vollständigen Stilllegung eines Netzanschlusses? Unterscheide dabei zwischen der Beendigung des Netznutzungsvertrags und dem physischen Rückbau des Anschlusses.",
+    "search_keywords": ["Stilllegung", "Netzanschluss stilllegen", "Anschluss entfernen"],
+    "relevant_laws": ["NAV"]
+  },
+  {
+    "process_name": "Grund- und Ersatzversorgung",
+    "trigger_question": "Definiere den Unterschied zwischen Grundversorgung und Ersatzversorgung. Beschreibe den Prozess, wie ein Kunde in die Ersatzversorgung fällt und wie die Anmeldung in der Grundversorgung durch den Grundversorger abläuft.",
+    "search_keywords": ["Grundversorgung", "Ersatzversorgung", "Grundversorger", "Notversorgung"],
+    "relevant_laws": ["StromGVV", "EnWG"]
+  },
+  {
+    "process_name": "Netznutzungsabrechnung",
+    "trigger_question": "Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant? Erkläre den Prozess von der Übermittlung der Preisblätter (PRICAT) bis zur eigentlichen Rechnungsstellung (INVOIC) und den Umgang mit Reklamationen.",
+    "search_keywords": ["Netznutzungsabrechnung", "Netzentgelte", "INVOIC", "PRICAT"],
+    "relevant_laws": ["StromNEV", "StromNZV"]
+  },
+  {
+    "process_name": "Messstellenbetriebsabrechnung",
+    "trigger_question": "Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen. Wie stellt der Messstellenbetreiber (MSB) seine Dienstleistungen dem Lieferanten oder Netzbetreiber in Rechnung und welche Regelungen aus dem Messstellenbetriebsgesetz (MsbG) sind dabei relevant?",
+    "search_keywords": ["Messstellenbetriebsabrechnung", "Messstellenbetrieb", "Entgelte MSB", "WiM"],
+    "relevant_laws": ["MsbG"]
+  },
+  {
+    "process_name": "Anforderung und Übermittlung von Messwerten",
+    "trigger_question": "Wie kann ein Marktpartner (z.B. Lieferant) Messwerte wie Lastgänge oder Zählerstände von einem Messstellenbetreiber anfordern und wie werden diese übermittelt? Erkläre die Rollen von ORDERS und MSCONS in diesem Prozess.",
+    "search_keywords": ["Anforderung von Messwerten", "Lastgangdaten", "Zählerstände", "MSCONS", "ORDERS"],
+    "relevant_laws": ["MsbG"]
+  },
+  {
+    "process_name": "Bestellung einer technischen Konfiguration (MSB)",
+    "trigger_question": "Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem. Welche Schritte sind von der Angebotsanfrage (REQOTE) über das Angebot (QUOTES) bis zur Bestellung (ORDERS) notwendig?",
+    "search_keywords": ["Bestellung Konfiguration", "technische Konfiguration", "ORDERS", "QUOTES", "WiM"],
+    "relevant_laws": ["MsbG", "EnWG"]
+  }
+]

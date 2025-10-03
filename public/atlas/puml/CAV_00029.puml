@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – CAV:00029
+class CAV_00029 {
+  Name: Zähleinrichtung/Zählergröße (Gas)
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class CAV_00029_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 06, 10, 19, 87, CAV, UN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+CAV_00029 --> CAV_00029_msg_1 : verwendet in
+class CAV_00029_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CAV_00029 ..> CAV_00029_proc_1 : eingebettet in
+class CAV_00029_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CAV_00029 ..> CAV_00029_proc_2 : eingebettet in
+@enduml

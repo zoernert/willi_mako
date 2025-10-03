@@ -1,0 +1,46 @@
+@startuml
+title Datenatlas – DTM:00004
+class DTM_00004 {
+  Name: Datum zum geplanten Leistungsbeginn
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class DTM_00004_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+DTM_00004 --> DTM_00004_msg_1 : verwendet in
+class DTM_00004_msg_2 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+DTM_00004 --> DTM_00004_msg_2 : verwendet in
+class DTM_00004_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00004 ..> DTM_00004_proc_1 : eingebettet in
+class DTM_00004_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+DTM_00004 ..> DTM_00004_proc_2 : eingebettet in
+class DTM_00004_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+DTM_00004 ..> DTM_00004_proc_3 : eingebettet in
+@enduml

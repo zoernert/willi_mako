@@ -1,0 +1,46 @@
+@startuml
+title Datenatlas – UNH:0031
+class UNH_0031 {
+  Name: Testindikator
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNH_0031_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Nachricht Syntax -   und Servicebericht ist CONTRL.
+  Pflichtfeld: Ja
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNH_0031 --> UNH_0031_msg_1 : verwendet in
+class UNH_0031_msg_2 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+UNH_0031 --> UNH_0031_msg_2 : verwendet in
+class UNH_0031_msg_3 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNH_0031 --> UNH_0031_msg_3 : verwendet in
+class UNH_0031_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0031 ..> UNH_0031_proc_1 : eingebettet in
+class UNH_0031_proc_2 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNH_0031 ..> UNH_0031_proc_2 : eingebettet in
+@enduml

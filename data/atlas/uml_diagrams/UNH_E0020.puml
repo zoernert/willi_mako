@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – UNH:E0020
+class UNH_E0020 {
+  Name: Message reference number
+  Prozesse:
+    - Stammdatenänderung
+}
+class UNH_E0020_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 01, 10, 67, UN, UNH
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+UNH_E0020 --> UNH_E0020_msg_1 : verwendet in
+class UNH_E0020_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+UNH_E0020 ..> UNH_E0020_proc_1 : eingebettet in
+@enduml

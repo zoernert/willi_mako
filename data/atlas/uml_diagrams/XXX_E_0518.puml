@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – XXX:E_0518
+class XXX_E_0518 {
+  Name: EBD Nr. E_0518 zur Prüfung für die Antwort auf eine Stornierung (Abrechnung Preisblatts A des MSB zwischen MSB und NB)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class XXX_E_0518_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+XXX_E_0518 --> XXX_E_0518_msg_1 : verwendet in
+class XXX_E_0518_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+XXX_E_0518 ..> XXX_E_0518_proc_1 : eingebettet in
+@enduml

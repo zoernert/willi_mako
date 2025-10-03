@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:29001
+class RFF_29001 {
+  Name: Bezeichner
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_29001_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 20, 22, 24, RFF, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+RFF_29001 --> RFF_29001_msg_1 : verwendet in
+class RFF_29001_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_29001 ..> RFF_29001_proc_1 : eingebettet in
+@enduml

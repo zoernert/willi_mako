@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNS:00038
+class UNS_00038 {
+  Name: Abschnitts - Kontrollsegment
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class UNS_00038_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: UNS
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+UNS_00038 --> UNS_00038_msg_1 : verwendet in
+class UNS_00038_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+UNS_00038 ..> UNS_00038_proc_1 : eingebettet in
+@enduml

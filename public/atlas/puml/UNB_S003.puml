@@ -1,0 +1,31 @@
+@startuml
+title Datenatlas – UNB:S003
+class UNB_S003 {
+  Name: Empfänger der Übertragungsdatei
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNB_S003_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: bei Empfänger nicht bekannt).
+  Pflichtfeld: Ja
+  Codes: 23, 25, ID, MP
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNB_S003 --> UNB_S003_msg_1 : verwendet in
+class UNB_S003_msg_2 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, 35, 500, 502, DE, ECE, GS1, ID, MP, UN, UNB
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNB_S003 --> UNB_S003_msg_2 : verwendet in
+class UNB_S003_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNB_S003 ..> UNB_S003_proc_1 : eingebettet in
+@enduml

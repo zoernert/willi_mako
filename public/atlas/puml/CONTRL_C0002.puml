@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CONTRL:C0002
+class CONTRL_C0002 {
+  Name: UCI Datenaustauschreferenz
+}
+class CONTRL_C0002_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, MIG, UCI
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_C0002 --> CONTRL_C0002_msg_1 : verwendet in
+@enduml

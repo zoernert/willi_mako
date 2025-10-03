@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNT:0080
+class UNT_0080 {
+  Name: Anzahl der Segmente im Datenaustausch
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class UNT_0080_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 06, 19, 22, UN, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+UNT_0080 --> UNT_0080_msg_1 : verwendet in
+class UNT_0080_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNT_0080 ..> UNT_0080_proc_1 : eingebettet in
+@enduml

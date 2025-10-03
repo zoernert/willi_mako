@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCI:E9998
+class UCI_E9998 {
+  Name: 4
+}
+class UCI_E9998_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 14, 17, 26, UCI, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_E9998 --> UCI_E9998_msg_1 : verwendet in
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – S011:0104
+class S011_0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class S011_0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: 38, 39, 40, EDI
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S011_0104 --> S011_0104_msg_1 : verwendet in
+@enduml

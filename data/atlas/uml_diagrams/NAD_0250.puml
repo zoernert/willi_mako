@@ -1,0 +1,38 @@
+@startuml
+title Datenatlas – NAD:0250
+class NAD_0250 {
+  Name: Kontaktinformationen
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class NAD_0250_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG6
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+NAD_0250 --> NAD_0250_msg_1 : verwendet in
+class NAD_0250_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG1, SG6
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+NAD_0250 --> NAD_0250_msg_2 : verwendet in
+class NAD_0250_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+NAD_0250 ..> NAD_0250_proc_1 : eingebettet in
+class NAD_0250_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+NAD_0250 ..> NAD_0250_proc_2 : eingebettet in
+@enduml

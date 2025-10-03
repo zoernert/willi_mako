@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:0003
+class UNH_0003 {
+  Name: Nachrichtenstrukturkennung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class UNH_0003_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 26, 34, UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+UNH_0003 --> UNH_0003_msg_1 : verwendet in
+class UNH_0003_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0003 ..> UNH_0003_proc_1 : eingebettet in
+@enduml

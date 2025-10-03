@@ -1,0 +1,45 @@
+@startuml
+title Datenatlas – COM:0530
+class COM_0530 {
+  Name: Verwendungszweck
+  Prozesse:
+    - Stammdatenänderung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class COM_0530_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CAV, SG4
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+COM_0530 --> COM_0530_msg_1 : verwendet in
+class COM_0530_msg_2 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, EDI, ID, MP, SG
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+COM_0530 --> COM_0530_msg_2 : verwendet in
+class COM_0530_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+COM_0530 ..> COM_0530_proc_1 : eingebettet in
+class COM_0530_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+COM_0530 ..> COM_0530_proc_2 : eingebettet in
+class COM_0530_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+COM_0530 ..> COM_0530_proc_3 : eingebettet in
+@enduml

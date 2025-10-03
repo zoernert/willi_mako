@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – QTY:00035
+class QTY_00035 {
+  Name: energetische Mengenangaben
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class QTY_00035_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: QTY
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+QTY_00035 --> QTY_00035_msg_1 : verwendet in
+class QTY_00035_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: QTY
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+QTY_00035 --> QTY_00035_msg_2 : verwendet in
+class QTY_00035_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+QTY_00035 ..> QTY_00035_proc_1 : eingebettet in
+class QTY_00035_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+QTY_00035 ..> QTY_00035_proc_2 : eingebettet in
+@enduml

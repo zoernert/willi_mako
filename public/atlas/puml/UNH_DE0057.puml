@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNH:DE0057
+class UNH_DE0057 {
+  Name: Nachrichtenversionsnummer
+}
+class UNH_DE0057_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 31, UN, UNH
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+UNH_DE0057 --> UNH_DE0057_msg_1 : verwendet in
+@enduml

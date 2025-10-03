@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – RFF:19001
+class RFF_19001 {
+  Name: Referenznummer
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class RFF_19001_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: OCR, RFF, Z13
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+RFF_19001 --> RFF_19001_msg_1 : verwendet in
+class RFF_19001_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_19001 ..> RFF_19001_proc_1 : eingebettet in
+class RFF_19001_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_19001 ..> RFF_19001_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title Datenatlas – DTM:0004
+class DTM_0004 {
+  Name: Nachrichtendatum
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class DTM_0004_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+DTM_0004 --> DTM_0004_msg_1 : verwendet in
+class DTM_0004_msg_2 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+DTM_0004 --> DTM_0004_msg_2 : verwendet in
+class DTM_0004_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+DTM_0004 ..> DTM_0004_proc_1 : eingebettet in
+class DTM_0004_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+DTM_0004 ..> DTM_0004_proc_2 : eingebettet in
+class DTM_0004_proc_3 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_0004 ..> DTM_0004_proc_3 : eingebettet in
+@enduml

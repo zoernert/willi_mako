@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – GEI:9649
+class GEI_9649 {
+  Name: Verarbeitungsinformation, Qualifier
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class GEI_9649_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 10, 18, 19, GEI, OCR, Z01, Z02, Z03, Z04, Z05, Z06, Z07, Z08, Z09
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+GEI_9649 --> GEI_9649_msg_1 : verwendet in
+class GEI_9649_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 10, 18, 19, GEI, OCR, Z01, Z02, Z03, Z04, Z05, Z06, Z07, Z08, Z09
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+GEI_9649 --> GEI_9649_msg_2 : verwendet in
+class GEI_9649_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+GEI_9649 ..> GEI_9649_proc_1 : eingebettet in
+class GEI_9649_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+GEI_9649 ..> GEI_9649_proc_2 : eingebettet in
+@enduml

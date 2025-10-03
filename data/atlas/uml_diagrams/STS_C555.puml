@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – STS:C555
+class STS_C555 {
+  Name: Status
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class STS_C555_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   999   R   999   2   LIN - DTM - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 21, 99, 999, DTM, FTX, LIN, OCR, SG3, SG7, SG8, STS, Z29, ZB8
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+STS_C555 --> STS_C555_msg_1 : verwendet in
+class STS_C555_msg_2 {
+  Nachricht: MSCONS 2.4c
+  Kontext: durch Interpolation.
+  Pflichtfeld: Nein
+  Codes: OCR, SG, SG5, SG6, SG9, STS, Z32, Z88, Z89, Z90, Z91, Z92, Z93, Z94, Z95, ZJ2
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+STS_C555 --> STS_C555_msg_2 : verwendet in
+class STS_C555_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+STS_C555 ..> STS_C555_proc_1 : eingebettet in
+class STS_C555_proc_2 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+STS_C555 ..> STS_C555_proc_2 : eingebettet in
+@enduml

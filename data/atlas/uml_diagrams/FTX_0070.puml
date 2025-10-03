@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – FTX:0070
+class FTX_0070 {
+  Name: Meldeinformationen
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class FTX_0070_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, FTX
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+FTX_0070 --> FTX_0070_msg_1 : verwendet in
+class FTX_0070_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+FTX_0070 ..> FTX_0070_proc_1 : eingebettet in
+class FTX_0070_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+FTX_0070 ..> FTX_0070_proc_2 : eingebettet in
+@enduml

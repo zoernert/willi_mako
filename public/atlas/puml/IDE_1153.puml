@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – IDE:1153
+class IDE_1153 {
+  Name: Nachrichten Kennzeichen
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class IDE_1153_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: mittels Interpolation gebildet.
+  Pflichtfeld: Ja
+  Codes: ZQ8, ZQ9, ZR0, ZS0
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+IDE_1153 --> IDE_1153_msg_1 : verwendet in
+class IDE_1153_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+IDE_1153 ..> IDE_1153_proc_1 : eingebettet in
+@enduml

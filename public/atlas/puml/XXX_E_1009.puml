@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – XXX:E_1009
+class XXX_E_1009 {
+  Name: EBD Nr. E_1009_erneut Rechnung einer sonstigen Leistung prüfen. Dies kann für die Rechnung zur Beauftragung der Unterbrechung der Anschlussnutzung (Sperren) oder die Rechnung zu Verzugskosten beinhalten (Gas).
+  Prozesse:
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class XXX_E_1009_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Sperrung und Entsperrung eines Anschlusses, Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+XXX_E_1009 --> XXX_E_1009_msg_1 : verwendet in
+class XXX_E_1009_proc_1 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+XXX_E_1009 ..> XXX_E_1009_proc_1 : eingebettet in
+class XXX_E_1009_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+XXX_E_1009 ..> XXX_E_1009_proc_2 : eingebettet in
+@enduml

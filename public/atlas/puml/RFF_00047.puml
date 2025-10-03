@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – RFF:00047
+class RFF_00047 {
+  Name: Gerätenummer
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class RFF_00047_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, RFF
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+RFF_00047 --> RFF_00047_msg_1 : verwendet in
+class RFF_00047_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_00047 ..> RFF_00047_proc_1 : eingebettet in
+class RFF_00047_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_00047 ..> RFF_00047_proc_2 : eingebettet in
+@enduml

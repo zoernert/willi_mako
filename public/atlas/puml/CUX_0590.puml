@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CUX:0590
+class CUX_0590 {
+  Name: SG17
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class CUX_0590_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 0590   SG17   C   D   1000   1   1   PGI - SG36
+  Pflichtfeld: Ja
+  Codes: CUX, PGI
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+CUX_0590 --> CUX_0590_msg_1 : verwendet in
+class CUX_0590_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CUX_0590 ..> CUX_0590_proc_1 : eingebettet in
+@enduml

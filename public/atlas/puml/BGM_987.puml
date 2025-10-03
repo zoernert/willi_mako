@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – BGM:987
+class BGM_987 {
+  Name: Funktion
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Netznutzungsabrechnung
+}
+class BGM_987_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 24, 52, UN
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+BGM_987 --> BGM_987_msg_1 : verwendet in
+class BGM_987_msg_2 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, ABC, UN, XYZ
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+BGM_987 --> BGM_987_msg_2 : verwendet in
+class BGM_987_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_987 ..> BGM_987_proc_1 : eingebettet in
+class BGM_987_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_987 ..> BGM_987_proc_2 : eingebettet in
+@enduml

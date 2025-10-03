@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – CUX:00031
+class CUX_00031 {
+  Name: Fälligkeitsdatum
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class CUX_00031_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, CUX, SG8
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+CUX_00031 --> CUX_00031_msg_1 : verwendet in
+class CUX_00031_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CUX_00031 ..> CUX_00031_proc_1 : eingebettet in
+class CUX_00031_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+CUX_00031 ..> CUX_00031_proc_2 : eingebettet in
+@enduml

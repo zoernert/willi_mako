@@ -1,0 +1,146 @@
+@startuml
+title Datenatlas – NAD:3055
+class NAD_3055 {
+  Name: Code des Verantwortlichen
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class NAD_3055_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, MP, MS, NAD, OCR, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+NAD_3055 --> NAD_3055_msg_1 : verwendet in
+class NAD_3055_msg_2 {
+  Nachricht: INSRPT 1.1a
+  Kontext: DE3055:
+  Pflichtfeld: Ja
+  Codes: ID, MP
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+NAD_3055 --> NAD_3055_msg_2 : verwendet in
+class NAD_3055_msg_3 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, ISO, MP, MS, NAD, OCR, SG2, UN, Z01, Z02
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+NAD_3055 --> NAD_3055_msg_3 : verwendet in
+class NAD_3055_msg_4 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, ISO, MP, MR, NAD, OCR, SG2, Z01, Z02
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+NAD_3055 --> NAD_3055_msg_4 : verwendet in
+class NAD_3055_msg_5 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, MP, MR, NAD, OCR, SG2
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+NAD_3055 --> NAD_3055_msg_5 : verwendet in
+class NAD_3055_msg_6 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, MP, MR, NAD, OCR, SG3
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+NAD_3055 --> NAD_3055_msg_6 : verwendet in
+class NAD_3055_msg_7 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, MP, MS, NAD, SG3
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+NAD_3055 --> NAD_3055_msg_7 : verwendet in
+class NAD_3055_msg_8 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 293, 35, DE, GS1, ID, MP, MS, NAD, OCR, SG2
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_3055 --> NAD_3055_msg_8 : verwendet in
+class NAD_3055_msg_9 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 999, DE, GS1, ID, MP, NAD, OCR, VY
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+NAD_3055 --> NAD_3055_msg_9 : verwendet in
+class NAD_3055_msg_10 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, MP, MR, NAD, OCR, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+NAD_3055 --> NAD_3055_msg_10 : verwendet in
+class NAD_3055_msg_11 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 35, 99, DDM, DE, EDI, GS1, ID, MP, NAD, NB, OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+NAD_3055 --> NAD_3055_msg_11 : verwendet in
+class NAD_3055_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_3055 ..> NAD_3055_proc_1 : eingebettet in
+class NAD_3055_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+NAD_3055 ..> NAD_3055_proc_2 : eingebettet in
+class NAD_3055_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+NAD_3055 ..> NAD_3055_proc_3 : eingebettet in
+class NAD_3055_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+NAD_3055 ..> NAD_3055_proc_4 : eingebettet in
+class NAD_3055_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+NAD_3055 ..> NAD_3055_proc_5 : eingebettet in
+class NAD_3055_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_3055 ..> NAD_3055_proc_6 : eingebettet in
+@enduml

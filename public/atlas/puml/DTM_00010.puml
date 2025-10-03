@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – DTM:00010
+class DTM_00010 {
+  Name: vorläufiger Abrechnungszeitraum Ende
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class DTM_00010_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+DTM_00010 --> DTM_00010_msg_1 : verwendet in
+class DTM_00010_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+DTM_00010 --> DTM_00010_msg_2 : verwendet in
+class DTM_00010_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00010 ..> DTM_00010_proc_1 : eingebettet in
+class DTM_00010_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+DTM_00010 ..> DTM_00010_proc_2 : eingebettet in
+@enduml

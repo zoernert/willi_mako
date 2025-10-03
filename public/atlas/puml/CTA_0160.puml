@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CTA:0160
+class CTA_0160 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class CTA_0160_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 0150   SG4   C   O   5   1   2   CTA - COM
+  Pflichtfeld: Ja
+  Codes: CTA, ID
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+CTA_0160 --> CTA_0160_msg_1 : verwendet in
+class CTA_0160_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CTA_0160 ..> CTA_0160_proc_1 : eingebettet in
+@enduml

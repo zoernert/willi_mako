@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – FTX:00013
+class FTX_00013 {
+  Name: Begründung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class FTX_00013_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: FTX
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+FTX_00013 --> FTX_00013_msg_1 : verwendet in
+class FTX_00013_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+FTX_00013 ..> FTX_00013_proc_1 : eingebettet in
+@enduml

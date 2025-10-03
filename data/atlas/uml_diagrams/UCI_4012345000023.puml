@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCI:4012345000023
+class UCI_4012345000023 {
+  Name: 14
+}
+class UCI_4012345000023_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 14, 17, 26, UCI, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_4012345000023 --> UCI_4012345000023_msg_1 : verwendet in
+@enduml

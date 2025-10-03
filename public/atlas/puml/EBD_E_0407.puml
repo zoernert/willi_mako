@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – EBD:E_0407
+class EBD_E_0407 {
+  Name: EBD Nr. E_0407 EBD zur erneuten Prüfung der Netznutzungsrechnung nach Erhalt der COMDIS
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class EBD_E_0407_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+EBD_E_0407 --> EBD_E_0407_msg_1 : verwendet in
+class EBD_E_0407_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+EBD_E_0407 ..> EBD_E_0407_proc_1 : eingebettet in
+@enduml

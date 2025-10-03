@@ -1,0 +1,154 @@
+@startuml
+title Datenatlas – UNT:0074
+class UNT_0074 {
+  Name: Anzahl der Segmente in einer Nachricht
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class UNT_0074_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Referenznummer angibt.
+  Pflichtfeld: Ja
+  Codes: 14, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNT_0074 --> UNT_0074_msg_1 : verwendet in
+class UNT_0074_msg_2 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 14, 26, OCR, UN, UNH, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+UNT_0074 --> UNT_0074_msg_2 : verwendet in
+class UNT_0074_msg_3 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, UNH, UNT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNT_0074 --> UNT_0074_msg_3 : verwendet in
+class UNT_0074_msg_4 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, UNH, UNT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+UNT_0074 --> UNT_0074_msg_4 : verwendet in
+class UNT_0074_msg_5 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachricht  angegeben.
+  Pflichtfeld: Ja
+  Codes: 14, UNH, UNT
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNT_0074 --> UNT_0074_msg_5 : verwendet in
+class UNT_0074_msg_6 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 12, 14, OCR, UNH, UNT
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+UNT_0074 --> UNT_0074_msg_6 : verwendet in
+class UNT_0074_msg_7 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+UNT_0074 --> UNT_0074_msg_7 : verwendet in
+class UNT_0074_msg_8 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+UNT_0074 --> UNT_0074_msg_8 : verwendet in
+class UNT_0074_msg_9 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+UNT_0074 --> UNT_0074_msg_9 : verwendet in
+class UNT_0074_msg_10 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+UNT_0074 --> UNT_0074_msg_10 : verwendet in
+class UNT_0074_msg_11 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+UNT_0074 --> UNT_0074_msg_11 : verwendet in
+class UNT_0074_msg_12 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachricht  angegeben.
+  Pflichtfeld: Ja
+  Codes: 14, OCR, UNH, UNT
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+UNT_0074 --> UNT_0074_msg_12 : verwendet in
+class UNT_0074_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNT_0074 ..> UNT_0074_proc_1 : eingebettet in
+class UNT_0074_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNT_0074 ..> UNT_0074_proc_2 : eingebettet in
+class UNT_0074_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNT_0074 ..> UNT_0074_proc_3 : eingebettet in
+class UNT_0074_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+UNT_0074 ..> UNT_0074_proc_4 : eingebettet in
+class UNT_0074_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+UNT_0074 ..> UNT_0074_proc_5 : eingebettet in
+class UNT_0074_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+UNT_0074 ..> UNT_0074_proc_6 : eingebettet in
+@enduml

@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – COM:00017
+class COM_00017 {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class COM_00017_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, ID, MP, SG3
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+COM_00017 --> COM_00017_msg_1 : verwendet in
+class COM_00017_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+COM_00017 ..> COM_00017_proc_1 : eingebettet in
+class COM_00017_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+COM_00017 ..> COM_00017_proc_2 : eingebettet in
+@enduml

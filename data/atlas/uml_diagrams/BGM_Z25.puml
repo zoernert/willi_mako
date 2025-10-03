@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – BGM:Z25
+class BGM_Z25 {
+  Name: Storno für selbst ausgestellte Rechnung (Gutschrift im Gutschriftsverfahren)
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class BGM_Z25_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: ausgestellte Rechnung   -   zu verwenden.
+  Pflichtfeld: Ja
+  Codes: 457, Z25
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+BGM_Z25 --> BGM_Z25_msg_1 : verwendet in
+class BGM_Z25_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_Z25 ..> BGM_Z25_proc_1 : eingebettet in
+class BGM_Z25_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_Z25 ..> BGM_Z25_proc_2 : eingebettet in
+@enduml

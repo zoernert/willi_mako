@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNS:2380
+class UNS_2380 {
+  Name: Abschnitts - Kontrollsegment
+}
+class UNS_2380_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: UNS
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+UNS_2380 --> UNS_2380_msg_1 : verwendet in
+@enduml

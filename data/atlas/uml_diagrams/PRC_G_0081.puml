@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PRC:G_0081
+class PRC_G_0081 {
+  Name: Codeliste Gas Nr. G_0081 Codeliste zur Prüfung der Netznutzungsrechnung zwischen NB und LF (Gas)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PRC_G_0081_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+PRC_G_0081 --> PRC_G_0081_msg_1 : verwendet in
+class PRC_G_0081_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRC_G_0081 ..> PRC_G_0081_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – DOC:0120
+class DOC_0120 {
+  Name: Prüfidentifikator
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DOC_0120_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, DOC, SG4
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+DOC_0120 --> DOC_0120_msg_1 : verwendet in
+class DOC_0120_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DOC_0120 ..> DOC_0120_proc_1 : eingebettet in
+@enduml

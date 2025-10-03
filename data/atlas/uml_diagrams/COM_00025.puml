@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – COM:00025
+class COM_00025 {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class COM_00025_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, SG2
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+COM_00025 --> COM_00025_msg_1 : verwendet in
+class COM_00025_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_00025 ..> COM_00025_proc_1 : eingebettet in
+class COM_00025_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+COM_00025 ..> COM_00025_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – STS:0380
+class STS_0380 {
+  Name: Korrekturgrund
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class STS_0380_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: STS
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+STS_0380 --> STS_0380_msg_1 : verwendet in
+class STS_0380_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+STS_0380 ..> STS_0380_proc_1 : eingebettet in
+@enduml

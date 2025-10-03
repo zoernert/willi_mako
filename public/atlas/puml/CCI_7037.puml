@@ -1,0 +1,70 @@
+@startuml
+title Datenatlas – CCI:7037
+class CCI_7037 {
+  Name: Merkmal, Code
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Stammdatenänderung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class CCI_7037_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 15, 17, 99, CCI, OCR, SG5, SG6, SG8
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+CCI_7037 --> CCI_7037_msg_1 : verwendet in
+class CCI_7037_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 999, CCI, OCR, SG4, Z19
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CCI_7037 --> CCI_7037_msg_2 : verwendet in
+class CCI_7037_msg_3 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 999, CCI, Z76
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+CCI_7037 --> CCI_7037_msg_3 : verwendet in
+class CCI_7037_msg_4 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 000, 17, 200, 999, CCI, OCR, Z52
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+CCI_7037 --> CCI_7037_msg_4 : verwendet in
+class CCI_7037_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+CCI_7037 ..> CCI_7037_proc_1 : eingebettet in
+class CCI_7037_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CCI_7037 ..> CCI_7037_proc_2 : eingebettet in
+class CCI_7037_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CCI_7037 ..> CCI_7037_proc_3 : eingebettet in
+class CCI_7037_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CCI_7037 ..> CCI_7037_proc_4 : eingebettet in
+@enduml

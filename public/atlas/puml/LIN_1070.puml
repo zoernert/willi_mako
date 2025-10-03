@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – LIN:1070
+class LIN_1070 {
+  Name: Erforderliches Produkt Ad - hoc - Steuerkanal
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class LIN_1070_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: LIN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+LIN_1070 --> LIN_1070_msg_1 : verwendet in
+class LIN_1070_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+LIN_1070 ..> LIN_1070_proc_1 : eingebettet in
+class LIN_1070_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+LIN_1070 ..> LIN_1070_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COM:0170
+class COM_0170 {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COM_0170_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 0150   SG4   C   O   5   1   2   CTA - COM
+  Pflichtfeld: Nein
+  Codes: 20, COM, SG6
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+COM_0170 --> COM_0170_msg_1 : verwendet in
+class COM_0170_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_0170 ..> COM_0170_proc_1 : eingebettet in
+@enduml

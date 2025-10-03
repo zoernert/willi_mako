@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – UNH:00003
+class UNH_00003 {
+  Name: Nachrichtenanfang
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class UNH_00003_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNH_00003 --> UNH_00003_msg_1 : verwendet in
+class UNH_00003_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+UNH_00003 --> UNH_00003_msg_2 : verwendet in
+class UNH_00003_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_00003 ..> UNH_00003_proc_1 : eingebettet in
+class UNH_00003_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNH_00003 ..> UNH_00003_proc_2 : eingebettet in
+@enduml

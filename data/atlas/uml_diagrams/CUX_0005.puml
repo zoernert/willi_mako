@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CUX:0005
+class CUX_0005 {
+  Name: Währungsangaben
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class CUX_0005_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, CUX, ID, MP, SG, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+CUX_0005 --> CUX_0005_msg_1 : verwendet in
+class CUX_0005_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CUX_0005 ..> CUX_0005_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – SEGMENTGRUPPE 5:0580
+class SEGMENTGRUPPE_5_0580 {
+  Name: MOA Summenbetrag
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class SEGMENTGRUPPE_5_0580_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 23, 24, 25, 26, 27, 28, 99, AJT, FTX, MOA, RFF, UNS, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+SEGMENTGRUPPE_5_0580 --> SEGMENTGRUPPE_5_0580_msg_1 : verwendet in
+class SEGMENTGRUPPE_5_0580_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+SEGMENTGRUPPE_5_0580 ..> SEGMENTGRUPPE_5_0580_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CNTRL:DE0062
+class CNTRL_DE0062 {
+  Name: Nachrichten-Referenznummer der fehlerhaften Nachricht
+}
+class CNTRL_DE0062_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: DE, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CNTRL_DE0062 --> CNTRL_DE0062_msg_1 : verwendet in
+@enduml

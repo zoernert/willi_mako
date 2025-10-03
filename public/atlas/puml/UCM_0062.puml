@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCM:0062
+class UCM_0062 {
+  Name: Nachrichten - Referenznummer
+}
+class UCM_0062_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: 0030   SG1   C   999999   D   999999   1   UCM - SG2
+  Pflichtfeld: Ja
+  Codes: 12, 14, MIG, SG1, SG2, UCM, UN, XYZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCM_0062 --> UCM_0062_msg_1 : verwendet in
+@enduml

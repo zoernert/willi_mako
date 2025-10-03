@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – RFF:0130
+class RFF_0130 {
+  Name: Referenz auf Ursprungsrechnungsnummer
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class RFF_0130_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+RFF_0130 --> RFF_0130_msg_1 : verwendet in
+class RFF_0130_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+RFF_0130 --> RFF_0130_msg_2 : verwendet in
+class RFF_0130_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_0130 ..> RFF_0130_proc_1 : eingebettet in
+class RFF_0130_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+RFF_0130 ..> RFF_0130_proc_2 : eingebettet in
+@enduml

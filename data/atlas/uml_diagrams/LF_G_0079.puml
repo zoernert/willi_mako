@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LF:G_0079
+class LF_G_0079 {
+  Name: Codeliste Gas Nr. G_0079 Codeliste für die Prüfung der Kapazitätsrechnung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class LF_G_0079_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, ID, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+LF_G_0079 --> LF_G_0079_msg_1 : verwendet in
+class LF_G_0079_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LF_G_0079 ..> LF_G_0079_proc_1 : eingebettet in
+@enduml

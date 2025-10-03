@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:S017
+class UNH_S017 {
+  Name: Empfänger der Nachricht
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class UNH_S017_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+UNH_S017 --> UNH_S017_msg_1 : verwendet in
+class UNH_S017_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_S017 ..> UNH_S017_proc_1 : eingebettet in
+@enduml

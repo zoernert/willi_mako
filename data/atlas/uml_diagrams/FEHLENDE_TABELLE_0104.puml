@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – FEHLENDE TABELLE:0104
+class FEHLENDE_TABELLE_0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class FEHLENDE_TABELLE_0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Nachrichten enthielt.
+  Pflichtfeld: Nein
+  Codes: 29, 32, UNA, UNB, UNZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+FEHLENDE_TABELLE_0104 --> FEHLENDE_TABELLE_0104_msg_1 : verwendet in
+@enduml

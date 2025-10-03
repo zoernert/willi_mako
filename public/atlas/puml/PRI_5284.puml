@@ -1,0 +1,71 @@
+@startuml
+title Datenatlas – PRI:5284
+class PRI_5284 {
+  Name: Einzelpreisbasis, Menge
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class PRI_5284_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 15, 25, ANN, CAL, DAY, MON, OCR, PRI
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+PRI_5284 --> PRI_5284_msg_1 : verwendet in
+class PRI_5284_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 15, 25, ANN, CAL, DAY, MON, OCR, PRI
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+PRI_5284 --> PRI_5284_msg_2 : verwendet in
+class PRI_5284_msg_3 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Es handelt sich um einen Nettopreis ohne USt. - Anteil.
+  Pflichtfeld: Ja
+  Codes: 100, 15, ANN, CAL, IMD, LIN, OCR, PGI, PIA, PRI
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PRI_5284 --> PRI_5284_msg_3 : verwendet in
+class PRI_5284_msg_4 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 15, 99, CAL, DAY, OCR, PRI, Z01, Z02, Z03
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+PRI_5284 --> PRI_5284_msg_4 : verwendet in
+class PRI_5284_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRI_5284 ..> PRI_5284_proc_1 : eingebettet in
+class PRI_5284_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+PRI_5284 ..> PRI_5284_proc_2 : eingebettet in
+class PRI_5284_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PRI_5284 ..> PRI_5284_proc_3 : eingebettet in
+class PRI_5284_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+PRI_5284 ..> PRI_5284_proc_4 : eingebettet in
+@enduml

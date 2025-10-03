@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – NAD:9
+class NAD_9 {
+  Name: Code für die Sparte Strom
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class NAD_9_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 26, 293, 31, MS, NAD
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+NAD_9 --> NAD_9_msg_1 : verwendet in
+class NAD_9_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_9 ..> NAD_9_proc_1 : eingebettet in
+@enduml

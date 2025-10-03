@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PRD:7008
+class PRD_7008 {
+  Name: Produkt-/<br>Leistungsbeschreibung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PRD_7008_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 000, 17, 23, 256, 31, 60, POG, Z08, Z09, Z10, Z11, Z31, Z32, Z41
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PRD_7008 --> PRD_7008_msg_1 : verwendet in
+class PRD_7008_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRD_7008 ..> PRD_7008_proc_1 : eingebettet in
+@enduml

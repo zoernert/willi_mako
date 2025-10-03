@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – MOA:2410
+class MOA_2410 {
+  Name: Mindestbetrag (netto) der Kosten einer Sperrung
+  Prozesse:
+    - Sperrung und Entsperrung eines Anschlusses
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class MOA_2410_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 12, MOA
+  Prozesse: Sperrung und Entsperrung eines Anschlusses, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+MOA_2410 --> MOA_2410_msg_1 : verwendet in
+class MOA_2410_proc_1 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+MOA_2410 ..> MOA_2410_proc_1 : eingebettet in
+class MOA_2410_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+MOA_2410 ..> MOA_2410_proc_2 : eingebettet in
+@enduml

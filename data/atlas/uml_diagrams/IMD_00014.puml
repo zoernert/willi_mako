@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – IMD:00014
+class IMD_00014 {
+  Name: Rechnungstyp
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class IMD_00014_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: IMD
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+IMD_00014 --> IMD_00014_msg_1 : verwendet in
+class IMD_00014_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: IMD
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IMD_00014 --> IMD_00014_msg_2 : verwendet in
+class IMD_00014_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IMD_00014 ..> IMD_00014_proc_1 : eingebettet in
+class IMD_00014_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IMD_00014 ..> IMD_00014_proc_2 : eingebettet in
+@enduml

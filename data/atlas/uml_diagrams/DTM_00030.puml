@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – DTM:00030
+class DTM_00030 {
+  Name: Nachrichtendatum
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class DTM_00030_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+DTM_00030 --> DTM_00030_msg_1 : verwendet in
+class DTM_00030_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+DTM_00030 ..> DTM_00030_proc_1 : eingebettet in
+class DTM_00030_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+DTM_00030 ..> DTM_00030_proc_2 : eingebettet in
+@enduml

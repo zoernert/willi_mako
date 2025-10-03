@@ -1,0 +1,19 @@
+@startuml
+title Datenatlas – CONTRL:21
+class CONTRL_21 {
+  Name: Ungültige(s) Zeichen
+Mitteilung, dass ein oder mehrere in der
+Übertragungsdatei verwendete Zeichen nach
+der definierten Syntax - Ebene im Segment UNB
+ungültig sind. Das ungültige Zeichen ist Teil der
+Bezugsebene oder folgt unmittelbar dem
+}
+class CONTRL_21_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Zeichen als   Service - Zeichen ungültig ist.
+  Pflichtfeld: Ja
+  Codes: 20, 21, MIG, UNA, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_21 --> CONTRL_21_msg_1 : verwendet in
+@enduml

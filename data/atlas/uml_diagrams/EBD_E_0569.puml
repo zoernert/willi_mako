@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – EBD:E_0569
+class EBD_E_0569 {
+  Name: EBD Nr. E_0569 Prüfen, ob Antwort auf Stornierung erforderlich (MSB mit iMS zwischen MSB und NB)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class EBD_E_0569_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+EBD_E_0569 --> EBD_E_0569_msg_1 : verwendet in
+class EBD_E_0569_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+EBD_E_0569 ..> EBD_E_0569_proc_1 : eingebettet in
+@enduml

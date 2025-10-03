@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – PYT:4279
+class PYT_4279 {
+  Name: Zahlungsbedingung, Qualifier
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class PYT_4279_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: 10, OCR, PYT, SG8
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+PYT_4279 --> PYT_4279_msg_1 : verwendet in
+class PYT_4279_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PYT_4279 ..> PYT_4279_proc_1 : eingebettet in
+class PYT_4279_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+PYT_4279 ..> PYT_4279_proc_2 : eingebettet in
+@enduml

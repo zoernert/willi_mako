@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – PIA:00069
+class PIA_00069 {
+  Name: Artikel - ID
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class PIA_00069_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 25, 999, ID, PIA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+PIA_00069 --> PIA_00069_msg_1 : verwendet in
+class PIA_00069_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PIA_00069 ..> PIA_00069_proc_1 : eingebettet in
+class PIA_00069_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+PIA_00069 ..> PIA_00069_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,55 @@
+@startuml
+title Datenatlas – RFF:Z13
+class RFF_Z13 {
+  Name: Referenz
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class RFF_Z13_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 20, 22, 24, RFF, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+RFF_Z13 --> RFF_Z13_msg_1 : verwendet in
+class RFF_Z13_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: OCR, RFF, Z13
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+RFF_Z13 --> RFF_Z13_msg_2 : verwendet in
+class RFF_Z13_msg_3 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, RFF, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+RFF_Z13 --> RFF_Z13_msg_3 : verwendet in
+class RFF_Z13_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_Z13 ..> RFF_Z13_proc_1 : eingebettet in
+class RFF_Z13_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_Z13 ..> RFF_Z13_proc_2 : eingebettet in
+class RFF_Z13_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_Z13 ..> RFF_Z13_proc_3 : eingebettet in
+@enduml

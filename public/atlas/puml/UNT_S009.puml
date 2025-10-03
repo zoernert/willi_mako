@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNT:S009
+class UNT_S009 {
+  Name: Nachrichten - Kennung
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNT_S009_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: 35, UN, UNT
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNT_S009 --> UNT_S009_msg_1 : verwendet in
+class UNT_S009_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNT_S009 ..> UNT_S009_proc_1 : eingebettet in
+@enduml

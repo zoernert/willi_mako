@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – BGM:MSI5422
+class BGM_MSI5422 {
+  Name: Belegnummer
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class BGM_MSI5422_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Codewertes 481. Das Dokument hat die Belegnummer MSI5422.
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, 481, BGM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+BGM_MSI5422 --> BGM_MSI5422_msg_1 : verwendet in
+class BGM_MSI5422_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_MSI5422 ..> BGM_MSI5422_proc_1 : eingebettet in
+@enduml

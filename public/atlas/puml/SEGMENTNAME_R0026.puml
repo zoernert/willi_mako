@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – SEGMENTNAME:R0026
+class SEGMENTNAME_R0026 {
+  Name: Trennung von Positions - u. Summenteil
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class SEGMENTNAME_R0026_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 99, AJT, DLI, FTX, MOA, RFF, UNS, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+SEGMENTNAME_R0026 --> SEGMENTNAME_R0026_msg_1 : verwendet in
+class SEGMENTNAME_R0026_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+SEGMENTNAME_R0026 ..> SEGMENTNAME_R0026_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,47 @@
+@startuml
+title Datenatlas – NAD:0100
+class NAD_0100 {
+  Name: Meldung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Stammdatenänderung
+}
+class NAD_0100_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, ID, MP, NAD, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+NAD_0100 --> NAD_0100_msg_1 : verwendet in
+class NAD_0100_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_0100 --> NAD_0100_msg_2 : verwendet in
+class NAD_0100_msg_3 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, NAD
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+NAD_0100 --> NAD_0100_msg_3 : verwendet in
+class NAD_0100_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_0100 ..> NAD_0100_proc_1 : eingebettet in
+class NAD_0100_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_0100 ..> NAD_0100_proc_2 : eingebettet in
+@enduml

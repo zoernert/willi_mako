@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – STS:0250
+class STS_0250 {
+  Name: Gerätestatus
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class STS_0250_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 99, STS
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+STS_0250 --> STS_0250_msg_1 : verwendet in
+class STS_0250_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+STS_0250 ..> STS_0250_proc_1 : eingebettet in
+@enduml

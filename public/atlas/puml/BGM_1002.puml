@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – BGM:1002
+class BGM_1002 {
+  Name: Code Listen Version
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class BGM_1002_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 24, 52, API, UN
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+BGM_1002 --> BGM_1002_msg_1 : verwendet in
+class BGM_1002_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1002 ..> BGM_1002_proc_1 : eingebettet in
+@enduml

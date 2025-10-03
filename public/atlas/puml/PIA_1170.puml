@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PIA:1170
+class PIA_1170 {
+  Name: Zugeordnete Schaltzeitdefinition
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class PIA_1170_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: 1020   SG27   M   D   200000   1   1   LIN
+  Pflichtfeld: Nein
+  Codes: 25, 999, ID, PIA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+PIA_1170 --> PIA_1170_msg_1 : verwendet in
+class PIA_1170_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PIA_1170 ..> PIA_1170_proc_1 : eingebettet in
+@enduml

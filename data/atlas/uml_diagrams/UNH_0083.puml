@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNH:0083
+class UNH_0083 {
+  Name: Kontrollschlüssel
+}
+class UNH_0083_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: bei Empfänger nicht bekannt).
+  Pflichtfeld: Ja
+  Codes: 23, 25, ID, MP
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNH_0083 --> UNH_0083_msg_1 : verwendet in
+@enduml

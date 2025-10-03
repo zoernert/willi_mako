@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – MOA:SG3
+class MOA_SG3 {
+  Name: Begründung der Korrektheit
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class MOA_SG3_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: MOA, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+MOA_SG3 --> MOA_SG3_msg_1 : verwendet in
+class MOA_SG3_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+MOA_SG3 ..> MOA_SG3_proc_1 : eingebettet in
+@enduml

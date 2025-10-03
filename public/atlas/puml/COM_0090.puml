@@ -1,0 +1,38 @@
+@startuml
+title Datenatlas – COM:0090
+class COM_0090 {
+  Name: MP - ID Empfänger
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Stammdatenänderung
+}
+class COM_0090_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, ID, MP, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+COM_0090 --> COM_0090_msg_1 : verwendet in
+class COM_0090_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: COM, ID, MP, SG2
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+COM_0090 --> COM_0090_msg_2 : verwendet in
+class COM_0090_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_0090 ..> COM_0090_proc_1 : eingebettet in
+class COM_0090_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+COM_0090 ..> COM_0090_proc_2 : eingebettet in
+@enduml

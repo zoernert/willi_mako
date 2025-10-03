@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – NH:PRICAT:D:20B:UN:2.0D
+class NH_PRICAT_D_20B_UN_2_0D {
+  Name: unbekannt
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class NH_PRICAT_D_20B_UN_2_0D_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 35, NH, UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+NH_PRICAT_D_20B_UN_2_0D --> NH_PRICAT_D_20B_UN_2_0D_msg_1 : verwendet in
+class NH_PRICAT_D_20B_UN_2_0D_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NH_PRICAT_D_20B_UN_2_0D ..> NH_PRICAT_D_20B_UN_2_0D_proc_1 : eingebettet in
+@enduml

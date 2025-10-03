@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCD:0085
+class UCD_0085 {
+  Name: Syntax-Fehler, codiert
+}
+class UCD_0085_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: identifizierten Teil der Übertragungsdatei.
+  Pflichtfeld: Nein
+  Codes: 12, 13, 16, 19, 21, 22, 37, 99, 999, OCR, SG, SG1, SG2, UCD, UCM, UCS, UNA, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCD_0085 --> UCD_0085_msg_1 : verwendet in
+@enduml

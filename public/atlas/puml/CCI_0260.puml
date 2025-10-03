@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CCI:0260
+class CCI_0260 {
+  Name: Zeitreihentyp
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class CCI_0260_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CCI, SG9
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+CCI_0260 --> CCI_0260_msg_1 : verwendet in
+class CCI_0260_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+CCI_0260 ..> CCI_0260_proc_1 : eingebettet in
+@enduml

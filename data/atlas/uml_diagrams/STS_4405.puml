@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – STS:4405
+class STS_4405 {
+  Name: Status, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class STS_4405_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   999   R   999   2   LIN - DTM - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 99, 999, DTM, FTX, LIN, SG, SG3, SG7, SG8, STS, Z06, Z09, Z10, Z11, Z12, Z75, Z78, ZB1, ZB8, ZC1, ZS1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+STS_4405 --> STS_4405_msg_1 : verwendet in
+class STS_4405_msg_2 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: OCR, SG, SG5, SG6, SG9, STS, Z40, Z74, Z75, Z76, Z77, Z78, Z79, Z80, Z81, Z82, Z98
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+STS_4405 --> STS_4405_msg_2 : verwendet in
+class STS_4405_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+STS_4405 ..> STS_4405_proc_1 : eingebettet in
+class STS_4405_proc_2 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+STS_4405 ..> STS_4405_proc_2 : eingebettet in
+@enduml

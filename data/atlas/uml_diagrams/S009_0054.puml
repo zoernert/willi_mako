@@ -1,0 +1,155 @@
+@startuml
+title Datenatlas – S009:0054
+class S009_0054 {
+  Name: Freigabenummer des Nachrichtentyps
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class S009_0054_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+S009_0054 --> S009_0054_msg_1 : verwendet in
+class S009_0054_msg_2 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+S009_0054 --> S009_0054_msg_2 : verwendet in
+class S009_0054_msg_3 {
+  Nachricht: CONTRL 2.0b
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S009_0054 --> S009_0054_msg_3 : verwendet in
+class S009_0054_msg_4 {
+  Nachricht: INSRPT 1.1a
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+S009_0054 --> S009_0054_msg_4 : verwendet in
+class S009_0054_msg_5 {
+  Nachricht: INVOIC 2.8d
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+S009_0054 --> S009_0054_msg_5 : verwendet in
+class S009_0054_msg_6 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+S009_0054 --> S009_0054_msg_6 : verwendet in
+class S009_0054_msg_7 {
+  Nachricht: ORDCHG 1.1
+  Kontext: sendenden Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+S009_0054 --> S009_0054_msg_7 : verwendet in
+class S009_0054_msg_8 {
+  Nachricht: ORDRSP 1.4
+  Kontext: sendenden Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+S009_0054 --> S009_0054_msg_8 : verwendet in
+class S009_0054_msg_9 {
+  Nachricht: PARTIN 1.0e
+  Kontext: sendenden Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+S009_0054 --> S009_0054_msg_9 : verwendet in
+class S009_0054_msg_10 {
+  Nachricht: PRICAT 2.0d
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+S009_0054 --> S009_0054_msg_10 : verwendet in
+class S009_0054_msg_11 {
+  Nachricht: QUOTES 1.3a
+  Kontext: sendenden Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+S009_0054 --> S009_0054_msg_11 : verwendet in
+class S009_0054_msg_12 {
+  Nachricht: REMADV 2.9c
+  Kontext: vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+S009_0054 --> S009_0054_msg_12 : verwendet in
+class S009_0054_msg_13 {
+  Nachricht: REQOTE 1.3b
+  Kontext: sendenden Konverter vergeben.
+  Pflichtfeld: Ja
+  Codes: UN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+S009_0054 --> S009_0054_msg_13 : verwendet in
+class S009_0054_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+S009_0054 ..> S009_0054_proc_1 : eingebettet in
+class S009_0054_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+S009_0054 ..> S009_0054_proc_2 : eingebettet in
+class S009_0054_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+S009_0054 ..> S009_0054_proc_3 : eingebettet in
+class S009_0054_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+S009_0054 ..> S009_0054_proc_4 : eingebettet in
+class S009_0054_proc_5 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+S009_0054 ..> S009_0054_proc_5 : eingebettet in
+@enduml

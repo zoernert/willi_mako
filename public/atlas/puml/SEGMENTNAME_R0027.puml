@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – SEGMENTNAME:R0027
+class SEGMENTNAME_R0027 {
+  Name: Summenbetrag
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class SEGMENTNAME_R0027_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 99, AJT, DLI, FTX, MOA, RFF, UNS, UNT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+SEGMENTNAME_R0027 --> SEGMENTNAME_R0027_msg_1 : verwendet in
+class SEGMENTNAME_R0027_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+SEGMENTNAME_R0027 ..> SEGMENTNAME_R0027_proc_1 : eingebettet in
+@enduml

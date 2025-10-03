@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COMDIS:NR
+class COMDIS_NR {
+  Name: Bez
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COMDIS_NR_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+COMDIS_NR --> COMDIS_NR_msg_1 : verwendet in
+class COMDIS_NR_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COMDIS_NR ..> COMDIS_NR_proc_1 : eingebettet in
+@enduml

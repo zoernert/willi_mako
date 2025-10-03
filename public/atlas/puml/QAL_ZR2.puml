@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – QAL:ZR2
+class QAL_ZR2 {
+  Name: gestörte Werte
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class QAL_ZR2_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Zählerstand aus einem SMGw anfällt.
+  Pflichtfeld: Ja
+  Codes: MU, OCR, QTY, Z99, ZA0, ZA1, ZA3, ZA4, ZA5, ZA6, ZA7, ZA8, ZA9, ZB0, ZB9, ZC2, ZC4, ZJ8, ZJ9, ZR1, ZR2, ZR3
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+QAL_ZR2 --> QAL_ZR2_msg_1 : verwendet in
+class QAL_ZR2_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+QAL_ZR2 ..> QAL_ZR2_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – IDE:E_1010
+class IDE_E_1010 {
+  Name: EBD Nr. E_1010_Prüfen, ob Antwort auf Stornierung erforderlich (Abrechnung einer sonstigen Leistung Gas)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class IDE_E_1010_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+IDE_E_1010 --> IDE_E_1010_msg_1 : verwendet in
+class IDE_E_1010_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IDE_E_1010 ..> IDE_E_1010_proc_1 : eingebettet in
+@enduml

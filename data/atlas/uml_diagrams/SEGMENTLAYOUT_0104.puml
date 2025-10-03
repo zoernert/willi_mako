@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – SEGMENTLAYOUT:0104
+class SEGMENTLAYOUT_0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class SEGMENTLAYOUT_0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: S011: Identifikation der Position eines fehlerhaften Datenelements.
+  Pflichtfeld: Nein
+  Codes: 38, 39, 40, OCR
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+SEGMENTLAYOUT_0104 --> SEGMENTLAYOUT_0104_msg_1 : verwendet in
+@enduml

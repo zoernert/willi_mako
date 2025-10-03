@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – RFF:1004
+class RFF_1004 {
+  Name: Referenz auf Nachrichtennummer
+}
+class RFF_1004_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 18, 26, BGM, ON, RFF
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+RFF_1004 --> RFF_1004_msg_1 : verwendet in
+@enduml

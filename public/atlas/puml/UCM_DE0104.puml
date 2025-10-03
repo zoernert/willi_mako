@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCM:DE0104
+class UCM_DE0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class UCM_DE0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: S011: Identifikation der Position eines fehlerhaften   Datenelements.
+  Pflichtfeld: Ja
+  Codes: 12, EDI, OCR, UCM, UN, UNH, UNT, XYZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCM_DE0104 --> UCM_DE0104_msg_1 : verwendet in
+@enduml

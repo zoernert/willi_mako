@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COM:0510
+class COM_0510 {
+  Name: MP - ID Empfänger
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class COM_0510_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, ID, MP
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+COM_0510 --> COM_0510_msg_1 : verwendet in
+class COM_0510_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+COM_0510 ..> COM_0510_proc_1 : eingebettet in
+@enduml

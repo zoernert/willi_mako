@@ -1,0 +1,46 @@
+@startuml
+title Datenatlas – FTX:00014
+class FTX_00014 {
+  Name: Allgemeine Information (Feld für allgemeine Hinweise)
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class FTX_00014_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 70, FTX
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+FTX_00014 --> FTX_00014_msg_1 : verwendet in
+class FTX_00014_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, FTX, ID, MP, SG3
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+FTX_00014 --> FTX_00014_msg_2 : verwendet in
+class FTX_00014_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+FTX_00014 ..> FTX_00014_proc_1 : eingebettet in
+class FTX_00014_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+FTX_00014 ..> FTX_00014_proc_2 : eingebettet in
+class FTX_00014_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+FTX_00014 ..> FTX_00014_proc_3 : eingebettet in
+@enduml

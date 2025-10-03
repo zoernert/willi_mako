@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCS:0104
+class UCS_0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class UCS_0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: UCM:
+  Pflichtfeld: Ja
+  Codes: 21, 22, 26, 28, 29, 39, EDI, UCD, UCS, UNA, UNB, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCS_0104 --> UCS_0104_msg_1 : verwendet in
+@enduml

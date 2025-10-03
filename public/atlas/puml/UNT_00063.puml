@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – UNT:00063
+class UNT_00063 {
+  Name: Nachrichtenende
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class UNT_00063_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 01, 31, 72, UN, UNT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNT_00063 --> UNT_00063_msg_1 : verwendet in
+class UNT_00063_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 06, 19, 73, UN, UNT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+UNT_00063 --> UNT_00063_msg_2 : verwendet in
+class UNT_00063_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNT_00063 ..> UNT_00063_proc_1 : eingebettet in
+class UNT_00063_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNT_00063 ..> UNT_00063_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,96 @@
+@startuml
+title Datenatlas – LOC:C517
+class LOC_C517 {
+  Name: Ortsangabe
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class LOC_C517_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0320   SG8   C   999   R   1   3   NAD - LOC - RFF
+  Pflichtfeld: Nein
+  Codes: 172, 35, 99, 999, DTM, FTX, LIN, LOC, NAD, RFF, SG3, SG7, SG8, STS
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+LOC_C517 --> LOC_C517_msg_1 : verwendet in
+class LOC_C517_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 172, 25, 35, 99, LOC, OCR, SG2
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+LOC_C517 --> LOC_C517_msg_2 : verwendet in
+class LOC_C517_msg_3 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 107, 17, 172, 35, LOC, OCR, SG, SG5, SG6, Z04, Z06
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+LOC_C517 --> LOC_C517_msg_3 : verwendet in
+class LOC_C517_msg_4 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 231, 25, 35, 99, EDI, EIC, ID, LOC, OCR, SG2, VNB
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+LOC_C517 --> LOC_C517_msg_4 : verwendet in
+class LOC_C517_msg_5 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 172, 35, 99, LOC, OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+LOC_C517 --> LOC_C517_msg_5 : verwendet in
+class LOC_C517_msg_6 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 172, 35, 99, LOC
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+LOC_C517 --> LOC_C517_msg_6 : verwendet in
+class LOC_C517_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LOC_C517 ..> LOC_C517_proc_1 : eingebettet in
+class LOC_C517_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+LOC_C517 ..> LOC_C517_proc_2 : eingebettet in
+class LOC_C517_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+LOC_C517 ..> LOC_C517_proc_3 : eingebettet in
+class LOC_C517_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+LOC_C517 ..> LOC_C517_proc_4 : eingebettet in
+class LOC_C517_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+LOC_C517 ..> LOC_C517_proc_5 : eingebettet in
+@enduml

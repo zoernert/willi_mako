@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LIN:16
+class LIN_16 {
+  Name: DTM
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class LIN_16_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX   - SG8
+  Pflichtfeld: Ja
+  Codes: 15, 16, 17, 18, 19, 20, 21, 22, 99, 999, DTM, FTX, LIN, SG7, SG8, STS
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+LIN_16 --> LIN_16_msg_1 : verwendet in
+class LIN_16_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LIN_16 ..> LIN_16_proc_1 : eingebettet in
+@enduml

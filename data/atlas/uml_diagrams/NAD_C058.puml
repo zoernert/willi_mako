@@ -1,0 +1,63 @@
+@startuml
+title Datenatlas – NAD:C058
+class NAD_C058 {
+  Name: Name und Anschrift
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Stammdatenänderung
+}
+class NAD_C058_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 01, 10, 293, 32, MS, NAD
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+NAD_C058 --> NAD_C058_msg_1 : verwendet in
+class NAD_C058_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, ISO, MP, MR, NAD, SG2, Z01, Z02
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+NAD_C058 --> NAD_C058_msg_2 : verwendet in
+class NAD_C058_msg_3 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 293, 332, 35, 99, DE, GS1, ID, ISO, MP, MR, NAD, OCR, SG2, Z01, Z02
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+NAD_C058 --> NAD_C058_msg_3 : verwendet in
+class NAD_C058_msg_4 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 256, 35, 70, EDI, ISO, NAD, OCR, SG4, Z02, Z21
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_C058 --> NAD_C058_msg_4 : verwendet in
+class NAD_C058_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_C058 ..> NAD_C058_proc_1 : eingebettet in
+class NAD_C058_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+NAD_C058 ..> NAD_C058_proc_2 : eingebettet in
+class NAD_C058_proc_3 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_C058 ..> NAD_C058_proc_3 : eingebettet in
+@enduml

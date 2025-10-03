@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PRC:E_0519
+class PRC_E_0519 {
+  Name: EBD Nr. E_0519 zur Prüfung der Abrechnung Leistungen des Preisblatts A des MSB zwischen MSB und LF
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PRC_E_0519_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+PRC_E_0519 --> PRC_E_0519_msg_1 : verwendet in
+class PRC_E_0519_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRC_E_0519 ..> PRC_E_0519_proc_1 : eingebettet in
+@enduml

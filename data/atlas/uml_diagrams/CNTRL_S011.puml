@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CNTRL:S011
+class CNTRL_S011 {
+  Name: Identifikation der Position eines fehlerhaften Datenelements
+}
+class CNTRL_S011_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: DE, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CNTRL_S011 --> CNTRL_S011_msg_1 : verwendet in
+@enduml

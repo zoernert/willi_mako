@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – BGM:DE0104
+class BGM_DE0104 {
+  Name: Dieses DE wird benötigt, wenn der Syntaxfehler in einem Gruppendatenelement enthalten ist. Es wird die Position des fehlerhaften Gruppendatenelements angegeben. Jedes Gruppendatenelement, das in der Beschreibung der Datenelementgruppe definiert ist, erhöht den Zähler um 1. Die Zählung beginnt mit dem ersten Gruppendatenelement in der Datenelementgruppe mit
+}
+class BGM_DE0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: DE
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+BGM_DE0104 --> BGM_DE0104_msg_1 : verwendet in
+@enduml

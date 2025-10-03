@@ -1,0 +1,52 @@
+@startuml
+title Datenatlas – COM:0150
+class COM_0150 {
+  Name: Ansprechpartner Kündigungsprozess
+  Prozesse:
+    - Abmeldung (Lieferende bei Auszug)
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class COM_0150_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, ID, MP, SG3
+  Prozesse: Abmeldung (Lieferende bei Auszug), Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+COM_0150 --> COM_0150_msg_1 : verwendet in
+class COM_0150_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: COM, SG4
+  Prozesse: Abmeldung (Lieferende bei Auszug), Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+COM_0150 --> COM_0150_msg_2 : verwendet in
+class COM_0150_proc_1 <<process>> {
+  Abmeldung (Lieferende bei Auszug)
+  Gesetze: StromGVV, StromNZV
+  Zusammenfassung: Beschreibe den Abmeldeprozess bei einem Auszug eines Kunden.
+}
+COM_0150 ..> COM_0150_proc_1 : eingebettet in
+class COM_0150_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+COM_0150 ..> COM_0150_proc_2 : eingebettet in
+class COM_0150_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+COM_0150 ..> COM_0150_proc_3 : eingebettet in
+class COM_0150_proc_4 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+COM_0150 ..> COM_0150_proc_4 : eingebettet in
+@enduml

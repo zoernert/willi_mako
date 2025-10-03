@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – SEGMENTNAME:LIN
+class SEGMENTNAME_LIN {
+  Name: lfd. Position
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class SEGMENTNAME_LIN_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 000, 100, 20, 21, 22, 23, 24, 25, 26, 99, CCI, DTM, ID, LIN, RFF, SG7, SG8, SG9
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+SEGMENTNAME_LIN --> SEGMENTNAME_LIN_msg_1 : verwendet in
+class SEGMENTNAME_LIN_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+SEGMENTNAME_LIN ..> SEGMENTNAME_LIN_proc_1 : eingebettet in
+@enduml

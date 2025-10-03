@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – PARTIN:200000
+class PARTIN_200000 {
+  Name: Ansprechpartner Rahmenverträge
+  Prozesse:
+    - Stammdatenänderung
+}
+class PARTIN_200000_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 000, 200, MIG, SG4
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+PARTIN_200000 --> PARTIN_200000_msg_1 : verwendet in
+class PARTIN_200000_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+PARTIN_200000 ..> PARTIN_200000_proc_1 : eingebettet in
+@enduml

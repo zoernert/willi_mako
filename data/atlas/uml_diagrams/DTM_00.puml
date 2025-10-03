@@ -1,0 +1,31 @@
+@startuml
+title Datenatlas – DTM:00
+class DTM_00 {
+  Name: Formatkennzeichen für Datum/Uhrzeit
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DTM_00_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 137, 19, 303, 31, DTM
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+DTM_00 --> DTM_00_msg_1 : verwendet in
+class DTM_00_msg_2 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 157, 19, 303, 35, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+DTM_00 --> DTM_00_msg_2 : verwendet in
+class DTM_00_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00 ..> DTM_00_proc_1 : eingebettet in
+@enduml

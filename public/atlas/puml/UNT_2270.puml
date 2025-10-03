@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNT:2270
+class UNT_2270 {
+  Name: Nachrichten - Endesegment
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class UNT_2270_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 01, 10, 48, EDI, UN, UNT
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+UNT_2270 --> UNT_2270_msg_1 : verwendet in
+class UNT_2270_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+UNT_2270 ..> UNT_2270_proc_1 : eingebettet in
+@enduml

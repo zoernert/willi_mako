@@ -1,0 +1,32 @@
+@startuml
+title Datenatlas – DOC:C503
+class DOC_C503 {
+  Name: Dokument - /Nachricht - Einzelhe
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DOC_C503_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 21, 22, 23, 293, 70, DOC
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+DOC_C503 --> DOC_C503_msg_1 : verwendet in
+class DOC_C503_msg_2 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 12, 35, 380, 389, 457, DOC, OCR, SG5, Z25
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+DOC_C503 --> DOC_C503_msg_2 : verwendet in
+class DOC_C503_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DOC_C503 ..> DOC_C503_proc_1 : eingebettet in
+@enduml

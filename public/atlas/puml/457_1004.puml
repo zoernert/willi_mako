@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – 457:1004
+class 457_1004 {
+  Name: Dokumentennummer
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class 457_1004_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: 457   Storno einer Belastung.
+  Pflichtfeld: Nein
+  Codes: 35, 457, EDI, Z25
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+457_1004 --> 457_1004_msg_1 : verwendet in
+class 457_1004_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+457_1004 ..> 457_1004_proc_1 : eingebettet in
+class 457_1004_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+457_1004 ..> 457_1004_proc_2 : eingebettet in
+@enduml

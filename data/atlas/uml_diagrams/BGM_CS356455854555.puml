@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – BGM:CS356455854555
+class BGM_CS356455854555 {
+  Name: Identifikationsnummer
+  Prozesse:
+    - Stammdatenänderung
+}
+class BGM_CS356455854555_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 10, 11, BGM
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+BGM_CS356455854555 --> BGM_CS356455854555_msg_1 : verwendet in
+class BGM_CS356455854555_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+BGM_CS356455854555 ..> BGM_CS356455854555_proc_1 : eingebettet in
+@enduml

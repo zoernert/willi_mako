@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – GEI:0120
+class GEI_0120 {
+  Name: Prüfidentifikator
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class GEI_0120_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 10, GEI, SG1
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+GEI_0120 --> GEI_0120_msg_1 : verwendet in
+class GEI_0120_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+GEI_0120 ..> GEI_0120_proc_1 : eingebettet in
+class GEI_0120_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+GEI_0120 ..> GEI_0120_proc_2 : eingebettet in
+@enduml

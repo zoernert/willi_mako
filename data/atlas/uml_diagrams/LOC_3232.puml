@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LOC:3232
+class LOC_3232 {
+  Name: Code
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class LOC_3232_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: mittels Interpolation gebildet.
+  Pflichtfeld: Ja
+  Codes: EDI, ZQ9, ZR0, ZS0
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+LOC_3232 --> LOC_3232_msg_1 : verwendet in
+class LOC_3232_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+LOC_3232 ..> LOC_3232_proc_1 : eingebettet in
+@enduml

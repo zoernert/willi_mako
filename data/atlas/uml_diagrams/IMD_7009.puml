@@ -1,0 +1,53 @@
+@startuml
+title Datenatlas – IMD:7009
+class IMD_7009 {
+  Name: Produkt-/Leistungsbeschreibung, Code
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class IMD_7009_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+IMD_7009 --> IMD_7009_msg_1 : verwendet in
+class IMD_7009_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, EDI, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IMD_7009 --> IMD_7009_msg_2 : verwendet in
+class IMD_7009_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+IMD_7009 ..> IMD_7009_proc_1 : eingebettet in
+class IMD_7009_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IMD_7009 ..> IMD_7009_proc_2 : eingebettet in
+class IMD_7009_proc_3 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IMD_7009 ..> IMD_7009_proc_3 : eingebettet in
+class IMD_7009_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+IMD_7009 ..> IMD_7009_proc_4 : eingebettet in
+@enduml

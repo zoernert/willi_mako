@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – BGM:313
+class BGM_313 {
+  Name: Objekt - Bezeichner
+}
+class BGM_313_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 31, 313, BGM
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+BGM_313 --> BGM_313_msg_1 : verwendet in
+@enduml

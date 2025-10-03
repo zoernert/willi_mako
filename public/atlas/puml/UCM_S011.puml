@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCM:S011
+class UCM_S011 {
+  Name: Datenelement-Identifikation
+}
+class UCM_S011_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Darüber hinaus dient dieses Segment zur Angabe der Art des Fehlers.
+  Pflichtfeld: Ja
+  Codes: 38, 39, 40, EDI, OCR
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCM_S011 --> UCM_S011_msg_1 : verwendet in
+@enduml

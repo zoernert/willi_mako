@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – QAL:ZR4
+class QAL_ZR4 {
+  Name: Konsistenz- und Synchronprüfung
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class QAL_ZR4_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Messgeräten stehen keine Messwerte zur Verfügung.
+  Pflichtfeld: Nein
+  Codes: MSB, OCR, ZA0, ZA1, ZA3, ZA4, ZA5, ZA6, ZA7, ZB0, ZB9, ZC2, ZC4, ZR1, ZR2, ZR3, ZR4, ZS9, ZT8
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+QAL_ZR4 --> QAL_ZR4_msg_1 : verwendet in
+class QAL_ZR4_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+QAL_ZR4 ..> QAL_ZR4_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,31 @@
+@startuml
+title Datenatlas – LIN:00067
+class LIN_00067 {
+  Name: Konfigurationserlaubnis für Werte
+nach Typ 2 aus SMGW
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class LIN_00067_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: LIN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+LIN_00067 --> LIN_00067_msg_1 : verwendet in
+class LIN_00067_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+LIN_00067 ..> LIN_00067_proc_1 : eingebettet in
+class LIN_00067_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+LIN_00067 ..> LIN_00067_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UC:S011
+class UC_S011 {
+  Name: Datenelement-Identifikation
+}
+class UC_S011_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: entsprechen.
+  Pflichtfeld: Nein
+  Codes: 21, 22, 26, 28, 29, 39, OCR, UCD, UCS, UNA, UNB, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UC_S011 --> UC_S011_msg_1 : verwendet in
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+title Datenatlas – DTM:303
+class DTM_303 {
+  Name: Zeitzonenverschiebung
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class DTM_303_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 137, 19, 303, 31, DTM
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+DTM_303 --> DTM_303_msg_1 : verwendet in
+class DTM_303_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 19, 203, 303, 42, DTM
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+DTM_303 --> DTM_303_msg_2 : verwendet in
+class DTM_303_msg_3 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 157, 19, 303, 35, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+DTM_303 --> DTM_303_msg_3 : verwendet in
+class DTM_303_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+DTM_303 ..> DTM_303_proc_1 : eingebettet in
+class DTM_303_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+DTM_303 ..> DTM_303_proc_2 : eingebettet in
+class DTM_303_proc_3 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_303 ..> DTM_303_proc_3 : eingebettet in
+@enduml

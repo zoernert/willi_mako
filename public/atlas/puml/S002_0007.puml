@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – S002:0007
+class S002_0007 {
+  Name: Teilnehmerbezeichnung, Qualifier
+}
+class S002_0007_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: übermittelt wird.
+  Pflichtfeld: Ja
+  Codes: 14, 35, 500, 502, DE, GS1, ID, MP, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S002_0007 --> S002_0007_msg_1 : verwendet in
+@enduml

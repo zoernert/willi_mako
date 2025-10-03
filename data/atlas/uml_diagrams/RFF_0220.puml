@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:0220
+class RFF_0220 {
+  Name: Referenzangaben
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class RFF_0220_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, RFF, SG7
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+RFF_0220 --> RFF_0220_msg_1 : verwendet in
+class RFF_0220_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+RFF_0220 ..> RFF_0220_proc_1 : eingebettet in
+@enduml

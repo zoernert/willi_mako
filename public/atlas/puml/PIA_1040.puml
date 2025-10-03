@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PIA:1040
+class PIA_1040 {
+  Name: Erforderliches Produkt Konfigurationserlaubnis für Werte
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class PIA_1040_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 24, 25, PIA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+PIA_1040 --> PIA_1040_msg_1 : verwendet in
+class PIA_1040_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PIA_1040 ..> PIA_1040_proc_1 : eingebettet in
+@enduml

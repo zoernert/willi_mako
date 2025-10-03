@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – CTA:0310
+class CTA_0310 {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Stammdatenänderung
+}
+class CTA_0310_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 000, 200, COM, SG4
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CTA_0310 --> CTA_0310_msg_1 : verwendet in
+class CTA_0310_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CTA_0310 ..> CTA_0310_proc_1 : eingebettet in
+@enduml

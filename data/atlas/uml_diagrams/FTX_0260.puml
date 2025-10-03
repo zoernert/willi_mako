@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – FTX:0260
+class FTX_0260 {
+  Name: Steuernummer, Umsatzsteuernummer
+  Prozesse:
+    - Stammdatenänderung
+}
+class FTX_0260_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 15, FTX, SG6
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+FTX_0260 --> FTX_0260_msg_1 : verwendet in
+class FTX_0260_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+FTX_0260 ..> FTX_0260_proc_1 : eingebettet in
+@enduml

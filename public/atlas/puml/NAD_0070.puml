@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – NAD:0070
+class NAD_0070 {
+  Name: MP - ID Absender
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class NAD_0070_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+NAD_0070 --> NAD_0070_msg_1 : verwendet in
+class NAD_0070_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_0070 ..> NAD_0070_proc_1 : eingebettet in
+@enduml

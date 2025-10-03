@@ -5,6 +5,7 @@ import { getAllWhitepapers } from '../../lib/content/whitepapers';
 import { getAllArticles } from '../../lib/content/articles';
 import { calculateSitemapPriority, calculateChangeFreq } from '../../lib/seo-utils';
 import { parseManualSections, getManualMarkdown } from '../../lib/content/manual';
+import { getAtlasDiagrams, getAtlasElements, getAtlasProcesses } from '../../lib/atlas/data';
 
 export default function Sitemap() {
   return null;
@@ -29,6 +30,18 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const datasets = loadDatasets();
   const manualSections = parseManualSections(getManualMarkdown());
 
+    let atlasElements: ReturnType<typeof getAtlasElements> = [];
+    let atlasProcesses: ReturnType<typeof getAtlasProcesses> = [];
+    let atlasDiagrams: ReturnType<typeof getAtlasDiagrams> = [];
+
+    try {
+      atlasElements = getAtlasElements();
+      atlasProcesses = getAtlasProcesses();
+      atlasDiagrams = getAtlasDiagrams();
+    } catch (atlasError) {
+      console.warn('⚠️  Atlas data unavailable for sitemap:', atlasError instanceof Error ? atlasError.message : atlasError);
+    }
+
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Homepage -->
@@ -45,6 +58,14 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>
+
+  <!-- Daten Atlas Overview -->
+  <url>
+    <loc>https://stromhaltig.de/daten-atlas</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
   </url>
 
   <!-- Whitepaper Overview -->
@@ -96,6 +117,33 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     <lastmod>${faq.updated_at}</lastmod>
     <changefreq>${calculateChangeFreq(faq.view_count)}</changefreq>
     <priority>${calculateSitemapPriority(faq.view_count, faq.tags)}</priority>
+  </url>`).join('')}
+
+  <!-- Daten Atlas Elemente -->
+  ${atlasElements.map(element => `
+  <url>
+    <loc>https://stromhaltig.de/daten-atlas/datenelemente/${element.slug}</loc>
+    <lastmod>${element.updatedAt || new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('')}
+
+  <!-- Daten Atlas Prozesse -->
+  ${atlasProcesses.map(process => `
+  <url>
+    <loc>https://stromhaltig.de/daten-atlas/prozesse/${process.slug}</loc>
+    <lastmod>${process.updatedAt || new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('')}
+
+  <!-- Daten Atlas Visualisierungen -->
+  ${atlasDiagrams.map(diagram => `
+  <url>
+    <loc>https://stromhaltig.de/daten-atlas/visualisierungen/${diagram.slug}</loc>
+    <lastmod>${diagram.updatedAt || new Date().toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>`).join('')}
 
   <!-- Whitepaper Pages -->

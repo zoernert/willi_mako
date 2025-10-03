@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – ORDCHG:RFF
+class ORDCHG_RFF {
+  Name: Nachrichtennummer der Anfrage/Bestellung
+}
+class ORDCHG_RFF_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 35, 70, MIG, ON, RFF, SG1
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+ORDCHG_RFF --> ORDCHG_RFF_msg_1 : verwendet in
+@enduml

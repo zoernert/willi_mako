@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNE:0098
+class UNE_0098 {
+  Name: Segmentposition des fehlerhaften Datenelements / fehlerhaften Datenelementgruppe
+}
+class UNE_0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Nachrichten enthielt.
+  Pflichtfeld: Ja
+  Codes: 29, 32, UNA, UNB, UNZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNE_0098 --> UNE_0098_msg_1 : verwendet in
+@enduml

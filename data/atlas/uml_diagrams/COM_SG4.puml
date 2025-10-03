@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – COM:SG4
+class COM_SG4 {
+  Name: Ansprechpartner Bilanzierungsprozesse / Bilanzkreismanagement
+  Prozesse:
+    - Stammdatenänderung
+}
+class COM_SG4_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: COM, SG, SG4
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+COM_SG4 --> COM_SG4_msg_1 : verwendet in
+class COM_SG4_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+COM_SG4 ..> COM_SG4_proc_1 : eingebettet in
+@enduml

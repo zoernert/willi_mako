@@ -1,0 +1,163 @@
+@startuml
+title Datenatlas – RFF:1153
+class RFF_1153 {
+  Name: Referenz, Qualifier
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class RFF_1153_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, AGO, RFF, SG2
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+RFF_1153 --> RFF_1153_msg_1 : verwendet in
+class RFF_1153_msg_2 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 70, RFF, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+RFF_1153 --> RFF_1153_msg_2 : verwendet in
+class RFF_1153_msg_3 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, 99, LF, MSB, NB, OCR, RFF, SG, SG3, SG4, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+RFF_1153 --> RFF_1153_msg_3 : verwendet in
+class RFF_1153_msg_4 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, OCR, OI, RFF, SG1
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+RFF_1153 --> RFF_1153_msg_4 : verwendet in
+class RFF_1153_msg_5 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, 99, FC, OCR, RFF, SG2, SG3, VA
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+RFF_1153 --> RFF_1153_msg_5 : verwendet in
+class RFF_1153_msg_6 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 70, EEG, OCR, POG, RFF, SG1, TEP, Z13, ZR
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+RFF_1153 --> RFF_1153_msg_6 : verwendet in
+class RFF_1153_msg_7 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, ESA, OCR, RFF, SG1, Z13
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+RFF_1153 --> RFF_1153_msg_7 : verwendet in
+class RFF_1153_msg_8 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, ESA, LF, MSB, OCR, RFF, SG, SG1, Z13
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+RFF_1153 --> RFF_1153_msg_8 : verwendet in
+class RFF_1153_msg_9 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, BKV, ESA, LF, MSB, NB, RFF, SG1, Z13
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+RFF_1153 --> RFF_1153_msg_9 : verwendet in
+class RFF_1153_msg_10 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, 99, ACW, RFF, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+RFF_1153 --> RFF_1153_msg_10 : verwendet in
+class RFF_1153_msg_11 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, AAV, OCR, RFF, SG1
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+RFF_1153 --> RFF_1153_msg_11 : verwendet in
+class RFF_1153_msg_12 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 10, 24, 35, 70, ACW, AFL, RFF, SG, SG5
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+RFF_1153 --> RFF_1153_msg_12 : verwendet in
+class RFF_1153_msg_13 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, ESA, LF, MSB, OCR, RFF, SG1, Z13
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+RFF_1153 --> RFF_1153_msg_13 : verwendet in
+class RFF_1153_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_1153 ..> RFF_1153_proc_1 : eingebettet in
+class RFF_1153_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+RFF_1153 ..> RFF_1153_proc_2 : eingebettet in
+class RFF_1153_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+RFF_1153 ..> RFF_1153_proc_3 : eingebettet in
+class RFF_1153_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_1153 ..> RFF_1153_proc_4 : eingebettet in
+class RFF_1153_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_1153 ..> RFF_1153_proc_5 : eingebettet in
+class RFF_1153_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+RFF_1153 ..> RFF_1153_proc_6 : eingebettet in
+@enduml

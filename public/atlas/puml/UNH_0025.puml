@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:0025
+class UNH_0025 {
+  Name: Gemeinsame Referenznummer
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNH_0025_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNH_0025 --> UNH_0025_msg_1 : verwendet in
+class UNH_0025_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNH_0025 ..> UNH_0025_proc_1 : eingebettet in
+@enduml

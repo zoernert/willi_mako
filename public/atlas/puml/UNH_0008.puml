@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:0008
+class UNH_0008 {
+  Name: Kennung des Funktionspartners
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class UNH_0008_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+UNH_0008 --> UNH_0008_msg_1 : verwendet in
+class UNH_0008_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0008 ..> UNH_0008_proc_1 : eingebettet in
+@enduml

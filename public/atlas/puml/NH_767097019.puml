@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – NH:767097019
+class NH_767097019 {
+  Name: Objekt - Bezeichner
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class NH_767097019_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 35, NH, UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+NH_767097019 --> NH_767097019_msg_1 : verwendet in
+class NH_767097019_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NH_767097019 ..> NH_767097019_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RNG:6411
+class RNG_6411 {
+  Name: Maßeinheit, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RNG_6411_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 10, 100, 18, ID, KWH, RNG
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+RNG_6411 --> RNG_6411_msg_1 : verwendet in
+class RNG_6411_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RNG_6411 ..> RNG_6411_proc_1 : eingebettet in
+@enduml

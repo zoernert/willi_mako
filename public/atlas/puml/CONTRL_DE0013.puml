@@ -1,0 +1,15 @@
+@startuml
+title Datenatlas – CONTRL:DE0013
+class CONTRL_DE0013 {
+  Name: Es wird der Code zur Identifizierung des Segments angegeben, das den in DE0085 spezifizierten Syntaxfehler enthält,
+sofern eines der drei Servicesegmente eindeutig als Fehlerursache zugeordnet werden kann.
+}
+class CONTRL_DE0013_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_DE0013 --> CONTRL_DE0013_msg_1 : verwendet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COM:00014
+class COM_00014 {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COM_00014_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 99, 999, COM, DTM, FTX, LIN, SG7, SG8, STS
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+COM_00014 --> COM_00014_msg_1 : verwendet in
+class COM_00014_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_00014 ..> COM_00014_proc_1 : eingebettet in
+@enduml

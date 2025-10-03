@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCF:9327
+class UCF_9327 {
+  Name: Code Listenverwalter
+}
+class UCF_9327_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 13, 16
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCF_9327 --> UCF_9327_msg_1 : verwendet in
+@enduml

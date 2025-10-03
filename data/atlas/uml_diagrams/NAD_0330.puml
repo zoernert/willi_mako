@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – NAD:0330
+class NAD_0330 {
+  Name: Messlokation
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class NAD_0330_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0320   SG8   C   R   999   1   3   NAD - LOC - RFF
+  Pflichtfeld: Ja
+  Codes: NAD
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+NAD_0330 --> NAD_0330_msg_1 : verwendet in
+class NAD_0330_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_0330 ..> NAD_0330_proc_1 : eingebettet in
+@enduml

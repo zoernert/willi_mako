@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – DTM:00040
+class DTM_00040 {
+  Name: Ausführungsdatum
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class DTM_00040_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 35, 99, DTM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+DTM_00040 --> DTM_00040_msg_1 : verwendet in
+class DTM_00040_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00040 ..> DTM_00040_proc_1 : eingebettet in
+class DTM_00040_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+DTM_00040 ..> DTM_00040_proc_2 : eingebettet in
+@enduml

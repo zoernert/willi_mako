@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COM:0060
+class COM_0060 {
+  Name: MP - ID Empfänger
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COM_0060_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, COM, ID, MP, SG1
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+COM_0060 --> COM_0060_msg_1 : verwendet in
+class COM_0060_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_0060 ..> COM_0060_proc_1 : eingebettet in
+@enduml

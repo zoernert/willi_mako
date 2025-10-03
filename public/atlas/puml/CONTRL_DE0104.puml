@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CONTRL:DE0104
+class CONTRL_DE0104 {
+  Name: Position des fehlerhaften Gruppendatenelements
+}
+class CONTRL_DE0104_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: DE, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL_DE0104 --> CONTRL_DE0104_msg_1 : verwendet in
+@enduml

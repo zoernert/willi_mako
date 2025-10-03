@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCS:0096
+class UCS_0096 {
+  Name: Segmentposition in der Nachricht
+}
+class UCS_0096_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: SG2:
+  Pflichtfeld: Ja
+  Codes: 13, 15, 16, 22, 35, 36, 999, OCR, SG1, SG2, UCD, UCM, UCS, UNA, UNB
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCS_0096 --> UCS_0096_msg_1 : verwendet in
+@enduml

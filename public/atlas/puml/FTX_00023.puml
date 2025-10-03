@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – FTX:00023
+class FTX_00023 {
+  Name: Besondere Sachverhalte zur Sperrung (nicht pauschal im Preisblatt abgebildet)
+  Prozesse:
+    - Sperrung und Entsperrung eines Anschlusses
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class FTX_00023_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 99, FTX
+  Prozesse: Sperrung und Entsperrung eines Anschlusses, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+FTX_00023 --> FTX_00023_msg_1 : verwendet in
+class FTX_00023_proc_1 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+FTX_00023 ..> FTX_00023_proc_1 : eingebettet in
+class FTX_00023_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+FTX_00023 ..> FTX_00023_proc_2 : eingebettet in
+@enduml

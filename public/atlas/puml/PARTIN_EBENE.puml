@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – PARTIN:EBENE
+class PARTIN_EBENE {
+  Name: Name
+  Prozesse:
+    - Stammdatenänderung
+}
+class PARTIN_EBENE_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+PARTIN_EBENE --> PARTIN_EBENE_msg_1 : verwendet in
+class PARTIN_EBENE_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+PARTIN_EBENE ..> PARTIN_EBENE_proc_1 : eingebettet in
+@enduml

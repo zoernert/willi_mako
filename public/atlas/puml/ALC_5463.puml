@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – ALC:5463
+class ALC_5463 {
+  Name: Zu- oder Abschlag, Qualifier
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class ALC_5463_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 19, 30, 35, ALC, NNE, OCR, SG, Z02, Z03, Z04, Z05
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+ALC_5463 --> ALC_5463_msg_1 : verwendet in
+class ALC_5463_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: 1 - 07 - 4 - 001
+  Pflichtfeld: Ja
+  Codes: 19, 30, 35, ALC, NNE, OCR, Z02, Z03, Z04, Z05
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+ALC_5463 --> ALC_5463_msg_2 : verwendet in
+class ALC_5463_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+ALC_5463 ..> ALC_5463_proc_1 : eingebettet in
+class ALC_5463_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+ALC_5463 ..> ALC_5463_proc_2 : eingebettet in
+@enduml

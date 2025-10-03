@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – UNH:0076
+class UNH_0076 {
+  Name: Kennzeichen für Testnachricht
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class UNH_0076_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 22, UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+UNH_0076 --> UNH_0076_msg_1 : verwendet in
+class UNH_0076_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, COM, SG2
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNH_0076 --> UNH_0076_msg_2 : verwendet in
+class UNH_0076_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0076 ..> UNH_0076_proc_1 : eingebettet in
+class UNH_0076_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNH_0076 ..> UNH_0076_proc_2 : eingebettet in
+@enduml

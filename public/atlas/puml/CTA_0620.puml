@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CTA:0620
+class CTA_0620 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class CTA_0620_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+CTA_0620 --> CTA_0620_msg_1 : verwendet in
+class CTA_0620_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CTA_0620 ..> CTA_0620_proc_1 : eingebettet in
+@enduml

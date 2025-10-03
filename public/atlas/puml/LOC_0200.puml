@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LOC:0200
+class LOC_0200 {
+  Name: Identifikationsangabe
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class LOC_0200_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: LOC
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+LOC_0200 --> LOC_0200_msg_1 : verwendet in
+class LOC_0200_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+LOC_0200 ..> LOC_0200_proc_1 : eingebettet in
+@enduml

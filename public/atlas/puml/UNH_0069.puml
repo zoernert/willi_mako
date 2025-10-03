@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:0069
+class UNH_0069 {
+  Name: Nachrichtenreferenznummer des Empfängers
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNH_0069_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: 68, UN, UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+UNH_0069 --> UNH_0069_msg_1 : verwendet in
+class UNH_0069_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNH_0069 ..> UNH_0069_proc_1 : eingebettet in
+@enduml

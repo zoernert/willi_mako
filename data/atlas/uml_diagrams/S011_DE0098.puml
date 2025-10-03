@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – S011:DE0098
+class S011_DE0098 {
+  Name: Identifikation der Position eines fehlerhaften Datenelements
+}
+class S011_DE0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: S011: Identifikation der Position eines fehlerhaften Datenelements.
+  Pflichtfeld: Ja
+  Codes: DE
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S011_DE0098 --> S011_DE0098_msg_1 : verwendet in
+@enduml

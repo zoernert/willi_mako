@@ -1,0 +1,32 @@
+@startuml
+title Datenatlas – DOC:0110
+class DOC_0110 {
+  Name: Dokument - /Nachricht - Einzelheiten
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DOC_0110_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: DOC
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+DOC_0110 --> DOC_0110_msg_1 : verwendet in
+class DOC_0110_msg_2 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, DOC, SG4
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+DOC_0110 --> DOC_0110_msg_2 : verwendet in
+class DOC_0110_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DOC_0110 ..> DOC_0110_proc_1 : eingebettet in
+@enduml

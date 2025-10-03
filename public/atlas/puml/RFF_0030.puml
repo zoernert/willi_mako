@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:0030
+class RFF_0030 {
+  Name: Prüfidentifikator
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_0030_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: RFF
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+RFF_0030 --> RFF_0030_msg_1 : verwendet in
+class RFF_0030_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_0030 ..> RFF_0030_proc_1 : eingebettet in
+@enduml

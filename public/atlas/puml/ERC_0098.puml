@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – ERC:0098
+class ERC_0098 {
+  Name: Segmentposition des fehlerhaften Datenelements
+}
+class ERC_0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Datenelementbeschreibung unterschreitet.
+  Pflichtfeld: Ja
+  Codes: 38, 39, 40, OCR
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+ERC_0098 --> ERC_0098_msg_1 : verwendet in
+@enduml

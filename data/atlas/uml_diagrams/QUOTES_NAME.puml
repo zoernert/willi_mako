@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – QUOTES:NAME
+class QUOTES_NAME {
+  Name: Zähler
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class QUOTES_NAME_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+QUOTES_NAME --> QUOTES_NAME_msg_1 : verwendet in
+class QUOTES_NAME_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+QUOTES_NAME ..> QUOTES_NAME_proc_1 : eingebettet in
+class QUOTES_NAME_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+QUOTES_NAME ..> QUOTES_NAME_proc_2 : eingebettet in
+@enduml

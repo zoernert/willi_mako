@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNB:0017
+class UNB_0017 {
+  Name: Datum der Erstellung
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNB_0017_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 14, 35, 500, 502, DE, ECE, GS1, ID, MP, UN, UNB
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+UNB_0017 --> UNB_0017_msg_1 : verwendet in
+class UNB_0017_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNB_0017 ..> UNB_0017_proc_1 : eingebettet in
+@enduml

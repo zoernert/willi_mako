@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – REQOTE:1020
+class REQOTE_1020 {
+  Name: Erforderliches Produkt Leistungskurvendefinitionen
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class REQOTE_1020_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+REQOTE_1020 --> REQOTE_1020_msg_1 : verwendet in
+class REQOTE_1020_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+REQOTE_1020 ..> REQOTE_1020_proc_1 : eingebettet in
+@enduml

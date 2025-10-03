@@ -1,0 +1,55 @@
+@startuml
+title Datenatlas – QTY:6411
+class QTY_6411 {
+  Name: Maßeinheit, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class QTY_6411_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Bemerkung:
+  Pflichtfeld: Nein
+  Codes: 136, 35, ANN, DAY, MON, OCR, QTY
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+QTY_6411 --> QTY_6411_msg_1 : verwendet in
+class QTY_6411_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Beispiel 2 Leistungszeitraum:
+  Pflichtfeld: Nein
+  Codes: 136, 35, ANN, DAY, MON, OCR, QTY
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+QTY_6411 --> QTY_6411_msg_2 : verwendet in
+class QTY_6411_msg_3 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 187, 20, 201, 220, 35, 67, 79, KWH, KWT, MTS, OCR, POG, QTY, SG, SG5, SG6, SG9, Z18, Z30, Z31, Z47
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+QTY_6411 --> QTY_6411_msg_3 : verwendet in
+class QTY_6411_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+QTY_6411 ..> QTY_6411_proc_1 : eingebettet in
+class QTY_6411_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+QTY_6411 ..> QTY_6411_proc_2 : eingebettet in
+class QTY_6411_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+QTY_6411 ..> QTY_6411_proc_3 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CCI:00037
+class CCI_00037 {
+  Name: Schwellwerte
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class CCI_00037_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CCI
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+CCI_00037 --> CCI_00037_msg_1 : verwendet in
+class CCI_00037_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CCI_00037 ..> CCI_00037_proc_1 : eingebettet in
+@enduml

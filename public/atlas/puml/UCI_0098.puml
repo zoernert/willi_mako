@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCI:0098
+class UCI_0098 {
+  Name: Segmentposition des fehlerhaften Datenelements
+}
+class UCI_0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Gruppendatenelemente enthält.
+  Pflichtfeld: Ja
+  Codes: 21, 22, 26, 28, 29, 39, OCR, UCD, UCS, UNA, UNB, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_0098 --> UCI_0098_msg_1 : verwendet in
+@enduml

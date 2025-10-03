@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – KEIN SEGMENT:ZQ9
+class KEIN_SEGMENT_ZQ9 {
+  Name: Verwendung von Werten des Störmengenzählwerks
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class KEIN_SEGMENT_ZQ9_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: mittels Interpolation gebildet.
+  Pflichtfeld: Nein
+  Codes: ZQ8, ZQ9, ZR0, ZS0
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+KEIN_SEGMENT_ZQ9 --> KEIN_SEGMENT_ZQ9_msg_1 : verwendet in
+class KEIN_SEGMENT_ZQ9_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+KEIN_SEGMENT_ZQ9 ..> KEIN_SEGMENT_ZQ9_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – ORDCHG:0090
+class ORDCHG_0090 {
+  Name: Referenz des Vorgangs der Anfrage/Bestellung
+}
+class ORDCHG_0090_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG, SG1
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+ORDCHG_0090 --> ORDCHG_0090_msg_1 : verwendet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – EBD:G_0087
+class EBD_G_0087 {
+  Name: Codeliste Gas Nr. G_0087 Codeliste zur Prüfung auf die Stornorechnung (NN-Rechnung zwischen NB und LF (Gas))
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class EBD_G_0087_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+EBD_G_0087 --> EBD_G_0087_msg_1 : verwendet in
+class EBD_G_0087_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+EBD_G_0087 ..> EBD_G_0087_proc_1 : eingebettet in
+@enduml

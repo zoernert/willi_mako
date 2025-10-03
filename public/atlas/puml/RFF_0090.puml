@@ -1,0 +1,70 @@
+@startuml
+title Datenatlas – RFF:0090
+class RFF_0090 {
+  Name: MP - ID Absender
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class RFF_0090_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG2
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+RFF_0090 --> RFF_0090_msg_1 : verwendet in
+class RFF_0090_msg_2 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+RFF_0090 --> RFF_0090_msg_2 : verwendet in
+class RFF_0090_msg_3 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+RFF_0090 --> RFF_0090_msg_3 : verwendet in
+class RFF_0090_msg_4 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, RFF, SG2
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+RFF_0090 --> RFF_0090_msg_4 : verwendet in
+class RFF_0090_msg_5 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: RFF, SG1
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+RFF_0090 --> RFF_0090_msg_5 : verwendet in
+class RFF_0090_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_0090 ..> RFF_0090_proc_1 : eingebettet in
+class RFF_0090_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+RFF_0090 ..> RFF_0090_proc_2 : eingebettet in
+class RFF_0090_proc_3 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+RFF_0090 ..> RFF_0090_proc_3 : eingebettet in
+@enduml

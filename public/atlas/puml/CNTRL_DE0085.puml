@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CNTRL:DE0085
+class CNTRL_DE0085 {
+  Name: Syntaxfehler im UNH- oder UNT-Segment
+}
+class CNTRL_DE0085_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: DE, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CNTRL_DE0085 --> CNTRL_DE0085_msg_1 : verwendet in
+@enduml

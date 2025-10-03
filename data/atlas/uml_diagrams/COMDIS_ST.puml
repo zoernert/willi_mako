@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COMDIS:ST
+class COMDIS_ST {
+  Name: MaxWdh
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COMDIS_ST_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+COMDIS_ST --> COMDIS_ST_msg_1 : verwendet in
+class COMDIS_ST_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COMDIS_ST ..> COMDIS_ST_proc_1 : eingebettet in
+@enduml

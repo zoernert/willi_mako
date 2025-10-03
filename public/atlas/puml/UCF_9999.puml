@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCF:9999
+class UCF_9999 {
+  Name: Mitteilung, dass der Wert eines einfachen Datenelements, einer Datenelementgruppe oder eines Gruppendatenelements nicht den entsprechenden Spezifikationen entspricht.
+}
+class UCF_9999_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: ein Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 11, 12, 13, 16
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCF_9999 --> UCF_9999_msg_1 : verwendet in
+@enduml

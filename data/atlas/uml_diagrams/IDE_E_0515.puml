@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – IDE:E_0515
+class IDE_E_0515 {
+  Name: EBD Nr. E_0515 zur Prüfung der Abrechnung Leistungen des Preisblatts A des MSB zwischen MSB und NB
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class IDE_E_0515_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+IDE_E_0515 --> IDE_E_0515_msg_1 : verwendet in
+class IDE_E_0515_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IDE_E_0515 ..> IDE_E_0515_proc_1 : eingebettet in
+@enduml

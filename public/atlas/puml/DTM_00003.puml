@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – DTM:00003
+class DTM_00003 {
+  Name: Nachrichtendatum
+}
+class DTM_00003_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 35, DTM, SG1
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+DTM_00003 --> DTM_00003_msg_1 : verwendet in
+@enduml

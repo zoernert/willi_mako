@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – ORDCHG:1154
+class ORDCHG_1154 {
+  Name: Referenz, Identifikation
+}
+class ORDCHG_1154_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 35, 70, MIG, ON, RFF, SG1
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+ORDCHG_1154 --> ORDCHG_1154_msg_1 : verwendet in
+@enduml

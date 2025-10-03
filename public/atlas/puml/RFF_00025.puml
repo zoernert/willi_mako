@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:00025
+class RFF_00025 {
+  Name: Gestörte Messlokation
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_00025_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0320   SG8   C   R   999   1   3   NAD - LOC - RFF
+  Pflichtfeld: Nein
+  Codes: 99, RFF
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+RFF_00025 --> RFF_00025_msg_1 : verwendet in
+class RFF_00025_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_00025 ..> RFF_00025_proc_1 : eingebettet in
+@enduml

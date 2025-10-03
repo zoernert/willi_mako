@@ -1,0 +1,53 @@
+@startuml
+title Datenatlas – IMD:C273
+class IMD_C273 {
+  Name: Produkt-/Leistungsbeschreibung
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class IMD_C273_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+IMD_C273 --> IMD_C273_msg_1 : verwendet in
+class IMD_C273_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, EDI, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IMD_C273 --> IMD_C273_msg_2 : verwendet in
+class IMD_C273_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+IMD_C273 ..> IMD_C273_proc_1 : eingebettet in
+class IMD_C273_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IMD_C273 ..> IMD_C273_proc_2 : eingebettet in
+class IMD_C273_proc_3 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IMD_C273 ..> IMD_C273_proc_3 : eingebettet in
+class IMD_C273_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+IMD_C273 ..> IMD_C273_proc_4 : eingebettet in
+@enduml

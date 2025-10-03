@@ -1,0 +1,71 @@
+@startuml
+title Datenatlas – BGM:1000
+class BGM_1000 {
+  Name: Nachrichtencode
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class BGM_1000_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: ein Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 07, 17, 26
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+BGM_1000 --> BGM_1000_msg_1 : verwendet in
+class BGM_1000_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Codewertes 380. Das Dokument hat die Belegnummer INV12435422.
+  Pflichtfeld: Ja
+  Codes: 01, 31, 380, 72, BGM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+BGM_1000 --> BGM_1000_msg_2 : verwendet in
+class BGM_1000_msg_3 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Codewertes   380.   Das   Dokument   hat die   Belegnummer   INV12435422.
+  Pflichtfeld: Ja
+  Codes: 06, 19, 380, 73, BGM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+BGM_1000 --> BGM_1000_msg_3 : verwendet in
+class BGM_1000_msg_4 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_1000 --> BGM_1000_msg_4 : verwendet in
+class BGM_1000_msg_5 {
+  Nachricht: REMADV 2.9c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+BGM_1000 --> BGM_1000_msg_5 : verwendet in
+class BGM_1000_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_1000 ..> BGM_1000_proc_1 : eingebettet in
+class BGM_1000_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_1000 ..> BGM_1000_proc_2 : eingebettet in
+class BGM_1000_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1000 ..> BGM_1000_proc_3 : eingebettet in
+@enduml

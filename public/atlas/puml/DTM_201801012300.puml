@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – DTM:201801012300
+class DTM_201801012300 {
+  Name: Wert des Datums/der Uhrzeit/des Zeitraums
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DTM_201801012300_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 00, 06, 157, 19, 303, 35, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+DTM_201801012300 --> DTM_201801012300_msg_1 : verwendet in
+class DTM_201801012300_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_201801012300 ..> DTM_201801012300_proc_1 : eingebettet in
+@enduml

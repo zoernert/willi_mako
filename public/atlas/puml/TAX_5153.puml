@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – TAX:5153
+class TAX_5153 {
+  Name: Zoll-/Steuer-/Gebühren-Art, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class TAX_5153_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 10, 15, 17, AE, OCR, TAX, VAT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+TAX_5153 --> TAX_5153_msg_1 : verwendet in
+class TAX_5153_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 15, 17, 99, AE, TAX, VAT
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+TAX_5153 --> TAX_5153_msg_2 : verwendet in
+class TAX_5153_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+TAX_5153 ..> TAX_5153_proc_1 : eingebettet in
+class TAX_5153_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+TAX_5153 ..> TAX_5153_proc_2 : eingebettet in
+@enduml

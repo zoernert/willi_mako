@@ -1,0 +1,37 @@
+@startuml
+title Datenatlas – RFF:0510
+class RFF_0510 {
+  Name: MP - ID des NB des Vorgangs der Anmeldung nach WiM
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class RFF_0510_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, ID, MP, NB, RFF
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+RFF_0510 --> RFF_0510_msg_1 : verwendet in
+class RFF_0510_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+RFF_0510 ..> RFF_0510_proc_1 : eingebettet in
+class RFF_0510_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+RFF_0510 ..> RFF_0510_proc_2 : eingebettet in
+class RFF_0510_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+RFF_0510 ..> RFF_0510_proc_3 : eingebettet in
+@enduml

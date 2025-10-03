@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – PCD:C501
+class PCD_C501 {
+  Name: Prozentsatz, Qualifier
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class PCD_C501_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 10, 30, PCD
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+PCD_C501 --> PCD_C501_msg_1 : verwendet in
+class PCD_C501_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PCD_C501 ..> PCD_C501_proc_1 : eingebettet in
+class PCD_C501_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+PCD_C501 ..> PCD_C501_proc_2 : eingebettet in
+@enduml

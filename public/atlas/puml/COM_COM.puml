@@ -1,0 +1,38 @@
+@startuml
+title Datenatlas – COM:COM
+class COM_COM {
+  Name: Kommunikationsverbindung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Stammdatenänderung
+}
+class COM_COM_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 14, 512, 99, AJ, AL, COM, EM, FX, OCR, SG, SG3, SG5, SG6, TE
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+COM_COM --> COM_COM_msg_1 : verwendet in
+class COM_COM_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 512, COM, EM, FX, OCR, SG, SG4, SG7, TE
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+COM_COM --> COM_COM_msg_2 : verwendet in
+class COM_COM_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COM_COM ..> COM_COM_proc_1 : eingebettet in
+class COM_COM_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+COM_COM ..> COM_COM_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CTA:0080
+class CTA_0080 {
+  Name: 00007
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class CTA_0080_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: CTA
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+CTA_0080 --> CTA_0080_msg_1 : verwendet in
+class CTA_0080_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CTA_0080 ..> CTA_0080_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – DTM:0110
+class DTM_0110 {
+  Name: Referenzdatum
+}
+class DTM_0110_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM, SG2
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+DTM_0110 --> DTM_0110_msg_1 : verwendet in
+@enduml

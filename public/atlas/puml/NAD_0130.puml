@@ -1,0 +1,31 @@
+@startuml
+title Datenatlas – NAD:0130
+class NAD_0130 {
+  Name: MP - ID Absender
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class NAD_0130_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+NAD_0130 --> NAD_0130_msg_1 : verwendet in
+class NAD_0130_msg_2 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG4
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+NAD_0130 --> NAD_0130_msg_2 : verwendet in
+class NAD_0130_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+NAD_0130 ..> NAD_0130_proc_1 : eingebettet in
+@enduml

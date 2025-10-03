@@ -1,0 +1,13 @@
+@startuml
+title Datenatlas – UCI:S002
+class UCI_S002 {
+  Name: ABSENDER
+}
+class UCI_S002_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: (vorgenommene Aktion) der Übertragungsdatei.
+  Pflichtfeld: Ja
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_S002 --> UCI_S002_msg_1 : verwendet in
+@enduml

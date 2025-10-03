@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – UNKNOWN:G_0082
+class UNKNOWN_G_0082 {
+  Name: Codeliste Gas Nr. G_0082
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class UNKNOWN_G_0082_msg_1 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+UNKNOWN_G_0082 --> UNKNOWN_G_0082_msg_1 : verwendet in
+class UNKNOWN_G_0082_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+UNKNOWN_G_0082 ..> UNKNOWN_G_0082_proc_1 : eingebettet in
+class UNKNOWN_G_0082_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+UNKNOWN_G_0082 ..> UNKNOWN_G_0082_proc_2 : eingebettet in
+@enduml

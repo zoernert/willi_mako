@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LF:E_0259
+class LF_E_0259 {
+  Name: EBD Nr. E_0259 Rechnung verarbeiten Codeliste zur Prüfung der Abrechnung von Dienstleistungen zwischen MSB und MSB
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class LF_E_0259_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, ID, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+LF_E_0259 --> LF_E_0259_msg_1 : verwendet in
+class LF_E_0259_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LF_E_0259 ..> LF_E_0259_proc_1 : eingebettet in
+@enduml

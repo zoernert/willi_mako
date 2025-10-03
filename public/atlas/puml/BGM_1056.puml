@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – BGM:1056
+class BGM_1056 {
+  Name: Funktion, codiert
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class BGM_1056_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_1056 --> BGM_1056_msg_1 : verwendet in
+class BGM_1056_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1056 ..> BGM_1056_proc_1 : eingebettet in
+@enduml

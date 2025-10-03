@@ -1,0 +1,45 @@
+@startuml
+title Datenatlas – CAV:7111
+class CAV_7111 {
+  Name: Merkmalswert, Code
+  Prozesse:
+    - Stammdatenänderung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class CAV_7111_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 000, 200, 999, CAV, EEG, OCR, SG, SG4, Z48, Z49, Z50, Z51
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CAV_7111 --> CAV_7111_msg_1 : verwendet in
+class CAV_7111_msg_2 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 10, 999, CAV, DSL, ETH, GSM, LAN, LTE, PLC, PST, TAE
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+CAV_7111 --> CAV_7111_msg_2 : verwendet in
+class CAV_7111_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CAV_7111 ..> CAV_7111_proc_1 : eingebettet in
+class CAV_7111_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CAV_7111 ..> CAV_7111_proc_2 : eingebettet in
+class CAV_7111_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CAV_7111 ..> CAV_7111_proc_3 : eingebettet in
+@enduml

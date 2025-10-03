@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LIN:00026
+class LIN_00026 {
+  Name: lfd. Position
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class LIN_00026_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 07, 26, 53, LIN, UN
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+LIN_00026 --> LIN_00026_msg_1 : verwendet in
+class LIN_00026_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+LIN_00026 ..> LIN_00026_proc_1 : eingebettet in
+@enduml

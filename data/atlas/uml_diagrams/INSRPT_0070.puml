@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – INSRPT:0070
+class INSRPT_0070 {
+  Name: MP - ID Absender
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class INSRPT_0070_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 99, ID, MIG, MP, SG2
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+INSRPT_0070 --> INSRPT_0070_msg_1 : verwendet in
+class INSRPT_0070_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+INSRPT_0070 ..> INSRPT_0070_proc_1 : eingebettet in
+@enduml

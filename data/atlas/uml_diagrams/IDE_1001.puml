@@ -1,0 +1,69 @@
+@startuml
+title Datenatlas – IDE:1001
+class IDE_1001 {
+  Name: Nachrichten Referenznummer
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Anforderung und Übermittlung von Messwerten
+}
+class IDE_1001_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachberechnung im Zuge der Erstellung vorläufiger Monatsrechnungen verwendet.
+  Pflichtfeld: Ja
+  Codes: 06, 07, 12, 30, 31, BK7, JVR, MMM, MSB, MVR, NAP, WIM, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+IDE_1001 --> IDE_1001_msg_1 : verwendet in
+class IDE_1001_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Mit diesem Rechnungstyp wird der Messstellenbetrieb abgerechnet.
+  Pflichtfeld: Ja
+  Codes: 06, 07, 12, 30, 31, BK7, JVR, MMM, MSB, MVR, NAP, OCR, WIM, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IDE_1001 --> IDE_1001_msg_2 : verwendet in
+class IDE_1001_msg_3 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Ersatzprofilbestimmung und Skalierung.
+  Pflichtfeld: Ja
+  Codes: OCR, ZQ8, ZQ9, ZR0, ZS0
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+IDE_1001 --> IDE_1001_msg_3 : verwendet in
+class IDE_1001_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+IDE_1001 ..> IDE_1001_proc_1 : eingebettet in
+class IDE_1001_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IDE_1001 ..> IDE_1001_proc_2 : eingebettet in
+class IDE_1001_proc_3 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IDE_1001 ..> IDE_1001_proc_3 : eingebettet in
+class IDE_1001_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+IDE_1001 ..> IDE_1001_proc_4 : eingebettet in
+class IDE_1001_proc_5 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+IDE_1001 ..> IDE_1001_proc_5 : eingebettet in
+@enduml

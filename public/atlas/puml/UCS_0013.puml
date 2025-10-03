@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCS:0013
+class UCS_0013 {
+  Name: Service-Segmentbezeichner, codiert
+}
+class UCS_0013_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: UCM:
+  Pflichtfeld: Ja
+  Codes: 21, 22, 26, 28, 29, 39, EDI, UCD, UCS, UNA, UNB, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCS_0013 --> UCS_0013_msg_1 : verwendet in
+@enduml

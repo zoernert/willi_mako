@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNBEKANNT:S011
+class UNBEKANNT_S011 {
+  Name: Datenelement-Identifikation
+}
+class UNBEKANNT_S011_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 38, 39, 40, OCR
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNBEKANNT_S011 --> UNBEKANNT_S011_msg_1 : verwendet in
+@enduml

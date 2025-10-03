@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – EBD:E_0522
+class EBD_E_0522 {
+  Name: EBD Nr. E_0522 zur Prüfung für die Antwort auf eine Stornierung (Abrechnung Preisblatts A des MSB zwischen MSB und LF)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class EBD_E_0522_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+EBD_E_0522 --> EBD_E_0522_msg_1 : verwendet in
+class EBD_E_0522_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+EBD_E_0522 ..> EBD_E_0522_proc_1 : eingebettet in
+@enduml

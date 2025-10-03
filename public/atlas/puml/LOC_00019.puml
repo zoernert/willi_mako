@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – LOC:00019
+class LOC_00019 {
+  Name: Meldepunkt
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class LOC_00019_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 000, 200, 99, LOC
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+LOC_00019 --> LOC_00019_msg_1 : verwendet in
+class LOC_00019_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+LOC_00019 ..> LOC_00019_proc_1 : eingebettet in
+class LOC_00019_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+LOC_00019 ..> LOC_00019_proc_2 : eingebettet in
+@enduml

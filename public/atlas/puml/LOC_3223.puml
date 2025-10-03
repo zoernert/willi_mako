@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LOC:3223
+class LOC_3223 {
+  Name: Erster zugehöriger Platz/Ort, Code
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class LOC_3223_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 237, 25, 35, LOC, OCR, SG5, SG6
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+LOC_3223 --> LOC_3223_msg_1 : verwendet in
+class LOC_3223_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+LOC_3223 ..> LOC_3223_proc_1 : eingebettet in
+@enduml

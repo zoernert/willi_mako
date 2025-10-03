@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – APERAK:EBENE
+class APERAK_EBENE {
+  Name: Name
+}
+class APERAK_EBENE_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+APERAK_EBENE --> APERAK_EBENE_msg_1 : verwendet in
+@enduml

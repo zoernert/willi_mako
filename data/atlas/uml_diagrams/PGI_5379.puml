@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PGI:5379
+class PGI_5379 {
+  Name: Produktgruppen-Art, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PGI_5379_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 0590   SG17   C   1000   D   1   1   PGI - SG36
+  Pflichtfeld: Ja
+  Codes: PGI
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PGI_5379 --> PGI_5379_msg_1 : verwendet in
+class PGI_5379_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PGI_5379 ..> PGI_5379_proc_1 : eingebettet in
+@enduml

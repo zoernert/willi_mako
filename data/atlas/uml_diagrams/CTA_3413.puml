@@ -1,0 +1,146 @@
+@startuml
+title Datenatlas – CTA:3413
+class CTA_3413 {
+  Name: Abteilung oder Bearbeiter, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class CTA_3413_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, CTA, IC, OCR, SG, SG3, SG5, SG6
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+CTA_3413 --> CTA_3413_msg_1 : verwendet in
+class CTA_3413_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 35, 99, CTA, IC, OCR, SG2, SG5
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+CTA_3413 --> CTA_3413_msg_2 : verwendet in
+class CTA_3413_msg_3 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 35, 99, CTA, IC, OCR, SG2, SG5
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+CTA_3413 --> CTA_3413_msg_3 : verwendet in
+class CTA_3413_msg_4 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 11, 17, 35, 99, CTA, IC, ID, MP, OCR, SG2, SG4
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+CTA_3413 --> CTA_3413_msg_4 : verwendet in
+class CTA_3413_msg_5 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, CTA, IC, ID, MP, OCR, SG3, SG6
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+CTA_3413 --> CTA_3413_msg_5 : verwendet in
+class CTA_3413_msg_6 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, CTA, IC, ID, MP, OCR, SG, SG3, SG6
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+CTA_3413 --> CTA_3413_msg_6 : verwendet in
+class CTA_3413_msg_7 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 256, CTA, IC, SG4, SG7
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CTA_3413 --> CTA_3413_msg_7 : verwendet in
+class CTA_3413_msg_8 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 0150   SG4   C   5   O   1   2   CTA - COM
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, COM, CTA, IC, ID, SG2, SG4
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+CTA_3413 --> CTA_3413_msg_8 : verwendet in
+class CTA_3413_msg_9 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, CTA, IC, ID, MP, OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+CTA_3413 --> CTA_3413_msg_9 : verwendet in
+class CTA_3413_msg_10 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 35, 99, CTA, IC, ID, MP, OCR, SG, SG1, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+CTA_3413 --> CTA_3413_msg_10 : verwendet in
+class CTA_3413_msg_11 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 17, 256, 99, CTA, IC, ID, MP, NAD, OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+CTA_3413 --> CTA_3413_msg_11 : verwendet in
+class CTA_3413_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CTA_3413 ..> CTA_3413_proc_1 : eingebettet in
+class CTA_3413_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+CTA_3413 ..> CTA_3413_proc_2 : eingebettet in
+class CTA_3413_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+CTA_3413 ..> CTA_3413_proc_3 : eingebettet in
+class CTA_3413_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CTA_3413 ..> CTA_3413_proc_4 : eingebettet in
+class CTA_3413_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CTA_3413 ..> CTA_3413_proc_5 : eingebettet in
+class CTA_3413_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CTA_3413 ..> CTA_3413_proc_6 : eingebettet in
+@enduml

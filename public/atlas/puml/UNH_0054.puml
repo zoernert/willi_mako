@@ -1,0 +1,90 @@
+@startuml
+title Datenatlas – UNH:0054
+class UNH_0054 {
+  Name: Nachrichtenfreigabenummer
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNH_0054_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 22, UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+UNH_0054 --> UNH_0054_msg_1 : verwendet in
+class UNH_0054_msg_2 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Nachricht Syntax -   und Servicebericht ist CONTRL.
+  Pflichtfeld: Ja
+  Codes: UN
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNH_0054 --> UNH_0054_msg_2 : verwendet in
+class UNH_0054_msg_3 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+UNH_0054 --> UNH_0054_msg_3 : verwendet in
+class UNH_0054_msg_4 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNH_0054 --> UNH_0054_msg_4 : verwendet in
+class UNH_0054_msg_5 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+UNH_0054 --> UNH_0054_msg_5 : verwendet in
+class UNH_0054_msg_6 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: 68, UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+UNH_0054 --> UNH_0054_msg_6 : verwendet in
+class UNH_0054_msg_7 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+UNH_0054 --> UNH_0054_msg_7 : verwendet in
+class UNH_0054_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0054 ..> UNH_0054_proc_1 : eingebettet in
+class UNH_0054_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNH_0054 ..> UNH_0054_proc_2 : eingebettet in
+class UNH_0054_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNH_0054 ..> UNH_0054_proc_3 : eingebettet in
+@enduml

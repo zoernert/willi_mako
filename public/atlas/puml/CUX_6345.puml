@@ -1,0 +1,71 @@
+@startuml
+title Datenatlas – CUX:6345
+class CUX_6345 {
+  Name: Währung, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class CUX_6345_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 06, 19, 22, CUX, EUR, ISO
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+CUX_6345 --> CUX_6345_msg_1 : verwendet in
+class CUX_6345_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 99, CUX, EUR, OCR, SG7
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+CUX_6345 --> CUX_6345_msg_2 : verwendet in
+class CUX_6345_msg_3 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 99, CUX, EUR, OCR, SG7
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+CUX_6345 --> CUX_6345_msg_3 : verwendet in
+class CUX_6345_msg_4 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: CUX, EUR, OCR, SG4
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+CUX_6345 --> CUX_6345_msg_4 : verwendet in
+class CUX_6345_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CUX_6345 ..> CUX_6345_proc_1 : eingebettet in
+class CUX_6345_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+CUX_6345 ..> CUX_6345_proc_2 : eingebettet in
+class CUX_6345_proc_3 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CUX_6345 ..> CUX_6345_proc_3 : eingebettet in
+class CUX_6345_proc_4 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CUX_6345 ..> CUX_6345_proc_4 : eingebettet in
+@enduml

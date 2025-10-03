@@ -1,0 +1,38 @@
+@startuml
+title Datenatlas – CTA:0260
+class CTA_0260 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class CTA_0260_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+CTA_0260 --> CTA_0260_msg_1 : verwendet in
+class CTA_0260_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+CTA_0260 --> CTA_0260_msg_2 : verwendet in
+class CTA_0260_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CTA_0260 ..> CTA_0260_proc_1 : eingebettet in
+class CTA_0260_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+CTA_0260 ..> CTA_0260_proc_2 : eingebettet in
+@enduml

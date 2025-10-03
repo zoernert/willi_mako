@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:SG4
+class RFF_SG4 {
+  Name: Referenz auf Anfrage bzw. früheren Vorgang
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_SG4_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, RFF, SG4
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+RFF_SG4 --> RFF_SG4_msg_1 : verwendet in
+class RFF_SG4_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_SG4 ..> RFF_SG4_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – MOA:00011
+class MOA_00011 {
+  Name: angeforderter Betrag
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class MOA_00011_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: MOA, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+MOA_00011 --> MOA_00011_msg_1 : verwendet in
+class MOA_00011_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+MOA_00011 ..> MOA_00011_proc_1 : eingebettet in
+@enduml

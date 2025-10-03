@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CCI:00023
+class CCI_00023 {
+  Name: Zugeordnete Schaltzeitdefinition
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class CCI_00023_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: 1020   SG27   M   D   200000   1   1   LIN
+  Pflichtfeld: Ja
+  Codes: 01, 10, 48, CCI, UN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+CCI_00023 --> CCI_00023_msg_1 : verwendet in
+class CCI_00023_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+CCI_00023 ..> CCI_00023_proc_1 : eingebettet in
+@enduml

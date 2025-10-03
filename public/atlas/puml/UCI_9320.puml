@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCI:9320
+class UCI_9320 {
+  Name: Statusgrund
+}
+class UCI_9320_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Empfänger abweicht.
+  Pflichtfeld: Ja
+  Codes: 12
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_9320 --> UCI_9320_msg_1 : verwendet in
+@enduml

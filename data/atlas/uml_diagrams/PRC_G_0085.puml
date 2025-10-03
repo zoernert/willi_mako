@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PRC:G_0085
+class PRC_G_0085 {
+  Name: Codeliste Gas Nr. G_0085 Codeliste zur Prüfung auf die Stornorechnung (Rechnung vom NB an den MSBA
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PRC_G_0085_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+PRC_G_0085 --> PRC_G_0085_msg_1 : verwendet in
+class PRC_G_0085_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PRC_G_0085 ..> PRC_G_0085_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+title Datenatlas – BGM:9
+class BGM_9 {
+  Name: Nachrichtenfunktion-Code
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class BGM_9_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 01, 10, 32, BGM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+BGM_9 --> BGM_9_msg_1 : verwendet in
+class BGM_9_msg_2 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 03, 18, 31, UN
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+BGM_9 --> BGM_9_msg_2 : verwendet in
+class BGM_9_msg_3 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+BGM_9 --> BGM_9_msg_3 : verwendet in
+class BGM_9_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_9 ..> BGM_9_proc_1 : eingebettet in
+@enduml

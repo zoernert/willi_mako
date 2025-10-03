@@ -1,0 +1,88 @@
+@startuml
+title Datenatlas – FTX:C108
+class FTX_C108 {
+  Name: Text
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class FTX_C108_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 17, 22, 512, 99, 999, AAO, ACD, DTM, FTX, LIN, SG3, SG7, SG8, STS
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+FTX_C108 --> FTX_C108_msg_1 : verwendet in
+class FTX_C108_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 17, 512, 99, FTX, IP, Z28
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+FTX_C108 --> FTX_C108_msg_2 : verwendet in
+class FTX_C108_msg_3 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 17, 512, FTX, SG4, URL, Z13
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+FTX_C108 --> FTX_C108_msg_3 : verwendet in
+class FTX_C108_msg_4 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 17, 512, 99, ACB, FTX
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+FTX_C108 --> FTX_C108_msg_4 : verwendet in
+class FTX_C108_msg_5 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 10, 17, 512, ABO, FTX, SG5
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+FTX_C108 --> FTX_C108_msg_5 : verwendet in
+class FTX_C108_msg_6 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 17, 512, 99, ACB, FTX, OCR
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+FTX_C108 --> FTX_C108_msg_6 : verwendet in
+class FTX_C108_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+FTX_C108 ..> FTX_C108_proc_1 : eingebettet in
+class FTX_C108_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+FTX_C108 ..> FTX_C108_proc_2 : eingebettet in
+class FTX_C108_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+FTX_C108 ..> FTX_C108_proc_3 : eingebettet in
+class FTX_C108_proc_4 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+FTX_C108 ..> FTX_C108_proc_4 : eingebettet in
+@enduml

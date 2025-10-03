@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – BGM:7663
+class BGM_7663 {
+  Name: Funktion des Dokuments/der Nachricht
+}
+class BGM_7663_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: ein Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 07, 17, 26
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+BGM_7663 --> BGM_7663_msg_1 : verwendet in
+class BGM_7663_msg_2 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 03, 18, 31
+  Quelle: ORDCHG_MIG_1_1_20230331.pdf
+}
+BGM_7663 --> BGM_7663_msg_2 : verwendet in
+@enduml

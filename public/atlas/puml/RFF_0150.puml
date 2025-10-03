@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – RFF:0150
+class RFF_0150 {
+  Name: MP - ID Absender
+}
+class RFF_0150_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, ID, MP, RFF, SG3
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+RFF_0150 --> RFF_0150_msg_1 : verwendet in
+@enduml

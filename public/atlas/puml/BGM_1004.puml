@@ -1,0 +1,171 @@
+@startuml
+title Datenatlas – BGM:1004
+class BGM_1004 {
+  Name: Belegart, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class BGM_1004_msg_1 {
+  Nachricht: APERAK 2.1i
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 312, 313, 35, BGM, EDI
+  Quelle: APERAK_MIG_2_1i_20240619.pdf
+}
+BGM_1004 --> BGM_1004_msg_1 : verwendet in
+class BGM_1004_msg_2 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 456, 70, 739, BGM, EDI
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+BGM_1004 --> BGM_1004_msg_2 : verwendet in
+class BGM_1004_msg_3 {
+  Nachricht: CONTRL 2.0b
+  Kontext: 0050   SG2   C   D   999   999   2   UCS - UCD
+  Pflichtfeld: Ja
+  Codes: 07, 17, 26, UN
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+BGM_1004 --> BGM_1004_msg_3 : verwendet in
+class BGM_1004_msg_4 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Vorgangsidentifikation auf Positionsebene anzugeben.
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+BGM_1004 --> BGM_1004_msg_4 : verwendet in
+class BGM_1004_msg_5 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Hinweise:
+  Pflichtfeld: Ja
+  Codes: 14, 380, 389, MOA, UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+BGM_1004 --> BGM_1004_msg_5 : verwendet in
+class BGM_1004_msg_6 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Codewertes   380.   Das   Dokument   hat die   Belegnummer   INV12435422.
+  Pflichtfeld: Ja
+  Codes: 06, 19, 380, 73, BGM
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+BGM_1004 --> BGM_1004_msg_6 : verwendet in
+class BGM_1004_msg_7 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 270, 35, BGM, BK, EDI, EEG, POG, TEP, Z06, Z15, Z16, Z20, Z21, Z23, Z24, Z27, Z28, Z39, Z41, Z42, Z43, Z44, Z45, Z46, Z48, Z50, Z69, Z83, Z85
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_1004 --> BGM_1004_msg_7 : verwendet in
+class BGM_1004_msg_8 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 18, 26
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+BGM_1004 --> BGM_1004_msg_8 : verwendet in
+class BGM_1004_msg_9 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 70, BGM, BK, EDI, ESA, LF, MSB, Z10, Z11, Z12, Z13, Z14, Z23, Z24, Z28, Z29, Z30, Z31, Z34, Z48, Z51, Z52, Z55, Z56, Z57, Z68, Z72, Z73, Z74, Z76, Z91
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+BGM_1004 --> BGM_1004_msg_9 : verwendet in
+class BGM_1004_msg_10 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 10, 11, 35, 70, BGM, EDI
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+BGM_1004 --> BGM_1004_msg_10 : verwendet in
+class BGM_1004_msg_11 {
+  Nachricht: PRICAT 2.0d
+  Kontext: DE1004 des BGM - Segments.
+  Pflichtfeld: Ja
+  Codes: BGM, EDI
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+BGM_1004 --> BGM_1004_msg_11 : verwendet in
+class BGM_1004_msg_12 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 310, 70, BGM, EDI, ESA, LF, MSB, Z29, Z57, Z74
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_Fehlerkorrektur_20241213.pdf
+}
+BGM_1004 --> BGM_1004_msg_12 : verwendet in
+class BGM_1004_msg_13 {
+  Nachricht: REMADV 2.9c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, UN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+BGM_1004 --> BGM_1004_msg_13 : verwendet in
+class BGM_1004_msg_14 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 311, 70, BGM, EDI, ESA, LF, MSB, Z29, Z57, Z74, Z82
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+BGM_1004 --> BGM_1004_msg_14 : verwendet in
+class BGM_1004_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_1004 ..> BGM_1004_proc_1 : eingebettet in
+class BGM_1004_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_1004 ..> BGM_1004_proc_2 : eingebettet in
+class BGM_1004_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1004 ..> BGM_1004_proc_3 : eingebettet in
+class BGM_1004_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+BGM_1004 ..> BGM_1004_proc_4 : eingebettet in
+class BGM_1004_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+BGM_1004 ..> BGM_1004_proc_5 : eingebettet in
+class BGM_1004_proc_6 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+BGM_1004 ..> BGM_1004_proc_6 : eingebettet in
+@enduml

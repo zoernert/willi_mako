@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – MOA:1830
+class MOA_1830 {
+  Name: Gemeinderabatt der Position
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class MOA_1830_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: MOA, XY
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+MOA_1830 --> MOA_1830_msg_1 : verwendet in
+class MOA_1830_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+MOA_1830 ..> MOA_1830_proc_1 : eingebettet in
+class MOA_1830_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+MOA_1830 ..> MOA_1830_proc_2 : eingebettet in
+@enduml

@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – UNH:0077
+class UNH_0077 {
+  Name: Empfänger-Kennung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class UNH_0077_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, COM, SG2
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNH_0077 --> UNH_0077_msg_1 : verwendet in
+class UNH_0077_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0077 ..> UNH_0077_proc_1 : eingebettet in
+class UNH_0077_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNH_0077 ..> UNH_0077_proc_2 : eingebettet in
+@enduml

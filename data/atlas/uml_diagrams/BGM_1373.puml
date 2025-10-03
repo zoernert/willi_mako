@@ -1,0 +1,54 @@
+@startuml
+title Datenatlas – BGM:1373
+class BGM_1373 {
+  Name: Dokumentenstatus, Code
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Stammdatenänderung
+    - Netznutzungsabrechnung
+}
+class BGM_1373_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_1373 --> BGM_1373_msg_1 : verwendet in
+class BGM_1373_msg_2 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 10, 11, 35, 70, BGM, EDI
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+BGM_1373 --> BGM_1373_msg_2 : verwendet in
+class BGM_1373_msg_3 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: 11
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+BGM_1373 --> BGM_1373_msg_3 : verwendet in
+class BGM_1373_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1373 ..> BGM_1373_proc_1 : eingebettet in
+class BGM_1373_proc_2 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+BGM_1373 ..> BGM_1373_proc_2 : eingebettet in
+class BGM_1373_proc_3 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_1373 ..> BGM_1373_proc_3 : eingebettet in
+@enduml

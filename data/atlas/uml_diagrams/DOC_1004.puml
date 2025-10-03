@@ -1,0 +1,32 @@
+@startuml
+title Datenatlas – DOC:1004
+class DOC_1004 {
+  Name: Dokumentennummer
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DOC_1004_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 21, 22, 23, 293, 70, 99, DOC, OCR, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+DOC_1004 --> DOC_1004_msg_1 : verwendet in
+class DOC_1004_msg_2 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 225, 35, 380, 389, 457, DOC, OCR, SG5
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+DOC_1004 --> DOC_1004_msg_2 : verwendet in
+class DOC_1004_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DOC_1004 ..> DOC_1004_proc_1 : eingebettet in
+@enduml

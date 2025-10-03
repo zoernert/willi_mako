@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – BGM:ZA3
+class BGM_ZA3 {
+  Name: Falscher Wandlerfaktor
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class BGM_ZA3_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: anfällt.
+  Pflichtfeld: Ja
+  Codes: OCR, ZA0, ZA1, ZA3, ZA4, ZA5, ZA6, ZA7, ZA8, ZA9, ZB0, ZB9, ZC2, ZC4, ZJ8, ZJ9, ZR1, ZR2, ZR3, ZR4
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+BGM_ZA3 --> BGM_ZA3_msg_1 : verwendet in
+class BGM_ZA3_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_ZA3 ..> BGM_ZA3_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,37 @@
+@startuml
+title Datenatlas – BGM:Z29
+class BGM_Z29 {
+  Name: Abrechnung des Messstellenbetriebs vom MSB an den LF
+  Prozesse:
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class BGM_Z29_msg_1 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 310, 70, BGM, EDI, ESA, LF, MSB, Z29, Z57, Z74
+  Prozesse: Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+BGM_Z29 --> BGM_Z29_msg_1 : verwendet in
+class BGM_Z29_proc_1 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_Z29 ..> BGM_Z29_proc_1 : eingebettet in
+class BGM_Z29_proc_2 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+BGM_Z29 ..> BGM_Z29_proc_2 : eingebettet in
+class BGM_Z29_proc_3 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+BGM_Z29 ..> BGM_Z29_proc_3 : eingebettet in
+@enduml

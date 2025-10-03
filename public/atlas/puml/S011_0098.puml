@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – S011:0098
+class S011_0098 {
+  Name: Segmentposition des fehlerhaften Datenelements
+}
+class S011_0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: 38, 39, 40, EDI
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+S011_0098 --> S011_0098_msg_1 : verwendet in
+@enduml

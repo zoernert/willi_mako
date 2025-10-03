@@ -17,7 +17,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   QuestionAnswer as FAQIcon,
   Search as SearchIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Storage as StorageIcon
 } from '@mui/icons-material';
 import Layout from '../../components/Layout';
 
@@ -150,7 +151,7 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
         </Box>
 
         {/* Whitepapers Callout */}
-        <Paper elevation={1} sx={{ p: 3, mb: 8, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper' }}>
+        <Paper elevation={1} sx={{ p: 3, mb: 4, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <DescriptionIcon color="primary" />
             <Typography variant="h6" component="h2" sx={{ m: 0, fontWeight: 600 }}>
@@ -166,6 +167,60 @@ export default function WissenIndex({ faqs, tags, totalCount }: WissenIndexProps
             sx={{ fontWeight: 600 }}
           >
             Zu den Whitepapers →
+          </Button>
+        </Paper>
+
+        {/* Daten Atlas Highlight */}
+        <Paper
+          elevation={1}
+          sx={{
+            p: 4,
+            mb: 8,
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 3,
+            alignItems: { xs: 'flex-start', md: 'center' },
+            bgcolor: 'primary.50',
+            border: '1px solid',
+            borderColor: 'primary.100',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <StorageIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 600, mb: 1 }}>
+                Daten Atlas für Marktkommunikation
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 620 }}>
+                Interaktiver Atlas mit EDIFACT-Datenelementen, Prozessen und Visualisierungen – inklusive
+                rechtlicher Grundlagen, Einsatzbeispielen und herunterladbaren Diagrammen.
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            component={Link}
+            href="/daten-atlas"
+            variant="contained"
+            color="primary"
+            size="large"
+            sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
+            Daten Atlas entdecken →
           </Button>
         </Paper>
 

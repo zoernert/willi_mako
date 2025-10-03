@@ -1,0 +1,44 @@
+@startuml
+title Datenatlas – IDE:3055
+class IDE_3055 {
+  Name: Code List Responsible Agency
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class IDE_3055_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Mit diesem Rechnungstyp wird der Messstellenbetrieb abgerechnet.
+  Pflichtfeld: Ja
+  Codes: 06, 07, 12, 30, 31, BK7, JVR, MMM, MSB, MVR, NAP, OCR, WIM, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IDE_3055 --> IDE_3055_msg_1 : verwendet in
+class IDE_3055_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+IDE_3055 ..> IDE_3055_proc_1 : eingebettet in
+class IDE_3055_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IDE_3055 ..> IDE_3055_proc_2 : eingebettet in
+class IDE_3055_proc_3 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IDE_3055 ..> IDE_3055_proc_3 : eingebettet in
+class IDE_3055_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+IDE_3055 ..> IDE_3055_proc_4 : eingebettet in
+@enduml

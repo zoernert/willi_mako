@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – XXX:GS_002
+class XXX_GS_002 {
+  Name: Codeliste Gas und Strom Nr. GS_002 Codeliste zur Prüfung der Mehr-/Mindermengenabrechnung zwischen NB und LF (entspricht dem EBD E_0801)
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class XXX_GS_002_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+XXX_GS_002 --> XXX_GS_002_msg_1 : verwendet in
+class XXX_GS_002_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+XXX_GS_002 ..> XXX_GS_002_proc_1 : eingebettet in
+@enduml

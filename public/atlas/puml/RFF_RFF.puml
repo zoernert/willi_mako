@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:RFF
+class RFF_RFF {
+  Name: Referenz
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_RFF_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 35, 70, 99, EDI, ID, MP, RFF, SG1, Z56
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+RFF_RFF --> RFF_RFF_msg_1 : verwendet in
+class RFF_RFF_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_RFF ..> RFF_RFF_proc_1 : eingebettet in
+@enduml

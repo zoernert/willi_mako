@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – RFF:TN
+class RFF_TN {
+  Name: Vorgangsnummer
+}
+class RFF_TN_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 18, 26, RFF, TN
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+RFF_TN --> RFF_TN_msg_1 : verwendet in
+@enduml

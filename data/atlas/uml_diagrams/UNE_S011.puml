@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNE:S011
+class UNE_S011 {
+  Name: Datenelement - Identifikation
+}
+class UNE_S011_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Nachrichten enthielt.
+  Pflichtfeld: Ja
+  Codes: 29, 32, UNA, UNB, UNZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNE_S011 --> UNE_S011_msg_1 : verwendet in
+@enduml

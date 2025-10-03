@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LIN:00031
+class LIN_00031 {
+  Name: Konfigurationserlaubnis für Werte nach Typ 2 aus SMGW
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class LIN_00031_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: LIN
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+LIN_00031 --> LIN_00031_msg_1 : verwendet in
+class LIN_00031_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+LIN_00031 ..> LIN_00031_proc_1 : eingebettet in
+@enduml

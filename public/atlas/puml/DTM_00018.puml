@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – DTM:00018
+class DTM_00018 {
+  Name: Ende des Geräte - Status
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DTM_00018_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 99, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+DTM_00018 --> DTM_00018_msg_1 : verwendet in
+class DTM_00018_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00018 ..> DTM_00018_proc_1 : eingebettet in
+@enduml

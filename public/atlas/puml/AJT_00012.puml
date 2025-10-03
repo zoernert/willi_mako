@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – AJT:00012
+class AJT_00012 {
+  Name: Begründung der Korrektheit
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class AJT_00012_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: AJT
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+AJT_00012 --> AJT_00012_msg_1 : verwendet in
+class AJT_00012_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+AJT_00012 ..> AJT_00012_proc_1 : eingebettet in
+@enduml

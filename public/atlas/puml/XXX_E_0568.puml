@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – XXX:E_0568
+class XXX_E_0568 {
+  Name: EBD Nr. E_0568 erneut Rechnung Messstellenbetrieb mit iMS gegenüber dem NB prüfen
+  Prozesse:
+    - Messstellenbetriebsabrechnung
+    - Netznutzungsabrechnung
+}
+class XXX_E_0568_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Messstellenbetriebsabrechnung, Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+XXX_E_0568 --> XXX_E_0568_msg_1 : verwendet in
+class XXX_E_0568_proc_1 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+XXX_E_0568 ..> XXX_E_0568_proc_1 : eingebettet in
+class XXX_E_0568_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+XXX_E_0568 ..> XXX_E_0568_proc_2 : eingebettet in
+@enduml

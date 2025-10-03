@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – DLI:1073
+class DLI_1073 {
+  Name: Dokumentenzeile-Aktion, Code
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DLI_1073_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: DLI, OCR, SG5
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+DLI_1073 --> DLI_1073_msg_1 : verwendet in
+class DLI_1073_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DLI_1073 ..> DLI_1073_proc_1 : eingebettet in
+@enduml

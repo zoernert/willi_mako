@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – NAD:0090
+class NAD_0090 {
+  Name: MP - ID Empfänger
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+    - Netznutzungsabrechnung
+}
+class NAD_0090_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+NAD_0090 --> NAD_0090_msg_1 : verwendet in
+class NAD_0090_msg_2 {
+  Nachricht: PRICAT 2.0d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 99, ID, NAD, SG2
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+NAD_0090 --> NAD_0090_msg_2 : verwendet in
+class NAD_0090_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+NAD_0090 ..> NAD_0090_proc_1 : eingebettet in
+class NAD_0090_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_0090 ..> NAD_0090_proc_2 : eingebettet in
+@enduml

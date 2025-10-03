@@ -1,0 +1,53 @@
+@startuml
+title Datenatlas – NAD:0160
+class NAD_0160 {
+  Name: MP - ID Empfänger
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+    - Stammdatenänderung
+}
+class NAD_0160_msg_1 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+NAD_0160 --> NAD_0160_msg_1 : verwendet in
+class NAD_0160_msg_2 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: ID, MP, NAD, SG1, SG6
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+NAD_0160 --> NAD_0160_msg_2 : verwendet in
+class NAD_0160_msg_3 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 01, 10, 67, NAD, UN
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+NAD_0160 --> NAD_0160_msg_3 : verwendet in
+class NAD_0160_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+NAD_0160 ..> NAD_0160_proc_1 : eingebettet in
+class NAD_0160_proc_2 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+NAD_0160 ..> NAD_0160_proc_2 : eingebettet in
+class NAD_0160_proc_3 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+NAD_0160 ..> NAD_0160_proc_3 : eingebettet in
+@enduml

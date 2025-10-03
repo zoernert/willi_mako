@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCI:0013
+class UCI_0013 {
+  Name: Service-Segmentbezeichner, codiert
+}
+class UCI_0013_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Gruppendatenelemente enthält.
+  Pflichtfeld: Ja
+  Codes: 21, 22, 26, 28, 29, 39, OCR, UCD, UCS, UNA, UNB, UNH, UNT
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_0013 --> UCI_0013_msg_1 : verwendet in
+@enduml

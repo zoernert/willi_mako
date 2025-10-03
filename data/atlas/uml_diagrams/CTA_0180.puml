@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CTA:0180
+class CTA_0180 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class CTA_0180_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+CTA_0180 --> CTA_0180_msg_1 : verwendet in
+class CTA_0180_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+CTA_0180 ..> CTA_0180_proc_1 : eingebettet in
+@enduml

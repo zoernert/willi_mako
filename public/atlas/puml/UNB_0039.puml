@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UNB:0039
+class UNB_0039 {
+  Name: Empfängerpasswort
+}
+class UNB_0039_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Empfänger bereits bekannt).
+  Pflichtfeld: Ja
+  Codes: 26, 28, UNB, UNZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UNB_0039 --> UNB_0039_msg_1 : verwendet in
+@enduml

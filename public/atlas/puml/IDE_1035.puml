@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – IDE:1035
+class IDE_1035 {
+  Name: Nachrichtenversion, freigegeben durch verantwortliche Agentur
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class IDE_1035_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Null ist, werden nicht berücksichtigt.
+  Pflichtfeld: Ja
+  Codes: OCR, ZQ8, ZQ9, ZR0, ZS0
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+IDE_1035 --> IDE_1035_msg_1 : verwendet in
+class IDE_1035_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+IDE_1035 ..> IDE_1035_proc_1 : eingebettet in
+@enduml

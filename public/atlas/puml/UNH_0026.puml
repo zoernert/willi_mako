@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNH:0026
+class UNH_0026 {
+  Name: Nachrichtenreferenznummer
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class UNH_0026_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+UNH_0026 --> UNH_0026_msg_1 : verwendet in
+class UNH_0026_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0026 ..> UNH_0026_proc_1 : eingebettet in
+@enduml

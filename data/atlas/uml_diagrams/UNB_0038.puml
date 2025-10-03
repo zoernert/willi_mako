@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – UNB:0038
+class UNB_0038 {
+  Name: Test indicator
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNB_0038_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 10, 14, 20, 23, 24, 52, TL, UNB
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+UNB_0038 --> UNB_0038_msg_1 : verwendet in
+class UNB_0038_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNB_0038 ..> UNB_0038_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – COMDIS:EBENE
+class COMDIS_EBENE {
+  Name: Name
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class COMDIS_EBENE_msg_1 {
+  Nachricht: COMDIS 1.0e.
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: MIG
+  Prozesse: Netznutzungsabrechnung
+  Quelle: COMDIS_MIG_1_0e__20240619.pdf
+}
+COMDIS_EBENE --> COMDIS_EBENE_msg_1 : verwendet in
+class COMDIS_EBENE_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+COMDIS_EBENE ..> COMDIS_EBENE_proc_1 : eingebettet in
+@enduml

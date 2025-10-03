@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – BGM:457
+class BGM_457 {
+  Name: Storno einer Belastung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class BGM_457_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: ausgestellte Rechnung   -   zu verwenden.
+  Pflichtfeld: Ja
+  Codes: 457, Z25
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+BGM_457 --> BGM_457_msg_1 : verwendet in
+class BGM_457_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+BGM_457 ..> BGM_457_proc_1 : eingebettet in
+class BGM_457_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+BGM_457 ..> BGM_457_proc_2 : eingebettet in
+@enduml

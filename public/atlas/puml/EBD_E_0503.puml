@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – EBD:E_0503
+class EBD_E_0503 {
+  Name: EBD Nr. E_0503 EBD zur Prüfung der Abrechnung einer sonstigen Leistung. Dies kann die Rechnung zur Beauftragung der Unterbrechung der Anschlussnutzung (Sperren) oder die Rechnung zu Verzugskosten beinhalten
+  Prozesse:
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class EBD_E_0503_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: EBD, ESA, LF, MGV, MSB, NB, NN
+  Prozesse: Sperrung und Entsperrung eines Anschlusses, Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+EBD_E_0503 --> EBD_E_0503_msg_1 : verwendet in
+class EBD_E_0503_proc_1 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+EBD_E_0503 ..> EBD_E_0503_proc_1 : eingebettet in
+class EBD_E_0503_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+EBD_E_0503 ..> EBD_E_0503_proc_2 : eingebettet in
+@enduml

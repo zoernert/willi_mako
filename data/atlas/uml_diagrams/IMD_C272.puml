@@ -1,0 +1,96 @@
+@startuml
+title Datenatlas – IMD:C272
+class IMD_C272 {
+  Name: Produkt/Leistung
+  Prozesse:
+    - Zählerwechsel und Geräteübernahme (WiM)
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Bestellung einer technischen Konfiguration (MSB)
+    - Sperrung und Entsperrung eines Anschlusses
+}
+class IMD_C272_msg_1 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+IMD_C272 --> IMD_C272_msg_1 : verwendet in
+class IMD_C272_msg_2 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 13, 17, ABR, ABS, EDI, IMD, JVR, KON, MMM, MSB, MVR, NAP, OCR, SOR, WIM, Z06, Z07, Z43, Z44, Z45, ZVR
+  Prozesse: Zählerwechsel und Geräteübernahme (WiM), Netznutzungsabrechnung, Messstellenbetriebsabrechnung, Bestellung einer technischen Konfiguration (MSB)
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+IMD_C272 --> IMD_C272_msg_2 : verwendet in
+class IMD_C272_msg_3 {
+  Nachricht: ORDRSP 1.4
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 999, EDI, IMD, Z10, Z11, Z12, Z13, Z35
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: ORDRSP_MIG_1_4_20240619.pdf
+}
+IMD_C272 --> IMD_C272_msg_3 : verwendet in
+class IMD_C272_msg_4 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 1310   SG36   C   999999   R   999999   2   LIN - PIA - IMD - SG40
+  Pflichtfeld: Nein
+  Codes: 000, 10, 100, 130, 170, 20, 200, 31, 50, 999, IMD, LIN, OCR, PGI, PIA, POG, Z15, Z16, Z17, Z18, Z19, Z20
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+IMD_C272 --> IMD_C272_msg_4 : verwendet in
+class IMD_C272_msg_5 {
+  Nachricht: QUOTES 1.3a
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 999, IMD, OCR, Z07, Z08, Z33, Z34, Z55, Z64
+  Prozesse: Bestellung einer technischen Konfiguration (MSB), Sperrung und Entsperrung eines Anschlusses
+  Quelle: QUOTES_MIG_1_3a_20240619.pdf
+}
+IMD_C272 --> IMD_C272_msg_5 : verwendet in
+class IMD_C272_msg_6 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Segmentlayout
+  Pflichtfeld: Nein
+  Codes: 999, EDI, IMD, OCR, Z55, Z64
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+IMD_C272 --> IMD_C272_msg_6 : verwendet in
+class IMD_C272_proc_1 <<process>> {
+  Zählerwechsel und Geräteübernahme (WiM)
+  Gesetze: MsbG
+  Zusammenfassung: Erläutere den Geschäftsprozess 'Zählerwechsel' bzw.
+}
+IMD_C272 ..> IMD_C272_proc_1 : eingebettet in
+class IMD_C272_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+IMD_C272 ..> IMD_C272_proc_2 : eingebettet in
+class IMD_C272_proc_3 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+IMD_C272 ..> IMD_C272_proc_3 : eingebettet in
+class IMD_C272_proc_4 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+IMD_C272 ..> IMD_C272_proc_4 : eingebettet in
+class IMD_C272_proc_5 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+IMD_C272 ..> IMD_C272_proc_5 : eingebettet in
+@enduml

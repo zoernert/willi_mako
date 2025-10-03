@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – CCI:0500
+class CCI_0500 {
+  Name: Erreichbarkeit an Werktagen
+  Prozesse:
+    - Stammdatenänderung
+}
+class CCI_0500_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CCI
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+CCI_0500 --> CCI_0500_msg_1 : verwendet in
+class CCI_0500_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+CCI_0500 ..> CCI_0500_proc_1 : eingebettet in
+@enduml

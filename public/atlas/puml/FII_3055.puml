@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – FII:3055
+class FII_3055 {
+  Name: Verantwortliche Stelle für die Codepflege, Code
+  Prozesse:
+    - Stammdatenänderung
+}
+class FII_3055_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Beispiel:
+  Pflichtfeld: Nein
+  Codes: 10, 11, 17, 35, 70, BIC, BK, FII, OCR, SG4
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+FII_3055 --> FII_3055_msg_1 : verwendet in
+class FII_3055_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+FII_3055 ..> FII_3055_proc_1 : eingebettet in
+@enduml

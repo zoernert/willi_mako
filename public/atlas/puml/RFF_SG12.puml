@@ -1,0 +1,22 @@
+@startuml
+title Datenatlas – RFF:SG12
+class RFF_SG12 {
+  Name: Erreichbarkeit an Werktagen
+  Prozesse:
+    - Stammdatenänderung
+}
+class RFF_SG12_msg_1 {
+  Nachricht: PARTIN 1.0e
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: 999, RFF
+  Prozesse: Stammdatenänderung
+  Quelle: PARTIN_MIG_1_0e_20241001.pdf
+}
+RFF_SG12 --> RFF_SG12_msg_1 : verwendet in
+class RFF_SG12_proc_1 <<process>> {
+  Stammdatenänderung
+  Zusammenfassung: Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B.
+}
+RFF_SG12 ..> RFF_SG12_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PIA:1330
+class PIA_1330 {
+  Name: Preisschlüsselstamm
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class PIA_1330_msg_1 {
+  Nachricht: PRICAT 2.0d
+  Kontext: 1310   SG36   C   R   999999   999999   2   LIN - PIA - IMD - SG40
+  Pflichtfeld: Nein
+  Codes: 99, PIA
+  Prozesse: Netznutzungsabrechnung
+  Quelle: PRICAT_MIG_2_0d_20240619.pdf
+}
+PIA_1330 --> PIA_1330_msg_1 : verwendet in
+class PIA_1330_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+PIA_1330 ..> PIA_1330_proc_1 : eingebettet in
+@enduml

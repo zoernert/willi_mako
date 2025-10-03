@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – LF:E_0505
+class LF_E_0505 {
+  Name: EBD Nr. E_0505 EBD zur erneuten Prüfung der Abrechnung einer sonstigen Leistung. Dies kann die Rechnung zur Beauftragung der Unterbrechung der Anschlussnutzung (Sperren) oder die Rechnung zu Verzugskosten beinhalten
+  Prozesse:
+    - Sperrung und Entsperrung eines Anschlusses
+    - Netznutzungsabrechnung
+}
+class LF_E_0505_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: EBD, ESA, ID, LF, MGV, MSB, NB, NN, OCR
+  Prozesse: Sperrung und Entsperrung eines Anschlusses, Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_außerordentliche_20240726.pdf
+}
+LF_E_0505 --> LF_E_0505_msg_1 : verwendet in
+class LF_E_0505_proc_1 <<process>> {
+  Sperrung und Entsperrung eines Anschlusses
+  Gesetze: StromGVV
+  Zusammenfassung: Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses.
+}
+LF_E_0505 ..> LF_E_0505_proc_1 : eingebettet in
+class LF_E_0505_proc_2 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LF_E_0505 ..> LF_E_0505_proc_2 : eingebettet in
+@enduml

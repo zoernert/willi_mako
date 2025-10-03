@@ -1,0 +1,64 @@
+@startuml
+title Datenatlas – DTM:00019
+class DTM_00019 {
+  Name: Referenzdatum
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class DTM_00019_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX - SG8
+  Pflichtfeld: Nein
+  Codes: 99, DTM
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+DTM_00019 --> DTM_00019_msg_1 : verwendet in
+class DTM_00019_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM, SG1
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+DTM_00019 --> DTM_00019_msg_2 : verwendet in
+class DTM_00019_msg_3 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM, SG1
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+DTM_00019 --> DTM_00019_msg_3 : verwendet in
+class DTM_00019_msg_4 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: DTM
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+DTM_00019 --> DTM_00019_msg_4 : verwendet in
+class DTM_00019_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DTM_00019 ..> DTM_00019_proc_1 : eingebettet in
+class DTM_00019_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+DTM_00019 ..> DTM_00019_proc_2 : eingebettet in
+class DTM_00019_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+DTM_00019 ..> DTM_00019_proc_3 : eingebettet in
+@enduml

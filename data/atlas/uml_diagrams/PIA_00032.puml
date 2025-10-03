@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – PIA:00032
+class PIA_00032 {
+  Name: nach Typ 2 aus SMGW
+  Prozesse:
+    - Bestellung einer technischen Konfiguration (MSB)
+}
+class PIA_00032_msg_1 {
+  Nachricht: REQOTE 1.3b
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Nein
+  Codes: 24, 25, PIA
+  Prozesse: Bestellung einer technischen Konfiguration (MSB)
+  Quelle: REQOTE_MIG_1_3b_20241001.pdf
+}
+PIA_00032 --> PIA_00032_msg_1 : verwendet in
+class PIA_00032_proc_1 <<process>> {
+  Bestellung einer technischen Konfiguration (MSB)
+  Gesetze: MsbG, EnWG
+  Zusammenfassung: Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem.
+}
+PIA_00032 ..> PIA_00032_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – CTA:00011
+class CTA_00011 {
+  Name: Ansprechpartner
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class CTA_00011_msg_1 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: CTA
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+CTA_00011 --> CTA_00011_msg_1 : verwendet in
+class CTA_00011_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+CTA_00011 ..> CTA_00011_proc_1 : eingebettet in
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+title Datenatlas – BGM:1229
+class BGM_1229 {
+  Name: Antwortkennzeichen
+  Prozesse:
+    - Anforderung und Übermittlung von Messwerten
+}
+class BGM_1229_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: ein Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 07, 17, 26
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+BGM_1229 --> BGM_1229_msg_1 : verwendet in
+class BGM_1229_msg_2 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Codes: UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_außerordentliche_20240726.pdf
+}
+BGM_1229 --> BGM_1229_msg_2 : verwendet in
+class BGM_1229_msg_3 {
+  Nachricht: ORDCHG 1.1
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 07, 18, 26
+  Quelle: ORDCHG_MIG_1_1_außerordentliche_20240726.pdf
+}
+BGM_1229 --> BGM_1229_msg_3 : verwendet in
+class BGM_1229_proc_1 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+BGM_1229 ..> BGM_1229_proc_1 : eingebettet in
+@enduml

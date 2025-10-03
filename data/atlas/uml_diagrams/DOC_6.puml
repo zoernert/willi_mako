@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – DOC:6
+class DOC_6 {
+  Name: Dokument - /Nachricht - Einzelheiten
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class DOC_6_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Segmentlayout
+  Pflichtfeld: Ja
+  Codes: 99, DOC, MIG, SG3
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_20211001.pdf
+}
+DOC_6 --> DOC_6_msg_1 : verwendet in
+class DOC_6_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+DOC_6 ..> DOC_6_proc_1 : eingebettet in
+@enduml

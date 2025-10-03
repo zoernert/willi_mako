@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – RFF:33001
+class RFF_33001 {
+  Name: Objekt - Bezeichner
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class RFF_33001_msg_1 {
+  Nachricht: REMADV 2.9c
+  Kontext: Beispiel:
+  Pflichtfeld: Ja
+  Codes: 10, 24, 33, RFF, Z13
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+RFF_33001 --> RFF_33001_msg_1 : verwendet in
+class RFF_33001_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+RFF_33001 ..> RFF_33001_proc_1 : eingebettet in
+@enduml

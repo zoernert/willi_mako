@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LIN:0210
+class LIN_0210 {
+  Name: Positionsdaten
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class LIN_0210_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0200   SG7   C   R   999   999   2   LIN - DTM - DTM - DTM - DTM - STS - STS - FTX - SG8
+  Pflichtfeld: Ja
+  Codes: LIN
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+LIN_0210 --> LIN_0210_msg_1 : verwendet in
+class LIN_0210_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LIN_0210 ..> LIN_0210_proc_1 : eingebettet in
+@enduml

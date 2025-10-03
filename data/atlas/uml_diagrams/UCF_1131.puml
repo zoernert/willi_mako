@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCF:1131
+class UCF_1131 {
+  Name: Code list identification code
+}
+class UCF_1131_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Gruppendatenelement fehlt.
+  Pflichtfeld: Ja
+  Codes: 13, 16
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCF_1131 --> UCF_1131_msg_1 : verwendet in
+@enduml

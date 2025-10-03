@@ -1,0 +1,13 @@
+@startuml
+title Datenatlas – UCI:S003
+class UCI_S003 {
+  Name: EMPFÄNGER
+}
+class UCI_S003_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: (vorgenommene Aktion) der Übertragungsdatei.
+  Pflichtfeld: Ja
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCI_S003 --> UCI_S003_msg_1 : verwendet in
+@enduml

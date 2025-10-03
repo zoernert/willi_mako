@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – UCM:0098
+class UCM_0098 {
+  Name: Segmentposition des fehlerhaften Datenelements
+}
+class UCM_0098_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Darüber hinaus dient dieses Segment zur Angabe der Art des Fehlers.
+  Pflichtfeld: Ja
+  Codes: 38, 39, 40, EDI, OCR
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+UCM_0098 --> UCM_0098_msg_1 : verwendet in
+@enduml

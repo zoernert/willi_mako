@@ -1,0 +1,63 @@
+@startuml
+title Datenatlas – UNH:0068
+class UNH_0068 {
+  Name: Referenznummer des Empfängers
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+    - Anforderung und Übermittlung von Messwerten
+}
+class UNH_0068_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+UNH_0068 --> UNH_0068_msg_1 : verwendet in
+class UNH_0068_msg_2 {
+  Nachricht: INVOIC 2.8d
+  Kontext: Hinweis:
+  Pflichtfeld: Ja
+  Codes: UN, UNH
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2.8d_Fehlerkorrektur_20250131.pdf
+}
+UNH_0068 --> UNH_0068_msg_2 : verwendet in
+class UNH_0068_msg_3 {
+  Nachricht: MSCONS 2.4c
+  Kontext: Hinweis:
+  Pflichtfeld: Nein
+  Codes: 68, UNH
+  Prozesse: Anforderung und Übermittlung von Messwerten
+  Quelle: MSCONS_MIG_2_4c_20231024.pdf
+}
+UNH_0068 --> UNH_0068_msg_3 : verwendet in
+class UNH_0068_msg_4 {
+  Nachricht: REMADV 2.9c
+  Kontext: Bemerkung:
+  Pflichtfeld: Ja
+  Prozesse: Netznutzungsabrechnung
+  Quelle: REMADV_MIG_2.9c_20231024.pdf
+}
+UNH_0068 --> UNH_0068_msg_4 : verwendet in
+class UNH_0068_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+UNH_0068 ..> UNH_0068_proc_1 : eingebettet in
+class UNH_0068_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+UNH_0068 ..> UNH_0068_proc_2 : eingebettet in
+class UNH_0068_proc_3 <<process>> {
+  Anforderung und Übermittlung von Messwerten
+  Gesetze: MsbG
+  Zusammenfassung: Wie kann ein Marktpartner (z.B.
+}
+UNH_0068 ..> UNH_0068_proc_3 : eingebettet in
+@enduml

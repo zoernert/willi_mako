@@ -1,0 +1,14 @@
+@startuml
+title Datenatlas – CONTRL (BEISPIEL):DE0085
+class CONTRL__BEISPIEL__DE0085 {
+  Name: Syntaxfehler im UNH- oder UNT-Segment
+}
+class CONTRL__BEISPIEL__DE0085_msg_1 {
+  Nachricht: CONTRL 2.0b
+  Kontext: Bezeichner hat die Positionsnummer 1.
+  Pflichtfeld: Ja
+  Codes: 12, DE, UCM, UN, UNH, UNT, XYZ
+  Quelle: CONTRL_MIG_2_0b_außerordentliche_20240726.pdf
+}
+CONTRL__BEISPIEL__DE0085 --> CONTRL__BEISPIEL__DE0085_msg_1 : verwendet in
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+title Datenatlas – LOC:0350
+class LOC_0350 {
+  Name: Meldepunkt
+  Prozesse:
+    - Netznutzungsabrechnung
+}
+class LOC_0350_msg_1 {
+  Nachricht: INSRPT 1.1a
+  Kontext: 0320   SG8   C   R   999   1   3   NAD - LOC - RFF
+  Pflichtfeld: Nein
+  Codes: 99, LOC
+  Prozesse: Netznutzungsabrechnung
+  Quelle: INSRPT_MIG_1_1a_außerordentliche_20240726.pdf
+}
+LOC_0350 --> LOC_0350_msg_1 : verwendet in
+class LOC_0350_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+LOC_0350 ..> LOC_0350_proc_1 : eingebettet in
+@enduml

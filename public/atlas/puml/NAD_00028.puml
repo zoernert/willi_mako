@@ -1,0 +1,30 @@
+@startuml
+title Datenatlas – NAD:00028
+class NAD_00028 {
+  Name: Adresse der Leistungserbringung
+  Prozesse:
+    - Netznutzungsabrechnung
+    - Messstellenbetriebsabrechnung
+}
+class NAD_00028_msg_1 {
+  Nachricht: INVOIC 2.8d.
+  Kontext: Nachrichtenstruktur
+  Pflichtfeld: Ja
+  Codes: NAD
+  Prozesse: Netznutzungsabrechnung, Messstellenbetriebsabrechnung
+  Quelle: INVOIC_MIG_2_8d__20240619.pdf
+}
+NAD_00028 --> NAD_00028_msg_1 : verwendet in
+class NAD_00028_proc_1 <<process>> {
+  Netznutzungsabrechnung
+  Gesetze: StromNEV, StromNZV
+  Zusammenfassung: Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant?
+}
+NAD_00028 ..> NAD_00028_proc_1 : eingebettet in
+class NAD_00028_proc_2 <<process>> {
+  Messstellenbetriebsabrechnung
+  Gesetze: MsbG
+  Zusammenfassung: Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen.
+}
+NAD_00028 ..> NAD_00028_proc_2 : eingebettet in
+@enduml
