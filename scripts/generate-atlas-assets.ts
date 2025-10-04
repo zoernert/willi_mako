@@ -289,6 +289,27 @@ const enrichProcessContext = (contexts: RawProcessContext[] | undefined, slugMap
   }));
 };
 
+const isLikelyPrompt = (value: string | undefined) => {
+  if (!value) return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.endsWith('?')) return true;
+  const prefix = /^(Beschreibe|Beschreibt|Erläutere|Erläutert|Erkläre|Erklärt|Skizziere|Skizziert|Fasse|Fasst|Gib|Gebe|Gibt|Nenne|Nennt|Zeige|Zeigt|Stelle|Stellt|Leite|Leitet|Analysiere|Analysiert|Was|Wie|Welche|Warum|Erstelle|Erstellt)\b/i;
+  return prefix.test(trimmed);
+};
+
+const pickProcessSummary = (current: string | undefined, candidate?: string) => {
+  if (!candidate || isLikelyPrompt(candidate)) {
+    return current;
+  }
+
+  if (!current) {
+    return candidate;
+  }
+
+  return candidate.length > current.length ? candidate : current;
+};
+
 async function main() {
   console.time('Atlas build');
   await Promise.all([
@@ -328,6 +349,7 @@ async function main() {
     relevantLaws: Set<string>;
     messageTypes: Set<string>;
     diagramIds: Set<string>;
+    summary?: string;
   }>();
 
   for (const definition of processDefs) {
@@ -347,6 +369,16 @@ async function main() {
     const slug = createElementSlug(element.EDIFACT_Element_ID, element.elementName);
     const processSummaries = enrichProcessContext(element.processContext, processSlugMap);
 
+    processSummaries.forEach((processSummary) => {
+      const entry = processAggregator.get(processSummary.name) || processAggregator.get(processSummary.slug);
+      if (entry) {
+        entry.elements.add(slug);
+        processSummary.keywords.forEach((keyword) => entry.keywords.add(keyword));
+        processSummary.relevantLaws.forEach((law) => entry.relevantLaws.add(law));
+        entry.summary = pickProcessSummary(entry.summary, processSummary.summary);
+      }
+    });
+
     const messages = element.messages.map((message) => {
       const processes = enrichProcessContext(message.processContext, processSlugMap);
       processes.forEach((processSummary) => {
@@ -356,6 +388,7 @@ async function main() {
           entry.messageTypes.add(message.messageType);
           processSummary.keywords.forEach((keyword) => entry.keywords.add(keyword));
           processSummary.relevantLaws.forEach((law) => entry.relevantLaws.add(law));
+          entry.summary = pickProcessSummary(entry.summary, processSummary.summary);
         }
       });
 
@@ -440,14 +473,16 @@ async function main() {
 
   for (const [processName, aggregate] of processAggregator.entries()) {
     const qdrantReferences = await fetchQdrantReferences(qdrantClient, processName);
+    const aggregatedSummary = pickProcessSummary(undefined, aggregate.summary);
+    const fallbackDescription = aggregate.def?.trigger_question;
     processes.push({
       slug: aggregate.slug,
       name: processName,
       triggerQuestion: aggregate.def?.trigger_question,
       relevantLaws: Array.from(aggregate.relevantLaws),
       keywords: Array.from(aggregate.keywords),
-      summary: aggregate.def?.trigger_question,
-      description: aggregate.def?.trigger_question,
+      summary: aggregatedSummary ?? fallbackDescription,
+      description: aggregatedSummary ?? fallbackDescription,
       elements: Array.from(aggregate.elements),
       diagramIds: Array.from(aggregate.diagramIds),
       messageTypes: Array.from(aggregate.messageTypes),

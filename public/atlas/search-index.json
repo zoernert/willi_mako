@@ -36372,7 +36372,7 @@
     "type": "process",
     "title": "Abmeldung (Lieferende bei Auszug)",
     "subtitle": "StromGVV, StromNZV",
-    "description": "Beschreibe den Abmeldeprozess bei einem Auszug eines Kunden. Welche Schritte muss der Lieferant einleiten, um die Belieferung an einer Marktlokation zu beenden, und wie wird dies dem Netzbetreiber per Marktnachricht mitg…",
+    "description": "Der Abmeldeprozess bei einem Auszug des Kunden (Lieferende) wird durch die StromGVV und StromNZV geregelt. Er beinhaltet die Abmeldung des Kunden durch den bisherigen Lieferanten (LF) beim Netzbetreiber (NB). Die Abmeldu…",
     "slug": "abmeldung-lieferende-bei-auszug",
     "url": "/daten-atlas/prozesse/abmeldung-lieferende-bei-auszug",
     "keywords": [
@@ -36392,7 +36392,7 @@
     "type": "process",
     "title": "Zählerwechsel und Geräteübernahme (WiM)",
     "subtitle": "MsbG",
-    "description": "Erläutere den Geschäftsprozess 'Zählerwechsel' bzw. 'Geräteübernahme' im Rahmen der Wechselprozesse im Messwesen (WiM). Welche Marktrollen (alter MSB, neuer MSB, Netzbetreiber) sind beteiligt, welche Angebote (QUOTES) un…",
+    "description": "Der Geschäftsprozess \"Zählerwechsel\" (auch Geräteübernahme genannt) ist im deutschen Energiemarkt ein wichtiger Bestandteil der Wechselprozesse im Messwesen (WiM) und wird durch das Messstellenbetriebsgesetz (MsbG) recht…",
     "slug": "zahlerwechsel-und-gerateubernahme-wim",
     "url": "/daten-atlas/prozesse/zahlerwechsel-und-gerateubernahme-wim",
     "keywords": [
@@ -36422,7 +36422,7 @@
     "type": "process",
     "title": "Stammdatenänderung",
     "subtitle": "",
-    "description": "Wie wird eine Stammdatenänderung an einer Marktlokation, wie z.B. eine Namens- oder Adressänderung des Kunden, in der Marktkommunikation abgewickelt? Beschreibe den Prozess und die Verwendung der UTILMD-Nachricht zur Übe…",
+    "description": "Eine Stammdatenänderung an einer Marktlokation wird im Wesentlichen über die Nachricht PARTIN abgewickelt, speziell in der Version 1.0e. Die Nachricht dient dazu, Änderungen von Stammdaten, wie z.B. die Identifikation de…",
     "slug": "stammdatenanderung",
     "url": "/daten-atlas/prozesse/stammdatenanderung",
     "keywords": [
@@ -36577,7 +36577,7 @@
     "type": "process",
     "title": "Sperrung und Entsperrung eines Anschlusses",
     "subtitle": "StromGVV",
-    "description": "Beschreibe den End-to-End-Prozess für die Sperrung und Wiederherstellung eines Netzanschlusses. Erläutere den Ablauf vom Sperrauftrag (ORDERS) des Lieferanten an den Netzbetreiber bis zur Rückmeldung über die Durchführun…",
+    "description": "Der Prozess der Sperrung und Wiederherstellung eines Netzanschlusses wird durch die Stromgrundversorgungsverordnung (StromGVV) geregelt. Auslöser ist in der Regel ein Zahlungsverzug des Anschlussnutzers. Bevor die Sperru…",
     "slug": "sperrung-und-entsperrung-eines-anschlusses",
     "url": "/daten-atlas/prozesse/sperrung-und-entsperrung-eines-anschlusses",
     "keywords": [
@@ -36872,7 +36872,7 @@
     "type": "process",
     "title": "Netznutzungsabrechnung",
     "subtitle": "StromNEV, StromNZV",
-    "description": "Wie funktioniert die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant? Erkläre den Prozess von der Übermittlung der Preisblätter (PRICAT) bis zur eigentlichen Rechnungsstellung (INVOIC) und den Umgang mit Rekl…",
+    "description": "Die Netznutzungsabrechnung zwischen Netzbetreiber und Lieferant ist ein essentieller Prozess im Energiemarkt, der durch die Stromnetzzugangsverordnung (StromNZV) und die Stromnetzentgeltverordnung (StromNEV) reguliert wi…",
     "slug": "netznutzungsabrechnung",
     "url": "/daten-atlas/prozesse/netznutzungsabrechnung",
     "keywords": [
@@ -37428,7 +37428,7 @@
     "type": "process",
     "title": "Messstellenbetriebsabrechnung",
     "subtitle": "MsbG",
-    "description": "Beschreibe den Prozess der Abrechnung von Messstellenbetriebsleistungen. Wie stellt der Messstellenbetreiber (MSB) seine Dienstleistungen dem Lieferanten oder Netzbetreiber in Rechnung und welche Regelungen aus dem Messs…",
+    "description": "Die Abrechnung von Messstellenbetriebsleistungen ist ein Prozess, der die finanzielle Vergütung des Messstellenbetreibers (MSB) für die erbrachten Leistungen gemäß MsbG regelt. Kern des Prozesses ist die Erstellung einer…",
     "slug": "messstellenbetriebsabrechnung",
     "url": "/daten-atlas/prozesse/messstellenbetriebsabrechnung",
     "keywords": [
@@ -37669,7 +37669,7 @@
     "type": "process",
     "title": "Anforderung und Übermittlung von Messwerten",
     "subtitle": "MsbG",
-    "description": "Wie kann ein Marktpartner (z.B. Lieferant) Messwerte wie Lastgänge oder Zählerstände von einem Messstellenbetreiber anfordern und wie werden diese übermittelt? Erkläre die Rollen von ORDERS und MSCONS in diesem Prozess.",
+    "description": "Der Prozess der Anforderung und Übermittlung von Messwerten ermöglicht es Marktpartnern, wie z.B. Lieferanten (LF), Lastgänge oder Zählerstände von Messstellenbetreibern (MSB) anzufordern. Dieser Datenaustausch ist essen…",
     "slug": "anforderung-und-ubermittlung-von-messwerten",
     "url": "/daten-atlas/prozesse/anforderung-und-ubermittlung-von-messwerten",
     "keywords": [
@@ -37907,7 +37907,7 @@
     "type": "process",
     "title": "Bestellung einer technischen Konfiguration (MSB)",
     "subtitle": "MsbG, EnWG",
-    "description": "Erläutere den Prozess zur Bestellung einer spezifischen technischen Konfiguration bei einem Messstellenbetreiber, beispielsweise für ein intelligentes Messsystem. Welche Schritte sind von der Angebotsanfrage (REQOTE) übe…",
+    "description": "Der Prozess zur Bestellung einer technischen Konfiguration bei einem Messstellenbetreiber (MSB) für beispielsweise ein intelligentes Messsystem (iMsys) basiert auf den rechtlichen Grundlagen des MsbG und EnWG. Der Prozes…",
     "slug": "bestellung-einer-technischen-konfiguration-msb",
     "url": "/daten-atlas/prozesse/bestellung-einer-technischen-konfiguration-msb",
     "keywords": [

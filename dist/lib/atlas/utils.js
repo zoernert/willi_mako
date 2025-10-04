@@ -8,6 +8,24 @@ const normalize = (value) => value
     .replace(/ä/g, 'ae')
     .replace(/ö/g, 'oe')
     .replace(/ü/g, 'ue');
+const MAX_SLUG_LENGTH = 120;
+const hashString = (value) => {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < value.length; index += 1) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(36);
+};
+const shortenSlug = (slug, reference) => {
+    if (slug.length <= MAX_SLUG_LENGTH) {
+        return slug;
+    }
+    const hash = hashString(reference).slice(0, 8);
+    const prefixLength = Math.max(MAX_SLUG_LENGTH - hash.length - 1, 16);
+    const trimmed = slug.slice(0, prefixLength).replace(/-+$/g, '');
+    return `${trimmed}-${hash}`;
+};
 const slugify = (value) => normalize(value)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -17,12 +35,13 @@ exports.slugify = slugify;
 const createElementSlug = (edifactId, elementName) => {
     const base = (0, exports.slugify)(edifactId.replace(/[:]/g, '-'));
     const namePart = elementName ? (0, exports.slugify)(elementName) : '';
-    return [base, namePart].filter(Boolean).join('-');
+    const combined = [base, namePart].filter(Boolean).join('-');
+    return shortenSlug(combined, `${edifactId}|${elementName !== null && elementName !== void 0 ? elementName : ''}`);
 };
 exports.createElementSlug = createElementSlug;
-const createProcessSlug = (processName) => (0, exports.slugify)(processName);
+const createProcessSlug = (processName) => shortenSlug((0, exports.slugify)(processName), processName);
 exports.createProcessSlug = createProcessSlug;
-const createDiagramSlug = (diagramId) => (0, exports.slugify)(diagramId);
+const createDiagramSlug = (diagramId) => shortenSlug((0, exports.slugify)(diagramId), diagramId);
 exports.createDiagramSlug = createDiagramSlug;
 const unique = (values) => Array.from(new Set(values));
 exports.unique = unique;

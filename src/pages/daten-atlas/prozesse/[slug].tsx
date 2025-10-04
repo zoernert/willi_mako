@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 
 import Layout from '../../../components/Layout';
+import MarkdownRenderer from '../../../components/MarkdownRenderer';
 import {
   getAtlasDiagramById,
   getAtlasElementBySlug,
@@ -94,9 +95,11 @@ const AtlasProcessPage = ({ process, relatedElements, relatedDiagrams }: AtlasPr
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   Beschreibung
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {process.summary || process.description}
-                </Typography>
+                <Box sx={{ color: 'text.secondary' }}>
+                  <MarkdownRenderer className="atlas-process-description">
+                    {(process.summary || process.description) ?? ''}
+                  </MarkdownRenderer>
+                </Box>
               </Box>
             )}
 
