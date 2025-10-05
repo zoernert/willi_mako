@@ -55,6 +55,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
         {/* RSS/Atom Feeds */}
         <link rel="alternate" type="application/rss+xml" title="Willi-Mako FAQ RSS Feed" href="/feed.xml" />
         <link rel="alternate" type="application/atom+xml" title="Willi-Mako FAQ Atom Feed" href="/atom.xml" />
+        <link rel="alternate" type="application/rss+xml" title="Radio Willi - Podcast Feed" href="https://stromhaltig.de/podcast.rss" />
 
         {/* Schema.org */}
         <script
