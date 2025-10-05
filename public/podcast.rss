@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:spotify="http://www.spotify.com/ns/rss">
   <channel>
     <title>Willi-Mako - Marktkommunikation in der Energiewirtschaft</title>
     <link>https://stromhaltig.de/</link>
     <description>Der Podcast Willi-Mako befasst sich mit den Kernthemen der digitalen Energiewende und der deutschen Energiewirtschaft. Er richtet sich an Fachleute und Interessierte, die tiefer in die Prozesse und Technologien des Energiemarktes einsteigen möchten. Schwerpunkte sind unter anderem: Marktkommunikation (MaKo) mit detaillierter Betrachtung von Abläufen, regulatorischen Rahmenbedingungen und deren Digitalisierung (z.B. MaBiS-Hub, LFW24), sowie Analyse komplexer Massenprozesse und die Notwendigkeit von Präzision und Effizienz im Umgang mit Energiedaten.</description>
     <language>de-de</language>
+    <managingEditor>dev@stromdao.com (STROMDAO GmbH)</managingEditor>
+    <webMaster>dev@stromdao.com (STROMDAO GmbH)</webMaster>
     <itunes:author>STROMDAO GmbH</itunes:author>
     <itunes:email>dev@stromdao.com</itunes:email>
     <itunes:image href="https://stromhaltig.de/media/podcast_logo.png" />
+    <spotify:email>dev@stromdao.com</spotify:email>
     <image>
       <url>https://stromhaltig.de/media/podcast_logo.png</url>
       <title>Willi-Mako - Marktkommunikation in der Energiewirtschaft</title>
