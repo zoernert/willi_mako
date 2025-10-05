@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
   <channel>
-    <title>Radio Willi</title>
+    <title>Willi-Mako - Marktkommunikation in der Energiewirtschaft</title>
     <link>https://stromhaltig.de/</link>
-    <description>Aktuelle Audio-Inhalte von Willi Mako</description>
+    <description>Der Podcast Willi-Mako befasst sich mit den Kernthemen der digitalen Energiewende und der deutschen Energiewirtschaft. Er richtet sich an Fachleute und Interessierte, die tiefer in die Prozesse und Technologien des Energiemarktes einsteigen möchten. Schwerpunkte sind unter anderem: Marktkommunikation (MaKo) mit detaillierter Betrachtung von Abläufen, regulatorischen Rahmenbedingungen und deren Digitalisierung (z.B. MaBiS-Hub, LFW24), sowie Analyse komplexer Massenprozesse und die Notwendigkeit von Präzision und Effizienz im Umgang mit Energiedaten.</description>
     <language>de-de</language>
+    <itunes:author>STROMDAO GmbH</itunes:author>
+    <itunes:email>dev@stromdao.com</itunes:email>
+    <itunes:image href="https://stromhaltig.de/media/podcast_logo.png" />
+    <image>
+      <url>https://stromhaltig.de/media/podcast_logo.png</url>
+      <title>Willi-Mako - Marktkommunikation in der Energiewirtschaft</title>
+      <link>https://stromhaltig.de/</link>
+    </image>
+    <item>
+      <title>Marktkommunikation mehr als ein Backoffice Trap</title>
+      <description>thematisieren die Marktkommunikation (MaKo) in der deutschen Energiewirtschaft, wobei ein zentrales Dokument eine strategische Neupositionierung der MaKo-Funktion fordert, um sie von einer administrativen Rolle zu einem „Digitalen Enabler und Compliance Core" zu transformieren. Es wird argumentiert, dass die MaKo als „Operational Resilience Core" fungiert, der regulatorische Vorgaben (wie GPKE, WiM) umsetzt, die finanzielle Integrität durch fehlerfreie Meter-to-Cash (M2C)-Prozesse sichert und als technischer Wegbereiter für Innovationen wie dynamische Tarife dient. Die zweite Quelle, Willi Mako, präsentiert sich als KI-gestützter Coach und Analyse-Tool, das spezielle Insights und Jobangebote für den Arbeitsmarkt der Marktkommunikation in der Energiewirtschaft bietet, um Unternehmen bei der Optimierung von Prozessen und der Bewältigung von Herausforderungen in der Messdatenverarbeitung zu unterstützen. Zusammen betonen die Texte die hohe Komplexität, die kritische Bedeutung und den spezialisierten Know-how-Bedarf im Bereich der Energie-Marktkommunikation.</description>
+      <enclosure url="/media/MaKo_trap.m4a" length="0" type="audio/mp4" />
+      <guid isPermaLink="false">mako_trap_m4a</guid>
+      <pubDate>Sat, 05 Oct 2025 10:00:00 GMT</pubDate>
+    </item>
     <item>
       <title>Whitepaper: Prozessatlas Meter-2-Cash</title>
       <description>Audiozusammenfassung des Prozessatlas Meter-2-Cash – von GPKE und GeLi Gas über WiM bis zu EDIFACT-Nachrichten wie UTILMD, MSCONS und INVOIC/REMADV.</description>
