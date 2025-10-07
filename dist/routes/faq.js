@@ -992,7 +992,9 @@ router.post('/admin/faqs/:id/artifacts/outline', authenticateToken, requireAdmin
   if (faqRes.rows.length === 0) throw new AppError('FAQ not found', 404);
   const faq = faqRes.rows[0];
 
-  const outlinePrompt = `, Erstelle, eine, detaillierte, Gliederung(Outline), für, einen, ausführlichen, faq_1.FAQ - Artikel, zum, Thema, n, nTitel, $, { faq, : .title }, nTags, $, {}(Array.isArray(faq.tags) ? faq.tags : JSON.parse(faq.tags || '[]')).join(', '), n, nKurzbeschreibung, $, { faq, : .description }, nKontext, $, { faq, : .context || '' }, nAntwort(bisher), $, { faq, : .answer || '' }, nZusätzliche, Infos, $, { faq, : .additional_info || '' }, n, nAnforderungen, n - Struktur in Abschnitte, mit, Titeln, Typ(description | context | answer | additional_info), und, Reihenfolge, n - Stichpunkte, je, Abschnitt, was, abzudecken, ist, n - Optional, Quellenhinweise(generisch, werden, später, ersetzt), n - Keine, langen, Texte, nur, Outline., n$, { notes } `\nHinweise des Editors: ${notes}\n`, '', `;
+  const faqTags = Array.isArray(faq.tags) ? faq.tags : JSON.parse(faq.tags || '[]');
+  const editorNotes = notes ? '\nHinweise des Editors: ' + notes + '\n' : '';
+  const outlinePrompt = 'Erstelle eine detaillierte Gliederung (Outline) für einen ausführlichen FAQ-Artikel zum Thema:\n\nTitel: ' + faq.title + '\nTags: ' + faqTags.join(', ') + '\n\nKurzbeschreibung: ' + faq.description + '\nKontext: ' + (faq.context || '') + '\nAntwort (bisher): ' + (faq.answer || '') + '\nZusätzliche Infos: ' + (faq.additional_info || '') + '\n\nAnforderungen:\n- Struktur in Abschnitte mit Titeln, Typ (description|context|answer|additional_info) und Reihenfolge\n- Stichpunkte je Abschnitt was abzudecken ist\n- Optional Quellenhinweise (generisch, werden später ersetzt)\n- Keine langen Texte, nur Outline.\n' + editorNotes;
 
   const outlineText = await llm.generateText(outlinePrompt);
 
@@ -1018,58 +1020,26 @@ router.post('/admin/faqs/:id/artifacts/section', authenticateToken, requireAdmin
   const faq = faqRes.rows[0];
 
   // Retrieve relevant context from vector store (guided semantic search)
-  const searchQuery = `, $, { faq, : .title }, $, { faq, : .description }, $, {}(Array.isArray(faq.tags) ? faq.tags : JSON.parse(faq.tags || '[]')).join(' '), `.trim();
+  const faqTags = Array.isArray(faq.tags) ? faq.tags : JSON.parse(faq.tags || '[]');
+  const searchQuery = (faq.title + ' ' + faq.description + ' ' + faqTags.join(' ')).trim();
   const results = await QdrantService.semanticSearchGuided(searchQuery, { limit: 30, alpha: 0.75, outlineScoping: true, excludeVisual: true });
   const extractText = (r: any) => r?.payload?.text || r?.payload?.payload?.text || r?.payload?.text_content || r?.payload?.snippet || r?.payload?.content || '';
   const contextSnippets = (results || []).map(extractText).filter(Boolean).slice(0, 8);
 
-  const prompt = `, Schreibe, den, Abschnitt($, { type }), Nummer, $, { order }, für, einen, ausführlichen, faq_1.FAQ - Artikel., n, nTitel, $, { faq, : .title }, nTags, $, {}(Array.isArray(faq.tags) ? faq.tags : JSON.parse(faq.tags || '[]')).join(', '), n, nBisherige, Inhalte, n - Beschreibung, $, { faq, : .description }, n - Kontext, $, { faq, : .context || '' }, n - Antwort, $, { faq, : .answer || '' }, n - Zusätzliche, Infos, $, { faq, : .additional_info || '' }, n, nAbschnitt - Hinweise, $, { section } || '-', nQuellen - Snippets, n$, { contextSnippets, : .map((s, i) => `[${i + 1}] ${s.substring(0, 500)}`).join('\n') }, n, nFortsetzen - Text(falls, vorhanden), $, { continue_from } || '-', n, nAnforderungen, n - Ziel - Länge, ca.$, { target_length }, Wörter, n - Präzise, faktenbasiert, keine, Wiederholungen, n - Nutze, Snippets, zur, Belegung, von, Aussagen, n - Markdown, erlaubt(Überschriften, Listen), n - Nutze, primär, Inhalte, aus, pseudocode_ * und, structured_table, Chunks);
-zitiere;
-chunk_type / Seite;
-falls;
-möglich.;
-n;
-nGib;
-nur;
-den;
-Abschnittstext;
-zurück. `;
+  const snippetsFormatted = contextSnippets.map((s, i) => '[' + (i+1) + '] ' + s.substring(0, 500)).join('\n');
+  const prompt = 'Schreibe den Abschnitt (' + type + ') Nummer ' + order + ' für einen ausführlichen FAQ-Artikel.\n\nTitel: ' + faq.title + '\nTags: ' + faqTags.join(', ') + '\n\nBisherige Inhalte:\n- Beschreibung: ' + faq.description + '\n- Kontext: ' + (faq.context || '') + '\n- Antwort: ' + (faq.answer || '') + '\n- Zusätzliche Infos: ' + (faq.additional_info || '') + '\n\nAbschnitt-Hinweise: ' + (section || '-') + '\nQuellen-Snippets:\n' + snippetsFormatted + '\n\nFortsetzen-Text (falls vorhanden): ' + (continue_from || '-') + '\n\nAnforderungen:\n- Ziel-Länge ca. ' + target_length + ' Wörter\n- Präzise, faktenbasiert, keine Wiederholungen\n- Nutze Snippets zur Belegung von Aussagen\n- Markdown erlaubt (Überschriften, Listen)\n- Nutze primär Inhalte aus pseudocode_* und structured_table Chunks; zitiere chunk_type/Seite falls möglich.\n\nGib nur den Abschnittstext zurück.';
 
   const content = await llm.generateText(prompt);
 
   // Load latest artifacts record (or create)
-  const artRes = await pool.query(`;
-SELECT;
-id, artifacts;
-FROM;
-faq_artifacts;
-WHERE;
-faq_id = $1;
-ORDER;
-BY;
-created_at;
-DESC;
-LIMIT;
-1 `, [id]);
+  const artRes = await pool.query(`, SELECT, id, artifacts, FROM, faq_artifacts, WHERE, faq_id = $1, ORDER, BY, created_at, DESC, LIMIT, 1 `, [id]);
   let artifacts: any = artRes.rows[0]?.artifacts || {};
   artifacts.sections = artifacts.sections || [];
-  artifacts.sections.push({ id: `;
-$;
-{
-    type;
-}
--$;
-{
-    Date.now();
-}
-`, title: section?.title || type, type, order, content, sources });
+  const sectionId = type + '-' + Date.now();
+  artifacts.sections.push({ id: sectionId, title: section?.title || type, type, order, content, sources });
 
   const upsert = await pool.query(
-    `;
-INSERT;
-INTO;
-faq_artifacts(faq_id, artifacts, meta);
-VALUES($1, $2, COALESCE((SELECT), meta, FROM, faq_artifacts, WHERE, faq_id = $1, LIMIT, 1), '{}', jsonb);
+    `, INSERT, INTO, faq_artifacts(faq_id, artifacts, meta), VALUES($1, $2, COALESCE((SELECT), meta, FROM, faq_artifacts, WHERE, faq_id = $1, LIMIT, 1), '{}', jsonb));
 ON;
 CONFLICT(faq_id);
 DO;
@@ -1209,110 +1179,30 @@ $;
     const extractText = (r: any) => r?.payload?.text || r?.payload?.payload?.text || r?.payload?.text_content || r?.payload?.snippet || r?.payload?.content || '';
     const contextSnippets = (results || []).map(extractText).filter(Boolean).slice(0, 6);
 
-    const prompt = `;
-Erweitere;
-das;
-Feld;
-'${field}';
-eines;
-faq_1.FAQ - Eintrags.;
-n;
-nTitel: $;
-{
-    faq.title;
-}
-nVorhandener;
-Text(Auszug);
-n$;
-{
-    current.slice(-1200);
-}
-n;
-nRelevante;
-Snippets: ;
-n$;
-{
-    contextSnippets.map((s, i) => `[${i + 1}] ${s.substring(0, 500)}`).join('\n');
-}
-n;
-nAnforderungen: ;
-n - Füge;
-einen;
-kohärenten;
-Abschnitt;
-an(ca.$, { segmentTarget }, Wörter);
-n - Keine;
-Wiederholung, konsistente;
-Begriffe, Quellenbezug;
-n - Nutze;
-Überschriften / Listen;
-wo;
-sinnvoll;
-n - Bevorzuge;
-Informationen;
-aus;
-pseudocode_ * und;
-structured_table;
-n - Zitiere, falls;
-möglich, chunk_type / Seite;
-n - Gib;
-nur;
-den;
-neuen;
-Text(ohne, alten);
-zurück. `;
+    const snippetsText = contextSnippets.map((s, i) => '[' + (i+1) + '] ' + s.substring(0, 500)).join('\n');
+    const prompt = 'Erweitere das Feld \'' + field + '\' eines FAQ-Eintrags.\n\nTitel: ' + faq.title + '\nVorhandener Text (Auszug):\n' + current.slice(-1200) + '\n\nRelevante Snippets:\n' + snippetsText + '\n\nAnforderungen:\n- Füge einen kohärenten Abschnitt an (ca. ' + segmentTarget + ' Wörter)\n- Keine Wiederholung, konsistente Begriffe, Quellenbezug\n- Nutze Überschriften/Listen wo sinnvoll\n- Bevorzuge Informationen aus pseudocode_* und structured_table\n- Zitiere, falls möglich, chunk_type/Seite\n- Gib nur den neuen Text (ohne alten) zurück.';
 
     const addition = await llm.generateText(prompt);
-    current = `;
-$;
-{
-    current;
-}
-n;
-n$;
-{
-    addition;
-}
-`.trim();
+    current = current + '\n\n' + addition;
+    current = current.trim();
     totalWords = current.split(/\s+/).filter(Boolean).length;
   }
 
   // Save field
   const columnMap: any = { description: 'description', context: 'context', answer: 'answer', additional_info: 'additional_info' };
   const col = columnMap[field];
-  const update = await pool.query(`;
-UPDATE;
-faqs;
-SET;
-$;
-{
-    col;
-}
-$1, updated_at = CURRENT_TIMESTAMP;
-WHERE;
-id = $2;
-RETURNING * `, [current, id]);
+  const updateQuery = 'UPDATE faqs SET ' + col + ' = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *';
+  const update = await pool.query(updateQuery, [current, id]);
 
   // Also reflect in artifacts for traceability
-  await pool.query(
-    `;
-INSERT;
-INTO;
-faq_artifacts(faq_id, artifacts, meta);
-VALUES($1, $2, $3);
-ON;
-CONFLICT(faq_id);
-DO;
-UPDATE;
-SET;
-artifacts = faq_artifacts.artifacts || $2, meta = faq_artifacts.meta || $3, updated_at = CURRENT_TIMESTAMP `,
-    [id, { [`;
-extended_$;
-{
-    field;
-}
-`]: { length: totalWords } }, { strategy, target_lengths: { [field]: target_length }, model: llm.getLastUsedModel?.(), created_by: req.user!.id }]
-  );
+  const insertQuery = 'INSERT INTO faq_artifacts (faq_id, artifacts, meta) VALUES ($1, $2, $3) ON CONFLICT (faq_id) DO UPDATE SET artifacts = faq_artifacts.artifacts || $2, meta = faq_artifacts.meta || $3, updated_at = CURRENT_TIMESTAMP';
+  const extendedKey = 'extended_' + field;
+  const artifacts: any = {};
+  artifacts[extendedKey] = { length: totalWords };
+  const targetLengths: any = {};
+  targetLengths[field] = target_length;
+  const meta = { strategy, target_lengths: targetLengths, model: llm.getLastUsedModel?.(), created_by: req.user!.id };
+  await pool.query(insertQuery, [id, artifacts, meta]);
 
   res.json({ success: true, data: update.rows[0] });
 }));

@@ -117,7 +117,7 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   let query = `
     SELECT id, title, description, context, answer, additional_info, tags,
            view_count, is_public, created_at, updated_at
-`;    FROM faqs
+    FROM faqs
     WHERE is_active = true
   `;
   
@@ -883,18 +883,14 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
   
   // Search functionality
   if (search) {
-    query += ` AND (
-      title ILIKE $${queryParams.length + 1} OR 
-      description ILIKE $${queryParams.length + 1} OR 
-      answer ILIKE $${queryParams.length + 1} OR 
-      context ILIKE $${queryParams.length + 1}
-    )`;
-    queryParams.push(`%${search}%`);
+    const paramIndex = queryParams.length + 1;
+    query += ' AND ( title ILIKE $' + paramIndex + ' OR description ILIKE $' + paramIndex + ' OR answer ILIKE $' + paramIndex + ' OR context ILIKE $' + paramIndex + ' )';
+    queryParams.push('%' + search + '%');
   }
   
   // Tag filtering
   if (tag) {
-    query += ` AND tags @> $${queryParams.length + 1}`;
+    query += ' AND tags @> $' + (queryParams.length + 1);
     queryParams.push(JSON.stringify([tag]));
   }
   
@@ -904,34 +900,26 @@ router.get('/public/faqs', asyncHandler(async (req: Request, res: Response) => {
   const sortField = validSortFields.includes(sort as string) ? sort : 'created_at';
   const sortOrder = validOrders.includes(order as string) ? order as string : 'desc';
   
-  query += ` ORDER BY ${sortField} ${sortOrder.toUpperCase()}`;
-  query += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+  query += ' ORDER BY ' + sortField + ' ' + sortOrder.toUpperCase();
+  query += ' LIMIT $' + (queryParams.length + 1) + ' OFFSET $' + (queryParams.length + 2);
   
   queryParams.push(limit, offset);
   
   const result = await pool.query(query, queryParams);
   
   // Get total count for pagination
-  let countQuery = `
-    SELECT COUNT(*) 
-    FROM faqs 
-    WHERE is_active = true AND is_public = true
-  `;
+  let countQuery = 'SELECT COUNT(*) FROM faqs WHERE is_active = true AND is_public = true';
   
   const countParams: any[] = [];
   
   if (search) {
-    countQuery += ` AND (
-      title ILIKE $${countParams.length + 1} OR 
-      description ILIKE $${countParams.length + 1} OR 
-      answer ILIKE $${countParams.length + 1} OR 
-      context ILIKE $${countParams.length + 1}
-    )`;
-    countParams.push(`%${search}%`);
+    const paramIndex = countParams.length + 1;
+    countQuery += ' AND ( title ILIKE $' + paramIndex + ' OR description ILIKE $' + paramIndex + ' OR answer ILIKE $' + paramIndex + ' OR context ILIKE $' + paramIndex + ' )';
+    countParams.push('%' + search + '%');
   }
   
   if (tag) {
-    countQuery += ` AND tags @> $${countParams.length + 1}`;
+    countQuery += ' AND tags @> $' + (countParams.length + 1);
     countParams.push(JSON.stringify([tag]));
   }
   
