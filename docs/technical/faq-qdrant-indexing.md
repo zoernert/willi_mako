@@ -12,7 +12,58 @@ Neue FAQ-Einträge werden automatisch in die Qdrant Vector Database indiziert, u
 
 **Zweck**: Indiziert einen FAQ-Eintrag in Qdrant mit intelligenter Chunking-Strategie
 
-**Chunking-Strategie**:
+### 2. Context vs. Answer - Automatisches Markdown-Stripping
+
+**Problem**: `answer` enthält Markdown-Syntax, die für Suche suboptimal ist.
+
+**Lösung**: Wenn kein `context` übergeben wird, wird er automatisch aus `answer` generiert:
+
+```typescript
+// Markdown-Stripping für bessere Suche
+contextText = answer
+  .replace(/#{1,6}\s+/g, '') // Remove headers (#, ##, ###, etc.)
+  .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold: **text** → text
+  .replace(/\*(.+?)\*/g, '$1') // Remove italic: *text* → text
+  .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links: [text](url) → text
+  .replace(/`(.+?)`/g, '$1') // Remove inline code: `code` → code
+  .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+  .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers (-, *, +)
+  .replace(/^\s*\d+\.\s+/gm, ''); // Remove numbered lists (1., 2., etc.)
+```
+
+**Beispiel-Transformation**:
+
+**Input (`answer`)**:
+```markdown
+## Arbeitspreis
+
+Der **Arbeitspreis** ist der Preis pro kWh.
+
+### Berechnung
+
+- Verbrauch × Arbeitspreis
+- Mehr unter [BDEW](https://bdew.de)
+```
+
+**Output (`context`)**:
+```
+Arbeitspreis
+
+Der Arbeitspreis ist der Preis pro kWh.
+
+Berechnung
+
+Verbrauch × Arbeitspreis
+Mehr unter BDEW
+```
+
+**Vorteile**:
+- ✅ Bessere Volltextsuche (keine Markdown-Syntax-Störungen)
+- ✅ Bessere Semantic Search (Fokus auf Inhalt, nicht Formatierung)
+- ✅ Kürzere Vektoren (weniger Overhead)
+- ✅ API bleibt einfach (context ist optional)
+
+### 3. Chunking-Strategie
 - Maximale Chunk-Größe: **1000 Zeichen**
 - Chunking erfolgt auf **Absatzgrenzen** (`\n\s*\n`) für besseren semantischen Kontext
 - Große Absätze werden bei Bedarf aufgeteilt

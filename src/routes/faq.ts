@@ -334,7 +334,7 @@ const authenticateBearerToken = (requiredToken: string) => {
 
 // Create new FAQ entry via API
 router.post('/faqs', authenticateBearerToken('str0mda0'), asyncHandler(async (req: Request, res: Response) => {
-  const { question, answer, tags, description, additional_info } = req.body;
+  const { question, answer, tags, description, additional_info, context } = req.body;
   
   // Validation
   if (!question || !answer) {
@@ -353,6 +353,21 @@ router.post('/faqs', authenticateBearerToken('str0mda0'), asyncHandler(async (re
     parsedTags = [tags];
   } else {
     parsedTags = ['Energiewirtschaft']; // Default tag
+  }
+  
+  // Prepare context: If provided use it, otherwise strip markdown from answer for plain text search
+  let contextText = context;
+  if (!contextText) {
+    // Simple markdown stripping: remove common markdown syntax for better search
+    contextText = answer
+      .replace(/#{1,6}\s+/g, '') // Remove headers
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
+      .replace(/\*(.+?)\*/g, '$1') // Remove italic
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Remove links, keep text
+      .replace(/`(.+?)`/g, '$1') // Remove inline code
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/^\s*[-*+]\s+/gm, '') // Remove list markers
+      .replace(/^\s*\d+\.\s+/gm, ''); // Remove numbered list markers
   }
   
   // Insert new FAQ
@@ -374,8 +389,8 @@ router.post('/faqs', authenticateBearerToken('str0mda0'), asyncHandler(async (re
   `, [
     question, // title
     description || `FAQ-Eintrag zu: ${question}`, // description
-    answer, // context (used for search/semantic matching)
-    answer, // answer (the markdown content)
+    contextText, // context (plain text for search/semantic matching)
+    answer, // answer (the markdown content for display)
     additional_info || null, // additional_info
     JSON.stringify(parsedTags) // tags as JSONB
   ]);

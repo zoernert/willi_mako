@@ -33,9 +33,24 @@ Authorization: Bearer str0mda0
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
+| `context` | string | Plain-Text Version der Antwort für Suche/Semantic Matching. **Wird automatisch aus `answer` generiert wenn nicht angegeben** |
 | `tags` | string[] oder string | Tag(s) zur Kategorisierung (Standard: `["Energiewirtschaft"]`) |
 | `description` | string | Kurzbeschreibung (Standard: wird aus der Frage generiert) |
 | `additional_info` | string | Zusätzliche Informationen |
+
+### Hinweis zum `context` Feld
+
+Das `context` Feld wird für die **semantische Suche** und **Volltextsuche** verwendet. Es sollte eine **reine Text-Version ohne Markdown-Syntax** sein:
+
+- **Wenn `context` übergeben wird**: Wird direkt verwendet
+- **Wenn `context` NICHT übergeben wird**: Wird automatisch aus `answer` generiert durch:
+  - Entfernen von Markdown-Headers (`#`, `##`, etc.)
+  - Entfernen von **Bold** und *Italic* Formatierung
+  - Entfernen von Links (behält nur den Linktext)
+  - Entfernen von Code-Blöcken und Inline-Code
+  - Entfernen von Listen-Markern
+
+**Empfehlung**: Für beste Suchergebnisse können Sie einen optimierten `context` mitliefern, der die wichtigsten Suchbegriffe enthält.
 
 ### Beispiel Request Body
 
@@ -43,10 +58,13 @@ Authorization: Bearer str0mda0
 {
   "question": "Was ist der Unterschied zwischen Arbeitspreis und Grundpreis?",
   "answer": "## Arbeitspreis vs. Grundpreis\n\nDer **Arbeitspreis** ist der Preis pro verbrauchter Kilowattstunde (kWh) Strom oder Gas. Er wird mit dem tatsächlichen Verbrauch multipliziert.\n\nDer **Grundpreis** ist eine feste monatliche oder jährliche Gebühr, die unabhängig vom Verbrauch anfällt. Sie deckt Kosten wie:\n\n- Zählermessung\n- Abrechnung\n- Netznutzung (Grundgebühr)\n\n### Berechnung\n\nGesamtkosten = (Verbrauch in kWh × Arbeitspreis) + Grundpreis\n\n### Weitere Informationen\n\nMehr Details finden Sie unter [Preisbestandteile](https://example.com/preise).",
+  "context": "Der Arbeitspreis ist der Preis pro verbrauchter Kilowattstunde kWh Strom oder Gas. Der Grundpreis ist eine feste monatliche oder jährliche Gebühr unabhängig vom Verbrauch. Gesamtkosten berechnen sich aus Verbrauch mal Arbeitspreis plus Grundpreis.",
   "tags": ["Energiewirtschaft", "Preise", "Grundlagen"],
   "description": "Erklärung der Unterschiede zwischen Arbeitspreis und Grundpreis in der Energieabrechnung"
 }
 ```
+
+**Hinweis**: Im obigen Beispiel ist `context` optional. Wenn weggelassen, wird er automatisch aus `answer` generiert.
 
 ## Response
 
@@ -246,14 +264,23 @@ Der FAQ-Eintrag wird in der `faqs`-Tabelle mit folgenden Feldern gespeichert:
 - `id`: UUID (automatisch generiert)
 - `title`: Die Frage
 - `description`: Kurzbeschreibung
-- `context`: Kopie der Antwort (für Semantic Search)
-- `answer`: Die Markdown-Antwort
+- `context`: **Plain-Text Version der Antwort** für Suche/Semantic Matching (automatisch generiert wenn nicht übergeben)
+- `answer`: **Markdown-formatierte Antwort** für die Anzeige
 - `additional_info`: Zusätzliche Informationen
 - `tags`: JSONB Array
 - `is_active`: true (Standard)
 - `is_public`: true (Standard)
 - `view_count`: 0 (wird automatisch erhöht)
 - `created_at`, `updated_at`: Timestamps
+
+### Unterschied zwischen `context` und `answer`
+
+| Feld | Zweck | Format | Verwendung |
+|------|-------|--------|------------|
+| `context` | Suche & Semantic Matching | Plain Text (kein Markdown) | Wird für Volltextsuche und Vector Search indiziert |
+| `answer` | Anzeige für Benutzer | Markdown | Wird im Frontend mit Markdown-Rendering angezeigt |
+
+**Best Practice**: Wenn Sie `context` nicht explizit übergeben, wird er automatisch aus `answer` durch Entfernen der Markdown-Syntax generiert.
 
 ## Qdrant Vector Database Indexierung
 

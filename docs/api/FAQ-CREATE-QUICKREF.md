@@ -16,12 +16,14 @@ Content-Type: application/json
   "answer": "# Antwort in Markdown\n\nMit [Links](https://example.com) und **Formatierung**"
 }
 ```
+*`context` wird automatisch aus `answer` generiert*
 
 ## Full Request
 ```json
 {
   "question": "Ihre Frage hier",
   "answer": "# Antwort in Markdown\n\nMit [Links](https://example.com)",
+  "context": "Antwort als Plain Text ohne Markdown für bessere Suche",
   "tags": ["Energiewirtschaft", "Preise"],
   "description": "Kurzbeschreibung",
   "additional_info": "Zusätzliche Infos"
