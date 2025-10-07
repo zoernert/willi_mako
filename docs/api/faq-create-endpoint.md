@@ -4,6 +4,8 @@
 
 Der API-Endpunkt `/api/faqs` ermöglicht es, neue FAQ-Einträge über einen POST-Request zu erstellen. Der Endpunkt ist durch Bearer-Token-Authentifizierung geschützt.
 
+**✨ Neue FAQs werden automatisch in die Qdrant Vector Database indiziert** für semantische Suche und KI-gestützte Abfragen.
+
 ## Authentifizierung
 
 Der Endpunkt benötigt einen Bearer Token im Authorization-Header:
@@ -252,6 +254,43 @@ Der FAQ-Eintrag wird in der `faqs`-Tabelle mit folgenden Feldern gespeichert:
 - `is_public`: true (Standard)
 - `view_count`: 0 (wird automatisch erhöht)
 - `created_at`, `updated_at`: Timestamps
+
+## Qdrant Vector Database Indexierung
+
+Nach erfolgreichem Erstellen des FAQs wird dieser **automatisch in die Qdrant Collection indiziert**:
+
+### Technische Details
+
+- **Collection**: `willi_mako` (oder gemäß `QDRANT_COLLECTION` Umgebungsvariable)
+- **Embedding-Modell**: `text-embedding-004` (Google Gemini)
+- **Chunking-Strategie**: 
+  - Maximale Chunk-Größe: **1000 Zeichen**
+  - Chunking auf Absatzgrenzen für besseren Kontext
+  - Mehrere Chunks bei langen Antworten
+- **Indexierte Felder**: Title, Description, Context, Answer, Additional Info
+- **Payload Metadaten**:
+  - `content_type`: "faq"
+  - `faq_id`: UUID des FAQ-Eintrags
+  - `title`, `description`, `tags`
+  - `chunk_index`, `total_chunks`: Chunk-Position und Gesamtzahl
+  - `text`: Der chunked Text
+  - `chunk_type`: "faq_content"
+  - `source`: "faq_api"
+  - `created_at`: ISO Timestamp
+
+### Vorteile der Qdrant-Indexierung
+
+✅ **Semantische Suche**: FAQs werden anhand ihrer Bedeutung gefunden, nicht nur Keywords  
+✅ **KI-Integration**: LLM kann relevante FAQ-Inhalte für Antworten nutzen  
+✅ **Mehrsprachig**: Embedding-Modell versteht semantische Ähnlichkeiten  
+✅ **Skalierbar**: Effiziente Vektorsuche auch bei tausenden FAQs  
+
+### Non-Blocking Indexierung
+
+Die Indexierung erfolgt **asynchron im Hintergrund**:
+- Der API-Call gibt sofort nach dem DB-Insert eine Antwort zurück (201 Created)
+- Die Qdrant-Indexierung läuft parallel ohne den Request zu blockieren
+- Bei Indexierungs-Fehlern wird der FAQ trotzdem erfolgreich erstellt (Fehler werden geloggt)
 
 ## Sicherheit
 

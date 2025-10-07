@@ -195,6 +195,91 @@ router.post('/faqs/:id/start-chat', auth_1.authenticateToken, (0, errorHandler_1
         }
     });
 }));
+// Middleware for Bearer token authentication with specific token
+const authenticateBearerToken = (requiredToken) => {
+    return (req, res, next) => {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1]; // Extract token from "Bearer TOKEN"
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                error: 'Access token required',
+                code: 'TOKEN_MISSING'
+            });
+        }
+        if (token !== requiredToken) {
+            return res.status(403).json({
+                success: false,
+                error: 'Invalid token',
+                code: 'TOKEN_INVALID'
+            });
+        }
+        next();
+    };
+};
+// Create new FAQ entry via API
+router.post('/faqs', authenticateBearerToken('str0mda0'), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { question, answer, tags, description, additional_info } = req.body;
+    // Validation
+    if (!question || !answer) {
+        return res.status(400).json({
+            success: false,
+            error: 'Question and answer are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+        });
+    }
+    // Prepare tags array
+    let parsedTags;
+    if (Array.isArray(tags)) {
+        parsedTags = tags;
+    }
+    else if (typeof tags === 'string') {
+        parsedTags = [tags];
+    }
+    else {
+        parsedTags = ['Energiewirtschaft']; // Default tag
+    }
+    // Insert new FAQ
+    const result = await database_1.default.query(`
+    INSERT INTO faqs (
+      title,
+      description,
+      context,
+      answer,
+      additional_info,
+      tags,
+      is_active,
+      is_public,
+      created_at,
+      updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    RETURNING id, title, description, context, answer, additional_info, tags, 
+              view_count, is_active, is_public, created_at, updated_at
+  `, [
+        question, // title
+        description || `FAQ-Eintrag zu: ${question}`, // description
+        answer, // context (used for search/semantic matching)
+        answer, // answer (the markdown content)
+        additional_info || null, // additional_info
+        JSON.stringify(parsedTags) // tags as JSONB
+    ]);
+    const newFaq = result.rows[0];
+    // Parse tags back to array for response
+    let responseTags;
+    try {
+        responseTags = typeof newFaq.tags === 'string' ? JSON.parse(newFaq.tags) : newFaq.tags;
+    }
+    catch (parseError) {
+        responseTags = parsedTags;
+    }
+    res.status(201).json({
+        success: true,
+        data: {
+            ...newFaq,
+            tags: responseTags
+        }
+    });
+}));
 // Get all available tags
 router.get('/faq-tags', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const result = await database_1.default.query(`

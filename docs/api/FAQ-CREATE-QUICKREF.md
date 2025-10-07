@@ -7,6 +7,8 @@ Authorization: Bearer str0mda0
 Content-Type: application/json
 ```
 
+**✨ Auto-Indexing**: Neue FAQs werden automatisch in Qdrant indiziert (text-embedding-004)
+
 ## Minimal Request
 ```json
 {

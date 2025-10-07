@@ -6,8 +6,109 @@ import llm from '../services/llmProvider';
 import { QdrantService } from '../services/qdrant';
 import { faqLinkingService } from '../services/faqLinkingService';
 import { FAQ, FAQWithLinks, CreateFAQLinkRequest } from '../types/faq';
+import { QdrantClient } from '@qdrant/js-client-rest';
+import { generateEmbedding, getCollectionName } from '../services/embeddingProvider';
 
 const router = Router();
+
+/**
+ * Helper function to index FAQ into Qdrant
+ * Chunks the FAQ content and creates embeddings for semantic search
+ */
+async function indexFAQIntoQdrant(faq: {
+  id: string;
+  title: string;
+  description?: string;
+  context: string;
+  answer: string;
+  additional_info?: string;
+  tags: string[];
+}): Promise<void> {
+  try {
+    const client = new QdrantClient({
+      url: process.env.QDRANT_URL || 'http://localhost:6333',
+      apiKey: process.env.QDRANT_API_KEY,
+      checkCompatibility: false
+    });
+    
+    const baseCollection = process.env.QDRANT_COLLECTION || 'willi_mako';
+    const collection = getCollectionName(baseCollection);
+    
+    // Prepare full text for chunking
+    const fullText = [
+      faq.title,
+      faq.description || '',
+      faq.context,
+      faq.answer,
+      faq.additional_info || ''
+    ].filter(Boolean).join('\n\n');
+    
+    // Chunk text into ~1000 char pieces on paragraph boundaries
+    // This matches the chunking strategy used in admin.ts
+    const rawParas = fullText.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    const chunks: string[] = [];
+    const MAX_CHUNK_SIZE = 1000; // Keep chunks under 1000 chars for optimal embedding
+    
+    for (const p of rawParas) {
+      if (p.length <= MAX_CHUNK_SIZE) {
+        chunks.push(p);
+        continue;
+      }
+      // Split large paragraphs
+      let start = 0;
+      while (start < p.length) {
+        chunks.push(p.slice(start, start + MAX_CHUNK_SIZE));
+        start += MAX_CHUNK_SIZE;
+      }
+    }
+    
+    // Ensure at least one chunk exists
+    if (!chunks.length) {
+      chunks.push(fullText.slice(0, MAX_CHUNK_SIZE));
+    }
+    
+    // Create embeddings and upsert points
+    const points: any[] = [];
+    const { v5: uuidv5 } = require('uuid');
+    
+    for (let idx = 0; idx < chunks.length; idx++) {
+      const chunkText = chunks[idx];
+      
+      // Generate embedding using text-embedding-004 (via embeddingProvider)
+      const vector = await generateEmbedding(chunkText);
+      
+      // Create deterministic UUID for this FAQ chunk
+      const pointId = uuidv5(`faq:${faq.id}:${idx}`, uuidv5.URL);
+      
+      points.push({
+        id: pointId,
+        vector,
+        payload: {
+          content_type: 'faq',
+          faq_id: faq.id,
+          title: faq.title,
+          description: faq.description || '',
+          tags: faq.tags,
+          chunk_index: idx,
+          total_chunks: chunks.length,
+          text: chunkText,
+          chunk_type: 'faq_content', // Consistent with other chunk types
+          source: 'faq_api',
+          created_at: new Date().toISOString()
+        }
+      });
+    }
+    
+    // Upsert all chunks to Qdrant
+    if (points.length > 0) {
+      await client.upsert(collection, { wait: true, points });
+      console.log(`✓ Indexed FAQ ${faq.id} into Qdrant collection '${collection}': ${points.length} chunks`);
+    }
+  } catch (error) {
+    // Log error but don't throw - FAQ creation should succeed even if indexing fails
+    console.error('Error indexing FAQ into Qdrant:', error);
+  }
+}
 
 // Get all FAQs for public display with links
 router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
@@ -16,7 +117,7 @@ router.get('/faqs', asyncHandler(async (req: Request, res: Response) => {
   let query = `
     SELECT id, title, description, context, answer, additional_info, tags,
            view_count, is_public, created_at, updated_at
-    FROM faqs
+`;    FROM faqs
     WHERE is_active = true
   `;
   
@@ -288,6 +389,24 @@ router.post('/faqs', authenticateBearerToken('str0mda0'), asyncHandler(async (re
   } catch (parseError) {
     responseTags = parsedTags;
   }
+  
+  // Index FAQ into Qdrant (fire-and-forget, non-blocking)
+  // This will chunk the content and create embeddings using text-embedding-004
+  (async () => {
+    try {
+      await indexFAQIntoQdrant({
+        id: newFaq.id,
+        title: newFaq.title,
+        description: newFaq.description,
+        context: newFaq.context,
+        answer: newFaq.answer,
+        additional_info: newFaq.additional_info,
+        tags: responseTags
+      });
+    } catch (err) {
+      console.error('Background FAQ indexing failed:', err);
+    }
+  })();
   
   res.status(201).json({
     success: true,
