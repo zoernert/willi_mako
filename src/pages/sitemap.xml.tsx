@@ -100,6 +100,14 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     <priority>0.8</priority>
   </url>
 
+  <!-- Training -->
+  <url>
+    <loc>https://stromhaltig.de/training</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
   <!-- Benutzerhandbuch Kapitel -->
   ${manualSections.map(s => `
   <url>

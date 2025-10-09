@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { 
   Box, 
   Typography, 
-  Grid, 
   Card, 
   CardContent, 
   Button, 
@@ -15,6 +14,7 @@ import {
   Divider,
   Alert
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import {
   TrendingUp as TrendingIcon,
   Work as WorkIcon,
@@ -195,6 +195,26 @@ export default function KarrierePage({ jobs, totalJobs, lastUpdated }: KarriereP
               }}
             >
               7 Tage kostenlos testen
+            </Button>
+            <Button
+              component={Link}
+              href="/training"
+              variant="outlined"
+              size="large"
+              endIcon={<ArrowIcon />}
+              sx={{
+                borderColor: 'white',
+                color: 'white',
+                px: 4,
+                py: 1.5,
+                fontSize: '1.1rem',
+                '&:hover': {
+                  borderColor: '#ee7f4b',
+                  bgcolor: 'rgba(255,255,255,0.1)'
+                }
+              }}
+            >
+              Weiterbildung entdecken
             </Button>
             <Button
               component="a"

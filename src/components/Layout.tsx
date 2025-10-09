@@ -28,6 +28,7 @@ import {
   Description as DescriptionIcon,
   Storage as StorageIcon,
   Work as WorkIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -55,7 +56,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title = "Wissensplattform" })
     { text: 'Wissensdatenbank', icon: <FAQIcon />, path: '/wissen' },
   { text: 'Fachartikel', icon: <DescriptionIcon />, path: '/wissen/artikel' },
   { text: 'Daten', icon: <StorageIcon />, path: '/data' },
-    { text: 'Karriere', icon: <WorkIcon />, path: '/karriere' },
+  { text: 'Karriere', icon: <WorkIcon />, path: '/karriere' },
+  { text: 'Training', icon: <SchoolIcon />, path: '/training' },
     { text: 'Screenshot-Analyse', icon: <PhotoIcon />, path: '/screenshot-analysis' },
     { text: 'MCP Service API', icon: <ApiIcon />, path: '/mcp-service' },
     { text: 'Beratung', icon: <InfoIcon />, path: '/beratung' },
