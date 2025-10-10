@@ -280,6 +280,32 @@ class AdvancedRetrieval {
     }
 }
 const retrieval = new AdvancedRetrieval();
+let ensureMetadataColumnPromise = null;
+let metadataColumnAvailable = false;
+const ensureChatMetadataColumn = async () => {
+    if (metadataColumnAvailable) {
+        return;
+    }
+    if (!ensureMetadataColumnPromise) {
+        ensureMetadataColumnPromise = (async () => {
+            const result = await database_1.default.query(`SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'chats'
+           AND column_name = 'metadata'`);
+            if (result.rowCount === 0) {
+                await database_1.default.query("ALTER TABLE chats ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb");
+                await database_1.default.query("UPDATE chats SET metadata = '{}'::jsonb WHERE metadata IS NULL");
+            }
+            metadataColumnAvailable = true;
+        })().catch((error) => {
+            ensureMetadataColumnPromise = null;
+            console.error('Failed to ensure chats.metadata column exists:', error);
+            throw error;
+        });
+    }
+    return ensureMetadataColumnPromise;
+};
 const parseShareEnabledFlag = (value) => {
     if (typeof value === 'boolean') {
         return value;
@@ -332,6 +358,7 @@ const serializeChatRow = (row) => {
 // Get user's chats
 router.get('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const userId = req.user.id;
+    await ensureChatMetadataColumn();
     const chats = await database_1.default.query('SELECT id, title, created_at, updated_at, metadata FROM chats WHERE user_id = $1 ORDER BY updated_at DESC', [userId]);
     const data = chats.rows.map(serializeChatRow);
     res.json({
@@ -346,6 +373,7 @@ router.get('/chats/search', (0, errorHandler_1.asyncHandler)(async (req, res) =>
     if (!query || query.trim() === '') {
         throw new errorHandler_1.AppError('Search query is required', 400);
     }
+    await ensureChatMetadataColumn();
     // Suche in Chat-Titeln und Nachrichteninhalten
     const searchResults = await database_1.default.query(`SELECT c.id, c.title, c.created_at, c.updated_at, c.metadata,
             (SELECT COUNT(*) FROM messages WHERE chat_id = c.id) as message_count,
@@ -378,6 +406,7 @@ router.get('/chats/search', (0, errorHandler_1.asyncHandler)(async (req, res) =>
 router.get('/chats/:chatId', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { chatId } = req.params;
     const userId = req.user.id;
+    await ensureChatMetadataColumn();
     // Verify chat belongs to user
     const chat = await database_1.default.query('SELECT id, title, created_at, updated_at, metadata FROM chats WHERE id = $1 AND user_id = $2', [chatId, userId]);
     if (chat.rows.length === 0) {
@@ -398,6 +427,7 @@ router.post('/chats/:chatId/share', (0, errorHandler_1.asyncHandler)(async (req,
     const { chatId } = req.params;
     const { enabled } = req.body;
     const userId = req.user.id;
+    await ensureChatMetadataColumn();
     if (typeof enabled !== 'boolean') {
         throw new errorHandler_1.AppError('Field "enabled" must be a boolean', 400);
     }
@@ -430,6 +460,7 @@ router.post('/chats/:chatId/share', (0, errorHandler_1.asyncHandler)(async (req,
 router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { title } = req.body;
     const userId = req.user.id;
+    await ensureChatMetadataColumn();
     const chat = await database_1.default.query('INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id, title, created_at, updated_at', [userId, title || 'Neuer Chat']);
     res.status(201).json({
         success: true,
@@ -443,6 +474,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     const { content, contextSettings, timelineId } = req.body;
     const userId = req.user.id;
     const startTime = Date.now();
+    await ensureChatMetadataColumn();
     if (!content) {
         throw new errorHandler_1.AppError('Message content is required', 400);
     }

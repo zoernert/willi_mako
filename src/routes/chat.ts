@@ -10,6 +10,7 @@ import contextManager from '../services/contextManager';
 import chatConfigurationService from '../services/chatConfigurationService';
 import advancedReasoningService from '../services/advancedReasoningService';
 import { GamificationService } from '../modules/quiz/gamification.service';
+import { ensureChatMetadataColumn } from './utils/ensureChatMetadataColumn';
 
 const router = Router();
 
@@ -272,40 +273,6 @@ class AdvancedRetrieval {
 }
 
 const retrieval = new AdvancedRetrieval();
-
-let ensureMetadataColumnPromise: Promise<void> | null = null;
-let metadataColumnAvailable = false;
-
-const ensureChatMetadataColumn = async (): Promise<void> => {
-  if (metadataColumnAvailable) {
-    return;
-  }
-
-  if (!ensureMetadataColumnPromise) {
-    ensureMetadataColumnPromise = (async () => {
-      const result = await pool.query(
-        `SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = 'chats'
-           AND column_name = 'metadata'`
-      );
-
-      if (result.rowCount === 0) {
-        await pool.query("ALTER TABLE chats ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb");
-        await pool.query("UPDATE chats SET metadata = '{}'::jsonb WHERE metadata IS NULL");
-      }
-
-      metadataColumnAvailable = true;
-    })().catch((error) => {
-      ensureMetadataColumnPromise = null;
-      console.error('Failed to ensure chats.metadata column exists:', error);
-      throw error;
-    });
-  }
-
-  return ensureMetadataColumnPromise;
-};
 
 const parseShareEnabledFlag = (value: unknown): boolean => {
   if (typeof value === 'boolean') {
