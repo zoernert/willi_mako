@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -31,6 +31,8 @@ import {
   Gavel as GavelIcon,
   Psychology as PsychologyIcon,
   Search as SearchIcon,
+  ContentCopy as ContentCopyIcon,
+  Launch as LaunchIcon,
 } from '@mui/icons-material';
 import { useSnackbar } from '../contexts/SnackbarContext';
 import ClarificationUI from '../components/ClarificationUI';
@@ -128,6 +130,64 @@ const Chat: React.FC = () => {
   const [attachedScreenshot, setAttachedScreenshot] = useState<File | null>(null);
   const [screenshotAnalysis, setScreenshotAnalysis] = useState<any>(null);
   const [showScreenshotUpload, setShowScreenshotUpload] = useState(false);
+
+  const getShareState = useCallback((chat: any) => {
+    if (!chat) {
+      return { enabled: false, enabledAt: null as string | null };
+    }
+
+    const metadata = chat.metadata || {};
+    const rawFlag = chat.share_enabled ?? chat.shareEnabled ?? metadata.share_enabled ?? metadata.shareEnabled ?? false;
+    const enabled = typeof rawFlag === 'string' ? rawFlag.toLowerCase() === 'true' : Boolean(rawFlag);
+
+    if (!enabled) {
+      return { enabled: false, enabledAt: null as string | null };
+    }
+
+    const rawTimestamp = chat.share_enabled_at ?? chat.shareEnabledAt ?? metadata.share_enabled_at ?? metadata.shareEnabledAt ?? null;
+
+    if (!rawTimestamp) {
+      return { enabled: true, enabledAt: null as string | null };
+    }
+
+    if (typeof rawTimestamp === 'string') {
+      return { enabled: true, enabledAt: rawTimestamp };
+    }
+
+    try {
+      return { enabled: true, enabledAt: new Date(rawTimestamp).toISOString() };
+    } catch {
+      return { enabled: true, enabledAt: null as string | null };
+    }
+  }, []);
+
+  const [shareEnabled, setShareEnabled] = useState(false);
+  const [shareEnabledAt, setShareEnabledAt] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+
+  const shareUrl = useMemo(() => {
+    if (!currentChat?.id) {
+      return '';
+    }
+
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return `${window.location.origin}/app/share/chat/${currentChat.id}`;
+    }
+
+    return `/app/share/chat/${currentChat.id}`;
+  }, [currentChat?.id]);
+
+  useEffect(() => {
+    if (!currentChat) {
+      setShareEnabled(false);
+      setShareEnabledAt(null);
+      return;
+    }
+
+    const shareState = getShareState(currentChat);
+    setShareEnabled(shareState.enabled);
+    setShareEnabledAt(shareState.enabledAt);
+  }, [currentChat, getShareState]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -324,6 +384,9 @@ const Chat: React.FC = () => {
       const chatData = await chatApi.getChat(id);
       console.log('Chat fetched:', chatData);
       setCurrentChat(chatData.chat);
+  const shareState = getShareState(chatData.chat);
+  setShareEnabled(shareState.enabled);
+  setShareEnabledAt(shareState.enabledAt);
       
       // Ensure messages is always an array
       const messagesData = chatData.messages || [];
@@ -334,6 +397,8 @@ const Chat: React.FC = () => {
       console.error('Error fetching chat:', error);
       setError('Fehler beim Laden des Chats');
       setMessages([]); // Reset messages on error
+      setShareEnabled(false);
+      setShareEnabledAt(null);
     } finally {
       console.log('Setting chatLoading to false');
       setChatLoading(false);
@@ -347,6 +412,8 @@ const Chat: React.FC = () => {
       console.log('New chat created:', newChat);
       setChats([newChat, ...chats]);
       setCurrentChat(newChat);
+  setShareEnabled(false);
+  setShareEnabledAt(null);
       
       // Explicitly reset all relevant states
       setMessages([]);
@@ -362,6 +429,95 @@ const Chat: React.FC = () => {
       console.error('Error creating new chat:', error);
       showSnackbar('Fehler beim Erstellen des Chats', 'error');
     }
+  };
+
+  const handleShareToggle = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!currentChat) {
+      return;
+    }
+
+    const nextEnabled = event.target.checked;
+    const previousEnabled = shareEnabled;
+    const previousEnabledAt = shareEnabledAt;
+
+    setShareEnabled(nextEnabled);
+    if (!nextEnabled) {
+      setShareEnabledAt(null);
+    }
+    setShareBusy(true);
+
+    try {
+      const response = await chatApi.updateShareSettings(currentChat.id, nextEnabled);
+      const updatedEnabled = response.share_enabled ?? response.shareEnabled ?? nextEnabled;
+      const updatedEnabledAt = updatedEnabled
+        ? response.share_enabled_at ?? response.shareEnabledAt ?? null
+        : null;
+
+      setShareEnabled(updatedEnabled);
+      setShareEnabledAt(updatedEnabledAt);
+
+      setCurrentChat((prev) => prev ? {
+        ...prev,
+        share_enabled: updatedEnabled,
+        shareEnabled: updatedEnabled,
+        share_enabled_at: updatedEnabledAt,
+        shareEnabledAt: updatedEnabledAt,
+      } : prev);
+
+      setChats((prev) => prev.map((chat) =>
+        chat.id === currentChat.id
+          ? {
+              ...chat,
+              share_enabled: updatedEnabled,
+              shareEnabled: updatedEnabled,
+              share_enabled_at: updatedEnabledAt,
+              shareEnabledAt: updatedEnabledAt,
+            }
+          : chat
+      ));
+
+      if (updatedEnabled) {
+        if (shareUrl && navigator?.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            showSnackbar('Chat-Link kopiert. Der Chat ist jetzt öffentlich sichtbar.', 'success');
+          } catch (copyError) {
+            console.warn('Failed to copy share link automatically:', copyError);
+            showSnackbar('Chat ist jetzt öffentlich. Link konnte nicht automatisch kopiert werden.', 'info');
+          }
+        } else {
+          showSnackbar('Chat ist jetzt öffentlich sichtbar.', 'success');
+        }
+      } else {
+        showSnackbar('Öffentliche Freigabe deaktiviert.', 'info');
+      }
+    } catch (error) {
+      console.error('Error updating share settings:', error);
+      setShareEnabled(previousEnabled);
+      setShareEnabledAt(previousEnabledAt);
+      showSnackbar('Fehler beim Aktualisieren der Freigabe-Einstellungen', 'error');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareEnabled || !shareUrl) {
+      showSnackbar('Der Chat ist nicht öffentlich freigegeben.', 'info');
+      return;
+    }
+
+    if (navigator?.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showSnackbar('Freigabelink kopiert.', 'success');
+        return;
+      } catch (error) {
+        console.warn('Clipboard copy failed:', error);
+      }
+    }
+
+    showSnackbar('Link konnte nicht automatisch kopiert werden. Bitte manuell kopieren.', 'error');
   };
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -803,9 +959,86 @@ const Chat: React.FC = () => {
           <>
             {/* Chat Header */}
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6">{currentChat.title}</Typography>
-                
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    alignItems: { xs: 'flex-start', md: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                    {currentChat.title}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={shareEnabled}
+                          onChange={handleShareToggle}
+                          color="primary"
+                          disabled={shareBusy}
+                        />
+                      }
+                      label={shareEnabled ? 'Öffentliche Freigabe aktiv' : 'Öffentlich teilen'}
+                    />
+                    <Tooltip title="Freigabelink kopieren">
+                      <span>
+                        <IconButton
+                          onClick={handleCopyShareLink}
+                          disabled={!shareEnabled || shareBusy || !shareUrl}
+                          color="primary"
+                          size="small"
+                        >
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Öffentliche Ansicht öffnen">
+                      <span>
+                        <IconButton
+                          onClick={() => {
+                            if (shareEnabled && shareUrl) {
+                              window.open(shareUrl, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          disabled={!shareEnabled}
+                          color="primary"
+                          size="small"
+                        >
+                          <LaunchIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                </Box>
+
+                {shareEnabled && shareUrl && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', md: 'row' },
+                      alignItems: { xs: 'flex-start', md: 'center' },
+                      gap: 1,
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary">
+                      Öffentlicher Link:
+                    </Typography>
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                      {shareUrl}
+                    </Typography>
+                  </Box>
+                )}
+
+                {shareEnabled && shareEnabledAt && (
+                  <Typography variant="caption" color="text.secondary">
+                    Freigegeben seit {new Date(shareEnabledAt).toLocaleString('de-DE')}
+                  </Typography>
+                )}
+
                 {/* CR-CS30: Toggle Switch for CS30 Mode */}
                 {userHasCs30Access && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

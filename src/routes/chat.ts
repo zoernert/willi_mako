@@ -273,18 +273,72 @@ class AdvancedRetrieval {
 
 const retrieval = new AdvancedRetrieval();
 
+const parseShareEnabledFlag = (value: unknown): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+  return Boolean(value);
+};
+
+const extractShareInfo = (metadata: any): { shareEnabled: boolean; shareEnabledAt: string | null } => {
+  if (!metadata) {
+    return { shareEnabled: false, shareEnabledAt: null };
+  }
+
+  const shareEnabled = parseShareEnabledFlag(metadata.share_enabled ?? metadata.shareEnabled);
+  const shareEnabledAtRaw = metadata.share_enabled_at ?? metadata.shareEnabledAt ?? null;
+  let shareEnabledAt: string | null = null;
+
+  if (shareEnabled) {
+    if (typeof shareEnabledAtRaw === 'string') {
+      shareEnabledAt = shareEnabledAtRaw;
+    } else if (shareEnabledAtRaw instanceof Date) {
+      shareEnabledAt = shareEnabledAtRaw.toISOString();
+    } else if (shareEnabledAtRaw) {
+      try {
+        shareEnabledAt = new Date(shareEnabledAtRaw).toISOString();
+      } catch {
+        shareEnabledAt = null;
+      }
+    }
+  }
+
+  return { shareEnabled, shareEnabledAt };
+};
+
+const serializeChatRow = (row: any) => {
+  const { shareEnabled, shareEnabledAt } = extractShareInfo(row.metadata);
+
+  return {
+    id: row.id,
+    title: row.title,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    metadata: row.metadata,
+    share_enabled: shareEnabled,
+    shareEnabled,
+    share_enabled_at: shareEnabledAt,
+    shareEnabledAt,
+  };
+};
+
 // Get user's chats
 router.get('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   
   const chats = await pool.query(
-    'SELECT id, title, created_at, updated_at FROM chats WHERE user_id = $1 ORDER BY updated_at DESC',
+    'SELECT id, title, created_at, updated_at, metadata FROM chats WHERE user_id = $1 ORDER BY updated_at DESC',
     [userId]
   );
+
+  const data = chats.rows.map(serializeChatRow);
   
   res.json({
     success: true,
-    data: chats.rows
+    data
   });
 }));
 
@@ -299,7 +353,7 @@ router.get('/chats/search', asyncHandler(async (req: AuthenticatedRequest, res: 
   
   // Suche in Chat-Titeln und Nachrichteninhalten
   const searchResults = await pool.query(
-    `SELECT c.id, c.title, c.created_at, c.updated_at,
+    `SELECT c.id, c.title, c.created_at, c.updated_at, c.metadata,
             (SELECT COUNT(*) FROM messages WHERE chat_id = c.id) as message_count,
             (
               SELECT STRING_AGG(SUBSTRING(content, 1, 100), '... ') 
@@ -319,9 +373,15 @@ router.get('/chats/search', asyncHandler(async (req: AuthenticatedRequest, res: 
     [userId, `%${query}%`]
   );
   
+  const data = searchResults.rows.map(row => ({
+    ...serializeChatRow(row),
+    message_count: row.message_count,
+    matching_snippets: row.matching_snippets,
+  }));
+
   res.json({
     success: true,
-    data: searchResults.rows
+    data
   });
 }));
 
@@ -332,13 +392,14 @@ router.get('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res:
   
   // Verify chat belongs to user
   const chat = await pool.query(
-    'SELECT id, title, created_at, updated_at FROM chats WHERE id = $1 AND user_id = $2',
+    'SELECT id, title, created_at, updated_at, metadata FROM chats WHERE id = $1 AND user_id = $2',
     [chatId, userId]
   );
   
   if (chat.rows.length === 0) {
     throw new AppError('Chat not found', 404);
   }
+  const chatPayload = serializeChatRow(chat.rows[0]);
   
   // Get messages
   const messages = await pool.query(
@@ -349,8 +410,54 @@ router.get('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res:
   res.json({
     success: true,
     data: {
-      chat: chat.rows[0],
+      chat: chatPayload,
       messages: messages.rows
+    }
+  });
+}));
+
+router.post('/chats/:chatId/share', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { chatId } = req.params;
+  const { enabled } = req.body as { enabled?: unknown };
+  const userId = req.user!.id;
+
+  if (typeof enabled !== 'boolean') {
+    throw new AppError('Field "enabled" must be a boolean', 400);
+  }
+
+  const chatResult = await pool.query(
+    'SELECT metadata FROM chats WHERE id = $1 AND user_id = $2',
+    [chatId, userId]
+  );
+
+  if (chatResult.rows.length === 0) {
+    throw new AppError('Chat not found', 404);
+  }
+
+  const existingMetadata = chatResult.rows[0].metadata ? { ...chatResult.rows[0].metadata } : {};
+
+  if (enabled) {
+    existingMetadata.share_enabled = true;
+    existingMetadata.share_enabled_at = new Date().toISOString();
+  } else {
+    existingMetadata.share_enabled = false;
+    delete existingMetadata.share_enabled_at;
+  }
+
+  await pool.query(
+    'UPDATE chats SET metadata = $1, updated_at = NOW() WHERE id = $2',
+    [existingMetadata, chatId]
+  );
+
+  const { shareEnabled, shareEnabledAt } = extractShareInfo(existingMetadata);
+
+  res.json({
+    success: true,
+    data: {
+      share_enabled: shareEnabled,
+      shareEnabled,
+      share_enabled_at: shareEnabledAt,
+      shareEnabledAt,
     }
   });
 }));

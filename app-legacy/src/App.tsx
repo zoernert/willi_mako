@@ -32,6 +32,7 @@ import TeamInvitationPage from './pages/TeamInvitationPage';
 import Community from './pages/Community';
 import CommunityThreadDetail from './pages/CommunityThreadDetail';
 import BilateralClarificationsPage from './components/BilateralClarifications/BilateralClarificationsPage';
+import PublicChat from './pages/PublicChat';
 import './styles/community-theme.css';
 
 const theme = createTheme({
@@ -119,6 +120,7 @@ function App() {
               <Route path="/invitation/:token" element={<InvitationAcceptance />} />
               <Route path="/team-invitation/:token" element={<TeamInvitationPage />} />
               <Route path="/not-found" element={<NotFound />} />
+              <Route path="/share/chat/:chatId" element={<PublicChat />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />

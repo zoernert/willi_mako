@@ -36,6 +36,7 @@ import timelineStatsRoutes from './routes/timeline-stats'; // Timeline-Stats-Rou
 import timelineActivityRoutes from './routes/timeline-activity'; // Timeline-Activity-Capture-Routes
 import adminConsultationSubmissionsRoutes from './routes/admin/consultation-submissions';
 import publicMarketPartnersRoutes from './routes/public-market-partners';
+import publicChatRoutes from './routes/public-chat';
 
 // New Presentation Layer Routes
 import userRoutesV2 from './presentation/http/routes/user.routes';
@@ -177,6 +178,7 @@ app.use('/api/admin/community', initializeCommunityAdminRoutes(db));
 app.use('/api/public/community', publicCommunityRoutes);
 app.use('/api/public/edifact', publicEdifactRoutes);
 app.use('/api/public/market-partners', publicMarketPartnersRoutes);
+app.use('/api/public/chat', publicChatRoutes);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', initializeCommunityAdminRoutes(db));
 

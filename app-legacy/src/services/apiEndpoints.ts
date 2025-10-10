@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
     clarification: (chatId: string) => `/chat/chats/${chatId}/clarification`,
     update: (chatId: string) => `/chat/chats/${chatId}`,
     delete: (chatId: string) => `/chat/chats/${chatId}`,
+    share: (chatId: string) => `/chat/chats/${chatId}/share`,
+    publicDetail: (chatId: string) => `/public/chat/${chatId}`,
   },
 
   // Quiz

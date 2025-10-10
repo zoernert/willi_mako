@@ -99,7 +99,9 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
       showSnackbar('Erfolgreich angemeldet!', 'success');
-      navigate('/');
+      const params = new URLSearchParams(window.location.search);
+      const redirectTarget = params.get('redirect');
+      navigate(redirectTarget || '/');
     } catch (error) {
       console.error('Login failed:', error);
     }

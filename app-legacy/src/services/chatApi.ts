@@ -6,6 +6,11 @@ export interface ChatSession {
   title: string;
   created_at: string;
   updated_at: string;
+  metadata?: any;
+  share_enabled?: boolean;
+  shareEnabled?: boolean;
+  share_enabled_at?: string | null;
+  shareEnabledAt?: string | null;
 }
 
 export interface Message {
@@ -55,10 +60,87 @@ export interface ChatSearchResult extends ChatSession {
   matching_snippets?: string;
 }
 
+export interface ChatShareSettings {
+  share_enabled: boolean;
+  shareEnabled?: boolean;
+  share_enabled_at: string | null;
+  shareEnabledAt?: string | null;
+}
+
+const normalizeShareFlag = (value: any): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true';
+  }
+
+  return Boolean(value);
+};
+
+const normalizeShareMetadata = (chat: any): { shareEnabled: boolean; shareEnabledAt: string | null } => {
+  const metadata = chat?.metadata || {};
+  const shareEnabledRaw =
+    chat?.share_enabled ?? chat?.shareEnabled ?? metadata.share_enabled ?? metadata.shareEnabled ?? false;
+
+  const shareEnabled = normalizeShareFlag(shareEnabledRaw);
+
+  const shareEnabledAtRaw =
+    chat?.share_enabled_at ?? chat?.shareEnabledAt ?? metadata.share_enabled_at ?? metadata.shareEnabledAt ?? null;
+
+  if (!shareEnabled) {
+    return { shareEnabled: false, shareEnabledAt: null };
+  }
+
+  if (!shareEnabledAtRaw) {
+    return { shareEnabled: true, shareEnabledAt: null };
+  }
+
+  if (typeof shareEnabledAtRaw === 'string') {
+    return { shareEnabled: true, shareEnabledAt: shareEnabledAtRaw };
+  }
+
+  try {
+    return { shareEnabled: true, shareEnabledAt: new Date(shareEnabledAtRaw).toISOString() };
+  } catch {
+    return { shareEnabled: true, shareEnabledAt: null };
+  }
+};
+
+type ChatRow = {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  metadata?: any;
+};
+
+const normalizeChatSession = <T extends ChatRow>(chat: T): ChatSession & T => {
+  if (!chat) {
+    return chat as ChatSession & T;
+  }
+
+  const { shareEnabled, shareEnabledAt } = normalizeShareMetadata(chat);
+
+  return {
+    ...chat,
+    metadata: chat.metadata,
+    share_enabled: shareEnabled,
+    shareEnabled,
+    share_enabled_at: shareEnabledAt,
+    shareEnabledAt,
+  } as ChatSession & T;
+};
+
 export const chatApi = {
   // Get all user's chats
-  getChats: (): Promise<ChatSession[]> => {
-    return apiClient.get(API_ENDPOINTS.chat.list);
+  getChats: async (): Promise<ChatSession[]> => {
+    const response = await apiClient.get<any[]>(API_ENDPOINTS.chat.list);
+    if (!Array.isArray(response)) {
+      return [];
+    }
+  return response.map((chat) => normalizeChatSession(chat as ChatRow));
   },
 
   // Search user's chats
@@ -68,25 +150,41 @@ export const chatApi = {
       .then((response: any) => {
         console.log('API-Antwort Suche:', response);
         // Fix: Ergebnisse können entweder direkt in response sein oder in response.data.data
-        if (response && Array.isArray(response)) {
-          return response;
-        } else if (response && response.data && Array.isArray(response.data)) {
-          return response.data;
-        } else if (response && response.data && response.data.data && Array.isArray(response.data.data)) {
-          return response.data.data;
-        }
-        return [];
+        const rawResults = (() => {
+          if (response && Array.isArray(response)) {
+            return response;
+          } else if (response && response.data && Array.isArray(response.data)) {
+            return response.data;
+          } else if (response && response.data && response.data.data && Array.isArray(response.data.data)) {
+            return response.data.data;
+          }
+          return [];
+        })();
+
+        return rawResults.map((result: any) => {
+          const normalized = normalizeChatSession(result as ChatRow);
+          return {
+            ...normalized,
+            message_count: result.message_count,
+            matching_snippets: result.matching_snippets,
+          };
+        });
       });
   },
 
   // Get specific chat with messages
-  getChat: (chatId: string): Promise<ChatWithMessages> => {
-    return apiClient.get(API_ENDPOINTS.chat.detail(chatId));
+  getChat: async (chatId: string): Promise<ChatWithMessages> => {
+    const response = await apiClient.get<ChatWithMessages>(API_ENDPOINTS.chat.detail(chatId));
+    return {
+      chat: normalizeChatSession(response.chat as ChatRow),
+      messages: response.messages || [],
+    };
   },
 
   // Create new chat
-  createChat: (title?: string): Promise<ChatSession> => {
-    return apiClient.post(API_ENDPOINTS.chat.create, { title: title || 'Neuer Chat' });
+  createChat: async (title?: string): Promise<ChatSession> => {
+    const chat = await apiClient.post<ChatSession>(API_ENDPOINTS.chat.create, { title: title || 'Neuer Chat' });
+    return normalizeChatSession(chat as ChatRow);
   },
 
   // Send message in chat with extended timeout for complex queries
@@ -153,12 +251,27 @@ export const chatApi = {
   },
 
   // Update chat title
-  updateChatTitle: (chatId: string, title: string): Promise<ChatSession> => {
-    return apiClient.put(API_ENDPOINTS.chat.update(chatId), { title });
+  updateChatTitle: async (chatId: string, title: string): Promise<ChatSession> => {
+    const updated = await apiClient.put<ChatSession>(API_ENDPOINTS.chat.update(chatId), { title });
+    return normalizeChatSession(updated as ChatRow);
   },
 
   // Delete chat
   deleteChat: (chatId: string): Promise<{ success: boolean; message: string }> => {
     return apiClient.delete(API_ENDPOINTS.chat.delete(chatId));
+  },
+
+  // Update share settings
+  updateShareSettings: (chatId: string, enabled: boolean): Promise<ChatShareSettings> => {
+    return apiClient.post(API_ENDPOINTS.chat.share(chatId), { enabled });
+  },
+
+  // Fetch public chat (no auth required)
+  getPublicChat: async (chatId: string): Promise<ChatWithMessages> => {
+    const response = await apiClient.get<ChatWithMessages>(API_ENDPOINTS.chat.publicDetail(chatId));
+    return {
+      chat: normalizeChatSession(response.chat as ChatRow),
+      messages: response.messages || [],
+    };
   }
 };
