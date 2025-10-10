@@ -10,7 +10,7 @@ import contextManager from '../services/contextManager';
 import chatConfigurationService from '../services/chatConfigurationService';
 import advancedReasoningService from '../services/advancedReasoningService';
 import { GamificationService } from '../modules/quiz/gamification.service';
-import { ensureChatMetadataColumn } from './utils/ensureChatMetadataColumn';
+import { ensureChatColumns } from './utils/ensureChatColumns';
 
 const router = Router();
 
@@ -330,7 +330,7 @@ const serializeChatRow = (row: any) => {
 router.get('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
   
   const chats = await pool.query(
     'SELECT id, title, created_at, updated_at, metadata FROM chats WHERE user_id = $1 ORDER BY updated_at DESC',
@@ -354,7 +354,7 @@ router.get('/chats/search', asyncHandler(async (req: AuthenticatedRequest, res: 
     throw new AppError('Search query is required', 400);
   }
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
   
   // Suche in Chat-Titeln und Nachrichteninhalten
   const searchResults = await pool.query(
@@ -395,7 +395,7 @@ router.get('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res:
   const { chatId } = req.params;
   const userId = req.user!.id;
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
   
   // Verify chat belongs to user
   const chat = await pool.query(
@@ -428,7 +428,7 @@ router.post('/chats/:chatId/share', asyncHandler(async (req: AuthenticatedReques
   const { enabled } = req.body as { enabled?: unknown };
   const userId = req.user!.id;
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
 
   if (typeof enabled !== 'boolean') {
     throw new AppError('Field "enabled" must be a boolean', 400);
@@ -476,7 +476,7 @@ router.post('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Respon
   const { title } = req.body;
   const userId = req.user!.id;
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
   
   const chat = await pool.query(
     'INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id, title, created_at, updated_at',
@@ -496,7 +496,7 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   const userId = req.user!.id;
   const startTime = Date.now();
   
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
 
   if (!content) {
     throw new AppError('Message content is required', 400);

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import pool from '../config/database';
-import { ensureChatMetadataColumn } from './utils/ensureChatMetadataColumn';
+import { ensureChatColumns } from './utils/ensureChatColumns';
 
 const router = Router();
 
@@ -21,7 +21,7 @@ const isShareEnabled = (metadata: any): boolean => {
 router.get('/:chatId', asyncHandler(async (req: Request, res: Response) => {
   const { chatId } = req.params;
 
-  await ensureChatMetadataColumn();
+  await ensureChatColumns();
 
   const chatResult = await pool.query(
     'SELECT id, title, created_at, updated_at, metadata FROM chats WHERE id = $1 AND is_active = true',
