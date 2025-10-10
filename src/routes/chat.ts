@@ -273,6 +273,40 @@ class AdvancedRetrieval {
 
 const retrieval = new AdvancedRetrieval();
 
+let ensureMetadataColumnPromise: Promise<void> | null = null;
+let metadataColumnAvailable = false;
+
+const ensureChatMetadataColumn = async (): Promise<void> => {
+  if (metadataColumnAvailable) {
+    return;
+  }
+
+  if (!ensureMetadataColumnPromise) {
+    ensureMetadataColumnPromise = (async () => {
+      const result = await pool.query(
+        `SELECT column_name
+         FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'chats'
+           AND column_name = 'metadata'`
+      );
+
+      if (result.rowCount === 0) {
+        await pool.query("ALTER TABLE chats ADD COLUMN metadata JSONB DEFAULT '{}'::jsonb");
+        await pool.query("UPDATE chats SET metadata = '{}'::jsonb WHERE metadata IS NULL");
+      }
+
+      metadataColumnAvailable = true;
+    })().catch((error) => {
+      ensureMetadataColumnPromise = null;
+      console.error('Failed to ensure chats.metadata column exists:', error);
+      throw error;
+    });
+  }
+
+  return ensureMetadataColumnPromise;
+};
+
 const parseShareEnabledFlag = (value: unknown): boolean => {
   if (typeof value === 'boolean') {
     return value;
@@ -328,6 +362,8 @@ const serializeChatRow = (row: any) => {
 // Get user's chats
 router.get('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+
+  await ensureChatMetadataColumn();
   
   const chats = await pool.query(
     'SELECT id, title, created_at, updated_at, metadata FROM chats WHERE user_id = $1 ORDER BY updated_at DESC',
@@ -350,6 +386,8 @@ router.get('/chats/search', asyncHandler(async (req: AuthenticatedRequest, res: 
   if (!query || query.trim() === '') {
     throw new AppError('Search query is required', 400);
   }
+
+  await ensureChatMetadataColumn();
   
   // Suche in Chat-Titeln und Nachrichteninhalten
   const searchResults = await pool.query(
@@ -389,6 +427,8 @@ router.get('/chats/search', asyncHandler(async (req: AuthenticatedRequest, res: 
 router.get('/chats/:chatId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { chatId } = req.params;
   const userId = req.user!.id;
+
+  await ensureChatMetadataColumn();
   
   // Verify chat belongs to user
   const chat = await pool.query(
@@ -420,6 +460,8 @@ router.post('/chats/:chatId/share', asyncHandler(async (req: AuthenticatedReques
   const { chatId } = req.params;
   const { enabled } = req.body as { enabled?: unknown };
   const userId = req.user!.id;
+
+  await ensureChatMetadataColumn();
 
   if (typeof enabled !== 'boolean') {
     throw new AppError('Field "enabled" must be a boolean', 400);
@@ -466,6 +508,8 @@ router.post('/chats/:chatId/share', asyncHandler(async (req: AuthenticatedReques
 router.post('/chats', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { title } = req.body;
   const userId = req.user!.id;
+
+  await ensureChatMetadataColumn();
   
   const chat = await pool.query(
     'INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id, title, created_at, updated_at',
@@ -485,6 +529,8 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   const userId = req.user!.id;
   const startTime = Date.now();
   
+  await ensureChatMetadataColumn();
+
   if (!content) {
     throw new AppError('Message content is required', 400);
   }

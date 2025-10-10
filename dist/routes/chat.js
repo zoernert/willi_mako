@@ -280,13 +280,63 @@ class AdvancedRetrieval {
     }
 }
 const retrieval = new AdvancedRetrieval();
+const parseShareEnabledFlag = (value) => {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        return value.toLowerCase() === 'true';
+    }
+    return Boolean(value);
+};
+const extractShareInfo = (metadata) => {
+    var _a, _b, _c;
+    if (!metadata) {
+        return { shareEnabled: false, shareEnabledAt: null };
+    }
+    const shareEnabled = parseShareEnabledFlag((_a = metadata.share_enabled) !== null && _a !== void 0 ? _a : metadata.shareEnabled);
+    const shareEnabledAtRaw = (_c = (_b = metadata.share_enabled_at) !== null && _b !== void 0 ? _b : metadata.shareEnabledAt) !== null && _c !== void 0 ? _c : null;
+    let shareEnabledAt = null;
+    if (shareEnabled) {
+        if (typeof shareEnabledAtRaw === 'string') {
+            shareEnabledAt = shareEnabledAtRaw;
+        }
+        else if (shareEnabledAtRaw instanceof Date) {
+            shareEnabledAt = shareEnabledAtRaw.toISOString();
+        }
+        else if (shareEnabledAtRaw) {
+            try {
+                shareEnabledAt = new Date(shareEnabledAtRaw).toISOString();
+            }
+            catch (_d) {
+                shareEnabledAt = null;
+            }
+        }
+    }
+    return { shareEnabled, shareEnabledAt };
+};
+const serializeChatRow = (row) => {
+    const { shareEnabled, shareEnabledAt } = extractShareInfo(row.metadata);
+    return {
+        id: row.id,
+        title: row.title,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        metadata: row.metadata,
+        share_enabled: shareEnabled,
+        shareEnabled,
+        share_enabled_at: shareEnabledAt,
+        shareEnabledAt,
+    };
+};
 // Get user's chats
 router.get('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const userId = req.user.id;
-    const chats = await database_1.default.query('SELECT id, title, created_at, updated_at FROM chats WHERE user_id = $1 ORDER BY updated_at DESC', [userId]);
+    const chats = await database_1.default.query('SELECT id, title, created_at, updated_at, metadata FROM chats WHERE user_id = $1 ORDER BY updated_at DESC', [userId]);
+    const data = chats.rows.map(serializeChatRow);
     res.json({
         success: true,
-        data: chats.rows
+        data
     });
 }));
 // Search user's chats
@@ -297,7 +347,7 @@ router.get('/chats/search', (0, errorHandler_1.asyncHandler)(async (req, res) =>
         throw new errorHandler_1.AppError('Search query is required', 400);
     }
     // Suche in Chat-Titeln und Nachrichteninhalten
-    const searchResults = await database_1.default.query(`SELECT c.id, c.title, c.created_at, c.updated_at,
+    const searchResults = await database_1.default.query(`SELECT c.id, c.title, c.created_at, c.updated_at, c.metadata,
             (SELECT COUNT(*) FROM messages WHERE chat_id = c.id) as message_count,
             (
               SELECT STRING_AGG(SUBSTRING(content, 1, 100), '... ') 
@@ -314,9 +364,14 @@ router.get('/chats/search', (0, errorHandler_1.asyncHandler)(async (req, res) =>
        )
      )
      ORDER BY c.updated_at DESC`, [userId, `%${query}%`]);
+    const data = searchResults.rows.map(row => ({
+        ...serializeChatRow(row),
+        message_count: row.message_count,
+        matching_snippets: row.matching_snippets,
+    }));
     res.json({
         success: true,
-        data: searchResults.rows
+        data
     });
 }));
 // Get specific chat with messages
@@ -324,17 +379,50 @@ router.get('/chats/:chatId', (0, errorHandler_1.asyncHandler)(async (req, res) =
     const { chatId } = req.params;
     const userId = req.user.id;
     // Verify chat belongs to user
-    const chat = await database_1.default.query('SELECT id, title, created_at, updated_at FROM chats WHERE id = $1 AND user_id = $2', [chatId, userId]);
+    const chat = await database_1.default.query('SELECT id, title, created_at, updated_at, metadata FROM chats WHERE id = $1 AND user_id = $2', [chatId, userId]);
     if (chat.rows.length === 0) {
         throw new errorHandler_1.AppError('Chat not found', 404);
     }
+    const chatPayload = serializeChatRow(chat.rows[0]);
     // Get messages
     const messages = await database_1.default.query('SELECT id, role, content, metadata, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
     res.json({
         success: true,
         data: {
-            chat: chat.rows[0],
+            chat: chatPayload,
             messages: messages.rows
+        }
+    });
+}));
+router.post('/chats/:chatId/share', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { chatId } = req.params;
+    const { enabled } = req.body;
+    const userId = req.user.id;
+    if (typeof enabled !== 'boolean') {
+        throw new errorHandler_1.AppError('Field "enabled" must be a boolean', 400);
+    }
+    const chatResult = await database_1.default.query('SELECT metadata FROM chats WHERE id = $1 AND user_id = $2', [chatId, userId]);
+    if (chatResult.rows.length === 0) {
+        throw new errorHandler_1.AppError('Chat not found', 404);
+    }
+    const existingMetadata = chatResult.rows[0].metadata ? { ...chatResult.rows[0].metadata } : {};
+    if (enabled) {
+        existingMetadata.share_enabled = true;
+        existingMetadata.share_enabled_at = new Date().toISOString();
+    }
+    else {
+        existingMetadata.share_enabled = false;
+        delete existingMetadata.share_enabled_at;
+    }
+    await database_1.default.query('UPDATE chats SET metadata = $1, updated_at = NOW() WHERE id = $2', [existingMetadata, chatId]);
+    const { shareEnabled, shareEnabledAt } = extractShareInfo(existingMetadata);
+    res.json({
+        success: true,
+        data: {
+            share_enabled: shareEnabled,
+            shareEnabled,
+            share_enabled_at: shareEnabledAt,
+            shareEnabledAt,
         }
     });
 }));

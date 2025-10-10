@@ -40,6 +40,7 @@ const timeline_stats_1 = __importDefault(require("./routes/timeline-stats")); //
 const timeline_activity_1 = __importDefault(require("./routes/timeline-activity")); // Timeline-Activity-Capture-Routes
 const consultation_submissions_1 = __importDefault(require("./routes/admin/consultation-submissions"));
 const public_market_partners_1 = __importDefault(require("./routes/public-market-partners"));
+const public_chat_1 = __importDefault(require("./routes/public-chat"));
 // New Presentation Layer Routes
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
@@ -171,6 +172,7 @@ app.use('/api/admin/community', (0, community_2.initializeCommunityAdminRoutes)(
 app.use('/api/public/community', public_community_1.default);
 app.use('/api/public/edifact', public_edifact_1.default);
 app.use('/api/public/market-partners', public_market_partners_1.default);
+app.use('/api/public/chat', public_chat_1.default);
 // Legacy compatibility alias for community admin endpoints
 app.use('/admin/community', (0, community_2.initializeCommunityAdminRoutes)(database_1.default));
 // Legacy routes (still active)
