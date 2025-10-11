@@ -8,10 +8,30 @@ set -o pipefail
 
 if [ -f ".env" ]; then
     echo "⚙️  Lade lokale .env Variablen..."
-    set -a
-    # shellcheck source=/dev/null
-    source .env
-    set +a
+    while IFS='=' read -r key value || [ -n "$key" ]; do
+        # Kommentare und leere Zeilen überspringen
+        if [[ -z "$key" || "$key" =~ ^\s*# ]]; then
+            continue
+        fi
+
+        # Trim whitespace um Schlüssel
+        key=$(echo "$key" | sed -e 's/^\s*//' -e 's/\s*$//')
+        if [[ -z "$key" ]]; then
+            continue
+        fi
+
+        # Entferne führende/trailing Whitespaces aus Wert (preserve inner spaces)
+        value=${value#""}
+        value=$(echo "${value:-}" | sed -e 's/^\s*//' -e 's/\s*$//')
+
+        # Entferne umschließende Quotes, falls vorhanden
+        if [[ "$value" == '"'*'"' ]]; then
+            value=${value%"}
+            value=${value#"}
+        fi
+
+        export "$key=$value"
+    done < .env
 else
     echo "⚠️  Keine .env Datei gefunden – verwende Skript-Defaults"
 fi
