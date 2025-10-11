@@ -201,81 +201,87 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
   if (loading) {
     return (
       <Card>
-        <CardContent className=\"flex items-center justify-center p-8\">
-          <Loader2 className=\"h-8 w-8 animate-spin\" />
-          <span className=\"ml-2\">Lade Konfiguration...</span>
+        <CardContent className="flex items-center justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Lade Konfiguration...</span>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className=\"space-y-6\">
+    <div className="space-y-6">
       {/* Configuration Card */}
       <Card>
         <CardHeader>
-          <CardTitle className=\"flex items-center gap-2\">
-            <Settings className=\"h-5 w-5\" />
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
             E-Mail-Konfiguration für {config.teamName || 'Team'}
           </CardTitle>
         </CardHeader>
-        <CardContent className=\"space-y-6\">
+        <CardContent className="space-y-6">
           {/* Enable/Disable */}
-          <div className=\"flex items-center justify-between\">
+          <div className="flex items-center justify-between">
             <div>
-              <label className=\"text-sm font-medium\">Automatische E-Mail-Verarbeitung</label>
-              <p className=\"text-xs text-gray-500\">
+              <label className="text-sm font-medium">Automatische E-Mail-Verarbeitung</label>
+              <p className="text-xs text-gray-500">
                 Aktiviert die automatische Überwachung des IMAP-Postfachs
               </p>
             </div>
             <Switch
               checked={config.autoProcessingEnabled}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked: boolean) =>
                 setConfig(prev => ({ ...prev, autoProcessingEnabled: checked }))
               }
             />
           </div>
 
           {/* IMAP Configuration */}
-          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className=\"text-sm font-medium\">IMAP-Host</label>
+              <label className="text-sm font-medium">IMAP-Host</label>
               <Input
                 value={config.imapHost}
-                onChange={(e) => setConfig(prev => ({ ...prev, imapHost: e.target.value }))}
-                placeholder=\"imap.example.com\"
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setConfig(prev => ({ ...prev, imapHost: event.target.value }))
+                }
+                placeholder="imap.example.com"
               />
             </div>
             <div>
-              <label className=\"text-sm font-medium\">Port</label>
+              <label className="text-sm font-medium">Port</label>
               <Input
-                type=\"number\"
+                type="number"
                 value={config.imapPort}
-                onChange={(e) => setConfig(prev => ({ ...prev, imapPort: parseInt(e.target.value) || 993 }))}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setConfig(prev => ({ ...prev, imapPort: parseInt(event.target.value, 10) || 993 }))
+                }
               />
             </div>
             <div>
-              <label className=\"text-sm font-medium\">Benutzername</label>
+              <label className="text-sm font-medium">Benutzername</label>
               <Input
                 value={config.imapUsername}
-                onChange={(e) => setConfig(prev => ({ ...prev, imapUsername: e.target.value }))}
-                placeholder=\"email@example.com\"
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setConfig(prev => ({ ...prev, imapUsername: event.target.value }))
+                }
+                placeholder="email@example.com"
               />
             </div>
             <div>
-              <label className=\"text-sm font-medium\">Passwort</label>
-              <div className=\"relative\">
+              <label className="text-sm font-medium">Passwort</label>
+              <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={imapPassword}
-                  onChange={(e) => setImapPassword(e.target.value)}
-                  placeholder=\"Nur bei Änderung eingeben\"
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setImapPassword(event.target.value)}
+                  placeholder="Nur bei Änderung eingeben"
                 />
                 <Button
-                  type=\"button\"
-                  variant=\"ghost\"
-                  size=\"sm\"
-                  className=\"absolute right-0 top-0 h-full px-3\"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? '🙈' : '👁️'}
@@ -284,44 +290,46 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
             </div>
           </div>
 
-          <div className=\"flex items-center gap-2\">
+          <div className="flex items-center gap-2">
             <Switch
               checked={config.imapUseSSL}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked: boolean) =>
                 setConfig(prev => ({ ...prev, imapUseSSL: checked }))
               }
             />
-            <label className=\"text-sm font-medium\">SSL/TLS verwenden</label>
+            <label className="text-sm font-medium">SSL/TLS verwenden</label>
           </div>
 
           {/* Outbound Email */}
           <div>
-            <label className=\"text-sm font-medium\">Absender-E-Mail-Adresse</label>
+            <label className="text-sm font-medium">Absender-E-Mail-Adresse</label>
             <Input
               value={config.outboundEmailAddress}
-              onChange={(e) => setConfig(prev => ({ ...prev, outboundEmailAddress: e.target.value }))}
-              placeholder=\"team@example.com\"
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setConfig(prev => ({ ...prev, outboundEmailAddress: event.target.value }))
+              }
+              placeholder="team@example.com"
             />
-            <p className=\"text-xs text-gray-500 mt-1\">
+            <p className="text-xs text-gray-500 mt-1">
               E-Mail-Adresse für ausgehende Klärfall-Nachrichten
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className=\"flex gap-2\">
-            <Button onClick={handleTest} disabled={testing} variant=\"outline\">
+          <div className="flex gap-2">
+            <Button onClick={handleTest} disabled={testing} variant="outline">
               {testing ? (
-                <Loader2 className=\"h-4 w-4 animate-spin mr-2\" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <TestTube className=\"h-4 w-4 mr-2\" />
+                <TestTube className="h-4 w-4 mr-2" />
               )}
               Verbindung testen
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
-                <Loader2 className=\"h-4 w-4 animate-spin mr-2\" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <Settings className=\"h-4 w-4 mr-2\" />
+                <Settings className="h-4 w-4 mr-2" />
               )}
               Speichern
             </Button>
@@ -330,11 +338,11 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
           {/* Test Result */}
           {testResult && (
             <Alert className={testResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-              <div className=\"flex items-center gap-2\">
+              <div className="flex items-center gap-2">
                 {testResult.success ? (
-                  <CheckCircle className=\"h-4 w-4 text-green-600\" />
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                 ) : (
-                  <XCircle className=\"h-4 w-4 text-red-600\" />
+                  <XCircle className="h-4 w-4 text-red-600" />
                 )}
                 <AlertDescription>{testResult.message}</AlertDescription>
               </div>
@@ -343,8 +351,8 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
 
           {/* Error Alert */}
           {error && (
-            <Alert className=\"border-red-200 bg-red-50\">
-              <XCircle className=\"h-4 w-4 text-red-600\" />
+            <Alert className="border-red-200 bg-red-50">
+              <XCircle className="h-4 w-4 text-red-600" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -355,49 +363,49 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
       {status && (
         <Card>
           <CardHeader>
-            <CardTitle className=\"flex items-center gap-2\">
-              <Mail className=\"h-5 w-5\" />
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
               E-Mail-Verarbeitungsstatus
               <Badge variant={status.imapConnected ? 'default' : 'destructive'}>
                 {status.imapConnected ? 'Verbunden' : 'Getrennt'}
               </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className=\"space-y-4\">
+          <CardContent className="space-y-4">
             {/* Queue Statistics */}
             <div>
-              <h4 className=\"font-medium mb-2\">Verarbeitungsstatistiken (24h)</h4>
-              <div className=\"grid grid-cols-2 md:grid-cols-4 gap-4\">
-                <div className=\"text-center p-3 bg-blue-50 rounded\">
-                  <div className=\"text-2xl font-bold text-blue-600\">
+              <h4 className="font-medium mb-2">Verarbeitungsstatistiken (24h)</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded">
+                  <div className="text-2xl font-bold text-blue-600">
                     {status.queueStats.PENDING || 0}
                   </div>
-                  <div className=\"text-sm text-blue-800\">Warteschlange</div>
+                  <div className="text-sm text-blue-800">Warteschlange</div>
                 </div>
-                <div className=\"text-center p-3 bg-green-50 rounded\">
-                  <div className=\"text-2xl font-bold text-green-600\">
+                <div className="text-center p-3 bg-green-50 rounded">
+                  <div className="text-2xl font-bold text-green-600">
                     {status.queueStats.COMPLETED || 0}
                   </div>
-                  <div className=\"text-sm text-green-800\">Erfolgreich</div>
+                  <div className="text-sm text-green-800">Erfolgreich</div>
                 </div>
-                <div className=\"text-center p-3 bg-red-50 rounded\">
-                  <div className=\"text-2xl font-bold text-red-600\">
+                <div className="text-center p-3 bg-red-50 rounded">
+                  <div className="text-2xl font-bold text-red-600">
                     {status.queueStats.FAILED || 0}
                   </div>
-                  <div className=\"text-sm text-red-800\">Fehlgeschlagen</div>
+                  <div className="text-sm text-red-800">Fehlgeschlagen</div>
                 </div>
-                <div className=\"text-center p-3 bg-gray-50 rounded\">
-                  <div className=\"text-2xl font-bold text-gray-600\">
+                <div className="text-center p-3 bg-gray-50 rounded">
+                  <div className="text-2xl font-bold text-gray-600">
                     {status.queueStats.SKIPPED || 0}
                   </div>
-                  <div className=\"text-sm text-gray-800\">Übersprungen</div>
+                  <div className="text-sm text-gray-800">Übersprungen</div>
                 </div>
               </div>
             </div>
 
             {/* Retry Failed Button */}
             {(status.queueStats.FAILED || 0) > 0 && (
-              <Button onClick={handleRetryFailed} variant=\"outline\" size=\"sm\">
+              <Button onClick={handleRetryFailed} variant="outline" size="sm">
                 Fehlgeschlagene E-Mails wiederholen ({status.queueStats.FAILED})
               </Button>
             )}
@@ -405,27 +413,27 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
             {/* Recent Emails */}
             {status.recentEmails.length > 0 && (
               <div>
-                <h4 className=\"font-medium mb-2\">Letzte E-Mails</h4>
-                <div className=\"space-y-2\">
+                <h4 className="font-medium mb-2">Letzte E-Mails</h4>
+                <div className="space-y-2">
                   {status.recentEmails.slice(0, 5).map((email, index) => (
-                    <div key={index} className=\"flex items-center justify-between p-2 bg-gray-50 rounded text-sm\">
-                      <div className=\"flex-1 truncate\">
-                        <div className=\"font-medium truncate\">{email.email_subject}</div>
-                        <div className=\"text-gray-500 truncate\">{email.email_from}</div>
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                      <div className="flex-1 truncate">
+                        <div className="font-medium truncate">{email.email_subject}</div>
+                        <div className="text-gray-500 truncate">{email.email_from}</div>
                       </div>
-                      <div className=\"flex items-center gap-2\">
+                      <div className="flex items-center gap-2">
                         <Badge 
                           variant={
                             email.processing_status === 'COMPLETED' ? 'default' :
                             email.processing_status === 'FAILED' ? 'destructive' :
                             email.processing_status === 'PENDING' ? 'secondary' : 'outline'
                           }
-                          className=\"text-xs\"
+                          className="text-xs"
                         >
                           {email.processing_status}
                         </Badge>
                         {email.clarification_title && (
-                          <span className=\"text-xs text-blue-600 truncate max-w-32\">
+                          <span className="text-xs text-blue-600 truncate max-w-32">
                             → {email.clarification_title}
                           </span>
                         )}
@@ -436,7 +444,7 @@ const TeamEmailConfig: React.FC<TeamEmailConfigProps> = ({ teamId, onSave }) => 
               </div>
             )}
 
-            <div className=\"text-xs text-gray-500\">
+            <div className="text-xs text-gray-500">
               Letztes Update: {new Date(status.lastUpdate).toLocaleString()}
             </div>
           </CardContent>

@@ -295,13 +295,13 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'abgeschlossen':
-        return <CheckCircle className=\"h-4 w-4 text-green-600\" />;
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'in_bearbeitung':
-        return <Clock className=\"h-4 w-4 text-blue-600\" />;
+        return <Clock className="h-4 w-4 text-blue-600" />;
       case 'wartet_auf_antwort':
-        return <Clock className=\"h-4 w-4 text-yellow-600\" />;
+        return <Clock className="h-4 w-4 text-yellow-600" />;
       default:
-        return <XCircle className=\"h-4 w-4 text-gray-600\" />;
+        return <XCircle className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -319,54 +319,60 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
   };
 
   return (
-    <div className=\"space-y-6\">
+    <div className="space-y-6">
       {/* Header */}
       {!clarificationId && (
         <Card>
           <CardHeader>
-            <CardTitle className=\"flex items-center gap-2\">
-              <Users className=\"h-5 w-5\" />
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
               Neue Bulk-Klärung erstellen
             </CardTitle>
           </CardHeader>
-          <CardContent className=\"space-y-4\">
-            <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className=\"text-sm font-medium\">Titel</label>
+                <label className="text-sm font-medium">Titel</label>
                 <Input
                   value={clarification.title}
-                  onChange={(e) => setClarification(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder=\"Titel der Bulk-Klärung\"
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setClarification(prev => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="Titel der Bulk-Klärung"
                   disabled={readOnly}
                 />
               </div>
               <div>
-                <label className=\"text-sm font-medium\">Kategorie</label>
+                <label className="text-sm font-medium">Kategorie</label>
                 <Select
                   value={clarification.category}
-                  onValueChange={(value) => setClarification(prev => ({ ...prev, category: value }))}
+                  onValueChange={(value: string) =>
+                    setClarification(prev => ({ ...prev, category: value }))
+                  }
                   disabled={readOnly}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value=\"general\">Allgemein</SelectItem>
-                    <SelectItem value=\"billing\">Abrechnung</SelectItem>
-                    <SelectItem value=\"supplier_change\">Lieferantenwechsel</SelectItem>
-                    <SelectItem value=\"metering\">Messstellenbetrieb</SelectItem>
-                    <SelectItem value=\"technical\">Technisch</SelectItem>
+                    <SelectItem value="general">Allgemein</SelectItem>
+                    <SelectItem value="billing">Abrechnung</SelectItem>
+                    <SelectItem value="supplier_change">Lieferantenwechsel</SelectItem>
+                    <SelectItem value="metering">Messstellenbetrieb</SelectItem>
+                    <SelectItem value="technical">Technisch</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <label className=\"text-sm font-medium\">Beschreibung</label>
+              <label className="text-sm font-medium">Beschreibung</label>
               <Textarea
                 value={clarification.description}
-                onChange={(e) => setClarification(prev => ({ ...prev, description: e.target.value }))}
-                placeholder=\"Beschreibung der Bulk-Klärung\"
+                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setClarification(prev => ({ ...prev, description: event.target.value }))
+                }
+                placeholder="Beschreibung der Bulk-Klärung"
                 rows={3}
                 disabled={readOnly}
               />
@@ -379,36 +385,28 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
       {clarificationId && (
         <Card>
           <CardHeader>
-            <CardTitle className=\"flex items-center gap-2\">
-              <FileText className=\"h-5 w-5\" />
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
               {clarification.title}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className=\"grid grid-cols-2 md:grid-cols-4 gap-4\">
-              <div className=\"text-center p-3 bg-gray-50 rounded\">
-                <div className=\"text-2xl font-bold text-gray-600\">
-                  {stats.offen || 0}
-                </div>
-                <div className=\"text-sm text-gray-800\">Offen</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-gray-50 rounded">
+                <div className="text-2xl font-bold text-gray-600">{stats.offen || 0}</div>
+                <div className="text-sm text-gray-800">Offen</div>
               </div>
-              <div className=\"text-center p-3 bg-blue-50 rounded\">
-                <div className=\"text-2xl font-bold text-blue-600\">
-                  {stats.in_bearbeitung || 0}
-                </div>
-                <div className=\"text-sm text-blue-800\">In Bearbeitung</div>
+              <div className="text-center p-3 bg-blue-50 rounded">
+                <div className="text-2xl font-bold text-blue-600">{stats.in_bearbeitung || 0}</div>
+                <div className="text-sm text-blue-800">In Bearbeitung</div>
               </div>
-              <div className=\"text-center p-3 bg-yellow-50 rounded\">
-                <div className=\"text-2xl font-bold text-yellow-600\">
-                  {stats.wartet_auf_antwort || 0}
-                </div>
-                <div className=\"text-sm text-yellow-800\">Wartet auf Antwort</div>
+              <div className="text-center p-3 bg-yellow-50 rounded">
+                <div className="text-2xl font-bold text-yellow-600">{stats.wartet_auf_antwort || 0}</div>
+                <div className="text-sm text-yellow-800">Wartet auf Antwort</div>
               </div>
-              <div className=\"text-center p-3 bg-green-50 rounded\">
-                <div className=\"text-2xl font-bold text-green-600\">
-                  {stats.abgeschlossen || 0}
-                </div>
-                <div className=\"text-sm text-green-800\">Abgeschlossen</div>
+              <div className="text-center p-3 bg-green-50 rounded">
+                <div className="text-2xl font-bold text-green-600">{stats.abgeschlossen || 0}</div>
+                <div className="text-sm text-green-800">Abgeschlossen</div>
               </div>
             </div>
           </CardContent>
@@ -418,32 +416,32 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
       {/* Items */}
       <Card>
         <CardHeader>
-          <div className=\"flex items-center justify-between\">
-            <CardTitle className=\"flex items-center gap-2\">
-              <FileText className=\"h-5 w-5\" />
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
               Einträge ({clarificationId ? pagination.total : clarification.items.length})
             </CardTitle>
-            <div className=\"flex items-center gap-2\">
+            <div className="flex items-center gap-2">
               {clarificationId && (
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className=\"w-40\">
-                    <SelectValue placeholder=\"Alle Status\" />
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Alle Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value=\"\">Alle Status</SelectItem>
-                    <SelectItem value=\"offen\">Offen</SelectItem>
-                    <SelectItem value=\"in_bearbeitung\">In Bearbeitung</SelectItem>
-                    <SelectItem value=\"wartet_auf_antwort\">Wartet auf Antwort</SelectItem>
-                    <SelectItem value=\"abgeschlossen\">Abgeschlossen</SelectItem>
+                    <SelectItem value="">Alle Status</SelectItem>
+                    <SelectItem value="offen">Offen</SelectItem>
+                    <SelectItem value="in_bearbeitung">In Bearbeitung</SelectItem>
+                    <SelectItem value="wartet_auf_antwort">Wartet auf Antwort</SelectItem>
+                    <SelectItem value="abgeschlossen">Abgeschlossen</SelectItem>
                   </SelectContent>
                 </Select>
               )}
-              
+
               {!readOnly && !clarificationId && (
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
-                    <Button size=\"sm\">
-                      <Plus className=\"h-4 w-4 mr-2\" />
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
                       Eintrag hinzufügen
                     </Button>
                   </DialogTrigger>
@@ -451,34 +449,33 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
                     <DialogHeader>
                       <DialogTitle>Neuen Eintrag hinzufügen</DialogTitle>
                     </DialogHeader>
-                    <div className=\"space-y-4\">
+                    <div className="space-y-4">
                       <div>
-                        <label className=\"text-sm font-medium\">Titel *</label>
+                        <label className="text-sm font-medium">Titel *</label>
                         <Input
                           value={newItem.title || ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder=\"Titel des Eintrags\"
+                          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                            setNewItem(prev => ({ ...prev, title: event.target.value }))
+                          }
+                          placeholder="Titel des Eintrags"
                         />
                       </div>
                       <div>
-                        <label className=\"text-sm font-medium\">Beschreibung</label>
+                        <label className="text-sm font-medium">Beschreibung</label>
                         <Textarea
                           value={newItem.description || ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder=\"Beschreibung\"
+                          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                            setNewItem(prev => ({ ...prev, description: event.target.value }))
+                          }
+                          placeholder="Beschreibung"
                           rows={3}
                         />
                       </div>
-                      <div className=\"flex justify-end gap-2\">
-                        <Button
-                          variant=\"outline\"
-                          onClick={() => setShowAddDialog(false)}
-                        >
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                           Abbrechen
                         </Button>
-                        <Button onClick={handleAddItem}>
-                          Hinzufügen
-                        </Button>
+                        <Button onClick={handleAddItem}>Hinzufügen</Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -490,21 +487,21 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
         <CardContent>
           {/* Batch Actions */}
           {clarificationId && selectedItems.size > 0 && (
-            <div className=\"mb-4 p-3 bg-blue-50 rounded flex items-center justify-between\">
-              <span className=\"text-sm font-medium\">
+            <div className="mb-4 p-3 bg-blue-50 rounded flex items-center justify-between">
+              <span className="text-sm font-medium">
                 {selectedItems.size} Einträge ausgewählt
               </span>
-              <div className=\"flex gap-2\">
+              <div className="flex gap-2">
                 <Button
-                  size=\"sm\"
-                  variant=\"outline\"
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleBatchStatusUpdate('in_bearbeitung')}
                 >
                   In Bearbeitung
                 </Button>
                 <Button
-                  size=\"sm\"
-                  variant=\"outline\"
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleBatchStatusUpdate('abgeschlossen')}
                 >
                   Abgeschlossen
@@ -514,63 +511,62 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
           )}
 
           {/* Items List */}
-          <div className=\"space-y-2\">
+          <div className="space-y-2">
             {/* Header */}
             {clarificationId && items.length > 0 && (
-              <div className=\"flex items-center gap-4 p-2 border-b font-medium text-sm\">
+              <div className="flex items-center gap-4 p-2 border-b font-medium text-sm">
                 <Checkbox
                   checked={selectedItems.size === items.length}
-                  onCheckedChange={handleSelectAll}
+                  onCheckedChange={(checked: boolean | 'indeterminate') =>
+                    handleSelectAll(checked === true)
+                  }
                 />
-                <div className=\"flex-1\">Titel</div>
-                <div className=\"w-32\">Status</div>
-                <div className=\"w-20\">Aktionen</div>
+                <div className="flex-1">Titel</div>
+                <div className="w-32">Status</div>
+                <div className="w-20">Aktionen</div>
               </div>
             )}
 
             {/* Items */}
             {(clarificationId ? items : clarification.items).map((item, index) => (
-              <div key={item.id || index} className=\"flex items-center gap-4 p-3 border rounded hover:bg-gray-50\">
+              <div
+                key={item.id || index}
+                className="flex items-center gap-4 p-3 border rounded hover:bg-gray-50"
+              >
                 {clarificationId && (
                   <Checkbox
                     checked={selectedItems.has(item.id!)}
-                    onCheckedChange={(checked) => handleSelectItem(item.id!, checked as boolean)}
+                    onCheckedChange={(checked: boolean | 'indeterminate') =>
+                      handleSelectItem(item.id!, checked === true)
+                    }
                   />
                 )}
-                
-                <div className=\"flex-1\">
-                  <div className=\"font-medium\">{item.title}</div>
+
+                <div className="flex-1">
+                  <div className="font-medium">{item.title}</div>
                   {item.description && (
-                    <div className=\"text-sm text-gray-600 truncate\">{item.description}</div>
+                    <div className="text-sm text-gray-600 truncate">{item.description}</div>
                   )}
                 </div>
 
-                <div className=\"w-32\">
-                  <Badge variant={getStatusBadgeVariant(item.status)} className=\"text-xs\">
-                    <div className=\"flex items-center gap-1\">
+                <div className="w-32">
+                  <Badge variant={getStatusBadgeVariant(item.status)} className="text-xs">
+                    <div className="flex items-center gap-1">
                       {getStatusIcon(item.status)}
                       {item.status.replace('_', ' ')}
                     </div>
                   </Badge>
                 </div>
 
-                <div className=\"w-20 flex gap-1\">
+                <div className="w-20 flex gap-1">
                   {!readOnly && clarificationId && (
-                    <Button
-                      size=\"sm\"
-                      variant=\"ghost\"
-                      onClick={() => setEditingItem(item)}
-                    >
-                      <Edit className=\"h-4 w-4\" />
+                    <Button size="sm" variant="ghost" onClick={() => setEditingItem(item)}>
+                      <Edit className="h-4 w-4" />
                     </Button>
                   )}
                   {!readOnly && !clarificationId && (
-                    <Button
-                      size=\"sm\"
-                      variant=\"ghost\"
-                      onClick={() => handleRemoveItem(index)}
-                    >
-                      <Trash2 className=\"h-4 w-4\" />
+                    <Button size="sm" variant="ghost" onClick={() => handleRemoveItem(index)}>
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -578,30 +574,28 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
             ))}
 
             {(clarificationId ? items : clarification.items).length === 0 && (
-              <div className=\"text-center py-8 text-gray-500\">
-                Noch keine Einträge vorhanden
-              </div>
+              <div className="text-center py-8 text-gray-500">Noch keine Einträge vorhanden</div>
             )}
           </div>
 
           {/* Pagination */}
           {clarificationId && pagination.totalPages > 1 && (
-            <div className=\"flex items-center justify-between mt-4\">
-              <div className=\"text-sm text-gray-600\">
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600">
                 Seite {pagination.page} von {pagination.totalPages}
               </div>
-              <div className=\"flex gap-2\">
+              <div className="flex gap-2">
                 <Button
-                  size=\"sm\"
-                  variant=\"outline\"
+                  size="sm"
+                  variant="outline"
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                   disabled={pagination.page <= 1}
                 >
                   Zurück
                 </Button>
                 <Button
-                  size=\"sm\"
-                  variant=\"outline\"
+                  size="sm"
+                  variant="outline"
                   onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
                   disabled={pagination.page >= pagination.totalPages}
                 >
@@ -615,12 +609,12 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
 
       {/* Actions */}
       {!clarificationId && !readOnly && (
-        <div className=\"flex justify-end gap-2\">
+        <div className="flex justify-end gap-2">
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
-              <Loader2 className=\"h-4 w-4 animate-spin mr-2\" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <Plus className=\"h-4 w-4 mr-2\" />
+              <Plus className="h-4 w-4 mr-2" />
             )}
             Bulk-Klärung erstellen
           </Button>
@@ -629,65 +623,72 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
 
       {/* Error Alert */}
       {error && (
-        <Alert className=\"border-red-200 bg-red-50\">
-          <XCircle className=\"h-4 w-4 text-red-600\" />
+        <Alert className="border-red-200 bg-red-50">
+          <XCircle className="h-4 w-4 text-red-600" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {/* Edit Item Dialog */}
       {editingItem && (
-        <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
+        <Dialog open={Boolean(editingItem)} onOpenChange={() => setEditingItem(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Eintrag bearbeiten</DialogTitle>
             </DialogHeader>
-            <div className=\"space-y-4\">
+            <div className="space-y-4">
               <div>
-                <label className=\"text-sm font-medium\">Titel</label>
+                <label className="text-sm font-medium">Titel</label>
                 <Input
                   value={editingItem.title}
-                  onChange={(e) => setEditingItem(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setEditingItem(prev => (prev ? { ...prev, title: event.target.value } : null))
+                  }
                 />
               </div>
               <div>
-                <label className=\"text-sm font-medium\">Status</label>
+                <label className="text-sm font-medium">Status</label>
                 <Select
                   value={editingItem.status}
-                  onValueChange={(value) => setEditingItem(prev => prev ? { ...prev, status: value as any } : null)}
+                  onValueChange={(value: string) =>
+                    setEditingItem(prev => (
+                      prev ? { ...prev, status: value as BulkClarificationItem['status'] } : null
+                    ))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value=\"offen\">Offen</SelectItem>
-                    <SelectItem value=\"in_bearbeitung\">In Bearbeitung</SelectItem>
-                    <SelectItem value=\"wartet_auf_antwort\">Wartet auf Antwort</SelectItem>
-                    <SelectItem value=\"abgeschlossen\">Abgeschlossen</SelectItem>
+                    <SelectItem value="offen">Offen</SelectItem>
+                    <SelectItem value="in_bearbeitung">In Bearbeitung</SelectItem>
+                    <SelectItem value="wartet_auf_antwort">Wartet auf Antwort</SelectItem>
+                    <SelectItem value="abgeschlossen">Abgeschlossen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className=\"text-sm font-medium\">Notizen</label>
+                <label className="text-sm font-medium">Notizen</label>
                 <Textarea
                   value={editingItem.notes || ''}
-                  onChange={(e) => setEditingItem(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setEditingItem(prev => (prev ? { ...prev, notes: event.target.value } : null))
+                  }
                   rows={3}
                 />
               </div>
-              <div className=\"flex justify-end gap-2\">
-                <Button
-                  variant=\"outline\"
-                  onClick={() => setEditingItem(null)}
-                >
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingItem(null)}>
                   Abbrechen
                 </Button>
                 <Button
-                  onClick={() => handleUpdateItem(editingItem.id!, {
-                    title: editingItem.title,
-                    status: editingItem.status,
-                    notes: editingItem.notes
-                  })}
+                  onClick={() =>
+                    handleUpdateItem(editingItem.id!, {
+                      title: editingItem.title,
+                      status: editingItem.status,
+                      notes: editingItem.notes,
+                    })
+                  }
                 >
                   Speichern
                 </Button>

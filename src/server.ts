@@ -42,6 +42,7 @@ import publicChatRoutes from './routes/public-chat';
 import userRoutesV2 from './presentation/http/routes/user.routes';
 import quizRoutesV2 from './presentation/http/routes/quiz.routes';
 import adminQuizRoutes from './presentation/http/routes/admin/quiz.routes';
+import apiV2Router from './presentation/http/routes/api/v2';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -59,6 +60,7 @@ dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3009', 10);
+const apiV2Enabled = process.env.API_V2_ENABLED === 'true';
 
 // Security middleware
 app.use(helmet({
@@ -156,6 +158,10 @@ app.use('/api/v2/user', userRoutesV2); // v2 user endpoints
 // New v2 routes  
 app.use('/api/v2/quiz', quizRoutesV2);
 app.use('/api/admin/quizzes', adminQuizRoutes);
+
+if (apiV2Enabled) {
+  app.use('/api/v2', apiV2Router);
+}
 
 // Admin routes
 // Admin routes (primary path)
