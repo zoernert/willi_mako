@@ -86,23 +86,10 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
    - Request-Logging, Metriken (`session_created`, `chat_v2_request_time`).
 
 ### Phase 2 – Komponenten-Refinement
-1. **Retrieval API**
-   - `POST /api/v2/retrieval/semantic-search`
-     - Input: `sessionId`, `query`, optional Filter.
-     - Output: Trefferliste mit Scores, `reasoningSteps` (wenn vorhanden).
-   - Intern: `QdrantService`-Wrapper + Post-Processing (z. B. Reranking) in eigenem Modul.
-2. **Reasoning API**
-   - `POST /api/v2/reasoning/generate`
-     - Input: `sessionId`, `messages`, optional `overridePipeline`.
-     - Output: `response`, `reasoningSteps`, `metadata`.
-   - Intern: `advancedReasoningService` aufrufen; später eigene Engine erlauben.
-3. **Context Resolution**
-   - `POST /api/v2/context/resolve`
-     - Input: `sessionId`, `query`.
-     - Output: `userContext`, `decision`, `sources`.
-   - Implementation: `contextManager.determineOptimalContext` isolieren.
-4. **Clarification / Flip Mode**
-   - `POST /api/v2/clarification/analyze` (optional): eigenständige Nutzung der Flip-Logik.
+1. ✅ **Retrieval API** – umgesetzt in `POST /api/v2/retrieval/semantic-search`; nutzt den neuen `RetrievalService` als Wrapper um `QdrantService` inklusive Options-Handling und Ergebnis-Metadaten.
+2. ✅ **Reasoning API** – umgesetzt in `POST /api/v2/reasoning/generate`; kapselt `advancedReasoningService.generateReasonedResponse` über den neuen `ReasoningService` und liefert strukturierte Metadaten.
+3. ✅ **Context Resolution** – umgesetzt in `POST /api/v2/context/resolve`; verwendet den neuen `ContextService`, der `contextManager.determineOptimalContext` mit Session-Settings kombiniert.
+4. ✅ **Clarification / Flip Mode** – umgesetzt in `POST /api/v2/clarification/analyze`; stellt die Flip-Analyse inklusive optionaler Enhanced-Query bereit.
 
 ### Phase 3 – Erweiterte Fähigkeiten
 1. **Tooling / Sandbox**
@@ -131,6 +118,20 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 | `POST /api/v2/context/resolve` | Workspace-Kontext bestimmen | Phase 2 |
 | `POST /api/v2/tools/run-node-script` | Code-Sandbox (POC) | Phase 3 |
 | `POST /api/v2/artifacts` | Artefakte speichern | Phase 3 |
+
+## Security Considerations
+- **Token-Härtung:** Langlebige JWTs werden nur über TLS ausgeliefert; beim Ausbau der Refresh-Mechanik müssen wir Refresh-Token getrennt absichern und Rotations-Logs führen. Signing-Keys bleiben via Secrets-Manager versioniert.
+- **Least Privilege:** Session- und Service-Scopes definieren, sodass Retrieval/Reasoning nur die minimal notwendigen Ressourcen verwenden (z. B. getrennte API-Schlüssel für Qdrant/LLM mit klaren Rollen).
+- **Input-Validierung:** Alle `POST /api/v2/*` Endpunkte validieren Payloads strikt (z. B. Zod/JSON-Schema) und rejecten unbekannte Felder, damit kein Injection-Surface entsteht.
+- **Datenklassifizierung:** Responses enthalten keine Roh-Personendaten; sensible Felder werden maskiert, Telemetrie erhält nur Hashes (`sessionId`, nicht `userId`).
+- **Observability & Audit:** Auth-Fehler, Rate-Limit-Treffer und Admin-Aktionen werden revisionssicher geloggt (PII-safe) und 30 Tage aufbewahrt.
+
+## Performance Considerations
+- **Vektor-Retrieval:** Qdrant-Abfragen nutzen `search_batch` mit Top-K Limit ≤ 10, Filter-Indexierung für häufige Suchen und optionales Cache-Layer (Redis) für identische Queries pro Session.
+- **Reasoning-Latenzen:** LLM-Aufrufe laufen mit Timeout/Abbruchsignal (z. B. 45 s) und optionaler Teil-Streaming-Unterstützung, damit Frontends früh reagieren können.
+- **Session-Kontext:** Context-Resolution cached Workspace-Metadaten pro `sessionId`, invalidiert bei expliziten Overrides und reduziert DB-Hits.
+- **Rate Limiting:** Token-Bucket Parameter werden per Env getuned; Reasoning-Endpunkte haben strengere Limits. Drosselung wird früh (Middleware) durchgeführt, um CPU-intensive Services zu schonen.
+- **Throughput-Scaling:** Backend-Knoten starten mit gepoolten HTTP/DB-Clients; horizontales Scaling erfolgt stateless (Sessions in Mongo), Qdrant erhält separate Auto-Scaling-Policy.
 
 ## Qualitätssicherung & Tests
 - **Unit-Tests:** Services (Session, Auth, Reasoning-Adapter) erhalten isolierte Tests mit Fixtures für Mongo/Postgres-Stubs.
