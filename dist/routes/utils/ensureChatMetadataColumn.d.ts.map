@@ -1,1 +1,1 @@
-{"version":3,"file":"ensureChatMetadataColumn.d.ts","sourceRoot":"","sources":["../../../src/routes/utils/ensureChatMetadataColumn.ts"],"names":[],"mappings":"AAKA,eAAO,MAAM,wBAAwB,QAAa,OAAO,CAAC,IAAI,CA6B7D,CAAC"}
+{"version":3,"file":"ensureChatMetadataColumn.d.ts","sourceRoot":"","sources":["../../../src/routes/utils/ensureChatMetadataColumn.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,IAAI,wBAAwB,EAAE,MAAM,qBAAqB,CAAC"}

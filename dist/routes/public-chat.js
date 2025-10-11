@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const errorHandler_1 = require("../middleware/errorHandler");
 const database_1 = __importDefault(require("../config/database"));
-const ensureChatMetadataColumn_1 = require("./utils/ensureChatMetadataColumn");
+const ensureChatColumns_1 = require("./utils/ensureChatColumns");
 const router = (0, express_1.Router)();
 const isShareEnabled = (metadata) => {
     var _a;
@@ -21,7 +21,7 @@ const isShareEnabled = (metadata) => {
 };
 router.get('/:chatId', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { chatId } = req.params;
-    await (0, ensureChatMetadataColumn_1.ensureChatMetadataColumn)();
+    await (0, ensureChatColumns_1.ensureChatColumns)();
     const chatResult = await database_1.default.query('SELECT id, title, created_at, updated_at, metadata FROM chats WHERE id = $1 AND is_active = true', [chatId]);
     if (chatResult.rows.length === 0) {
         throw new errorHandler_1.AppError('Chat not found', 404);

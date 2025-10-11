@@ -4,6 +4,17 @@
 # Für Server, die bereits konfiguriert sind
 git add -A;git commit -m "Auto" -a;git push --set-upstream origin main || git push origin main
 set -e
+set -o pipefail
+
+if [ -f ".env" ]; then
+    echo "⚙️  Lade lokale .env Variablen..."
+    set -a
+    # shellcheck source=/dev/null
+    source .env
+    set +a
+else
+    echo "⚠️  Keine .env Datei gefunden – verwende Skript-Defaults"
+fi
 
 echo "🚀 Schnelles Deployment für Willi Mako"
 echo "======================================"
@@ -195,28 +206,50 @@ GIT_COMMIT=$GIT_COMMIT
 GIT_COMMIT_SHORT=$GIT_COMMIT_SHORT
 BUILD_TIMESTAMP=$BUILD_TIMESTAMP
 
+# AI / Embedding Provider Configuration
+EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
+GEMINI_EMBED_MODEL=${GEMINI_EMBED_MODEL:-text-embedding-004}
+GEMINI_EMBED_DIM=${GEMINI_EMBED_DIM:-768}
+LLM_PROVIDER=${LLM_PROVIDER:-mistral}
+MISTRAL_CHAT_MODEL=${MISTRAL_CHAT_MODEL:-mistral-large-latest}
+MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+MISTRAL_EMBED_MODEL=${MISTRAL_EMBED_MODEL:-mistral-embed}
+MISTRAL_EMBED_DIM=${MISTRAL_EMBED_DIM:-1024}
+GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.5-flash}
+
 # Database Configuration (Remote PostgreSQL)
 DB_HOST=10.0.0.2
 DB_PORT=5117
 DB_NAME=willi_mako
 DB_USER=willi_user
 DB_PASSWORD=willi_password
+DATABASE_URL=${DATABASE_URL:-postgresql://willi_user:willi_password@10.0.0.2:5117/willi_mako}
+
+# MongoDB Configuration
+MONGO_URI=${MONGO_URI:-mongodb://10.0.0.2:27017/quitus?directConnection=true&serverSelectionTimeoutMS=60000&connectTimeoutMS=60000&socketTimeoutMS=60000&maxPoolSize=10}
+
+# Qdrant Configuration
+QDRANT_URL=${QDRANT_URL:-http://10.0.0.2:6333}
+QDRANT_API_KEY=${QDRANT_API_KEY:-str0mda0}
+QDRANT_COLLECTION=${QDRANT_COLLECTION:-willi_mako}
+QDRANT_COMMUNITY_COLLECTION=${QDRANT_COMMUNITY_COLLECTION:-community_content}
 
 # JWT Configuration
 JWT_SECRET=$JWT_SECRET
 JWT_EXPIRES_IN=24h
 
-# Qdrant Configuration
-QDRANT_URL=http://10.0.0.2:6333
-QDRANT_API_KEY=str0mda0
-QDRANT_COLLECTION=willi_mako
-QDRANT_COMMUNITY_COLLECTION=community_content
+# Feature Flags
+FEATURE_COMMUNITY_HUB=${FEATURE_COMMUNITY_HUB:-true}
+ENABLE_M2C_ROLES=${ENABLE_M2C_ROLES:-true}
+COMMUNITY_ENABLE_PUBLIC_READ=${COMMUNITY_ENABLE_PUBLIC_READ:-true}
+API_V2_ENABLED=${API_V2_ENABLED:-true}
+API_V2_SESSION_TTL_MINUTES=${API_V2_SESSION_TTL_MINUTES:-43200}
 
 # Google Gemini Configuration
-GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
-GOOGLE_AI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_VISION_MODEL=gemini-2.5-flash
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
+GOOGLE_AI_API_KEY_FREE=${GOOGLE_AI_API_KEY_FREE:-}
 
 # SMTP Configuration
 SMTP_HOST=smtp.gmail.com
@@ -228,12 +261,10 @@ FROM_EMAIL=willi@stromhaltig.de
 FROM_NAME=Willi Mako
 
 # Frontend Configuration
-FRONTEND_URL=https://stromhaltig.de
+FRONTEND_URL=${FRONTEND_URL:-https://stromhaltig.de}
 
-# Feature Flags
-FEATURE_COMMUNITY_HUB=true
-ENABLE_M2C_ROLES=true
-COMMUNITY_ENABLE_PUBLIC_READ=true
+# Master Key / Legacy Integrationen
+MASTR_KEY=${MASTR_KEY:-}
 
 # Upload Configuration
 UPLOAD_PATH=./uploads
@@ -343,12 +374,16 @@ NODE_ENV=production
 API_URL=http://127.0.0.1:$BACKEND_PORT
 # Prefer internal backend for SSR self-calls in prod
 INTERNAL_API_BASE_URL=http://127.0.0.1:$BACKEND_PORT
-FEATURE_COMMUNITY_HUB=true
-ENABLE_M2C_ROLES=true
-GEMINI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
-GOOGLE_AI_API_KEY=AIzaSyAUV_utRoqQgumx1iGa9fdM5qGxDMbfm_k
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_VISION_MODEL=gemini-2.5-flash
+FEATURE_COMMUNITY_HUB=${FEATURE_COMMUNITY_HUB:-true}
+ENABLE_M2C_ROLES=${ENABLE_M2C_ROLES:-true}
+API_V2_ENABLED=${API_V2_ENABLED:-true}
+EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-gemini}
+LLM_PROVIDER=${LLM_PROVIDER:-mistral}
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
+GOOGLE_AI_API_KEY_FREE=${GOOGLE_AI_API_KEY_FREE:-}
+GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+GEMINI_VISION_MODEL=${GEMINI_VISION_MODEL:-gemini-2.5-flash}
 DISABLE_HYDE=1
 EOF
     

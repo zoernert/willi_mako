@@ -45,6 +45,7 @@ const public_chat_1 = __importDefault(require("./routes/public-chat"));
 const user_routes_1 = __importDefault(require("./presentation/http/routes/user.routes"));
 const quiz_routes_1 = __importDefault(require("./presentation/http/routes/quiz.routes"));
 const quiz_routes_2 = __importDefault(require("./presentation/http/routes/admin/quiz.routes"));
+const v2_1 = __importDefault(require("./presentation/http/routes/api/v2"));
 // Import middleware
 const errorHandler_1 = require("./middleware/errorHandler");
 const auth_2 = require("./middleware/auth");
@@ -57,6 +58,7 @@ const CommunityQdrantService_1 = require("./services/CommunityQdrantService");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '3009', 10);
+const apiV2Enabled = process.env.API_V2_ENABLED === 'true';
 // Security middleware
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: false // Allow inline scripts for development
@@ -154,6 +156,9 @@ app.use('/api/v2/user', user_routes_1.default); // v2 user endpoints
 // New v2 routes  
 app.use('/api/v2/quiz', quiz_routes_1.default);
 app.use('/api/admin/quizzes', quiz_routes_2.default);
+if (apiV2Enabled) {
+    app.use('/api/v2', v2_1.default);
+}
 // Admin routes
 // Admin routes (primary path)
 app.use('/api/admin', admin_1.default);
