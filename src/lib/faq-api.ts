@@ -56,6 +56,62 @@ export interface FAQTag {
   count: number;
 }
 
+type FAQDatabaseRow = {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  answer: string;
+  additional_info: string | null;
+  tags: string[] | string | null;
+  view_count: number;
+  created_at: Date | string | null;
+  updated_at: Date | string | null;
+};
+
+type FAQSummaryRow = {
+  id: string;
+  title: string;
+  similarity_score?: number | null;
+  view_count: number;
+};
+
+const normalizeDate = (value: Date | string | null | undefined): string => {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
+};
+
+const normalizeTags = (rawTags: FAQDatabaseRow['tags']): string[] => {
+  let tags: string[] = [];
+
+  if (Array.isArray(rawTags)) {
+    tags = rawTags.filter((tag): tag is string => typeof tag === 'string');
+  } else if (typeof rawTags === 'string') {
+    try {
+      const parsed = JSON.parse(rawTags);
+      if (Array.isArray(parsed)) {
+        tags = parsed.filter((tag): tag is string => typeof tag === 'string');
+      }
+    } catch (error) {
+      console.error('Error parsing FAQ tags:', error);
+    }
+  }
+
+  return tags.length > 0 ? tags : ['Energiewirtschaft'];
+};
+
 // Generiere einen SEO-optimierten Slug aus dem FAQ-Titel
 export function generateFAQSlug(title: string): string {
   return title
@@ -97,28 +153,21 @@ export async function getAllPublicFAQs(): Promise<StaticFAQData[]> {
       ORDER BY view_count DESC, created_at DESC
     `);
 
+    const rows = (result?.rows ?? []) as FAQDatabaseRow[];
     const faqs = await Promise.all(
-      result.rows.map(async (faq) => {
-        const slug = generateFAQSlug(faq.title);
-        const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer);
-        
-        // Parse tags from JSON string to array
-        let parsedTags;
-        try {
-          parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
-        } catch (parseError) {
-          console.error('Error parsing tags for FAQ', faq.id, ':', parseError);
-          parsedTags = ['Energiewirtschaft']; // fallback
-        }
-        
+      rows.map(async (faqRow) => {
+        const slug = generateFAQSlug(faqRow.title);
+        const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
+
         return {
-          ...faq,
-          tags: parsedTags,
+          ...faqRow,
+          additional_info: faqRow.additional_info ?? undefined,
+          tags: normalizeTags(faqRow.tags),
           slug,
-          created_at: faq.created_at ? faq.created_at.toISOString() : new Date().toISOString(),
-          updated_at: faq.updated_at ? faq.updated_at.toISOString() : new Date().toISOString(),
+          created_at: normalizeDate(faqRow.created_at),
+          updated_at: normalizeDate(faqRow.updated_at),
           related_faqs: relatedFAQs
-        };
+        } satisfies StaticFAQData;
       })
     );
 
@@ -206,11 +255,13 @@ async function getRelatedFAQsFromDatabase(faqId: string, content: string, limit:
       LIMIT $3
     `, [faqId, `%${keywords[0]}%`, limit]);
 
-    return result.rows.map(faq => ({
+    const rows = (result?.rows ?? []) as (FAQSummaryRow & { similarity_score: number | null })[];
+
+    return rows.map((faq) => ({
       id: String(faq.id),
       title: faq.title,
       slug: generateFAQSlug(faq.title),
-      similarity_score: Math.round((faq.similarity_score || 0) * 100) / 100
+      similarity_score: Math.round(((faq.similarity_score ?? 0) as number) * 100) / 100
     }));
   } catch (error) {
     console.error('Error fetching related FAQs from database:', error);
@@ -235,7 +286,9 @@ async function getRelatedFAQsByTags(faqId: string, limit: number = 5): Promise<R
       LIMIT $2
     `, [faqId, limit]);
 
-    return result.rows.map(faq => ({
+    const rows = (result?.rows ?? []) as FAQSummaryRow[];
+
+    return rows.map((faq) => ({
       id: String(faq.id),
       title: faq.title,
       slug: generateFAQSlug(faq.title),
@@ -264,7 +317,8 @@ export async function getAllTags(): Promise<FAQTag[]> {
       ORDER BY count DESC, tag ASC
     `);
 
-    return result.rows;
+  const rows = (result?.rows ?? []) as FAQTag[];
+  return rows;
   } catch (error) {
     console.warn('Database not available during build, returning empty tags array:', error);
     return [];
@@ -290,16 +344,20 @@ export async function getFAQsByTag(tag: string): Promise<StaticFAQData[]> {
       ORDER BY view_count DESC, created_at DESC
     `, [tag]);
 
+    const rows = (result?.rows ?? []) as FAQDatabaseRow[];
+
     return Promise.all(
-      result.rows.map(async (faq) => {
-        const slug = generateFAQSlug(faq.title);
-        const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer);
-        
+      rows.map(async (faqRow) => {
+        const slug = generateFAQSlug(faqRow.title);
+        const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
+
         return {
-          ...faq,
+          ...faqRow,
+          additional_info: faqRow.additional_info ?? undefined,
+          tags: normalizeTags(faqRow.tags),
           slug,
-          created_at: faq.created_at ? faq.created_at.toISOString() : new Date().toISOString(),
-          updated_at: faq.updated_at ? faq.updated_at.toISOString() : new Date().toISOString(),
+          created_at: normalizeDate(faqRow.created_at),
+          updated_at: normalizeDate(faqRow.updated_at),
           related_faqs: relatedFAQs
         };
       })
@@ -325,16 +383,20 @@ export async function getLatestFAQs(limit: number = 20): Promise<StaticFAQData[]
       LIMIT $1
     `, [limit]);
 
+    const rows = (result?.rows ?? []) as FAQDatabaseRow[];
+
     return Promise.all(
-      result.rows.map(async (faq) => {
-        const slug = generateFAQSlug(faq.title);
-        const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer, 3); // Weniger für RSS
-        
+      rows.map(async (faqRow) => {
+        const slug = generateFAQSlug(faqRow.title);
+        const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`, 3); // Weniger für RSS
+
         return {
-          ...faq,
+          ...faqRow,
+          additional_info: faqRow.additional_info ?? undefined,
+          tags: normalizeTags(faqRow.tags),
           slug,
           related_faqs: relatedFAQs
-        };
+        } as StaticFAQData;
       })
     );
   } catch (error) {
@@ -359,7 +421,8 @@ export async function getDistinctTags(): Promise<string[]> {
       ORDER BY tag ASC
     `);
 
-    return result.rows.map(row => row.tag);
+  const rows = (result?.rows ?? []) as FAQTag[];
+  return rows.map((row) => row.tag);
   } catch (error) {
     console.warn('Database not available during build, returning empty distinct tags array:', error);
     return [];

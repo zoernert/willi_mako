@@ -3,7 +3,6 @@ import {
   Typography, 
   Paper, 
   Box, 
-  Grid, 
   Card, 
   CardContent, 
   Chip,
@@ -13,6 +12,7 @@ import {
   Divider,
   Stack
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import {
   Api as ApiIcon,
   Search as SearchIcon,

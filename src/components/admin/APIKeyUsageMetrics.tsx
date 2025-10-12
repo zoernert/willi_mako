@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Button,
   Table,
   TableBody,
@@ -25,6 +24,7 @@ import {
   Tooltip,
   IconButton
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -45,11 +45,41 @@ import {
 import axios from 'axios';
 import { useSnackbar } from 'notistack';
 
+interface UsageMetrics {
+  quotaLimit?: number;
+  minuteLimit?: number;
+  totalUsage: number;
+  currentDayUsage: number;
+  dailyUsage?: Record<string, number>;
+}
+
+interface CostSavingsSummary {
+  costSavingsEUR?: string;
+  totalFreeRequests?: number;
+}
+
+interface MetricsSummary {
+  currentDay?: string;
+  costSavings?: CostSavingsSummary;
+}
+
+interface APIKeyMetrics {
+  free: UsageMetrics;
+  paid: UsageMetrics;
+  summary: MetricsSummary;
+}
+
+interface DailyUsageDatum {
+  day: string;
+  kostenlos: number;
+  bezahlt: number;
+}
+
 const APIKeyUsageMetrics = () => {
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [chartData, setChartData] = useState([]);
+  const [metrics, setMetrics] = useState<APIKeyMetrics | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<DailyUsageDatum[]>([]);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetKeyType, setResetKeyType] = useState('all');
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -64,46 +94,43 @@ const APIKeyUsageMetrics = () => {
     setLoading(true);
     try {
       const response = await axios.get('/api/admin/api-keys/usage');
-      setMetrics(response.data.metrics);
-      
+      const payload = response.data.metrics as APIKeyMetrics;
+      setMetrics(payload);
+
       // Bereite Daten für Diagramme vor
-      prepareChartData(response.data.metrics);
+      prepareChartData(payload);
       
       setError(null);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching API key metrics:', err);
-      setError(err.response?.data?.message || 'Fehler beim Laden der API-Schlüssel-Metriken');
+      const message = axios.isAxiosError(err)
+        ? (err.response?.data as { message?: string } | undefined)?.message ?? 'Fehler beim Laden der API-Schlüssel-Metriken'
+        : 'Fehler beim Laden der API-Schlüssel-Metriken';
+      setError(message);
       enqueueSnackbar('Fehler beim Laden der Metriken', { variant: 'error' });
     } finally {
       setLoading(false);
     }
   };
   
-  const prepareChartData = (metricsData) => {
+  const prepareChartData = (metricsData: APIKeyMetrics | null) => {
     if (!metricsData) return;
-    
-    // Für Balkendiagramm - Tägliche Nutzung
-    const dailyData = [];
-    const freeDailyUsage = metricsData.free.dailyUsage || {};
-    const paidDailyUsage = metricsData.paid.dailyUsage || {};
-    
-    // Alle Tage aus beiden Schlüsseln zusammenführen
-    const allDays = [...new Set([
-      ...Object.keys(freeDailyUsage),
-      ...Object.keys(paidDailyUsage)
-    ])].sort();
-    
-    // Letzte 14 Tage anzeigen
+
+    const dailyData: DailyUsageDatum[] = [];
+    const freeDailyUsage = metricsData.free.dailyUsage ?? {};
+    const paidDailyUsage = metricsData.paid.dailyUsage ?? {};
+
+    const allDays = [...new Set([...Object.keys(freeDailyUsage), ...Object.keys(paidDailyUsage)])].sort();
     const recentDays = allDays.slice(-14);
-    
-    recentDays.forEach(day => {
+
+    recentDays.forEach((day) => {
       dailyData.push({
-        day: day.split('-').slice(1).join('/'), // Format: MM/DD
-        kostenlos: freeDailyUsage[day] || 0,
-        bezahlt: paidDailyUsage[day] || 0
+        day: day.split('-').slice(1).join('/'),
+        kostenlos: freeDailyUsage[day] ?? 0,
+        bezahlt: paidDailyUsage[day] ?? 0
       });
     });
-    
+
     setChartData(dailyData);
   };
   
@@ -113,14 +140,15 @@ const APIKeyUsageMetrics = () => {
         keyType: resetKeyType
       });
       
-      setMetrics(response.data.currentMetrics);
-      prepareChartData(response.data.currentMetrics);
+      const payload = response.data.currentMetrics as APIKeyMetrics;
+      setMetrics(payload);
+      prepareChartData(payload);
       
       enqueueSnackbar(
         `Nutzungsstatistiken für ${resetKeyType === 'free' ? 'kostenlose' : resetKeyType === 'paid' ? 'bezahlte' : 'alle'} API-Schlüssel zurückgesetzt`, 
         { variant: 'success' }
       );
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error resetting metrics:', err);
       enqueueSnackbar('Fehler beim Zurücksetzen der Metriken', { variant: 'error' });
     } finally {
@@ -135,14 +163,15 @@ const APIKeyUsageMetrics = () => {
       enqueueSnackbar('API-Schlüssel-Konfiguration aktualisiert', { variant: 'success' });
       
       // Aktualisiere lokale Konfiguration
-      setConfigValues({
-        dailyLimit: response.data.currentConfig.dailyLimit,
-        minuteLimit: response.data.currentConfig.minuteLimit
-      });
+      const updatedConfig = response.data.currentConfig as { dailyLimit?: number; minuteLimit?: number };
+      setConfigValues((prev) => ({
+        dailyLimit: updatedConfig.dailyLimit ?? prev.dailyLimit,
+        minuteLimit: updatedConfig.minuteLimit ?? prev.minuteLimit
+      }));
       
       // Aktualisiere Metriken
       fetchMetrics();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error updating config:', err);
       enqueueSnackbar('Fehler beim Aktualisieren der Konfiguration', { variant: 'error' });
     } finally {
@@ -152,17 +181,18 @@ const APIKeyUsageMetrics = () => {
   
   useEffect(() => {
     fetchMetrics();
-    
-    // Initialisiere Konfigurationswerte
-    if (metrics) {
-      setConfigValues({
-        dailyLimit: metrics.free.quotaLimit || 100,
-        minuteLimit: 10
-      });
-    }
   }, []);
+
+  useEffect(() => {
+    if (metrics) {
+      setConfigValues((prev) => ({
+        dailyLimit: metrics.free.quotaLimit ?? prev.dailyLimit ?? 100,
+        minuteLimit: metrics.free.minuteLimit ?? prev.minuteLimit ?? 10
+      }));
+    }
+  }, [metrics]);
   
-  const COLORS = ['#8884d8', '#82ca9d'];
+  const COLORS: readonly string[] = ['#8884d8', '#82ca9d'];
   
   if (loading && !metrics) {
     return (
@@ -180,10 +210,12 @@ const APIKeyUsageMetrics = () => {
     );
   }
   
-  const pieData = metrics ? [
-    { name: 'Kostenlos', value: metrics.free.totalUsage },
-    { name: 'Bezahlt', value: metrics.paid.totalUsage }
-  ] : [];
+  const pieData = metrics
+    ? ([
+        { name: 'Kostenlos', value: metrics.free.totalUsage },
+        { name: 'Bezahlt', value: metrics.paid.totalUsage }
+      ] satisfies Array<{ name: string; value: number }>)
+    : [];
   
   return (
     <Box sx={{ p: 2 }}>
@@ -249,7 +281,7 @@ const APIKeyUsageMetrics = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent = 0 }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"

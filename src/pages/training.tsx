@@ -12,7 +12,7 @@ import {
   Stack,
   Divider,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import {
   School as SchoolIcon,
   Timeline as TimelineIcon,

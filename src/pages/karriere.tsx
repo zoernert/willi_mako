@@ -14,7 +14,7 @@ import {
   Divider,
   Alert
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import {
   TrendingUp as TrendingIcon,
   Work as WorkIcon,

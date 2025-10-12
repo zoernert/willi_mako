@@ -1,0 +1,40 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../../../../../middleware/auth");
+const errorHandler_1 = require("../../../../../middleware/errorHandler");
+const rateLimiter_1 = require("../../../../../middleware/api-v2/rateLimiter");
+const session_service_1 = require("../../../../../services/api-v2/session.service");
+const reasoning_service_1 = require("../../../../../services/api-v2/reasoning.service");
+const router = (0, express_1.Router)();
+router.post('/generate', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)({ capacity: 6, refillTokens: 6, intervalMs: 60000 }), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { sessionId, query, messages, contextSettingsOverride, preferencesOverride, overridePipeline, useDetailedIntentAnalysis } = req.body || {};
+    if (!sessionId || typeof sessionId !== 'string') {
+        throw new errorHandler_1.AppError('sessionId ist erforderlich', 400);
+    }
+    if (!query || typeof query !== 'string') {
+        throw new errorHandler_1.AppError('query ist erforderlich', 400);
+    }
+    const session = await session_service_1.sessionService.getSession(sessionId);
+    if (session.userId !== req.user.id) {
+        throw new errorHandler_1.AppError('Session wurde nicht gefunden', 404);
+    }
+    const result = await reasoning_service_1.reasoningService.generate(session, {
+        query,
+        messages,
+        contextSettingsOverride,
+        preferencesOverride,
+        overridePipeline,
+        useDetailedIntentAnalysis
+    });
+    await session_service_1.sessionService.touchSession(sessionId);
+    res.json({
+        success: true,
+        data: {
+            sessionId,
+            ...result
+        }
+    });
+}));
+exports.default = router;
+//# sourceMappingURL=reasoning.routes.js.map

@@ -8,6 +8,8 @@ import retrievalRoutes from './retrieval.routes';
 import reasoningRoutes from './reasoning.routes';
 import contextRoutes from './context.routes';
 import clarificationRoutes from './clarification.routes';
+import toolsRoutes from './tools.routes';
+import artifactsRoutes from './artifacts.routes';
 
 const router = Router();
 
@@ -20,6 +22,8 @@ router.use('/retrieval', retrievalRoutes);
 router.use('/reasoning', reasoningRoutes);
 router.use('/context', contextRoutes);
 router.use('/clarification', clarificationRoutes);
+router.use('/tools', toolsRoutes);
+router.use('/artifacts', artifactsRoutes);
 router.get('/metrics', apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
 	res.json(apiV2OpenApiDocument);

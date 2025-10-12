@@ -2,8 +2,8 @@ export const apiV2OpenApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Willi-Mako API v2',
-    version: '0.2.0',
-    description: 'Spezifikation für die API v2 (Phasen 1 & 2).'
+  version: '0.4.0',
+  description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte).'
   },
   servers: [
     {
@@ -439,6 +439,144 @@ export const apiV2OpenApiDocument = {
           }
         }
       }
+    },
+    '/tools/run-node-script': {
+      post: {
+        summary: 'Node.js Skript als Sandbox-Job registrieren',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sessionId', 'source'],
+                properties: {
+                  sessionId: { type: 'string', format: 'uuid' },
+                  source: { type: 'string', maxLength: 4000 },
+                  timeoutMs: { type: 'integer', minimum: 500, maximum: 60000 },
+                  metadata: {
+                    type: 'object',
+                    description: 'Optionale Hinweise für spätere Jobs (z. B. beabsichtigte Artefakte).'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '202': {
+            description: 'Job aufgenommen (Ausführung benötigt manuelle Freigabe).',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        sessionId: { type: 'string', format: 'uuid' },
+                        job: {
+                          $ref: '#/components/schemas/ToolJob'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/tools/jobs/{jobId}': {
+      get: {
+        summary: 'Tool-Job Status abrufen',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'jobId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Aktueller Status des Jobs',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        job: {
+                          $ref: '#/components/schemas/ToolJob'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/artifacts': {
+      post: {
+        summary: 'Artefakt für eine Session speichern',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['sessionId', 'type', 'name', 'mimeType', 'encoding', 'content'],
+                properties: {
+                  sessionId: { type: 'string', format: 'uuid' },
+                  type: { type: 'string' },
+                  name: { type: 'string', maxLength: 120 },
+                  mimeType: { type: 'string' },
+                  encoding: { type: 'string', enum: ['utf8', 'base64'] },
+                  content: { type: 'string' },
+                  description: { type: 'string', maxLength: 2000 },
+                  version: { type: 'string' },
+                  tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    maxItems: 12
+                  },
+                  metadata: { type: 'object', additionalProperties: true }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Artefakt wurde eingelagert',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      $ref: '#/components/schemas/CreateArtifactResponse'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   components: {
@@ -544,6 +682,111 @@ export const apiV2OpenApiDocument = {
           },
           clarificationSessionId: { type: 'string', nullable: true },
           enhancedQuery: { type: 'string', nullable: true }
+        }
+      },
+      ToolJobSourceInfo: {
+        type: 'object',
+        properties: {
+          language: { type: 'string', enum: ['node'] },
+          hash: { type: 'string' },
+          bytes: { type: 'integer' },
+          preview: { type: 'string' },
+          lineCount: { type: 'integer' }
+        }
+      },
+      ToolJobResult: {
+        type: 'object',
+        properties: {
+          completedAt: { type: 'string', format: 'date-time', nullable: true },
+          durationMs: { type: 'integer', nullable: true },
+          stdout: { type: 'string', nullable: true },
+          stderr: { type: 'string', nullable: true },
+          error: { type: 'string', nullable: true }
+        }
+      },
+      ToolJobDiagnostics: {
+        type: 'object',
+        properties: {
+          executionEnabled: { type: 'boolean' },
+          notes: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      },
+      ToolJob: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          type: { type: 'string', enum: ['run-node-script'] },
+          sessionId: { type: 'string', format: 'uuid' },
+          status: {
+            type: 'string',
+            enum: ['queued', 'running', 'succeeded', 'failed', 'cancelled']
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          timeoutMs: { type: 'integer' },
+          metadata: { type: 'object', nullable: true },
+          source: {
+            $ref: '#/components/schemas/ToolJobSourceInfo'
+          },
+          result: {
+            oneOf: [
+              { $ref: '#/components/schemas/ToolJobResult' },
+              { type: 'null' }
+            ]
+          },
+          warnings: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          diagnostics: {
+            $ref: '#/components/schemas/ToolJobDiagnostics'
+          }
+        }
+      },
+      ArtifactStorage: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['inline'] },
+          encoding: { type: 'string', enum: ['utf8', 'base64'] },
+          content: { type: 'string' }
+        }
+      },
+      Artifact: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          sessionId: { type: 'string', format: 'uuid' },
+          name: { type: 'string' },
+          type: { type: 'string' },
+          mimeType: { type: 'string' },
+          byteSize: { type: 'integer' },
+          checksum: { type: 'string' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          storage: {
+            $ref: '#/components/schemas/ArtifactStorage'
+          },
+          preview: { type: 'string', nullable: true },
+          description: { type: 'string', nullable: true },
+          version: { type: 'string', nullable: true },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            nullable: true
+          },
+          metadata: { type: 'object', nullable: true }
+        }
+      },
+      CreateArtifactResponse: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          artifact: {
+            $ref: '#/components/schemas/Artifact'
+          }
         }
       }
     }

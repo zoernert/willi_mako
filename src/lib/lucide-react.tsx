@@ -1,0 +1,35 @@
+import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import GroupIcon from '@mui/icons-material/Group';
+import DescriptionIcon from '@mui/icons-material/Description';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
+import ScienceIcon from '@mui/icons-material/Science';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import SettingsIcon from '@mui/icons-material/Settings';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+
+export const Plus = AddIcon;
+export const Trash2 = DeleteOutlineIcon;
+export const Edit = EditIcon;
+export const CheckCircle = CheckCircleIcon;
+export const XCircle = CancelIcon;
+export const Clock = AccessTimeIcon;
+export const Users = GroupIcon;
+export const FileText = DescriptionIcon;
+export const Loader2 = AutorenewIcon;
+export const Download = DownloadIcon;
+export const Upload = UploadIcon;
+export const TestTube = ScienceIcon;
+export const Mail = MailOutlineIcon;
+export const Settings = SettingsIcon;
+export const CheckCircle2 = CheckCircleOutlineIcon;
+export const XCircleOutline = HighlightOffIcon;
+
+export default {};

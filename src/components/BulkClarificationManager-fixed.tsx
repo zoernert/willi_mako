@@ -260,7 +260,9 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
                 <label className="text-sm font-medium">Titel</label>
                 <Input
                   value={clarification.title}
-                  onChange={(e) => setClarification(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setClarification(prev => ({ ...prev, title: e.target.value }))
+                  }
                   placeholder="Titel der Bulk-Klärung"
                   disabled={readOnly}
                 />
@@ -269,7 +271,9 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
                 <label className="text-sm font-medium">Kategorie</label>
                 <Select
                   value={clarification.category}
-                  onValueChange={(value) => setClarification(prev => ({ ...prev, category: value }))}
+                  onValueChange={(value: string) =>
+                    setClarification(prev => ({ ...prev, category: value }))
+                  }
                   disabled={readOnly}
                 >
                   <SelectTrigger>
@@ -290,7 +294,9 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
               <label className="text-sm font-medium">Beschreibung</label>
               <Textarea
                 value={clarification.description}
-                onChange={(e) => setClarification(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setClarification(prev => ({ ...prev, description: e.target.value }))
+                }
                 placeholder="Beschreibung der Bulk-Klärung"
                 rows={3}
                 disabled={readOnly}
@@ -366,7 +372,9 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
                         <label className="text-sm font-medium">Titel *</label>
                         <Input
                           value={newItem.title || ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setNewItem(prev => ({ ...prev, title: e.target.value }))
+                          }
                           placeholder="Titel des Eintrags"
                         />
                       </div>
@@ -374,7 +382,9 @@ const BulkClarificationManager: React.FC<BulkClarificationManagerProps> = ({
                         <label className="text-sm font-medium">Beschreibung</label>
                         <Textarea
                           value={newItem.description || ''}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                            setNewItem(prev => ({ ...prev, description: e.target.value }))
+                          }
                           placeholder="Beschreibung"
                           rows={3}
                         />

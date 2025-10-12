@@ -92,13 +92,13 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 4. ✅ **Clarification / Flip Mode** – umgesetzt in `POST /api/v2/clarification/analyze`; stellt die Flip-Analyse inklusive optionaler Enhanced-Query bereit.
 
 ### Phase 3 – Erweiterte Fähigkeiten
-1. **Tooling / Sandbox**
-   - `POST /api/v2/tools/run-node-script` (Sandbox-Runner).
-   - `GET /api/v2/tools/jobs/:id` (Status, Logs).
-   - Backend benötigt Worker/queue; in dieser Phase nur Stub/POC.
-2. **Artefakt-Service**
-   - `POST /api/v2/artifacts`
-   - Speichern von generierten Skripten (`package.json`, `README`, Binaries) mit Versionsangaben.
+1. ✅ **Tooling / Sandbox (POC)**
+   - `POST /api/v2/tools/run-node-script` nimmt Jobs entgegen, validiert Source & Timeout und legt einen geprüften Queue-Eintrag an.
+   - `GET /api/v2/tools/jobs/:id` liefert Status, Hash/Preview und Sicherheits-Hinweise; Ausführung bleibt manuell (diagnostics `executionEnabled=false`).
+   - Persistenz aktuell In-Memory; Nachfolger-Schritt: Worker/Queue für echte Sandbox-Runner.
+2. ✅ **Artefakt-Service (POC)**
+   - `POST /api/v2/artifacts` legt Inline-Artefakte (UTF-8/Base64) mit Hash, Preview und Metadaten ab.
+   - Unterstützt optionale Tags, Versionen und sanitisierte Metadata; Speicherung erfolgt vorerst in-memory.
 3. **Integration Hooks**
    - Webhooks oder Queue-Events (z. B. `reasoning.completed`) für Timeline/Gamification.
 
@@ -116,8 +116,9 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 | `POST /api/v2/retrieval/semantic-search` | Vektor-Suche | Phase 2 |
 | `POST /api/v2/reasoning/generate` | LLM-Reasoning | Phase 2 |
 | `POST /api/v2/context/resolve` | Workspace-Kontext bestimmen | Phase 2 |
-| `POST /api/v2/tools/run-node-script` | Code-Sandbox (POC) | Phase 3 |
-| `POST /api/v2/artifacts` | Artefakte speichern | Phase 3 |
+| `POST /api/v2/tools/run-node-script` | Sandbox-Job registrieren (manuelle Freigabe) | Phase 3 (POC) |
+| `GET /api/v2/tools/jobs/:id` | Tool-Job Status/Diagnostik abrufen | Phase 3 (POC) |
+| `POST /api/v2/artifacts` | Artefakte speichern | Phase 3 (POC) |
 
 ## Security Considerations
 - **Token-Härtung:** Langlebige JWTs werden nur über TLS ausgeliefert; beim Ausbau der Refresh-Mechanik müssen wir Refresh-Token getrennt absichern und Rotations-Logs führen. Signing-Keys bleiben via Secrets-Manager versioniert.
@@ -125,6 +126,7 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 - **Input-Validierung:** Alle `POST /api/v2/*` Endpunkte validieren Payloads strikt (z. B. Zod/JSON-Schema) und rejecten unbekannte Felder, damit kein Injection-Surface entsteht.
 - **Datenklassifizierung:** Responses enthalten keine Roh-Personendaten; sensible Felder werden maskiert, Telemetrie erhält nur Hashes (`sessionId`, nicht `userId`).
 - **Observability & Audit:** Auth-Fehler, Rate-Limit-Treffer und Admin-Aktionen werden revisionssicher geloggt (PII-safe) und 30 Tage aufbewahrt.
+- **Sandbox-Gating:** Tooling-Jobs werden mit Hash/Preview gespeichert, nicht ausgeführt; zukünftig nur in isolierten Containern mit erlaubten APIs freigeben.
 
 ## Performance Considerations
 - **Vektor-Retrieval:** Qdrant-Abfragen nutzen `search_batch` mit Top-K Limit ≤ 10, Filter-Indexierung für häufige Suchen und optionales Cache-Layer (Redis) für identische Queries pro Session.
@@ -132,6 +134,7 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 - **Session-Kontext:** Context-Resolution cached Workspace-Metadaten pro `sessionId`, invalidiert bei expliziten Overrides und reduziert DB-Hits.
 - **Rate Limiting:** Token-Bucket Parameter werden per Env getuned; Reasoning-Endpunkte haben strengere Limits. Drosselung wird früh (Middleware) durchgeführt, um CPU-intensive Services zu schonen.
 - **Throughput-Scaling:** Backend-Knoten starten mit gepoolten HTTP/DB-Clients; horizontales Scaling erfolgt stateless (Sessions in Mongo), Qdrant erhält separate Auto-Scaling-Policy.
+- **Job Queue:** Aktuell In-Memory; Migration auf Redis/Worker vorgesehen, damit Sandbox-Aufträge resilient und parallel ausführbar werden.
 
 ## Qualitätssicherung & Tests
 - **Unit-Tests:** Services (Session, Auth, Reasoning-Adapter) erhalten isolierte Tests mit Fixtures für Mongo/Postgres-Stubs.
@@ -160,6 +163,8 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 - ✅ Auth-Token Endpoint (`POST /api/v2/auth/token`) mit 30-Tage-JWT.
 - ✅ In-Memory Rate-Limiter + Metrics (`/api/v2/metrics`) sowie OpenAPI-Skizze (`/api/v2/openapi.json`).
 - ✅ Test-Client (`scripts/api-v2-test-client.ts`) via `npm run test:api-v2`.
+- 🟡 Tooling-Sandbox POC (`POST /api/v2/tools/run-node-script`, `GET /api/v2/tools/jobs/:id`) mit In-Memory Queue, manueller Freigabe und Diagnostik-Hinweisen.
+- 🟡 Artefakt-Service POC (`POST /api/v2/artifacts`) inklusive Hash/Preview, In-Memory-Storage und Validierung.
 
 ## Offene Fragen
 - Authentifizierung: JWT aus bestehendem System übernehmen oder getrennte Token? Session-Endpunkt muss klar definieren, wie `userId` validiert wird.
@@ -170,7 +175,7 @@ Diese Verknüpfung sorgt dafür, dass API v2 nicht isoliert entsteht, sondern di
 - Compliance: Gibt es Archivierungs-/Audit-Anforderungen, die Mongo-Collections erfüllen müssen?
 
 ## Nächste Schritte
-1. Feature-Flag + Skelett-Router (`src/presentation/http/api/v2/index.ts`).
-2. Session-Service entkoppeln und Tests schreiben (`SessionService.spec.ts`).
-3. Parity-Chat-Endpunkt umsetzen inkl. Integrationstest gegen bestehende Route.
-4. Dokumentation pflegen (OpenAPI/Insomnia Collection) und Feedback einholen.
+1. Sandbox-Runner implementieren (Worker/Queue, isolierte Runtime) und bestehende Jobs migrieren.
+2. Webhook-/Queue-Hooks für Reasoning & Tooling ausarbeiten (Gamification/Timeline).
+3. Persistente Speicherung der Tool-Jobs (Mongo/Redis) + Admin-Dashboard zur Freigabe.
+4. Artefakt-Speicher persistent machen (z. B. S3/Blob + Mongo-Metadaten) und Retrieval-Endpunkte ergänzen.

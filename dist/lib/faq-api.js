@@ -43,6 +43,37 @@ async function safeQdrantSearch(query, limit, scoreThreshold) {
     }
     return [];
 }
+const normalizeDate = (value) => {
+    if (!value) {
+        return new Date().toISOString();
+    }
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return new Date().toISOString();
+    }
+    return parsed.toISOString();
+};
+const normalizeTags = (rawTags) => {
+    let tags = [];
+    if (Array.isArray(rawTags)) {
+        tags = rawTags.filter((tag) => typeof tag === 'string');
+    }
+    else if (typeof rawTags === 'string') {
+        try {
+            const parsed = JSON.parse(rawTags);
+            if (Array.isArray(parsed)) {
+                tags = parsed.filter((tag) => typeof tag === 'string');
+            }
+        }
+        catch (error) {
+            console.error('Error parsing FAQ tags:', error);
+        }
+    }
+    return tags.length > 0 ? tags : ['Energiewirtschaft'];
+};
 // Generiere einen SEO-optimierten Slug aus dem FAQ-Titel
 function generateFAQSlug(title) {
     return title
@@ -70,6 +101,7 @@ function slugifyTag(tag) {
 }
 // Hole alle öffentlichen FAQs für die statische Generierung
 async function getAllPublicFAQs() {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -80,24 +112,18 @@ async function getAllPublicFAQs() {
       WHERE is_active = true ${publicFilter}
       ORDER BY view_count DESC, created_at DESC
     `);
-        const faqs = await Promise.all(result.rows.map(async (faq) => {
-            const slug = generateFAQSlug(faq.title);
-            const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer);
-            // Parse tags from JSON string to array
-            let parsedTags;
-            try {
-                parsedTags = typeof faq.tags === 'string' ? JSON.parse(faq.tags) : faq.tags;
-            }
-            catch (parseError) {
-                console.error('Error parsing tags for FAQ', faq.id, ':', parseError);
-                parsedTags = ['Energiewirtschaft']; // fallback
-            }
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        const faqs = await Promise.all(rows.map(async (faqRow) => {
+            var _a;
+            const slug = generateFAQSlug(faqRow.title);
+            const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
             return {
-                ...faq,
-                tags: parsedTags,
+                ...faqRow,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                tags: normalizeTags(faqRow.tags),
                 slug,
-                created_at: faq.created_at ? faq.created_at.toISOString() : new Date().toISOString(),
-                updated_at: faq.updated_at ? faq.updated_at.toISOString() : new Date().toISOString(),
+                created_at: normalizeDate(faqRow.created_at),
+                updated_at: normalizeDate(faqRow.updated_at),
                 related_faqs: relatedFAQs
             };
         }));
@@ -147,6 +173,7 @@ async function getRelatedFAQs(faqId, content, limit = 5) {
 }
 // Fallback: Hole verwandte FAQs basierend auf Tags und Keywords aus der Datenbank
 async function getRelatedFAQsFromDatabase(faqId, content, limit = 5) {
+    var _a;
     try {
         // Extrahiere Keywords aus dem Content
         const keywords = content
@@ -183,12 +210,16 @@ async function getRelatedFAQsFromDatabase(faqId, content, limit = 5) {
       ORDER BY similarity_score DESC, view_count DESC
       LIMIT $3
     `, [faqId, `%${keywords[0]}%`, limit]);
-        return result.rows.map(faq => ({
-            id: String(faq.id),
-            title: faq.title,
-            slug: generateFAQSlug(faq.title),
-            similarity_score: Math.round((faq.similarity_score || 0) * 100) / 100
-        }));
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return rows.map((faq) => {
+            var _a;
+            return ({
+                id: String(faq.id),
+                title: faq.title,
+                slug: generateFAQSlug(faq.title),
+                similarity_score: Math.round(((_a = faq.similarity_score) !== null && _a !== void 0 ? _a : 0) * 100) / 100
+            });
+        });
     }
     catch (error) {
         console.error('Error fetching related FAQs from database:', error);
@@ -198,6 +229,7 @@ async function getRelatedFAQsFromDatabase(faqId, content, limit = 5) {
 }
 // Noch einfacherer Fallback: Hole verwandte FAQs basierend auf gemeinsamen Tags
 async function getRelatedFAQsByTags(faqId, limit = 5) {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -210,7 +242,8 @@ async function getRelatedFAQsByTags(faqId, limit = 5) {
       ORDER BY view_count DESC, created_at DESC
       LIMIT $2
     `, [faqId, limit]);
-        return result.rows.map(faq => ({
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return rows.map((faq) => ({
             id: String(faq.id),
             title: faq.title,
             slug: generateFAQSlug(faq.title),
@@ -224,6 +257,7 @@ async function getRelatedFAQsByTags(faqId, limit = 5) {
 }
 // Hole alle verfügbaren Tags mit Zählungen
 async function getAllTags() {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -237,7 +271,8 @@ async function getAllTags() {
       GROUP BY tag
       ORDER BY count DESC, tag ASC
     `);
-        return result.rows;
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return rows;
     }
     catch (error) {
         console.warn('Database not available during build, returning empty tags array:', error);
@@ -246,6 +281,7 @@ async function getAllTags() {
 }
 // Hole FAQs nach Tag
 async function getFAQsByTag(tag) {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -261,14 +297,18 @@ async function getFAQsByTag(tag) {
       )
       ORDER BY view_count DESC, created_at DESC
     `, [tag]);
-        return Promise.all(result.rows.map(async (faq) => {
-            const slug = generateFAQSlug(faq.title);
-            const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer);
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return Promise.all(rows.map(async (faqRow) => {
+            var _a;
+            const slug = generateFAQSlug(faqRow.title);
+            const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
             return {
-                ...faq,
+                ...faqRow,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                tags: normalizeTags(faqRow.tags),
                 slug,
-                created_at: faq.created_at ? faq.created_at.toISOString() : new Date().toISOString(),
-                updated_at: faq.updated_at ? faq.updated_at.toISOString() : new Date().toISOString(),
+                created_at: normalizeDate(faqRow.created_at),
+                updated_at: normalizeDate(faqRow.updated_at),
                 related_faqs: relatedFAQs
             };
         }));
@@ -280,6 +320,7 @@ async function getFAQsByTag(tag) {
 }
 // Hole die neuesten FAQs für RSS Feed
 async function getLatestFAQs(limit = 20) {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -291,11 +332,15 @@ async function getLatestFAQs(limit = 20) {
       ORDER BY updated_at DESC
       LIMIT $1
     `, [limit]);
-        return Promise.all(result.rows.map(async (faq) => {
-            const slug = generateFAQSlug(faq.title);
-            const relatedFAQs = await getRelatedFAQs(faq.id, faq.content + ' ' + faq.answer, 3); // Weniger für RSS
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return Promise.all(rows.map(async (faqRow) => {
+            var _a;
+            const slug = generateFAQSlug(faqRow.title);
+            const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`, 3); // Weniger für RSS
             return {
-                ...faq,
+                ...faqRow,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                tags: normalizeTags(faqRow.tags),
                 slug,
                 related_faqs: relatedFAQs
             };
@@ -308,6 +353,7 @@ async function getLatestFAQs(limit = 20) {
 }
 // Hole alle verfügbaren Tags als einfache String-Array
 async function getDistinctTags() {
+    var _a;
     try {
         // In development, include private FAQs for testing
         const publicFilter = process.env.NODE_ENV === 'production' ? 'AND is_public = true' : '';
@@ -320,7 +366,8 @@ async function getDistinctTags() {
       ) as tag_list
       ORDER BY tag ASC
     `);
-        return result.rows.map(row => row.tag);
+        const rows = ((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : []);
+        return rows.map((row) => row.tag);
     }
     catch (error) {
         console.warn('Database not available during build, returning empty distinct tags array:', error);
