@@ -60,7 +60,8 @@ dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3009', 10);
-const apiV2Enabled = process.env.API_V2_ENABLED === 'true';
+const apiV2Env = process.env.API_V2_ENABLED;
+const apiV2Enabled = apiV2Env === undefined ? true : apiV2Env === 'true';
 
 // Security middleware
 app.use(helmet({
