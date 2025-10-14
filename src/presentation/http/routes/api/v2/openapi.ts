@@ -2,7 +2,7 @@ export const apiV2OpenApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Willi-Mako API v2',
-  version: '0.4.0',
+  version: '0.5.0',
   description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte).'
   },
   servers: [
@@ -440,6 +440,40 @@ export const apiV2OpenApiDocument = {
         }
       }
     },
+    '/tools/generate-script': {
+      post: {
+        summary: 'Deterministisches Tool-Skript generieren',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/GenerateToolScriptRequest'
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Deterministisches Node.js-Skript erfolgreich erzeugt',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      $ref: '#/components/schemas/GenerateToolScriptResponse'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/tools/run-node-script': {
       post: {
         summary: 'Node.js Skript als Sandbox-Job registrieren',
@@ -744,6 +778,110 @@ export const apiV2OpenApiDocument = {
           diagnostics: {
             $ref: '#/components/schemas/ToolJobDiagnostics'
           }
+        }
+      },
+      ToolScriptValidationReport: {
+        type: 'object',
+        properties: {
+          syntaxValid: { type: 'boolean' },
+          deterministic: { type: 'boolean' },
+          forbiddenApis: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          warnings: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      },
+      ToolScriptDescriptor: {
+        type: 'object',
+        required: ['code', 'language', 'entrypoint', 'description', 'runtime', 'deterministic', 'dependencies', 'source', 'validation', 'notes'],
+        properties: {
+          code: { type: 'string' },
+          language: { type: 'string', enum: ['javascript'] },
+          entrypoint: { type: 'string', enum: ['run'] },
+          description: { type: 'string' },
+          runtime: { type: 'string', enum: ['node18'] },
+          deterministic: { type: 'boolean' },
+          dependencies: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          source: {
+            $ref: '#/components/schemas/ToolJobSourceInfo'
+          },
+          validation: {
+            $ref: '#/components/schemas/ToolScriptValidationReport'
+          },
+          notes: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      },
+      ToolScriptInputSchemaProperty: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          description: { type: 'string' },
+          example: {}
+        }
+      },
+      ToolScriptInputSchema: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['object'] },
+          description: { type: 'string' },
+          properties: {
+            type: 'object',
+            additionalProperties: {
+              $ref: '#/components/schemas/ToolScriptInputSchemaProperty'
+            }
+          },
+          required: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      },
+      ToolScriptConstraints: {
+        type: 'object',
+        properties: {
+          deterministic: { type: 'boolean' },
+          allowNetwork: { type: 'boolean' },
+          allowFilesystem: { type: 'boolean' },
+          maxRuntimeMs: { type: 'integer', minimum: 500, maximum: 60000 }
+        }
+      },
+      GenerateToolScriptRequest: {
+        type: 'object',
+        required: ['sessionId', 'instructions'],
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          instructions: { type: 'string', maxLength: 1600 },
+          inputSchema: {
+            $ref: '#/components/schemas/ToolScriptInputSchema'
+          },
+          expectedOutputDescription: { type: 'string', maxLength: 1200 },
+          additionalContext: { type: 'string', maxLength: 2000 },
+          constraints: {
+            $ref: '#/components/schemas/ToolScriptConstraints'
+          }
+        }
+      },
+      GenerateToolScriptResponse: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          script: {
+            $ref: '#/components/schemas/ToolScriptDescriptor'
+          },
+          inputSchema: {
+            $ref: '#/components/schemas/ToolScriptInputSchema'
+          },
+          expectedOutputDescription: { type: 'string', nullable: true }
         }
       },
       ArtifactStorage: {

@@ -4,9 +4,76 @@ import { asyncHandler, AppError } from '../../../../../middleware/errorHandler';
 import { apiV2RateLimiter } from '../../../../../middleware/api-v2/rateLimiter';
 import { sessionService } from '../../../../../services/api-v2/session.service';
 import { toolingService } from '../../../../../services/api-v2/tooling.service';
-import { RunNodeScriptJobResponse } from '../../../../../domain/api-v2/tooling.types';
+import {
+  GenerateToolScriptRequest,
+  GenerateToolScriptResponse,
+  RunNodeScriptJobResponse
+} from '../../../../../domain/api-v2/tooling.types';
 
 const router = Router();
+
+router.post(
+  '/generate-script',
+  authenticateToken,
+  apiV2RateLimiter({ capacity: 3, refillTokens: 3, intervalMs: 60_000 }),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const body = (req.body || {}) as GenerateToolScriptRequest;
+    const {
+      sessionId,
+      instructions,
+      inputSchema,
+      expectedOutputDescription,
+      additionalContext,
+      constraints
+    } = body;
+
+    if (!sessionId || typeof sessionId !== 'string') {
+      throw new AppError('sessionId ist erforderlich', 400);
+    }
+
+    if (typeof instructions !== 'string' || !instructions.trim()) {
+      throw new AppError('instructions ist erforderlich', 400);
+    }
+
+    if (inputSchema !== undefined && (typeof inputSchema !== 'object' || Array.isArray(inputSchema))) {
+      throw new AppError('inputSchema muss ein Objekt sein', 400);
+    }
+
+    if (constraints !== undefined && (typeof constraints !== 'object' || Array.isArray(constraints))) {
+      throw new AppError('constraints muss ein Objekt sein', 400);
+    }
+
+    const session = await sessionService.getSession(sessionId);
+
+    if (session.userId !== req.user!.id) {
+      throw new AppError('Session wurde nicht gefunden', 404);
+    }
+
+    const response = await toolingService.generateDeterministicScript({
+      userId: req.user!.id,
+      sessionId,
+      instructions,
+      inputSchema: inputSchema as GenerateToolScriptRequest['inputSchema'],
+      expectedOutputDescription,
+      additionalContext,
+      constraints
+    });
+
+    await sessionService.touchSession(sessionId);
+
+    const payload: GenerateToolScriptResponse = {
+      sessionId,
+      script: response.script,
+      inputSchema: response.inputSchema,
+      expectedOutputDescription: response.expectedOutputDescription
+    };
+
+    res.status(200).json({
+      success: true,
+      data: payload
+    });
+  })
+);
 
 router.post(
   '/run-node-script',

@@ -58,7 +58,8 @@ const CommunityQdrantService_1 = require("./services/CommunityQdrantService");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '3009', 10);
-const apiV2Enabled = process.env.API_V2_ENABLED === 'true';
+const apiV2Env = process.env.API_V2_ENABLED;
+const apiV2Enabled = apiV2Env === undefined ? true : apiV2Env === 'true';
 // Security middleware
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: false // Allow inline scripts for development
