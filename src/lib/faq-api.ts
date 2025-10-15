@@ -1,19 +1,40 @@
 import pool from './database';
-import { QdrantService as ImportedQdrantService } from '../services/qdrant';
 
-// Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
-let QdrantServiceRef: any = ImportedQdrantService;
-try {
-  // Prüfe ob es eine statische Methode ist
-  if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
-    // Versuch eines require (CommonJS) zur Laufzeit
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('../services/qdrant');
-    QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
+type QdrantServiceLike = {
+  searchByText?: (query: string, limit: number, scoreThreshold: number) => Promise<any[]>;
+};
+
+const loadErrors: unknown[] = [];
+
+const dynamicRequire = (modulePath: string): QdrantServiceLike | null => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const nativeRequire = eval('require') as NodeRequire;
+    const resolvedModule = nativeRequire(modulePath);
+    return (resolvedModule?.QdrantService || resolvedModule) as QdrantServiceLike;
+  } catch (error) {
+    loadErrors.push(error);
+    return null;
   }
-} catch (e) {
-  console.warn('QdrantService dynamic import failed, will use DB fallback only:', (e as any)?.message || e);
-  QdrantServiceRef = null;
+};
+
+const candidateModulePaths = ['../services/qdrant'];
+let QdrantServiceRef: QdrantServiceLike | null = null;
+
+for (const pathCandidate of candidateModulePaths) {
+  const candidateService = dynamicRequire(pathCandidate);
+  if (candidateService && typeof candidateService.searchByText === 'function') {
+    QdrantServiceRef = candidateService;
+    break;
+  }
+}
+
+if (!QdrantServiceRef) {
+  const lastError = loadErrors.at(-1);
+  console.warn(
+    'QdrantService dynamic import failed, will use DB fallback only:',
+    lastError instanceof Error ? lastError.message : lastError
+  );
 }
 
 // Hilfsfunktion für semantische Suche (liefert [] bei Nichtverfügbarkeit)
@@ -36,7 +57,7 @@ export interface StaticFAQData {
   description: string;
   content: string;
   answer: string;
-  additional_info?: string;
+  additional_info?: string | null;
   tags: string[];
   view_count: number;
   created_at: string;
@@ -161,7 +182,7 @@ export async function getAllPublicFAQs(): Promise<StaticFAQData[]> {
 
         return {
           ...faqRow,
-          additional_info: faqRow.additional_info ?? undefined,
+          additional_info: faqRow.additional_info ?? null,
           tags: normalizeTags(faqRow.tags),
           slug,
           created_at: normalizeDate(faqRow.created_at),
@@ -353,7 +374,7 @@ export async function getFAQsByTag(tag: string): Promise<StaticFAQData[]> {
 
         return {
           ...faqRow,
-          additional_info: faqRow.additional_info ?? undefined,
+          additional_info: faqRow.additional_info ?? null,
           tags: normalizeTags(faqRow.tags),
           slug,
           created_at: normalizeDate(faqRow.created_at),
@@ -392,7 +413,7 @@ export async function getLatestFAQs(limit: number = 20): Promise<StaticFAQData[]
 
         return {
           ...faqRow,
-          additional_info: faqRow.additional_info ?? undefined,
+          additional_info: faqRow.additional_info ?? null,
           tags: normalizeTags(faqRow.tags),
           slug,
           related_faqs: relatedFAQs

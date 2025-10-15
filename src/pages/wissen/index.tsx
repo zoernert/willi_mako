@@ -37,7 +37,7 @@ interface StaticFAQData {
   description: string;
   content: string;
   answer: string;
-  additional_info?: string;
+  additional_info?: string | null;
   tags: string[];
   view_count: number;
   created_at: string;

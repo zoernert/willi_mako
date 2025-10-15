@@ -82,6 +82,8 @@ export interface GenerateToolScriptRequest {
   expectedOutputDescription?: string;
   additionalContext?: string;
   constraints?: ToolScriptConstraints;
+  referenceDocuments?: ToolScriptReference[];
+  testCases?: ToolScriptTestCase[];
 }
 
 export interface ToolScriptValidationReport {
@@ -109,4 +111,49 @@ export interface GenerateToolScriptResponse {
   script: ToolScriptDescriptor;
   inputSchema?: ToolScriptInputSchema;
   expectedOutputDescription?: string;
+  contextSnippets?: ToolScriptContextSnippet[];
+  testResults?: ToolScriptTestResultSummary;
+}
+
+export interface ToolScriptReference {
+  id?: string;
+  title?: string;
+  snippet: string;
+  weight?: number;
+  useForPrompt?: boolean;
+}
+
+export interface ToolScriptContextSnippet {
+  id?: string;
+  title?: string;
+  source?: string;
+  score?: number;
+  snippet: string;
+  origin: 'retrieval' | 'reference';
+}
+
+export interface ToolScriptTestAssertion {
+  type: 'contains' | 'equals' | 'regex';
+  value: string;
+}
+
+export interface ToolScriptTestCase {
+  name?: string;
+  description?: string;
+  input: Record<string, unknown> | string | number | boolean | null;
+  assertions?: ToolScriptTestAssertion[];
+}
+
+export interface ToolScriptTestResult {
+  passed: boolean;
+  name?: string;
+  description?: string;
+  outputPreview?: string;
+  error?: string;
+  failedAssertion?: ToolScriptTestAssertion;
+}
+
+export interface ToolScriptTestResultSummary {
+  passed: boolean;
+  results: ToolScriptTestResult[];
 }

@@ -11,11 +11,18 @@ import {
   ToolJobResult,
   ToolJobSourceInfo,
   ToolScriptConstraints,
+  ToolScriptContextSnippet,
   ToolScriptDescriptor,
   ToolScriptInputSchema,
+  ToolScriptReference,
+  ToolScriptTestCase,
+  ToolScriptTestAssertion,
+  ToolScriptTestResult,
+  ToolScriptTestResultSummary,
   ToolScriptValidationReport
 } from '../../domain/api-v2/tooling.types';
 import llm from '../llmProvider';
+import { retrievalService } from './retrieval.service';
 
 interface NodeScriptJobInput {
   userId: string;
@@ -40,12 +47,22 @@ interface NormalizedToolScriptConstraints {
   maxRuntimeMs: number;
 }
 
+interface NormalizedToolScriptReference {
+  id?: string;
+  title?: string;
+  snippet: string;
+  weight: number;
+  useForPrompt: boolean;
+}
+
 interface NormalizedGenerateScriptInput extends GenerateToolScriptInternalInput {
   instructions: string;
   additionalContext?: string;
   expectedOutputDescription?: string;
   inputSchema?: ToolScriptInputSchema;
   constraints: NormalizedToolScriptConstraints;
+  referenceDocuments: NormalizedToolScriptReference[];
+  testCases: ToolScriptTestCase[];
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -57,6 +74,33 @@ const MAX_INSTRUCTIONS_LENGTH = 1600;
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_EXPECTED_OUTPUT_LENGTH = 1200;
 const MAX_NOTES = 6;
+const MAX_REFERENCE_COUNT = 8;
+const MAX_REFERENCE_SNIPPET_LENGTH = 2000;
+const MAX_TEST_CASES = 3;
+const MAX_ASSERTIONS_PER_TEST = 4;
+const MAX_ASSERTION_VALUE_LENGTH = 240;
+const MAX_CONTEXT_SNIPPETS = 6;
+const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
+
+const DEFAULT_INPUT_SCHEMA_TEMPLATE: ToolScriptInputSchema = {
+  type: 'object',
+  description: 'Standard-Eingabe für deterministische Tools. Der Aufruf erfolgt über `await run(input)`.',
+  properties: {
+    payload: {
+      type: 'string',
+      description: 'Primärer Nachrichtentext oder Dokumentinhalt (z. B. EDIFACT, CSV, JSON).'
+    },
+    options: {
+      type: 'object',
+      description: 'Optionale Einstellungen oder Parameter für das Tool.'
+    },
+    format: {
+      type: 'string',
+      description: 'Optionaler Hinweis zum Eingabeformat, z. B. "mscons", "utilmd" oder "csv".'
+    }
+  },
+  required: ['payload']
+};
 
 export class ToolingService {
   private readonly jobs = new Map<string, ToolJobRecord>();
@@ -121,7 +165,8 @@ export class ToolingService {
 
   public async generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse> {
     const normalized = this.normalizeGenerateScriptInput(input);
-    const prompt = this.buildScriptPrompt(normalized);
+    const contextSnippets = await this.collectContextSnippets(normalized);
+    const prompt = this.buildScriptPrompt(normalized, contextSnippets);
 
     let rawCandidate: any;
     try {
@@ -140,13 +185,24 @@ export class ToolingService {
     }
 
     const descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
+    const testResults = await this.executeTestCases(descriptor, normalized);
 
-    return {
+    const response: GenerateToolScriptResponse = {
       sessionId: normalized.sessionId,
       script: descriptor,
       inputSchema: normalized.inputSchema,
       expectedOutputDescription: normalized.expectedOutputDescription
     };
+
+    if (contextSnippets.length) {
+      response.contextSnippets = contextSnippets;
+    }
+
+    if (testResults) {
+      response.testResults = testResults;
+    }
+
+    return response;
   }
 
   private normalizeGenerateScriptInput(input: GenerateToolScriptInternalInput): NormalizedGenerateScriptInput {
@@ -166,8 +222,11 @@ export class ToolingService {
       MAX_EXPECTED_OUTPUT_LENGTH
     );
 
-    const inputSchema = input.inputSchema ? this.normalizeInputSchema(input.inputSchema) : undefined;
+    const schemaSource = input.inputSchema ? input.inputSchema : this.cloneDefaultInputSchema();
+    const inputSchema = this.normalizeInputSchema(schemaSource);
     const constraints = this.normalizeConstraints(input.constraints);
+    const referenceDocuments = this.normalizeReferences(input.referenceDocuments);
+    const testCases = this.normalizeTestCases(input.testCases);
 
     return {
       ...input,
@@ -175,7 +234,9 @@ export class ToolingService {
       additionalContext,
       expectedOutputDescription,
       inputSchema,
-      constraints
+      constraints,
+      referenceDocuments,
+      testCases
     };
   }
 
@@ -287,7 +348,470 @@ export class ToolingService {
     return trimmed;
   }
 
-  private buildScriptPrompt(input: NormalizedGenerateScriptInput): string {
+  private cloneDefaultInputSchema(): ToolScriptInputSchema {
+    return JSON.parse(JSON.stringify(DEFAULT_INPUT_SCHEMA_TEMPLATE));
+  }
+
+  private normalizeReferences(references?: ToolScriptReference[]): NormalizedToolScriptReference[] {
+    if (!Array.isArray(references) || references.length === 0) {
+      return [];
+    }
+
+    const sanitized: NormalizedToolScriptReference[] = [];
+    for (const reference of references) {
+      if (!reference || typeof reference !== 'object') {
+        continue;
+      }
+
+      const snippet = typeof reference.snippet === 'string' ? reference.snippet.trim() : '';
+      if (!snippet) {
+        continue;
+      }
+
+      sanitized.push({
+        id: typeof reference.id === 'string' && reference.id.trim() ? reference.id.trim() : undefined,
+        title: typeof reference.title === 'string' && reference.title.trim() ? reference.title.trim().slice(0, 160) : undefined,
+        snippet: this.truncateText(snippet, MAX_REFERENCE_SNIPPET_LENGTH),
+        weight: typeof reference.weight === 'number' && Number.isFinite(reference.weight) ? reference.weight : 1,
+        useForPrompt: reference.useForPrompt !== false
+      });
+
+      if (sanitized.length >= MAX_REFERENCE_COUNT) {
+        break;
+      }
+    }
+
+    return sanitized.sort((a, b) => b.weight - a.weight);
+  }
+
+  private normalizeTestCases(testCases?: ToolScriptTestCase[]): ToolScriptTestCase[] {
+    if (!Array.isArray(testCases) || testCases.length === 0) {
+      return [];
+    }
+
+    const sanitized: ToolScriptTestCase[] = [];
+
+    for (const testCase of testCases) {
+      if (!testCase || typeof testCase !== 'object') {
+        continue;
+      }
+
+      const assertions = this.normalizeAssertions(testCase.assertions);
+      const inputValue = this.cloneTestCaseInput(testCase.input);
+
+      sanitized.push({
+        name: typeof testCase.name === 'string' && testCase.name.trim() ? testCase.name.trim().slice(0, 120) : undefined,
+        description: typeof testCase.description === 'string' && testCase.description.trim() ? testCase.description.trim().slice(0, 240) : undefined,
+        input: inputValue,
+        ...(assertions.length ? { assertions } : {})
+      });
+
+      if (sanitized.length >= MAX_TEST_CASES) {
+        break;
+      }
+    }
+
+    return sanitized;
+  }
+
+  private normalizeAssertions(assertions?: ToolScriptTestAssertion[]): ToolScriptTestAssertion[] {
+    if (!Array.isArray(assertions) || assertions.length === 0) {
+      return [];
+    }
+
+    const supported: ToolScriptTestAssertion['type'][] = ['contains', 'equals', 'regex'];
+    const sanitized: ToolScriptTestAssertion[] = [];
+
+    for (const assertion of assertions) {
+      if (!assertion || typeof assertion !== 'object') {
+        continue;
+      }
+
+      if (!supported.includes(assertion.type)) {
+        continue;
+      }
+
+      const value = typeof assertion.value === 'string' ? assertion.value.trim() : '';
+      if (!value) {
+        continue;
+      }
+
+      sanitized.push({
+        type: assertion.type,
+        value: value.slice(0, MAX_ASSERTION_VALUE_LENGTH)
+      });
+
+      if (sanitized.length >= MAX_ASSERTIONS_PER_TEST) {
+        break;
+      }
+    }
+
+    return sanitized;
+  }
+
+  private cloneTestCaseInput(input: ToolScriptTestCase['input']): ToolScriptTestCase['input'] {
+    if (input === null || input === undefined) {
+      return {};
+    }
+
+    if (typeof input === 'string' || typeof input === 'number' || typeof input === 'boolean') {
+      return input;
+    }
+
+    if (typeof input === 'object') {
+      try {
+        return JSON.parse(JSON.stringify(input));
+      } catch (_error) {
+        this.raiseValidationError('testCases.input muss JSON-serialisierbar sein', 'invalid_test_case_input');
+      }
+    }
+
+    this.raiseValidationError('testCases.input enthält einen nicht unterstützten Typ', 'invalid_test_case_input_type');
+  }
+
+  private async collectContextSnippets(input: NormalizedGenerateScriptInput): Promise<ToolScriptContextSnippet[]> {
+    const snippets: ToolScriptContextSnippet[] = [];
+    const seen = new Set<string>();
+
+    for (const reference of input.referenceDocuments) {
+      if (!reference.useForPrompt) {
+        continue;
+      }
+
+      const key = reference.snippet.trim().toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+
+      snippets.push({
+        id: reference.id,
+        title: reference.title,
+        snippet: reference.snippet,
+        origin: 'reference',
+        score: reference.weight
+      });
+      seen.add(key);
+
+      if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+        return snippets;
+      }
+    }
+
+    const queryParts = [input.instructions, input.additionalContext, input.expectedOutputDescription]
+      .filter(Boolean)
+      .join('\n\n');
+
+    if (!queryParts.trim()) {
+      return snippets;
+    }
+
+    try {
+      const retrieval = await retrievalService.semanticSearch(queryParts, {
+        limit: MAX_CONTEXT_SNIPPETS * 2,
+        outlineScoping: true,
+        excludeVisual: true
+      });
+
+      for (const result of retrieval.results) {
+        if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+          break;
+        }
+
+        const snippetText = this.extractPayloadSnippet(result.payload, result.highlight);
+        if (!snippetText) {
+          continue;
+        }
+
+        const key = snippetText.trim().toLowerCase();
+        if (seen.has(key)) {
+          continue;
+        }
+
+        const score = typeof result.score === 'number'
+          ? result.score
+          : typeof result.metadata?.mergedScore === 'number'
+            ? result.metadata.mergedScore
+            : undefined;
+
+        snippets.push({
+          id: result.id,
+          title: this.extractPayloadTitle(result.payload),
+          snippet: this.truncateText(snippetText, MAX_RETRIEVAL_SNIPPET_LENGTH),
+          origin: 'retrieval',
+          score,
+          source: result.payload?.message_format || result.payload?.content_type || undefined
+        });
+        seen.add(key);
+      }
+    } catch (error) {
+      console.warn('Context retrieval for generate-script failed:', error);
+    }
+
+    return snippets.slice(0, MAX_CONTEXT_SNIPPETS);
+  }
+
+  private extractPayloadSnippet(payload: any, highlight?: string | null): string | null {
+    const candidates = [
+      highlight,
+      payload?.contextual_content,
+      payload?.text,
+      payload?.content,
+      payload?.snippet
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return null;
+  }
+
+  private extractPayloadTitle(payload: any): string | undefined {
+    const candidates = [payload?.document_name, payload?.title, payload?.source, payload?.message_format];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim().slice(0, 160);
+      }
+    }
+
+    return undefined;
+  }
+
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+
+    return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
+  }
+
+  private async executeTestCases(
+    descriptor: ToolScriptDescriptor,
+    input: NormalizedGenerateScriptInput
+  ): Promise<ToolScriptTestResultSummary | undefined> {
+    if (!input.testCases.length) {
+      return undefined;
+    }
+
+    const results: ToolScriptTestResult[] = [];
+    let allPassed = true;
+
+    for (const testCase of input.testCases) {
+      try {
+        const { result, logs } = await this.runScriptInSandbox(descriptor.code, testCase.input, input.constraints);
+        const outputString = this.stringifyResult(result);
+
+        let passed = true;
+        let failedAssertion: ToolScriptTestAssertion | undefined;
+        let errorMessage: string | undefined;
+
+        if (testCase.assertions && testCase.assertions.length > 0) {
+          for (const assertion of testCase.assertions) {
+            if (!this.evaluateAssertion(outputString, assertion)) {
+              passed = false;
+              failedAssertion = assertion;
+              errorMessage = `Assertion vom Typ "${assertion.type}" fehlgeschlagen.`;
+              break;
+            }
+          }
+        } else {
+          if (!outputString || !outputString.trim()) {
+            passed = false;
+            errorMessage = 'Das Skript hat keinen verwertbaren Output zurückgegeben.';
+          }
+        }
+
+        const testResult: ToolScriptTestResult = {
+          passed,
+          name: testCase.name,
+          description: testCase.description,
+          outputPreview: this.truncateText(outputString, 240)
+        };
+
+        if (!passed) {
+          testResult.error = errorMessage;
+          testResult.failedAssertion = failedAssertion;
+          allPassed = false;
+        }
+
+        if (logs.length) {
+          testResult.outputPreview = `${testResult.outputPreview || ''}\nLog-Auszüge:\n${this.truncateText(logs.join('\n'), 240)}`.trim();
+        }
+
+        results.push(testResult);
+      } catch (error: any) {
+        allPassed = false;
+        results.push({
+          passed: false,
+          name: testCase.name,
+          description: testCase.description,
+          error: error?.message || String(error || 'Unbekannter Fehler bei Tests')
+        });
+      }
+    }
+
+    return {
+      passed: allPassed,
+      results
+    };
+  }
+
+  private evaluateAssertion(output: string, assertion: ToolScriptTestAssertion): boolean {
+    switch (assertion.type) {
+      case 'contains':
+        return output.includes(assertion.value);
+      case 'equals':
+        return output === assertion.value;
+      case 'regex':
+        try {
+          const regex = new RegExp(assertion.value, 'm');
+          return regex.test(output);
+        } catch (_error) {
+          return false;
+        }
+      default:
+        return false;
+    }
+  }
+
+  private async runScriptInSandbox(
+    code: string,
+    input: ToolScriptTestCase['input'],
+    constraints: NormalizedToolScriptConstraints
+  ): Promise<{ result: unknown; logs: string[] }> {
+    const { sandbox, logs } = this.createSandbox(constraints);
+    const scriptSource = `${code}\n;module.exports = module.exports || exports;`;
+    const script = new Script(scriptSource, { filename: 'tool-script.js' });
+    script.runInNewContext(sandbox, { timeout: constraints.maxRuntimeMs });
+
+    const exported = sandbox.module?.exports ?? sandbox.exports;
+    const runFn = typeof exported === 'function' ? exported : exported?.run;
+
+    if (typeof runFn !== 'function') {
+      throw new Error('Das Skript exportiert keine Funktion `run` oder liefert kein ausführbares Modul.');
+    }
+
+    const invocationResult = runFn(input ?? {});
+    const result = invocationResult instanceof Promise ? await invocationResult : invocationResult;
+
+    return { result, logs };
+  }
+
+  private createSandbox(constraints: NormalizedToolScriptConstraints): { sandbox: any; logs: string[] } {
+    const logs: string[] = [];
+    const capture = (level: string) => (...args: any[]) => {
+      const message = args.map((value) => this.stringifyResult(value)).join(' ');
+      logs.push(`[${level}] ${message}`.trim());
+    };
+
+    const sandboxConsole = {
+      log: capture('log'),
+      warn: capture('warn'),
+      error: capture('error'),
+      info: capture('info')
+    };
+
+    const sandboxProcess = this.createRestrictedProcess();
+    const sandboxRequire = this.createRestrictedRequire(constraints);
+
+    const sandbox: any = {
+      module: { exports: {} },
+      exports: {},
+      console: sandboxConsole,
+      require: sandboxRequire,
+      process: sandboxProcess,
+      Buffer,
+      TextEncoder,
+      TextDecoder,
+      setTimeout: undefined,
+      setInterval: undefined,
+      clearTimeout: undefined,
+      clearInterval: undefined,
+      setImmediate: undefined,
+      clearImmediate: undefined
+    };
+
+    sandbox.global = sandbox;
+    return { sandbox, logs };
+  }
+
+  private createRestrictedProcess(): any {
+    const restricted = {
+      env: {},
+      argv: [],
+      cwd: () => '/',
+      exit: () => {
+        throw new Error('process.exit() ist deaktiviert.');
+      },
+      stdout: undefined,
+      stderr: undefined,
+      nextTick: process.nextTick.bind(process)
+    };
+
+    return Object.freeze(restricted);
+  }
+
+  private createRestrictedRequire(constraints: NormalizedToolScriptConstraints) {
+    const allowedFactories = new Map<string, () => unknown>([
+      ['path', () => require('path')],
+      ['url', () => require('url')],
+      ['util', () => require('util')]
+    ]);
+
+    if (constraints.allowFilesystem) {
+      allowedFactories.set('fs', () => require('fs'));
+      allowedFactories.set('fs/promises', () => require('fs/promises'));
+    }
+
+    if (constraints.allowNetwork) {
+      allowedFactories.set('http', () => require('http'));
+      allowedFactories.set('https', () => require('https'));
+    }
+
+    return (moduleName: string) => {
+      if (typeof moduleName !== 'string' || !moduleName.trim()) {
+        throw new Error('require() erwartet einen Modulnamen als String.');
+      }
+
+      const normalized = moduleName.trim();
+
+      if (normalized.startsWith('.') || normalized.includes('..')) {
+        throw new Error(`Relative Importe wie "${normalized}" sind nicht erlaubt.`);
+      }
+
+      const factory = allowedFactories.get(normalized);
+      if (!factory) {
+        throw new Error(`Modul "${normalized}" ist in der Sandbox nicht erlaubt.`);
+      }
+
+      return factory();
+    };
+  }
+
+  private stringifyResult(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (_error) {
+      return String(value);
+    }
+  }
+
+  private buildScriptPrompt(input: NormalizedGenerateScriptInput, contextSnippets: ToolScriptContextSnippet[]): string {
     const parts: string[] = [];
 
     parts.push(
@@ -299,6 +823,16 @@ export class ToolingService {
 
     if (input.additionalContext) {
       parts.push(`Zusätzlicher Kontext:\n${input.additionalContext}`);
+    }
+
+    if (contextSnippets.length) {
+      const lines = contextSnippets.map((snippet, index) => {
+        const title = snippet.title ? ` (${snippet.title})` : '';
+        const origin = snippet.origin === 'reference' ? 'Referenz' : 'Recherche';
+        return `Quelle ${index + 1} – ${origin}${title}:
+${snippet.snippet}`;
+      });
+      parts.push(`Relevante Hintergrundinformationen:\n${lines.join('\n\n')}`);
     }
 
     const schemaText = this.serializeInputSchemaForPrompt(input.inputSchema);
@@ -451,7 +985,6 @@ export class ToolingService {
     }
 
     try {
-      // Validate syntax by compiling the code in isolation
       new Script(code, { filename: 'tool-script.js' });
       validation.syntaxValid = true;
     } catch (error: any) {
@@ -474,9 +1007,52 @@ export class ToolingService {
     const constRegex = new RegExp(`const\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
     const letRegex = new RegExp(`let\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
     const varRegex = new RegExp(`var\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
+    const exportAsyncRegex = new RegExp(`exports\\.${entrypoint}\\s*=\\s*async\\s*\\(`);
+    const moduleAsyncRegex = new RegExp(`module\\.exports\\s*=\\s*async\\s*\\(`);
 
-    if (!functionRegex.test(code) && !constRegex.test(code) && !letRegex.test(code) && !varRegex.test(code)) {
+    if (
+      !functionRegex.test(code)
+      && !constRegex.test(code)
+      && !letRegex.test(code)
+      && !varRegex.test(code)
+      && !exportAsyncRegex.test(code)
+      && !moduleAsyncRegex.test(code)
+    ) {
       this.raiseValidationError('run muss als async Funktion definiert sein', 'missing_async_run');
+    }
+
+    const inputSignatureRegexes = [
+      new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\(\\s*input`),
+      new RegExp(`const\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+      new RegExp(`let\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+      new RegExp(`var\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+      new RegExp(`exports\\.${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+      new RegExp(`module\\.exports\\s*=\\s*async\\s*\\(\\s*input`)
+    ];
+
+    const hasInputParameter = inputSignatureRegexes.some((regex) => regex.test(code));
+    if (!hasInputParameter) {
+      this.raiseValidationError('Die Funktion run muss den Parameter `input` verwenden.', 'missing_input_parameter');
+    }
+
+    const runBlockMatch = code.match(new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\([^)]*\\)\\s*{([\\s\\S]*?)}`));
+    let runBody = runBlockMatch ? runBlockMatch[1] : undefined;
+
+    if (!runBody) {
+      const arrowBlockMatch = code.match(new RegExp(`${entrypoint}\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}`));
+      if (arrowBlockMatch) {
+        runBody = arrowBlockMatch[1];
+      }
+    }
+
+    if (runBody) {
+      if (!/return\b/.test(runBody)) {
+        this.raiseValidationError('Die Funktion run muss eine Antwort mit `return` liefern.', 'missing_return_statement');
+      }
+
+      if (!/\binput\b/.test(runBody)) {
+        validation.warnings.push('Die Funktion run nutzt den Eingabe-Parameter `input` nicht.');
+      }
     }
 
     const deterministicViolations: string[] = [];
@@ -534,7 +1110,10 @@ export class ToolingService {
 
     const forbiddenGlobals: Array<{ pattern: RegExp; label: string }> = [
       { pattern: /process\.exit\s*\(/g, label: 'process.exit()' },
-      { pattern: /process\.kill\s*\(/g, label: 'process.kill()' }
+      { pattern: /process\.kill\s*\(/g, label: 'process.kill()' },
+      { pattern: /process\.argv/gi, label: 'process.argv' },
+      { pattern: /process\.stdin/gi, label: 'process.stdin' },
+      { pattern: /process\.stdout/gi, label: 'process.stdout' }
     ];
 
     for (const check of forbiddenGlobals) {
@@ -552,6 +1131,21 @@ export class ToolingService {
     }
 
     validation.deterministic = constraints.deterministic;
+
+    const warningPatterns: Array<{ pattern: RegExp; message: string }> = [
+      {
+        pattern: /console\.(log|warn|error|info)\s*\(/g,
+        message: 'Skript verwendet console.* – gib Ergebnisse per `return` zurück und reduziere Logging.'
+      }
+    ];
+
+    for (const warning of warningPatterns) {
+      if (warning.pattern.test(code)) {
+        validation.warnings.push(warning.message);
+      }
+    }
+
+    validation.warnings = Array.from(new Set(validation.warnings));
 
     return validation;
   }

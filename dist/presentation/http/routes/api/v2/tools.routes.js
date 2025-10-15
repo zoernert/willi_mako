@@ -7,6 +7,46 @@ const rateLimiter_1 = require("../../../../../middleware/api-v2/rateLimiter");
 const session_service_1 = require("../../../../../services/api-v2/session.service");
 const tooling_service_1 = require("../../../../../services/api-v2/tooling.service");
 const router = (0, express_1.Router)();
+router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)({ capacity: 3, refillTokens: 3, intervalMs: 60000 }), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const body = (req.body || {});
+    const { sessionId, instructions, inputSchema, expectedOutputDescription, additionalContext, constraints } = body;
+    if (!sessionId || typeof sessionId !== 'string') {
+        throw new errorHandler_1.AppError('sessionId ist erforderlich', 400);
+    }
+    if (typeof instructions !== 'string' || !instructions.trim()) {
+        throw new errorHandler_1.AppError('instructions ist erforderlich', 400);
+    }
+    if (inputSchema !== undefined && (typeof inputSchema !== 'object' || Array.isArray(inputSchema))) {
+        throw new errorHandler_1.AppError('inputSchema muss ein Objekt sein', 400);
+    }
+    if (constraints !== undefined && (typeof constraints !== 'object' || Array.isArray(constraints))) {
+        throw new errorHandler_1.AppError('constraints muss ein Objekt sein', 400);
+    }
+    const session = await session_service_1.sessionService.getSession(sessionId);
+    if (session.userId !== req.user.id) {
+        throw new errorHandler_1.AppError('Session wurde nicht gefunden', 404);
+    }
+    const response = await tooling_service_1.toolingService.generateDeterministicScript({
+        userId: req.user.id,
+        sessionId,
+        instructions,
+        inputSchema: inputSchema,
+        expectedOutputDescription,
+        additionalContext,
+        constraints
+    });
+    await session_service_1.sessionService.touchSession(sessionId);
+    const payload = {
+        sessionId,
+        script: response.script,
+        inputSchema: response.inputSchema,
+        expectedOutputDescription: response.expectedOutputDescription
+    };
+    res.status(200).json({
+        success: true,
+        data: payload
+    });
+}));
 router.post('/run-node-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { sessionId, source, timeoutMs, metadata } = req.body || {};
     if (!sessionId || typeof sessionId !== 'string') {

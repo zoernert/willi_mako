@@ -616,6 +616,44 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/tools/generate-script': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: string;
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
         '/tools/run-node-script': {
             post: {
                 summary: string;
@@ -1104,6 +1142,176 @@ export declare const apiV2OpenApiDocument: {
                     };
                     diagnostics: {
                         $ref: string;
+                    };
+                };
+            };
+            ToolScriptValidationReport: {
+                type: string;
+                properties: {
+                    syntaxValid: {
+                        type: string;
+                    };
+                    deterministic: {
+                        type: string;
+                    };
+                    forbiddenApis: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                    warnings: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                };
+            };
+            ToolScriptDescriptor: {
+                type: string;
+                required: string[];
+                properties: {
+                    code: {
+                        type: string;
+                    };
+                    language: {
+                        type: string;
+                        enum: string[];
+                    };
+                    entrypoint: {
+                        type: string;
+                        enum: string[];
+                    };
+                    description: {
+                        type: string;
+                    };
+                    runtime: {
+                        type: string;
+                        enum: string[];
+                    };
+                    deterministic: {
+                        type: string;
+                    };
+                    dependencies: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                    source: {
+                        $ref: string;
+                    };
+                    validation: {
+                        $ref: string;
+                    };
+                    notes: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                };
+            };
+            ToolScriptInputSchemaProperty: {
+                type: string;
+                properties: {
+                    type: {
+                        type: string;
+                    };
+                    description: {
+                        type: string;
+                    };
+                    example: {};
+                };
+            };
+            ToolScriptInputSchema: {
+                type: string;
+                properties: {
+                    type: {
+                        type: string;
+                        enum: string[];
+                    };
+                    description: {
+                        type: string;
+                    };
+                    properties: {
+                        type: string;
+                        additionalProperties: {
+                            $ref: string;
+                        };
+                    };
+                    required: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                };
+            };
+            ToolScriptConstraints: {
+                type: string;
+                properties: {
+                    deterministic: {
+                        type: string;
+                    };
+                    allowNetwork: {
+                        type: string;
+                    };
+                    allowFilesystem: {
+                        type: string;
+                    };
+                    maxRuntimeMs: {
+                        type: string;
+                        minimum: number;
+                        maximum: number;
+                    };
+                };
+            };
+            GenerateToolScriptRequest: {
+                type: string;
+                required: string[];
+                properties: {
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    instructions: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    inputSchema: {
+                        $ref: string;
+                    };
+                    expectedOutputDescription: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    additionalContext: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    constraints: {
+                        $ref: string;
+                    };
+                };
+            };
+            GenerateToolScriptResponse: {
+                type: string;
+                properties: {
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    script: {
+                        $ref: string;
+                    };
+                    inputSchema: {
+                        $ref: string;
+                    };
+                    expectedOutputDescription: {
+                        type: string;
+                        nullable: boolean;
                     };
                 };
             };
