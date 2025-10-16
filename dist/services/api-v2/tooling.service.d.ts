@@ -37,6 +37,8 @@ export declare class ToolingService {
     private createRestrictedRequire;
     private stringifyResult;
     private buildScriptPrompt;
+    private isRecoverableValidationError;
+    private extractCandidateCodeForFeedback;
     private serializeInputSchemaForPrompt;
     private stringifyExample;
     private formatConstraintsForPrompt;

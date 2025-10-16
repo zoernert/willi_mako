@@ -26,6 +26,7 @@ const MAX_ASSERTIONS_PER_TEST = 4;
 const MAX_ASSERTION_VALUE_LENGTH = 240;
 const MAX_CONTEXT_SNIPPETS = 6;
 const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
+const MAX_GENERATION_ATTEMPTS = 3;
 const DEFAULT_INPUT_SCHEMA_TEMPLATE = {
     type: 'object',
     description: 'Standard-Eingabe für deterministische Tools. Der Aufruf erfolgt über `await run(input)`.',
@@ -97,27 +98,74 @@ class ToolingService {
         return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
     async generateDeterministicScript(input) {
+        var _a, _b, _c;
         const normalized = this.normalizeGenerateScriptInput(input);
         const contextSnippets = await this.collectContextSnippets(normalized);
-        const prompt = this.buildScriptPrompt(normalized, contextSnippets);
-        let rawCandidate;
-        try {
-            rawCandidate = await llmProvider_1.default.generateStructuredOutput(prompt, {
-                user_id: normalized.userId,
-                session_id: normalized.sessionId,
-                persona: 'tooling-script-generator'
-            });
+        let descriptor = null;
+        let validationError = null;
+        let lastCandidateCode;
+        let attempts = 0;
+        for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
+            const feedback = validationError
+                ? {
+                    attempt: attempts,
+                    validationErrorMessage: validationError.message,
+                    validationErrorCode: ((_a = validationError === null || validationError === void 0 ? void 0 : validationError.context) === null || _a === void 0 ? void 0 : _a.code) || (validationError === null || validationError === void 0 ? void 0 : validationError.code),
+                    previousCode: lastCandidateCode ? this.truncateText(lastCandidateCode, 2000) : undefined
+                }
+                : undefined;
+            const prompt = this.buildScriptPrompt(normalized, contextSnippets, feedback);
+            let rawCandidate;
+            try {
+                rawCandidate = await llmProvider_1.default.generateStructuredOutput(prompt, {
+                    user_id: normalized.userId,
+                    session_id: normalized.sessionId,
+                    persona: 'tooling-script-generator',
+                    attempt: attempts
+                });
+            }
+            catch (error) {
+                const appError = new errorHandler_1.AppError('Skript konnte nicht generiert werden', 502);
+                appError.context = {
+                    code: 'llm_generation_failed',
+                    attempt: attempts,
+                    details: (error === null || error === void 0 ? void 0 : error.message) || String(error || 'unbekannter Fehler')
+                };
+                throw appError;
+            }
+            try {
+                descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
+                validationError = null;
+                break;
+            }
+            catch (error) {
+                if (this.isRecoverableValidationError(error)) {
+                    validationError = error;
+                    lastCandidateCode = this.extractCandidateCodeForFeedback(rawCandidate);
+                    continue;
+                }
+                throw error;
+            }
         }
-        catch (error) {
-            const appError = new errorHandler_1.AppError('Skript konnte nicht generiert werden', 502);
-            appError.context = {
-                code: 'llm_generation_failed',
-                details: (error === null || error === void 0 ? void 0 : error.message) || String(error || 'unbekannter Fehler')
+        if (!descriptor) {
+            const fallbackError = validationError !== null && validationError !== void 0 ? validationError : new errorHandler_1.AppError('Skript konnte nicht generiert werden', 502);
+            if (!fallbackError.context) {
+                fallbackError.context = {};
+            }
+            fallbackError.context = {
+                ...fallbackError.context,
+                code: (_c = (_b = fallbackError.context) === null || _b === void 0 ? void 0 : _b.code) !== null && _c !== void 0 ? _c : 'script_generation_failed',
+                attempts
             };
-            throw appError;
+            throw fallbackError;
         }
-        const descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
         const testResults = await this.executeTestCases(descriptor, normalized);
+        if (attempts > 1) {
+            descriptor.notes = this.ensureNotesLimit([
+                ...(descriptor.notes || []),
+                `Automatische Korrektur nach ${attempts} Versuchen abgeschlossen.`
+            ]);
+        }
         const response = {
             sessionId: normalized.sessionId,
             script: descriptor,
@@ -616,7 +664,7 @@ class ToolingService {
             return String(value);
         }
     }
-    buildScriptPrompt(input, contextSnippets) {
+    buildScriptPrompt(input, contextSnippets, feedback) {
         const parts = [];
         parts.push('Du bist ein strenger Code-Generator für deterministische Node.js-Tools. '
             + 'Erzeuge ausschließlich CommonJS-Module mit `async function run(input)` und `module.exports = { run };`');
@@ -652,7 +700,47 @@ ${snippet.snippet}`;
             + '"dependencies": string[], "warnings": string[], "notes": string[]}. '
             + 'Code als reiner String ohne ```-Blöcke.');
         parts.push('Nutze deutschsprachige Beschreibungen für description/notes, halte sie knapp (max 240 Zeichen pro Eintrag).');
+        if (feedback) {
+            const feedbackLines = [
+                `Vorheriger Versuch #${feedback.attempt - 1} schlug fehl.`,
+                `Grund: ${feedback.validationErrorMessage}`
+                    + (feedback.validationErrorCode ? ` (Code: ${feedback.validationErrorCode})` : '') + '.',
+                'Behebe diesen Fehler zwingend. Stelle sicher, dass `run` den Eingabeparameter nutzt und mit `return` antwortet.'
+            ];
+            if (feedback.previousCode) {
+                feedbackLines.push('Vorheriger fehlerhafter Code (nur zur Analyse, bitte komplett neu schreiben):');
+                feedbackLines.push(feedback.previousCode);
+            }
+            parts.push(feedbackLines.join('\n'));
+        }
         return parts.join('\n\n');
+    }
+    isRecoverableValidationError(error) {
+        return error instanceof errorHandler_1.AppError && error.statusCode === 422;
+    }
+    extractCandidateCodeForFeedback(candidate) {
+        if (!candidate) {
+            return undefined;
+        }
+        if (typeof candidate === 'string') {
+            const parsed = this.safeParseJson(candidate);
+            if (parsed && typeof parsed === 'object') {
+                return this.extractCandidateCodeForFeedback(parsed);
+            }
+            return candidate;
+        }
+        if (typeof candidate === 'object') {
+            const payload = candidate;
+            const codeRaw = typeof payload.code === 'string'
+                ? payload.code
+                : typeof payload.script === 'string'
+                    ? payload.script
+                    : undefined;
+            if (typeof codeRaw === 'string') {
+                return this.extractCodeBlock(codeRaw);
+            }
+        }
+        return undefined;
     }
     serializeInputSchemaForPrompt(schema) {
         if (!schema) {
