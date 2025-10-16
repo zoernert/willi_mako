@@ -13,7 +13,6 @@ const retrieval_service_1 = require("./retrieval.service");
 const DEFAULT_TIMEOUT_MS = 5000;
 const MIN_TIMEOUT_MS = 500;
 const MAX_TIMEOUT_MS = 60000;
-const MAX_SOURCE_LENGTH = 4000;
 const SOURCE_PREVIEW_LENGTH = 240;
 const MAX_INSTRUCTIONS_LENGTH = 1600;
 const MAX_CONTEXT_LENGTH = 2000;
@@ -698,8 +697,13 @@ ${snippet.snippet}`;
         parts.push('Antwortformat: JSON ohne Markdown, ohne Kommentare. Felder: '
             + '{"code": string, "description": string, "entrypoint": "run", "runtime": "node18", "deterministic": true, '
             + '"dependencies": string[], "warnings": string[], "notes": string[]}. '
+            + '"dependencies": string[], "warnings": string[], "notes": string[], "artifacts"?: Artifact[]}. '
             + 'Code als reiner String ohne ```-Blöcke.');
         parts.push('Nutze deutschsprachige Beschreibungen für description/notes, halte sie knapp (max 240 Zeichen pro Eintrag).');
+        parts.push('Wenn der vollständige Code länger als ca. 3200 Zeichen wird, gib zusätzlich `artifacts` aus:\n'
+            + '- `artifacts` ist ein Array von Objekten { id: string, title?: string, order: number, description?: string, code: string }.\n'
+            + '- Teile den Code in logisch getrennte Module (z. B. Parser, Utilities, Export) und gib nur die Codesegmente aus.\n'
+            + '- `code` im Hauptobjekt darf dann leer sein oder nur den orchestrierenden Export enthalten; der Server setzt die Segmente automatisch zusammen.');
         if (feedback) {
             const feedbackLines = [
                 `Vorheriger Versuch #${feedback.attempt - 1} schlug fehl.`,
@@ -738,6 +742,10 @@ ${snippet.snippet}`;
                     : undefined;
             if (typeof codeRaw === 'string') {
                 return this.extractCodeBlock(codeRaw);
+            }
+            const artifacts = this.normalizeArtifacts(payload.artifacts);
+            if (artifacts && artifacts.length) {
+                return artifacts.map((artifact) => artifact.code).join('\n\n');
             }
         }
         return undefined;
@@ -786,11 +794,15 @@ ${snippet.snippet}`;
         if (!payload || typeof payload !== 'object') {
             this.raiseValidationError('Antwort konnte nicht als JSON interpretiert werden', 'invalid_llm_payload');
         }
+        const artifacts = this.normalizeArtifacts(payload.artifacts);
         const codeRaw = typeof payload.code === 'string' ? payload.code : payload.script;
-        if (typeof codeRaw !== 'string') {
+        let code = typeof codeRaw === 'string' ? this.extractCodeBlock(codeRaw) : undefined;
+        if (!code && (artifacts === null || artifacts === void 0 ? void 0 : artifacts.length)) {
+            code = artifacts.map((artifact) => artifact.code).join('\n\n');
+        }
+        if (!code) {
             this.raiseValidationError('Antwort enthält keinen Code', 'missing_code');
         }
-        const code = this.extractCodeBlock(codeRaw);
         this.assertValidSource(code);
         const description = typeof payload.description === 'string' && payload.description.trim()
             ? payload.description.trim().slice(0, 280)
@@ -801,7 +813,13 @@ ${snippet.snippet}`;
         const entrypoint = entrypointRaw === 'run' ? 'run' : 'run';
         const dependencies = this.sanitizeDependencies(payload.dependencies);
         const candidateWarnings = this.ensureNotesLimit(payload.warnings);
-        const notes = this.ensureNotesLimit(payload.notes);
+        let notes = this.ensureNotesLimit(payload.notes);
+        if (artifacts && artifacts.length) {
+            notes = this.ensureNotesLimit([
+                ...notes,
+                `Skript wurde aus ${artifacts.length} Artefakt(en) zusammengesetzt.`
+            ]);
+        }
         const validation = this.validateGeneratedScript(code, input.constraints, entrypoint);
         validation.warnings = Array.from(new Set([...validation.warnings, ...candidateWarnings]));
         return {
@@ -814,8 +832,75 @@ ${snippet.snippet}`;
             dependencies,
             source: this.buildSourceInfo(code),
             validation,
-            notes
+            notes,
+            ...(artifacts && artifacts.length ? { artifacts } : {})
         };
+    }
+    normalizeArtifacts(raw) {
+        if (!Array.isArray(raw) || raw.length === 0) {
+            return undefined;
+        }
+        const artifacts = [];
+        const usedIds = new Set();
+        raw.forEach((item, index) => {
+            if (item === null || item === undefined) {
+                return;
+            }
+            const candidate = typeof item === 'string'
+                ? { code: item }
+                : typeof item === 'object'
+                    ? item
+                    : null;
+            if (!candidate) {
+                return;
+            }
+            const codeField = typeof candidate.code === 'string'
+                ? candidate.code
+                : typeof item === 'string'
+                    ? item
+                    : undefined;
+            if (typeof codeField !== 'string' || !codeField.trim()) {
+                return;
+            }
+            const code = this.extractCodeBlock(codeField);
+            if (!code.trim()) {
+                return;
+            }
+            const baseId = typeof candidate.id === 'string' && candidate.id.trim()
+                ? candidate.id.trim()
+                : `artifact-${index + 1}`;
+            let normalizedId = baseId;
+            let suffix = 1;
+            while (usedIds.has(normalizedId)) {
+                normalizedId = `${baseId}-${suffix++}`;
+            }
+            usedIds.add(normalizedId);
+            const order = typeof candidate.order === 'number' && Number.isFinite(candidate.order)
+                ? Math.trunc(candidate.order)
+                : index + 1;
+            const title = typeof candidate.title === 'string' && candidate.title.trim()
+                ? candidate.title.trim().slice(0, 160)
+                : undefined;
+            const description = typeof candidate.description === 'string' && candidate.description.trim()
+                ? candidate.description.trim().slice(0, 240)
+                : undefined;
+            const artifact = {
+                id: normalizedId,
+                order,
+                code
+            };
+            if (title) {
+                artifact.title = title;
+            }
+            if (description) {
+                artifact.description = description;
+            }
+            artifacts.push(artifact);
+        });
+        if (!artifacts.length) {
+            return undefined;
+        }
+        return artifacts.sort((a, b) => a.order - b.order);
     }
     extractCodeBlock(raw) {
         const trimmed = raw.trim();
@@ -1005,9 +1090,6 @@ ${snippet.snippet}`;
     assertValidSource(source) {
         if (typeof source !== 'string' || !source.trim()) {
             throw new errorHandler_1.AppError('source darf nicht leer sein', 400);
-        }
-        if (source.length > MAX_SOURCE_LENGTH) {
-            throw new errorHandler_1.AppError(`source überschreitet das Limit von ${MAX_SOURCE_LENGTH} Zeichen`, 400);
         }
     }
     sanitizeMetadata(metadata) {

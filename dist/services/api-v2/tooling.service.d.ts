@@ -43,6 +43,7 @@ export declare class ToolingService {
     private stringifyExample;
     private formatConstraintsForPrompt;
     private normalizeScriptCandidate;
+    private normalizeArtifacts;
     private extractCodeBlock;
     private validateGeneratedScript;
     private sanitizeDependencies;

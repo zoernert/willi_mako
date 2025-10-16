@@ -71,6 +71,7 @@ interface ScriptRepairFeedback {
   validationErrorMessage: string;
   validationErrorCode?: string;
   previousCode?: string;
+  runSnippet?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -177,6 +178,7 @@ export class ToolingService {
     let descriptor: ToolScriptDescriptor | null = null;
     let validationError: AppError | null = null;
     let lastCandidateCode: string | undefined;
+    let lastRunSnippet: string | undefined;
     let attempts = 0;
 
     for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
@@ -185,7 +187,8 @@ export class ToolingService {
             attempt: attempts,
             validationErrorMessage: validationError.message,
             validationErrorCode: (validationError as any)?.context?.code || (validationError as any)?.code,
-            previousCode: lastCandidateCode ? this.truncateText(lastCandidateCode, 2000) : undefined
+            previousCode: lastCandidateCode ? this.truncateText(lastCandidateCode, 4000) : undefined,
+            runSnippet: lastRunSnippet
           }
         : undefined;
 
@@ -217,6 +220,9 @@ export class ToolingService {
         if (this.isRecoverableValidationError(error)) {
           validationError = error as AppError;
           lastCandidateCode = this.extractCandidateCodeForFeedback(rawCandidate);
+          lastRunSnippet = lastCandidateCode
+            ? this.extractRunFunctionSnippet(lastCandidateCode, 'run')
+            : undefined;
           continue;
         }
         throw error;
@@ -945,6 +951,12 @@ ${snippet.snippet}`;
         feedbackLines.push(feedback.previousCode);
       }
 
+      if (feedback.runSnippet) {
+        feedbackLines.push('Ausschnitt der bisherigen `run`-Funktion (unvollständig):');
+        feedbackLines.push(feedback.runSnippet);
+        feedbackLines.push('Stelle sicher, dass diese Funktion am Ende mit einem `return`-Statement antwortet.');
+      }
+
       parts.push(feedbackLines.join('\n'));
     }
     return parts.join('\n\n');
@@ -986,6 +998,98 @@ ${snippet.snippet}`;
     }
 
     return undefined;
+  }
+
+  private extractRunFunctionSnippet(code: string, entrypoint: string): string | undefined {
+    if (!code) {
+      return undefined;
+    }
+
+    const patterns = [
+      new RegExp(`async\s+function\s+${entrypoint}\s*\([^)]*\)\s*{`, 'm'),
+      new RegExp(`function\s+${entrypoint}\s*\([^)]*\)\s*{`, 'm'),
+      new RegExp(`const\s+${entrypoint}\s*=\s*async\s*\([^)]*\)\s*=>\s*{`, 'm'),
+      new RegExp(`let\s+${entrypoint}\s*=\s*async\s*\([^)]*\)\s*=>\s*{`, 'm'),
+      new RegExp(`var\s+${entrypoint}\s*=\s*async\s*\([^)]*\)\s*=>\s*{`, 'm'),
+      new RegExp(`exports\.${entrypoint}\s*=\s*async\s*\([^)]*\)\s*=>\s*{`, 'm'),
+      new RegExp(`exports\.${entrypoint}\s*=\s*async\s*\([^)]*\)\s*{`, 'm')
+    ];
+
+    for (const pattern of patterns) {
+      const match = pattern.exec(code);
+      if (match) {
+        const startIndex = match.index;
+        const braceIndex = code.indexOf('{', startIndex);
+        if (braceIndex === -1) {
+          continue;
+        }
+
+        const endIndex = this.findMatchingBrace(code, braceIndex);
+        const sliceEnd = endIndex !== -1 ? endIndex + 1 : Math.min(code.length, braceIndex + 1200);
+        const snippet = code.slice(startIndex, sliceEnd).trim();
+        if (snippet) {
+          return this.truncateText(snippet, 1200);
+        }
+      }
+    }
+
+    return this.truncateText(code.trim(), 1200);
+  }
+
+  private findMatchingBrace(source: string, openIndex: number): number {
+    let depth = 0;
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    let inTemplate = false;
+    let escaped = false;
+
+    for (let i = openIndex; i < source.length; i++) {
+      const char = source[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '`' && !inSingleQuote && !inDoubleQuote) {
+        inTemplate = !inTemplate;
+        continue;
+      }
+
+      if (inTemplate) {
+        continue;
+      }
+
+      if (char === "'" && !inDoubleQuote) {
+        inSingleQuote = !inSingleQuote;
+        continue;
+      }
+
+      if (char === '"' && !inSingleQuote) {
+        inDoubleQuote = !inDoubleQuote;
+        continue;
+      }
+
+      if (inSingleQuote || inDoubleQuote) {
+        continue;
+      }
+
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          return i;
+        }
+      }
+    }
+
+    return -1;
   }
 
   private serializeInputSchemaForPrompt(schema?: ToolScriptInputSchema): string | undefined {
