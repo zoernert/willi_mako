@@ -93,6 +93,14 @@ export interface ToolScriptValidationReport {
   warnings: string[];
 }
 
+export interface ToolScriptArtifact {
+  id: string;
+  title?: string;
+  order: number;
+  description?: string;
+  code: string;
+}
+
 export interface ToolScriptDescriptor {
   code: string;
   language: 'javascript';
@@ -104,6 +112,7 @@ export interface ToolScriptDescriptor {
   source: ToolJobSourceInfo;
   validation: ToolScriptValidationReport;
   notes: string[];
+  artifacts?: ToolScriptArtifact[];
 }
 
 export interface GenerateToolScriptResponse {

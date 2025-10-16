@@ -10,6 +10,7 @@ import {
   ToolJobDiagnostics,
   ToolJobResult,
   ToolJobSourceInfo,
+  ToolScriptArtifact,
   ToolScriptConstraints,
   ToolScriptContextSnippet,
   ToolScriptDescriptor,
@@ -75,7 +76,6 @@ interface ScriptRepairFeedback {
 const DEFAULT_TIMEOUT_MS = 5000;
 const MIN_TIMEOUT_MS = 500;
 const MAX_TIMEOUT_MS = 60000;
-const MAX_SOURCE_LENGTH = 4000;
 const SOURCE_PREVIEW_LENGTH = 240;
 const MAX_INSTRUCTIONS_LENGTH = 1600;
 const MAX_CONTEXT_LENGTH = 2000;
@@ -919,10 +919,18 @@ ${snippet.snippet}`;
       'Antwortformat: JSON ohne Markdown, ohne Kommentare. Felder: '
       + '{"code": string, "description": string, "entrypoint": "run", "runtime": "node18", "deterministic": true, '
       + '"dependencies": string[], "warnings": string[], "notes": string[]}. '
+      + '"dependencies": string[], "warnings": string[], "notes": string[], "artifacts"?: Artifact[]}. '
       + 'Code als reiner String ohne ```-Blöcke.'
     );
 
     parts.push('Nutze deutschsprachige Beschreibungen für description/notes, halte sie knapp (max 240 Zeichen pro Eintrag).');
+
+    parts.push(
+      'Wenn der vollständige Code länger als ca. 3200 Zeichen wird, gib zusätzlich `artifacts` aus:\n'
+      + '- `artifacts` ist ein Array von Objekten { id: string, title?: string, order: number, description?: string, code: string }.\n'
+      + '- Teile den Code in logisch getrennte Module (z. B. Parser, Utilities, Export) und gib nur die Codesegmente aus.\n'
+      + '- `code` im Hauptobjekt darf dann leer sein oder nur den orchestrierenden Export enthalten; der Server setzt die Segmente automatisch zusammen.'
+    );
 
     if (feedback) {
       const feedbackLines = [
@@ -969,6 +977,11 @@ ${snippet.snippet}`;
 
       if (typeof codeRaw === 'string') {
         return this.extractCodeBlock(codeRaw);
+      }
+
+      const artifacts = this.normalizeArtifacts(payload.artifacts);
+      if (artifacts && artifacts.length) {
+        return artifacts.map((artifact) => artifact.code).join('\n\n');
       }
     }
 
@@ -1028,12 +1041,18 @@ ${snippet.snippet}`;
       this.raiseValidationError('Antwort konnte nicht als JSON interpretiert werden', 'invalid_llm_payload');
     }
 
+    const artifacts = this.normalizeArtifacts((payload as any).artifacts);
     const codeRaw = typeof (payload as any).code === 'string' ? (payload as any).code : (payload as any).script;
-    if (typeof codeRaw !== 'string') {
+    let code = typeof codeRaw === 'string' ? this.extractCodeBlock(codeRaw) : undefined;
+
+    if (!code && artifacts?.length) {
+      code = artifacts.map((artifact) => artifact.code).join('\n\n');
+    }
+
+    if (!code) {
       this.raiseValidationError('Antwort enthält keinen Code', 'missing_code');
     }
 
-    const code = this.extractCodeBlock(codeRaw);
     this.assertValidSource(code);
 
     const description = typeof (payload as any).description === 'string' && (payload as any).description.trim()
@@ -1047,7 +1066,14 @@ ${snippet.snippet}`;
 
     const dependencies = this.sanitizeDependencies((payload as any).dependencies);
     const candidateWarnings = this.ensureNotesLimit((payload as any).warnings);
-    const notes = this.ensureNotesLimit((payload as any).notes);
+    let notes = this.ensureNotesLimit((payload as any).notes);
+
+    if (artifacts && artifacts.length) {
+      notes = this.ensureNotesLimit([
+        ...notes,
+        `Skript wurde aus ${artifacts.length} Artefakt(en) zusammengesetzt.`
+      ]);
+    }
 
     const validation = this.validateGeneratedScript(code, input.constraints, entrypoint);
     validation.warnings = Array.from(new Set([...validation.warnings, ...candidateWarnings]));
@@ -1062,8 +1088,95 @@ ${snippet.snippet}`;
       dependencies,
       source: this.buildSourceInfo(code),
       validation,
-      notes
+      notes,
+      ...(artifacts && artifacts.length ? { artifacts } : {})
     };
+  }
+
+  private normalizeArtifacts(raw: unknown): ToolScriptArtifact[] | undefined {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return undefined;
+    }
+
+    const artifacts: ToolScriptArtifact[] = [];
+    const usedIds = new Set<string>();
+
+    raw.forEach((item, index) => {
+      if (item === null || item === undefined) {
+        return;
+      }
+
+      const candidate = typeof item === 'string'
+        ? { code: item }
+        : typeof item === 'object'
+          ? (item as Record<string, unknown>)
+          : null;
+
+      if (!candidate) {
+        return;
+      }
+
+      const codeField = typeof candidate.code === 'string'
+        ? candidate.code
+        : typeof item === 'string'
+          ? item
+          : undefined;
+
+      if (typeof codeField !== 'string' || !codeField.trim()) {
+        return;
+      }
+
+      const code = this.extractCodeBlock(codeField);
+      if (!code.trim()) {
+        return;
+      }
+
+      const baseId = typeof candidate.id === 'string' && candidate.id.trim()
+        ? candidate.id.trim()
+        : `artifact-${index + 1}`;
+
+      let normalizedId = baseId;
+      let suffix = 1;
+      while (usedIds.has(normalizedId)) {
+        normalizedId = `${baseId}-${suffix++}`;
+      }
+      usedIds.add(normalizedId);
+
+      const order =
+        typeof candidate.order === 'number' && Number.isFinite(candidate.order)
+          ? Math.trunc(candidate.order)
+          : index + 1;
+
+      const title = typeof candidate.title === 'string' && candidate.title.trim()
+        ? candidate.title.trim().slice(0, 160)
+        : undefined;
+
+      const description = typeof candidate.description === 'string' && candidate.description.trim()
+        ? candidate.description.trim().slice(0, 240)
+        : undefined;
+
+      const artifact: ToolScriptArtifact = {
+        id: normalizedId,
+        order,
+        code
+      };
+
+      if (title) {
+        artifact.title = title;
+      }
+
+      if (description) {
+        artifact.description = description;
+      }
+
+      artifacts.push(artifact);
+    });
+
+    if (!artifacts.length) {
+      return undefined;
+    }
+
+    return artifacts.sort((a, b) => a.order - b.order);
   }
 
   private extractCodeBlock(raw: string): string {
@@ -1305,10 +1418,6 @@ ${snippet.snippet}`;
   private assertValidSource(source: string): void {
     if (typeof source !== 'string' || !source.trim()) {
       throw new AppError('source darf nicht leer sein', 400);
-    }
-
-    if (source.length > MAX_SOURCE_LENGTH) {
-      throw new AppError(`source überschreitet das Limit von ${MAX_SOURCE_LENGTH} Zeichen`, 400);
     }
   }
 
