@@ -9,6 +9,7 @@ const buffer_1 = require("buffer");
 const node_vm_1 = require("node:vm");
 const errorHandler_1 = require("../../middleware/errorHandler");
 const llmProvider_1 = __importDefault(require("../llmProvider"));
+const retrieval_service_1 = require("./retrieval.service");
 const DEFAULT_TIMEOUT_MS = 5000;
 const MIN_TIMEOUT_MS = 500;
 const MAX_TIMEOUT_MS = 60000;
@@ -18,6 +19,32 @@ const MAX_INSTRUCTIONS_LENGTH = 1600;
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_EXPECTED_OUTPUT_LENGTH = 1200;
 const MAX_NOTES = 6;
+const MAX_REFERENCE_COUNT = 8;
+const MAX_REFERENCE_SNIPPET_LENGTH = 2000;
+const MAX_TEST_CASES = 3;
+const MAX_ASSERTIONS_PER_TEST = 4;
+const MAX_ASSERTION_VALUE_LENGTH = 240;
+const MAX_CONTEXT_SNIPPETS = 6;
+const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
+const DEFAULT_INPUT_SCHEMA_TEMPLATE = {
+    type: 'object',
+    description: 'Standard-Eingabe für deterministische Tools. Der Aufruf erfolgt über `await run(input)`.',
+    properties: {
+        payload: {
+            type: 'string',
+            description: 'Primärer Nachrichtentext oder Dokumentinhalt (z. B. EDIFACT, CSV, JSON).'
+        },
+        options: {
+            type: 'object',
+            description: 'Optionale Einstellungen oder Parameter für das Tool.'
+        },
+        format: {
+            type: 'string',
+            description: 'Optionaler Hinweis zum Eingabeformat, z. B. "mscons", "utilmd" oder "csv".'
+        }
+    },
+    required: ['payload']
+};
 class ToolingService {
     constructor() {
         this.jobs = new Map();
@@ -71,7 +98,8 @@ class ToolingService {
     }
     async generateDeterministicScript(input) {
         const normalized = this.normalizeGenerateScriptInput(input);
-        const prompt = this.buildScriptPrompt(normalized);
+        const contextSnippets = await this.collectContextSnippets(normalized);
+        const prompt = this.buildScriptPrompt(normalized, contextSnippets);
         let rawCandidate;
         try {
             rawCandidate = await llmProvider_1.default.generateStructuredOutput(prompt, {
@@ -89,12 +117,20 @@ class ToolingService {
             throw appError;
         }
         const descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
-        return {
+        const testResults = await this.executeTestCases(descriptor, normalized);
+        const response = {
             sessionId: normalized.sessionId,
             script: descriptor,
             inputSchema: normalized.inputSchema,
             expectedOutputDescription: normalized.expectedOutputDescription
         };
+        if (contextSnippets.length) {
+            response.contextSnippets = contextSnippets;
+        }
+        if (testResults) {
+            response.testResults = testResults;
+        }
+        return response;
     }
     normalizeGenerateScriptInput(input) {
         if (!input || typeof input !== 'object') {
@@ -106,15 +142,20 @@ class ToolingService {
         const instructions = this.normalizeRequiredText(input.instructions, 'instructions', MAX_INSTRUCTIONS_LENGTH);
         const additionalContext = this.normalizeOptionalText(input.additionalContext, 'additionalContext', MAX_CONTEXT_LENGTH);
         const expectedOutputDescription = this.normalizeOptionalText(input.expectedOutputDescription, 'expectedOutputDescription', MAX_EXPECTED_OUTPUT_LENGTH);
-        const inputSchema = input.inputSchema ? this.normalizeInputSchema(input.inputSchema) : undefined;
+        const schemaSource = input.inputSchema ? input.inputSchema : this.cloneDefaultInputSchema();
+        const inputSchema = this.normalizeInputSchema(schemaSource);
         const constraints = this.normalizeConstraints(input.constraints);
+        const referenceDocuments = this.normalizeReferences(input.referenceDocuments);
+        const testCases = this.normalizeTestCases(input.testCases);
         return {
             ...input,
             instructions,
             additionalContext,
             expectedOutputDescription,
             inputSchema,
-            constraints
+            constraints,
+            referenceDocuments,
+            testCases
         };
     }
     normalizeConstraints(constraints) {
@@ -194,13 +235,403 @@ class ToolingService {
         }
         return trimmed;
     }
-    buildScriptPrompt(input) {
+    cloneDefaultInputSchema() {
+        return JSON.parse(JSON.stringify(DEFAULT_INPUT_SCHEMA_TEMPLATE));
+    }
+    normalizeReferences(references) {
+        if (!Array.isArray(references) || references.length === 0) {
+            return [];
+        }
+        const sanitized = [];
+        for (const reference of references) {
+            if (!reference || typeof reference !== 'object') {
+                continue;
+            }
+            const snippet = typeof reference.snippet === 'string' ? reference.snippet.trim() : '';
+            if (!snippet) {
+                continue;
+            }
+            sanitized.push({
+                id: typeof reference.id === 'string' && reference.id.trim() ? reference.id.trim() : undefined,
+                title: typeof reference.title === 'string' && reference.title.trim() ? reference.title.trim().slice(0, 160) : undefined,
+                snippet: this.truncateText(snippet, MAX_REFERENCE_SNIPPET_LENGTH),
+                weight: typeof reference.weight === 'number' && Number.isFinite(reference.weight) ? reference.weight : 1,
+                useForPrompt: reference.useForPrompt !== false
+            });
+            if (sanitized.length >= MAX_REFERENCE_COUNT) {
+                break;
+            }
+        }
+        return sanitized.sort((a, b) => b.weight - a.weight);
+    }
+    normalizeTestCases(testCases) {
+        if (!Array.isArray(testCases) || testCases.length === 0) {
+            return [];
+        }
+        const sanitized = [];
+        for (const testCase of testCases) {
+            if (!testCase || typeof testCase !== 'object') {
+                continue;
+            }
+            const assertions = this.normalizeAssertions(testCase.assertions);
+            const inputValue = this.cloneTestCaseInput(testCase.input);
+            sanitized.push({
+                name: typeof testCase.name === 'string' && testCase.name.trim() ? testCase.name.trim().slice(0, 120) : undefined,
+                description: typeof testCase.description === 'string' && testCase.description.trim() ? testCase.description.trim().slice(0, 240) : undefined,
+                input: inputValue,
+                ...(assertions.length ? { assertions } : {})
+            });
+            if (sanitized.length >= MAX_TEST_CASES) {
+                break;
+            }
+        }
+        return sanitized;
+    }
+    normalizeAssertions(assertions) {
+        if (!Array.isArray(assertions) || assertions.length === 0) {
+            return [];
+        }
+        const supported = ['contains', 'equals', 'regex'];
+        const sanitized = [];
+        for (const assertion of assertions) {
+            if (!assertion || typeof assertion !== 'object') {
+                continue;
+            }
+            if (!supported.includes(assertion.type)) {
+                continue;
+            }
+            const value = typeof assertion.value === 'string' ? assertion.value.trim() : '';
+            if (!value) {
+                continue;
+            }
+            sanitized.push({
+                type: assertion.type,
+                value: value.slice(0, MAX_ASSERTION_VALUE_LENGTH)
+            });
+            if (sanitized.length >= MAX_ASSERTIONS_PER_TEST) {
+                break;
+            }
+        }
+        return sanitized;
+    }
+    cloneTestCaseInput(input) {
+        if (input === null || input === undefined) {
+            return {};
+        }
+        if (typeof input === 'string' || typeof input === 'number' || typeof input === 'boolean') {
+            return input;
+        }
+        if (typeof input === 'object') {
+            try {
+                return JSON.parse(JSON.stringify(input));
+            }
+            catch (_error) {
+                this.raiseValidationError('testCases.input muss JSON-serialisierbar sein', 'invalid_test_case_input');
+            }
+        }
+        this.raiseValidationError('testCases.input enthält einen nicht unterstützten Typ', 'invalid_test_case_input_type');
+    }
+    async collectContextSnippets(input) {
+        var _a, _b, _c;
+        const snippets = [];
+        const seen = new Set();
+        for (const reference of input.referenceDocuments) {
+            if (!reference.useForPrompt) {
+                continue;
+            }
+            const key = reference.snippet.trim().toLowerCase();
+            if (seen.has(key)) {
+                continue;
+            }
+            snippets.push({
+                id: reference.id,
+                title: reference.title,
+                snippet: reference.snippet,
+                origin: 'reference',
+                score: reference.weight
+            });
+            seen.add(key);
+            if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+                return snippets;
+            }
+        }
+        const queryParts = [input.instructions, input.additionalContext, input.expectedOutputDescription]
+            .filter(Boolean)
+            .join('\n\n');
+        if (!queryParts.trim()) {
+            return snippets;
+        }
+        try {
+            const retrieval = await retrieval_service_1.retrievalService.semanticSearch(queryParts, {
+                limit: MAX_CONTEXT_SNIPPETS * 2,
+                outlineScoping: true,
+                excludeVisual: true
+            });
+            for (const result of retrieval.results) {
+                if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+                    break;
+                }
+                const snippetText = this.extractPayloadSnippet(result.payload, result.highlight);
+                if (!snippetText) {
+                    continue;
+                }
+                const key = snippetText.trim().toLowerCase();
+                if (seen.has(key)) {
+                    continue;
+                }
+                const score = typeof result.score === 'number'
+                    ? result.score
+                    : typeof ((_a = result.metadata) === null || _a === void 0 ? void 0 : _a.mergedScore) === 'number'
+                        ? result.metadata.mergedScore
+                        : undefined;
+                snippets.push({
+                    id: result.id,
+                    title: this.extractPayloadTitle(result.payload),
+                    snippet: this.truncateText(snippetText, MAX_RETRIEVAL_SNIPPET_LENGTH),
+                    origin: 'retrieval',
+                    score,
+                    source: ((_b = result.payload) === null || _b === void 0 ? void 0 : _b.message_format) || ((_c = result.payload) === null || _c === void 0 ? void 0 : _c.content_type) || undefined
+                });
+                seen.add(key);
+            }
+        }
+        catch (error) {
+            console.warn('Context retrieval for generate-script failed:', error);
+        }
+        return snippets.slice(0, MAX_CONTEXT_SNIPPETS);
+    }
+    extractPayloadSnippet(payload, highlight) {
+        const candidates = [
+            highlight,
+            payload === null || payload === void 0 ? void 0 : payload.contextual_content,
+            payload === null || payload === void 0 ? void 0 : payload.text,
+            payload === null || payload === void 0 ? void 0 : payload.content,
+            payload === null || payload === void 0 ? void 0 : payload.snippet
+        ];
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.trim();
+            }
+        }
+        return null;
+    }
+    extractPayloadTitle(payload) {
+        const candidates = [payload === null || payload === void 0 ? void 0 : payload.document_name, payload === null || payload === void 0 ? void 0 : payload.title, payload === null || payload === void 0 ? void 0 : payload.source, payload === null || payload === void 0 ? void 0 : payload.message_format];
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                return candidate.trim().slice(0, 160);
+            }
+        }
+        return undefined;
+    }
+    truncateText(text, maxLength) {
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
+    }
+    async executeTestCases(descriptor, input) {
+        if (!input.testCases.length) {
+            return undefined;
+        }
+        const results = [];
+        let allPassed = true;
+        for (const testCase of input.testCases) {
+            try {
+                const { result, logs } = await this.runScriptInSandbox(descriptor.code, testCase.input, input.constraints);
+                const outputString = this.stringifyResult(result);
+                let passed = true;
+                let failedAssertion;
+                let errorMessage;
+                if (testCase.assertions && testCase.assertions.length > 0) {
+                    for (const assertion of testCase.assertions) {
+                        if (!this.evaluateAssertion(outputString, assertion)) {
+                            passed = false;
+                            failedAssertion = assertion;
+                            errorMessage = `Assertion vom Typ "${assertion.type}" fehlgeschlagen.`;
+                            break;
+                        }
+                    }
+                }
+                else {
+                    if (!outputString || !outputString.trim()) {
+                        passed = false;
+                        errorMessage = 'Das Skript hat keinen verwertbaren Output zurückgegeben.';
+                    }
+                }
+                const testResult = {
+                    passed,
+                    name: testCase.name,
+                    description: testCase.description,
+                    outputPreview: this.truncateText(outputString, 240)
+                };
+                if (!passed) {
+                    testResult.error = errorMessage;
+                    testResult.failedAssertion = failedAssertion;
+                    allPassed = false;
+                }
+                if (logs.length) {
+                    testResult.outputPreview = `${testResult.outputPreview || ''}\nLog-Auszüge:\n${this.truncateText(logs.join('\n'), 240)}`.trim();
+                }
+                results.push(testResult);
+            }
+            catch (error) {
+                allPassed = false;
+                results.push({
+                    passed: false,
+                    name: testCase.name,
+                    description: testCase.description,
+                    error: (error === null || error === void 0 ? void 0 : error.message) || String(error || 'Unbekannter Fehler bei Tests')
+                });
+            }
+        }
+        return {
+            passed: allPassed,
+            results
+        };
+    }
+    evaluateAssertion(output, assertion) {
+        switch (assertion.type) {
+            case 'contains':
+                return output.includes(assertion.value);
+            case 'equals':
+                return output === assertion.value;
+            case 'regex':
+                try {
+                    const regex = new RegExp(assertion.value, 'm');
+                    return regex.test(output);
+                }
+                catch (_error) {
+                    return false;
+                }
+            default:
+                return false;
+        }
+    }
+    async runScriptInSandbox(code, input, constraints) {
+        var _a, _b;
+        const { sandbox, logs } = this.createSandbox(constraints);
+        const scriptSource = `${code}\n;module.exports = module.exports || exports;`;
+        const script = new node_vm_1.Script(scriptSource, { filename: 'tool-script.js' });
+        script.runInNewContext(sandbox, { timeout: constraints.maxRuntimeMs });
+        const exported = (_b = (_a = sandbox.module) === null || _a === void 0 ? void 0 : _a.exports) !== null && _b !== void 0 ? _b : sandbox.exports;
+        const runFn = typeof exported === 'function' ? exported : exported === null || exported === void 0 ? void 0 : exported.run;
+        if (typeof runFn !== 'function') {
+            throw new Error('Das Skript exportiert keine Funktion `run` oder liefert kein ausführbares Modul.');
+        }
+        const invocationResult = runFn(input !== null && input !== void 0 ? input : {});
+        const result = invocationResult instanceof Promise ? await invocationResult : invocationResult;
+        return { result, logs };
+    }
+    createSandbox(constraints) {
+        const logs = [];
+        const capture = (level) => (...args) => {
+            const message = args.map((value) => this.stringifyResult(value)).join(' ');
+            logs.push(`[${level}] ${message}`.trim());
+        };
+        const sandboxConsole = {
+            log: capture('log'),
+            warn: capture('warn'),
+            error: capture('error'),
+            info: capture('info')
+        };
+        const sandboxProcess = this.createRestrictedProcess();
+        const sandboxRequire = this.createRestrictedRequire(constraints);
+        const sandbox = {
+            module: { exports: {} },
+            exports: {},
+            console: sandboxConsole,
+            require: sandboxRequire,
+            process: sandboxProcess,
+            Buffer: buffer_1.Buffer,
+            TextEncoder,
+            TextDecoder,
+            setTimeout: undefined,
+            setInterval: undefined,
+            clearTimeout: undefined,
+            clearInterval: undefined,
+            setImmediate: undefined,
+            clearImmediate: undefined
+        };
+        sandbox.global = sandbox;
+        return { sandbox, logs };
+    }
+    createRestrictedProcess() {
+        const restricted = {
+            env: {},
+            argv: [],
+            cwd: () => '/',
+            exit: () => {
+                throw new Error('process.exit() ist deaktiviert.');
+            },
+            stdout: undefined,
+            stderr: undefined,
+            nextTick: process.nextTick.bind(process)
+        };
+        return Object.freeze(restricted);
+    }
+    createRestrictedRequire(constraints) {
+        const allowedFactories = new Map([
+            ['path', () => require('path')],
+            ['url', () => require('url')],
+            ['util', () => require('util')]
+        ]);
+        if (constraints.allowFilesystem) {
+            allowedFactories.set('fs', () => require('fs'));
+            allowedFactories.set('fs/promises', () => require('fs/promises'));
+        }
+        if (constraints.allowNetwork) {
+            allowedFactories.set('http', () => require('http'));
+            allowedFactories.set('https', () => require('https'));
+        }
+        return (moduleName) => {
+            if (typeof moduleName !== 'string' || !moduleName.trim()) {
+                throw new Error('require() erwartet einen Modulnamen als String.');
+            }
+            const normalized = moduleName.trim();
+            if (normalized.startsWith('.') || normalized.includes('..')) {
+                throw new Error(`Relative Importe wie "${normalized}" sind nicht erlaubt.`);
+            }
+            const factory = allowedFactories.get(normalized);
+            if (!factory) {
+                throw new Error(`Modul "${normalized}" ist in der Sandbox nicht erlaubt.`);
+            }
+            return factory();
+        };
+    }
+    stringifyResult(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        if (typeof value === 'string') {
+            return value;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+        try {
+            return JSON.stringify(value, null, 2);
+        }
+        catch (_error) {
+            return String(value);
+        }
+    }
+    buildScriptPrompt(input, contextSnippets) {
         const parts = [];
         parts.push('Du bist ein strenger Code-Generator für deterministische Node.js-Tools. '
             + 'Erzeuge ausschließlich CommonJS-Module mit `async function run(input)` und `module.exports = { run };`');
         parts.push(`Aufgabe:\n${input.instructions}`);
         if (input.additionalContext) {
             parts.push(`Zusätzlicher Kontext:\n${input.additionalContext}`);
+        }
+        if (contextSnippets.length) {
+            const lines = contextSnippets.map((snippet, index) => {
+                const title = snippet.title ? ` (${snippet.title})` : '';
+                const origin = snippet.origin === 'reference' ? 'Referenz' : 'Recherche';
+                return `Quelle ${index + 1} – ${origin}${title}:
+${snippet.snippet}`;
+            });
+            parts.push(`Relevante Hintergrundinformationen:\n${lines.join('\n\n')}`);
         }
         const schemaText = this.serializeInputSchemaForPrompt(input.inputSchema);
         if (schemaText) {
@@ -317,7 +748,6 @@ class ToolingService {
             this.raiseValidationError('Generierter Code ist leer', 'empty_code');
         }
         try {
-            // Validate syntax by compiling the code in isolation
             new node_vm_1.Script(code, { filename: 'tool-script.js' });
             validation.syntaxValid = true;
         }
@@ -334,8 +764,43 @@ class ToolingService {
         const constRegex = new RegExp(`const\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
         const letRegex = new RegExp(`let\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
         const varRegex = new RegExp(`var\\s+${entrypoint}\\s*=\\s*async\\s*\\(`);
-        if (!functionRegex.test(code) && !constRegex.test(code) && !letRegex.test(code) && !varRegex.test(code)) {
+        const exportAsyncRegex = new RegExp(`exports\\.${entrypoint}\\s*=\\s*async\\s*\\(`);
+        const moduleAsyncRegex = new RegExp(`module\\.exports\\s*=\\s*async\\s*\\(`);
+        if (!functionRegex.test(code)
+            && !constRegex.test(code)
+            && !letRegex.test(code)
+            && !varRegex.test(code)
+            && !exportAsyncRegex.test(code)
+            && !moduleAsyncRegex.test(code)) {
             this.raiseValidationError('run muss als async Funktion definiert sein', 'missing_async_run');
+        }
+        const inputSignatureRegexes = [
+            new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\(\\s*input`),
+            new RegExp(`const\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+            new RegExp(`let\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+            new RegExp(`var\\s+${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+            new RegExp(`exports\\.${entrypoint}\\s*=\\s*async\\s*\\(\\s*input`),
+            new RegExp(`module\\.exports\\s*=\\s*async\\s*\\(\\s*input`)
+        ];
+        const hasInputParameter = inputSignatureRegexes.some((regex) => regex.test(code));
+        if (!hasInputParameter) {
+            this.raiseValidationError('Die Funktion run muss den Parameter `input` verwenden.', 'missing_input_parameter');
+        }
+        const runBlockMatch = code.match(new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\([^)]*\\)\\s*{([\\s\\S]*?)}`));
+        let runBody = runBlockMatch ? runBlockMatch[1] : undefined;
+        if (!runBody) {
+            const arrowBlockMatch = code.match(new RegExp(`${entrypoint}\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}`));
+            if (arrowBlockMatch) {
+                runBody = arrowBlockMatch[1];
+            }
+        }
+        if (runBody) {
+            if (!/return\b/.test(runBody)) {
+                this.raiseValidationError('Die Funktion run muss eine Antwort mit `return` liefern.', 'missing_return_statement');
+            }
+            if (!/\binput\b/.test(runBody)) {
+                validation.warnings.push('Die Funktion run nutzt den Eingabe-Parameter `input` nicht.');
+            }
         }
         const deterministicViolations = [];
         if (constraints.deterministic) {
@@ -385,7 +850,10 @@ class ToolingService {
         }
         const forbiddenGlobals = [
             { pattern: /process\.exit\s*\(/g, label: 'process.exit()' },
-            { pattern: /process\.kill\s*\(/g, label: 'process.kill()' }
+            { pattern: /process\.kill\s*\(/g, label: 'process.kill()' },
+            { pattern: /process\.argv/gi, label: 'process.argv' },
+            { pattern: /process\.stdin/gi, label: 'process.stdin' },
+            { pattern: /process\.stdout/gi, label: 'process.stdout' }
         ];
         for (const check of forbiddenGlobals) {
             if (check.pattern.test(code)) {
@@ -396,6 +864,18 @@ class ToolingService {
             this.raiseValidationError('Der Code verwendet verbotene APIs', 'forbidden_apis', { forbiddenApis: Array.from(new Set(validation.forbiddenApis)) });
         }
         validation.deterministic = constraints.deterministic;
+        const warningPatterns = [
+            {
+                pattern: /console\.(log|warn|error|info)\s*\(/g,
+                message: 'Skript verwendet console.* – gib Ergebnisse per `return` zurück und reduziere Logging.'
+            }
+        ];
+        for (const warning of warningPatterns) {
+            if (warning.pattern.test(code)) {
+                validation.warnings.push(warning.message);
+            }
+        }
+        validation.warnings = Array.from(new Set(validation.warnings));
         return validation;
     }
     sanitizeDependencies(dependencies) {

@@ -14,21 +14,31 @@ exports.getLatestFAQs = getLatestFAQs;
 exports.getDistinctTags = getDistinctTags;
 exports.getAllFAQs = getAllFAQs;
 const database_1 = __importDefault(require("./database"));
-const qdrant_1 = require("../services/qdrant");
-// Defensive Wrapper: Falls der Import durch Next.js Tree Shaking / Exclude scheitert
-let QdrantServiceRef = qdrant_1.QdrantService;
-try {
-    // Prüfe ob es eine statische Methode ist
-    if (!QdrantServiceRef || typeof QdrantServiceRef.searchByText !== 'function') {
-        // Versuch eines require (CommonJS) zur Laufzeit
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const mod = require('../services/qdrant');
-        QdrantServiceRef = mod.QdrantService || QdrantServiceRef;
+const loadErrors = [];
+const dynamicRequire = (modulePath) => {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        const nativeRequire = eval('require');
+        const resolvedModule = nativeRequire(modulePath);
+        return ((resolvedModule === null || resolvedModule === void 0 ? void 0 : resolvedModule.QdrantService) || resolvedModule);
+    }
+    catch (error) {
+        loadErrors.push(error);
+        return null;
+    }
+};
+const candidateModulePaths = ['../services/qdrant'];
+let QdrantServiceRef = null;
+for (const pathCandidate of candidateModulePaths) {
+    const candidateService = dynamicRequire(pathCandidate);
+    if (candidateService && typeof candidateService.searchByText === 'function') {
+        QdrantServiceRef = candidateService;
+        break;
     }
 }
-catch (e) {
-    console.warn('QdrantService dynamic import failed, will use DB fallback only:', (e === null || e === void 0 ? void 0 : e.message) || e);
-    QdrantServiceRef = null;
+if (!QdrantServiceRef) {
+    const lastError = loadErrors.at(-1);
+    console.warn('QdrantService dynamic import failed, will use DB fallback only:', lastError instanceof Error ? lastError.message : lastError);
 }
 // Hilfsfunktion für semantische Suche (liefert [] bei Nichtverfügbarkeit)
 async function safeQdrantSearch(query, limit, scoreThreshold) {
@@ -119,7 +129,7 @@ async function getAllPublicFAQs() {
             const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
             return {
                 ...faqRow,
-                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : null,
                 tags: normalizeTags(faqRow.tags),
                 slug,
                 created_at: normalizeDate(faqRow.created_at),
@@ -304,7 +314,7 @@ async function getFAQsByTag(tag) {
             const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`);
             return {
                 ...faqRow,
-                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : null,
                 tags: normalizeTags(faqRow.tags),
                 slug,
                 created_at: normalizeDate(faqRow.created_at),
@@ -339,7 +349,7 @@ async function getLatestFAQs(limit = 20) {
             const relatedFAQs = await getRelatedFAQs(faqRow.id, `${faqRow.content} ${faqRow.answer}`, 3); // Weniger für RSS
             return {
                 ...faqRow,
-                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : undefined,
+                additional_info: (_a = faqRow.additional_info) !== null && _a !== void 0 ? _a : null,
                 tags: normalizeTags(faqRow.tags),
                 slug,
                 related_faqs: relatedFAQs

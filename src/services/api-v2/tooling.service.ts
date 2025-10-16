@@ -65,6 +65,13 @@ interface NormalizedGenerateScriptInput extends GenerateToolScriptInternalInput 
   testCases: ToolScriptTestCase[];
 }
 
+interface ScriptRepairFeedback {
+  attempt: number;
+  validationErrorMessage: string;
+  validationErrorCode?: string;
+  previousCode?: string;
+}
+
 const DEFAULT_TIMEOUT_MS = 5000;
 const MIN_TIMEOUT_MS = 500;
 const MAX_TIMEOUT_MS = 60000;
@@ -81,6 +88,7 @@ const MAX_ASSERTIONS_PER_TEST = 4;
 const MAX_ASSERTION_VALUE_LENGTH = 240;
 const MAX_CONTEXT_SNIPPETS = 6;
 const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
+const MAX_GENERATION_ATTEMPTS = 3;
 
 const DEFAULT_INPUT_SCHEMA_TEMPLATE: ToolScriptInputSchema = {
   type: 'object',
@@ -166,26 +174,75 @@ export class ToolingService {
   public async generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse> {
     const normalized = this.normalizeGenerateScriptInput(input);
     const contextSnippets = await this.collectContextSnippets(normalized);
-    const prompt = this.buildScriptPrompt(normalized, contextSnippets);
+    let descriptor: ToolScriptDescriptor | null = null;
+    let validationError: AppError | null = null;
+    let lastCandidateCode: string | undefined;
+    let attempts = 0;
 
-    let rawCandidate: any;
-    try {
-      rawCandidate = await llm.generateStructuredOutput(prompt, {
-        user_id: normalized.userId,
-        session_id: normalized.sessionId,
-        persona: 'tooling-script-generator'
-      });
-    } catch (error: any) {
-      const appError = new AppError('Skript konnte nicht generiert werden', 502);
-      (appError as any).context = {
-        code: 'llm_generation_failed',
-        details: error?.message || String(error || 'unbekannter Fehler')
-      };
-      throw appError;
+    for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
+      const feedback = validationError
+        ? {
+            attempt: attempts,
+            validationErrorMessage: validationError.message,
+            validationErrorCode: (validationError as any)?.context?.code || (validationError as any)?.code,
+            previousCode: lastCandidateCode ? this.truncateText(lastCandidateCode, 2000) : undefined
+          }
+        : undefined;
+
+      const prompt = this.buildScriptPrompt(normalized, contextSnippets, feedback);
+
+      let rawCandidate: any;
+      try {
+        rawCandidate = await llm.generateStructuredOutput(prompt, {
+          user_id: normalized.userId,
+          session_id: normalized.sessionId,
+          persona: 'tooling-script-generator',
+          attempt: attempts
+        });
+      } catch (error: any) {
+        const appError = new AppError('Skript konnte nicht generiert werden', 502);
+        (appError as any).context = {
+          code: 'llm_generation_failed',
+          attempt: attempts,
+          details: error?.message || String(error || 'unbekannter Fehler')
+        };
+        throw appError;
+      }
+
+      try {
+        descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
+        validationError = null;
+        break;
+      } catch (error) {
+        if (this.isRecoverableValidationError(error)) {
+          validationError = error as AppError;
+          lastCandidateCode = this.extractCandidateCodeForFeedback(rawCandidate);
+          continue;
+        }
+        throw error;
+      }
     }
 
-    const descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
+    if (!descriptor) {
+      const fallbackError = validationError ?? new AppError('Skript konnte nicht generiert werden', 502);
+      if (!(fallbackError as any).context) {
+        (fallbackError as any).context = {};
+      }
+      (fallbackError as any).context = {
+        ...(fallbackError as any).context,
+        code: ((fallbackError as any).context?.code as string | undefined) ?? 'script_generation_failed',
+        attempts
+      };
+      throw fallbackError;
+    }
+
     const testResults = await this.executeTestCases(descriptor, normalized);
+    if (attempts > 1) {
+      descriptor.notes = this.ensureNotesLimit([
+        ...(descriptor.notes || []),
+        `Automatische Korrektur nach ${attempts} Versuchen abgeschlossen.`
+      ]);
+    }
 
     const response: GenerateToolScriptResponse = {
       sessionId: normalized.sessionId,
@@ -811,7 +868,11 @@ export class ToolingService {
     }
   }
 
-  private buildScriptPrompt(input: NormalizedGenerateScriptInput, contextSnippets: ToolScriptContextSnippet[]): string {
+  private buildScriptPrompt(
+    input: NormalizedGenerateScriptInput,
+    contextSnippets: ToolScriptContextSnippet[],
+    feedback?: ScriptRepairFeedback
+  ): string {
     const parts: string[] = [];
 
     parts.push(
@@ -863,7 +924,55 @@ ${snippet.snippet}`;
 
     parts.push('Nutze deutschsprachige Beschreibungen für description/notes, halte sie knapp (max 240 Zeichen pro Eintrag).');
 
+    if (feedback) {
+      const feedbackLines = [
+        `Vorheriger Versuch #${feedback.attempt - 1} schlug fehl.`,
+        `Grund: ${feedback.validationErrorMessage}`
+          + (feedback.validationErrorCode ? ` (Code: ${feedback.validationErrorCode})` : '') + '.',
+        'Behebe diesen Fehler zwingend. Stelle sicher, dass `run` den Eingabeparameter nutzt und mit `return` antwortet.'
+      ];
+
+      if (feedback.previousCode) {
+        feedbackLines.push('Vorheriger fehlerhafter Code (nur zur Analyse, bitte komplett neu schreiben):');
+        feedbackLines.push(feedback.previousCode);
+      }
+
+      parts.push(feedbackLines.join('\n'));
+    }
     return parts.join('\n\n');
+  }
+
+  private isRecoverableValidationError(error: unknown): error is AppError {
+    return error instanceof AppError && error.statusCode === 422;
+  }
+
+  private extractCandidateCodeForFeedback(candidate: any): string | undefined {
+    if (!candidate) {
+      return undefined;
+    }
+
+    if (typeof candidate === 'string') {
+      const parsed = this.safeParseJson(candidate);
+      if (parsed && typeof parsed === 'object') {
+        return this.extractCandidateCodeForFeedback(parsed);
+      }
+      return candidate;
+    }
+
+    if (typeof candidate === 'object') {
+      const payload = candidate as Record<string, unknown>;
+      const codeRaw = typeof payload.code === 'string'
+        ? (payload.code as string)
+        : typeof payload.script === 'string'
+          ? (payload.script as string)
+          : undefined;
+
+      if (typeof codeRaw === 'string') {
+        return this.extractCodeBlock(codeRaw);
+      }
+    }
+
+    return undefined;
   }
 
   private serializeInputSchemaForPrompt(schema?: ToolScriptInputSchema): string | undefined {
