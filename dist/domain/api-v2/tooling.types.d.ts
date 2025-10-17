@@ -1,4 +1,5 @@
 export type ToolJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type ToolJobType = 'run-node-script' | 'generate-script';
 export interface ToolJobSourceInfo {
     language: 'node';
     hash: string;
@@ -17,13 +18,16 @@ export interface ToolJobDiagnostics {
     executionEnabled: boolean;
     notes: string[];
 }
-export interface ToolJob {
+export interface ToolJobBase {
     id: string;
-    type: 'run-node-script';
+    type: ToolJobType;
     sessionId: string;
     status: ToolJobStatus;
     createdAt: string;
     updatedAt: string;
+}
+export interface RunNodeScriptJob extends ToolJobBase {
+    type: 'run-node-script';
     timeoutMs: number;
     metadata: Record<string, unknown> | null;
     source: ToolJobSourceInfo;
@@ -31,6 +35,26 @@ export interface ToolJob {
     warnings: string[];
     diagnostics: ToolJobDiagnostics;
 }
+export type GenerateScriptJobStage = 'queued' | 'collecting-context' | 'prompting' | 'repairing' | 'validating' | 'testing' | 'completed';
+export interface GenerateScriptJobProgress {
+    stage: GenerateScriptJobStage;
+    message?: string;
+    attempt?: number;
+}
+export interface GenerateScriptJobError {
+    message: string;
+    code?: string;
+    details?: Record<string, unknown>;
+}
+export interface GenerateScriptJob extends ToolJobBase {
+    type: 'generate-script';
+    progress: GenerateScriptJobProgress;
+    attempts: number;
+    warnings: string[];
+    result?: GenerateToolScriptResponse;
+    error?: GenerateScriptJobError;
+}
+export type ToolJob = RunNodeScriptJob | GenerateScriptJob;
 export interface RunNodeScriptJobOptions {
     timeoutMs?: number;
     metadata?: Record<string, unknown>;
@@ -45,6 +69,10 @@ export interface RunNodeScriptJobResponse {
 }
 export interface GetToolJobResponse {
     job: ToolJob;
+}
+export interface GenerateToolScriptJobResponse {
+    sessionId: string;
+    job: GenerateScriptJob;
 }
 export interface ToolScriptInputSchemaProperty {
     type: string;

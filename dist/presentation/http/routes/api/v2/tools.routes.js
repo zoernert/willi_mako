@@ -26,7 +26,7 @@ router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV
     if (session.userId !== req.user.id) {
         throw new errorHandler_1.AppError('Session wurde nicht gefunden', 404);
     }
-    const response = await tooling_service_1.toolingService.generateDeterministicScript({
+    const job = await tooling_service_1.toolingService.enqueueGenerateScriptJob({
         userId: req.user.id,
         sessionId,
         instructions,
@@ -38,11 +38,9 @@ router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV
     await session_service_1.sessionService.touchSession(sessionId);
     const payload = {
         sessionId,
-        script: response.script,
-        inputSchema: response.inputSchema,
-        expectedOutputDescription: response.expectedOutputDescription
+        job
     };
-    res.status(200).json({
+    res.status(202).json({
         success: true,
         data: payload
     });
@@ -82,6 +80,24 @@ router.post('/run-node-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV
     res.status(202).json({
         success: true,
         data: payload
+    });
+}));
+router.get('/jobs', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { sessionId } = req.query;
+    if (!sessionId || typeof sessionId !== 'string') {
+        throw new errorHandler_1.AppError('sessionId ist erforderlich', 400);
+    }
+    const session = await session_service_1.sessionService.getSession(sessionId);
+    if (session.userId !== req.user.id) {
+        throw new errorHandler_1.AppError('Session wurde nicht gefunden', 404);
+    }
+    const jobs = await tooling_service_1.toolingService.listJobsForSession(sessionId, req.user.id);
+    await session_service_1.sessionService.touchSession(sessionId);
+    res.json({
+        success: true,
+        data: {
+            jobs
+        }
     });
 }));
 router.get('/jobs/:jobId', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {

@@ -48,6 +48,8 @@ const DEFAULT_INPUT_SCHEMA_TEMPLATE = {
 class ToolingService {
     constructor() {
         this.jobs = new Map();
+        this.generateScriptQueue = [];
+        this.generateScriptWorkerActive = false;
     }
     async createNodeScriptJob(input) {
         this.assertValidSource(input.source);
@@ -96,9 +98,116 @@ class ToolingService {
         }
         return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
-    async generateDeterministicScript(input) {
-        var _a, _b, _c;
+    async enqueueGenerateScriptJob(input) {
         const normalized = this.normalizeGenerateScriptInput(input);
+        const now = new Date().toISOString();
+        const record = {
+            id: (0, crypto_1.randomUUID)(),
+            type: 'generate-script',
+            sessionId: normalized.sessionId,
+            status: 'queued',
+            createdAt: now,
+            updatedAt: now,
+            progress: {
+                stage: 'queued',
+                message: 'Job wurde eingereiht'
+            },
+            attempts: 0,
+            warnings: [],
+            userId: normalized.userId,
+            normalizedInput: normalized
+        };
+        this.jobs.set(record.id, record);
+        this.generateScriptQueue.push(record);
+        this.startGenerateScriptWorker();
+        return this.toPublicJob(record);
+    }
+    async generateDeterministicScript(input) {
+        const normalized = this.normalizeGenerateScriptInput(input);
+        const nowIso = new Date().toISOString();
+        const job = {
+            id: (0, crypto_1.randomUUID)(),
+            type: 'generate-script',
+            sessionId: normalized.sessionId,
+            status: 'running',
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            progress: {
+                stage: 'prompting',
+                attempt: 1
+            },
+            attempts: 0,
+            warnings: [],
+            userId: normalized.userId,
+            normalizedInput: normalized
+        };
+        return this.executeGenerateScript(job);
+    }
+    startGenerateScriptWorker() {
+        if (this.generateScriptWorkerActive) {
+            return;
+        }
+        this.generateScriptWorkerActive = true;
+        setImmediate(() => {
+            this.processGenerateScriptQueue().catch((error) => {
+                console.error('Generate-script worker terminated unexpectedly:', error);
+                this.generateScriptWorkerActive = false;
+            });
+        });
+    }
+    async processGenerateScriptQueue() {
+        while (this.generateScriptQueue.length > 0) {
+            const job = this.generateScriptQueue.shift();
+            if (!job) {
+                continue;
+            }
+            try {
+                await this.handleGenerateScriptJob(job);
+            }
+            catch (error) {
+                console.error('Generate-script job failed:', error);
+            }
+        }
+        this.generateScriptWorkerActive = false;
+    }
+    async handleGenerateScriptJob(job) {
+        var _a, _b;
+        job.status = 'running';
+        job.updatedAt = new Date().toISOString();
+        try {
+            const response = await this.executeGenerateScript(job);
+            job.result = response;
+            const warnings = new Set((_a = response.script.validation.warnings) !== null && _a !== void 0 ? _a : []);
+            if (job.result.script.validation.warnings) {
+                job.result.script.validation.warnings = Array.from(new Set(job.result.script.validation.warnings));
+            }
+            if (!response.script.validation.deterministic) {
+                warnings.add('Skript verletzt deterministische Vorgaben.');
+            }
+            if (response.testResults && !response.testResults.passed) {
+                warnings.add('Mindestens ein automatischer Test ist fehlgeschlagen.');
+            }
+            job.warnings = Array.from(warnings);
+            job.status = 'succeeded';
+            this.updateGenerateJobProgress(job, 'completed', 'Skript erfolgreich generiert', job.attempts || undefined);
+        }
+        catch (error) {
+            job.error = this.buildGenerateScriptError(error);
+            job.status = 'failed';
+            job.warnings = (_b = job.warnings) !== null && _b !== void 0 ? _b : [];
+            this.updateGenerateJobProgress(job, 'completed', 'Skriptgenerierung fehlgeschlagen', job.attempts || undefined);
+        }
+        finally {
+            job.updatedAt = new Date().toISOString();
+            if (!job.result && job.status === 'failed' && !job.error) {
+                job.error = { message: 'Skript konnte nicht generiert werden' };
+            }
+        }
+    }
+    async executeGenerateScript(job) {
+        var _a, _b, _c;
+        const normalized = job.normalizedInput;
+        this.updateGenerateJobProgress(job, 'collecting-context', 'Kontext wird gesammelt', job.attempts || undefined);
         const contextSnippets = await this.collectContextSnippets(normalized);
         let descriptor = null;
         let validationError = null;
@@ -106,6 +215,13 @@ class ToolingService {
         let lastRunSnippet;
         let attempts = 0;
         for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
+            job.attempts = attempts;
+            if (attempts === 1) {
+                this.updateGenerateJobProgress(job, 'prompting', 'LLM wird aufgerufen', attempts);
+            }
+            else {
+                this.updateGenerateJobProgress(job, 'repairing', 'Vorheriger Versuch schlug fehl – erneuter Prompt mit Feedback', attempts);
+            }
             const feedback = validationError
                 ? {
                     attempt: attempts,
@@ -163,7 +279,16 @@ class ToolingService {
             };
             throw fallbackError;
         }
+        job.attempts = attempts;
+        this.updateGenerateJobProgress(job, 'validating', 'Skript wird validiert', attempts);
+        const hasTests = normalized.testCases.length > 0;
+        if (hasTests) {
+            this.updateGenerateJobProgress(job, 'testing', 'Automatische Tests werden ausgeführt', attempts);
+        }
         const testResults = await this.executeTestCases(descriptor, normalized);
+        if (hasTests) {
+            this.updateGenerateJobProgress(job, 'testing', 'Tests abgeschlossen', attempts);
+        }
         if (attempts > 1) {
             descriptor.notes = this.ensureNotesLimit([
                 ...(descriptor.notes || []),
@@ -183,6 +308,28 @@ class ToolingService {
             response.testResults = testResults;
         }
         return response;
+    }
+    updateGenerateJobProgress(job, stage, message, attempt) {
+        job.progress = {
+            stage,
+            ...(message ? { message } : {}),
+            ...(attempt ? { attempt } : {})
+        };
+        job.updatedAt = new Date().toISOString();
+    }
+    buildGenerateScriptError(error) {
+        if (error instanceof errorHandler_1.AppError) {
+            const context = error.context;
+            return {
+                message: error.message,
+                code: context === null || context === void 0 ? void 0 : context.code,
+                details: context && typeof context === 'object' ? { ...context } : undefined
+            };
+        }
+        if (error instanceof Error) {
+            return { message: error.message };
+        }
+        return { message: String(error !== null && error !== void 0 ? error : 'Unbekannter Fehler') };
     }
     normalizeGenerateScriptInput(input) {
         if (!input || typeof input !== 'object') {
@@ -1215,8 +1362,12 @@ ${snippet.snippet}`;
         return null;
     }
     toPublicJob(record) {
-        const { userId: _userId, ...publicJob } = record;
-        return publicJob;
+        if (record.type === 'generate-script') {
+            const { userId: _userId, normalizedInput: _normalizedInput, ...rest } = record;
+            return rest;
+        }
+        const { userId: _userId, ...rest } = record;
+        return rest;
     }
 }
 exports.ToolingService = ToolingService;

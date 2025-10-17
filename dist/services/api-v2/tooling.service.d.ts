@@ -1,4 +1,4 @@
-import { GenerateToolScriptRequest, GenerateToolScriptResponse, ToolJob } from '../../domain/api-v2/tooling.types';
+import { GenerateToolScriptRequest, GenerateToolScriptResponse, GenerateScriptJob, ToolJob } from '../../domain/api-v2/tooling.types';
 interface NodeScriptJobInput {
     userId: string;
     sessionId: string;
@@ -11,10 +11,19 @@ interface GenerateToolScriptInternalInput extends GenerateToolScriptRequest {
 }
 export declare class ToolingService {
     private readonly jobs;
+    private readonly generateScriptQueue;
+    private generateScriptWorkerActive;
     createNodeScriptJob(input: NodeScriptJobInput): Promise<ToolJob>;
     getJobForUser(jobId: string, userId: string): Promise<ToolJob>;
     listJobsForSession(sessionId: string, userId: string): Promise<ToolJob[]>;
+    enqueueGenerateScriptJob(input: GenerateToolScriptInternalInput): Promise<GenerateScriptJob>;
     generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse>;
+    private startGenerateScriptWorker;
+    private processGenerateScriptQueue;
+    private handleGenerateScriptJob;
+    private executeGenerateScript;
+    private updateGenerateJobProgress;
+    private buildGenerateScriptError;
     private normalizeGenerateScriptInput;
     private normalizeConstraints;
     private normalizeInputSchema;

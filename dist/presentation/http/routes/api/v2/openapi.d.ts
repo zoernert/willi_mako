@@ -633,7 +633,7 @@ export declare const apiV2OpenApiDocument: {
                     };
                 };
                 responses: {
-                    '200': {
+                    '202': {
                         description: string;
                         content: {
                             'application/json': {
@@ -710,6 +710,51 @@ export declare const apiV2OpenApiDocument: {
                                                 };
                                                 job: {
                                                     $ref: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/tools/jobs': {
+            get: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                jobs: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
                                                 };
                                             };
                                         };
@@ -1089,6 +1134,11 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
             ToolJob: {
+                oneOf: {
+                    $ref: string;
+                }[];
+            };
+            RunNodeScriptJob: {
                 type: string;
                 properties: {
                     id: {
@@ -1142,6 +1192,100 @@ export declare const apiV2OpenApiDocument: {
                     };
                     diagnostics: {
                         $ref: string;
+                    };
+                };
+            };
+            GenerateScriptJobProgress: {
+                type: string;
+                properties: {
+                    stage: {
+                        type: string;
+                        enum: string[];
+                    };
+                    message: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    attempt: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                };
+                required: string[];
+            };
+            GenerateScriptJobError: {
+                type: string;
+                properties: {
+                    message: {
+                        type: string;
+                    };
+                    code: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    details: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                };
+                required: string[];
+            };
+            GenerateScriptJob: {
+                type: string;
+                properties: {
+                    id: {
+                        type: string;
+                        format: string;
+                    };
+                    type: {
+                        type: string;
+                        enum: string[];
+                    };
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    status: {
+                        type: string;
+                        enum: string[];
+                    };
+                    createdAt: {
+                        type: string;
+                        format: string;
+                    };
+                    updatedAt: {
+                        type: string;
+                        format: string;
+                    };
+                    progress: {
+                        $ref: string;
+                    };
+                    attempts: {
+                        type: string;
+                    };
+                    warnings: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                    };
+                    result: {
+                        oneOf: ({
+                            $ref: string;
+                            type?: undefined;
+                        } | {
+                            type: string;
+                            $ref?: undefined;
+                        })[];
+                    };
+                    error: {
+                        oneOf: ({
+                            $ref: string;
+                            type?: undefined;
+                        } | {
+                            type: string;
+                            $ref?: undefined;
+                        })[];
                     };
                 };
             };
@@ -1312,6 +1456,18 @@ export declare const apiV2OpenApiDocument: {
                     expectedOutputDescription: {
                         type: string;
                         nullable: boolean;
+                    };
+                };
+            };
+            GenerateToolScriptJobResponse: {
+                type: string;
+                properties: {
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    job: {
+                        $ref: string;
                     };
                 };
             };
