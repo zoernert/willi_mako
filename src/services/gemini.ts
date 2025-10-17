@@ -1661,10 +1661,19 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
           const text = response.text();
           
           // Versuchen, die Antwort als JSON zu parsen
-          return safeParseJsonResponse(text) || {
+          const parsed = safeParseJsonResponse(text);
+          if (parsed !== null) {
+            return parsed;
+          }
+
+          const rawText = text.trim();
+          console.warn('⚠️  Structured output is not valid JSON, returning rawText fallback.');
+
+          return {
             needsMoreContext: false,
             answerable: true,
             confidence: 0.5,
+            rawText
           };
         } catch (error) {
           if (error instanceof Error) {
@@ -1696,10 +1705,16 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
     } catch (error) {
       console.error('Error generating structured output after all attempts:', error);
       // Fallback mit minimalen Informationen
+      const rawText = error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : '';
       return {
         needsMoreContext: false,
         answerable: true,
         confidence: 0.5,
+        rawText: rawText || undefined
       };
     }
   }

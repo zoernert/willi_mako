@@ -5,8 +5,8 @@ import { apiV2RateLimiter } from '../../../../../middleware/api-v2/rateLimiter';
 import { sessionService } from '../../../../../services/api-v2/session.service';
 import { toolingService } from '../../../../../services/api-v2/tooling.service';
 import {
+  GenerateToolScriptJobResponse,
   GenerateToolScriptRequest,
-  GenerateToolScriptResponse,
   RunNodeScriptJobResponse
 } from '../../../../../domain/api-v2/tooling.types';
 
@@ -49,7 +49,7 @@ router.post(
       throw new AppError('Session wurde nicht gefunden', 404);
     }
 
-    const response = await toolingService.generateDeterministicScript({
+    const job = await toolingService.enqueueGenerateScriptJob({
       userId: req.user!.id,
       sessionId,
       instructions,
@@ -61,14 +61,12 @@ router.post(
 
     await sessionService.touchSession(sessionId);
 
-    const payload: GenerateToolScriptResponse = {
+    const payload: GenerateToolScriptJobResponse = {
       sessionId,
-      script: response.script,
-      inputSchema: response.inputSchema,
-      expectedOutputDescription: response.expectedOutputDescription
+      job
     };
 
-    res.status(200).json({
+    res.status(202).json({
       success: true,
       data: payload
     });
@@ -80,7 +78,7 @@ router.post(
   authenticateToken,
   apiV2RateLimiter(),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { sessionId, source, timeoutMs, metadata } = req.body || {};
+    const { sessionId, source, timeoutMs, metadata } = req.body || {};
 
     if (!sessionId || typeof sessionId !== 'string') {
       throw new AppError('sessionId ist erforderlich', 400);
@@ -126,6 +124,36 @@ router.post(
     res.status(202).json({
       success: true,
       data: payload
+    });
+  })
+);
+
+router.get(
+  '/jobs',
+  authenticateToken,
+  apiV2RateLimiter(),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId || typeof sessionId !== 'string') {
+      throw new AppError('sessionId ist erforderlich', 400);
+    }
+
+    const session = await sessionService.getSession(sessionId);
+
+    if (session.userId !== req.user!.id) {
+      throw new AppError('Session wurde nicht gefunden', 404);
+    }
+
+    const jobs = await toolingService.listJobsForSession(sessionId, req.user!.id);
+
+    await sessionService.touchSession(sessionId);
+
+    res.json({
+      success: true,
+      data: {
+        jobs
+      }
     });
   })
 );

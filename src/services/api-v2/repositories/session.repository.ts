@@ -1,6 +1,7 @@
 import { Collection, Db } from 'mongodb';
 import MongoDBConnection from '../../../config/mongodb';
 import { SessionDocument } from '../../../domain/api-v2/session.types';
+import { AppError } from '../../../middleware/errorHandler';
 
 export interface SessionRepository {
   save(session: SessionDocument): Promise<SessionDocument>;
@@ -11,6 +12,8 @@ export interface SessionRepository {
 export class MongoSessionRepository implements SessionRepository {
   private collection: Collection<SessionDocument> | null = null;
   private indexesEnsured = false;
+  private collectionPromise: Promise<Collection<SessionDocument>> | null = null;
+  private indexPromise: Promise<void> | null = null;
 
   constructor(private readonly collectionName: string = 'api_v2_sessions') {}
 
@@ -20,28 +23,63 @@ export class MongoSessionRepository implements SessionRepository {
     }
 
     const connection = MongoDBConnection.getInstance();
-    const db: Db = await connection.connect();
-    this.collection = db.collection<SessionDocument>(this.collectionName);
-
-    if (!this.indexesEnsured) {
-      await this.ensureIndexes();
+    if (this.collectionPromise) {
+      return this.collectionPromise;
     }
 
-    return this.collection;
+    const promise = (async () => {
+      try {
+        const db: Db = await connection.connect();
+        const collection = db.collection<SessionDocument>(this.collectionName);
+        this.collection = collection;
+        this.ensureIndexesInBackground(collection);
+        return collection;
+      } catch (error) {
+        console.error('SessionRepository: failed to obtain collection:', error);
+        const appError = new AppError('MongoDB ist aktuell nicht erreichbar. Bitte versuchen Sie es in Kürze erneut.', 503);
+        (appError as any).context = {
+          code: 'mongo_unavailable',
+          error: error instanceof Error ? error.message : String(error || 'unknown')
+        };
+        throw appError;
+      }
+    })();
+
+    this.collectionPromise = promise.finally(() => {
+      this.collectionPromise = null;
+    });
+
+    return promise;
   }
 
-  private async ensureIndexes(): Promise<void> {
-    if (!this.collection) {
+  private ensureIndexesInBackground(collection: Collection<SessionDocument>): void {
+    if (this.indexesEnsured || this.indexPromise) {
       return;
     }
 
-    await Promise.all([
-      this.collection.createIndex({ sessionId: 1 }, { unique: true }),
-      this.collection.createIndex({ userId: 1, sessionId: 1 }),
-      this.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
-    ]);
+    this.indexPromise = (async () => {
+      try {
+        const results = await Promise.allSettled([
+          collection.createIndex({ sessionId: 1 }, { unique: true }),
+          collection.createIndex({ userId: 1, sessionId: 1 }),
+          collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+        ]);
 
-    this.indexesEnsured = true;
+        const rejected = results.filter((result) => result.status === 'rejected');
+
+        if (rejected.length) {
+          console.warn('SessionRepository: index creation failed – continuing without indexes for now.', rejected.map((r) => (r.status === 'rejected' && r.reason) || 'unknown'));
+          this.indexesEnsured = false;
+        } else {
+          this.indexesEnsured = true;
+        }
+      } catch (error) {
+        console.error('SessionRepository: unexpected error while creating indexes:', error);
+        this.indexesEnsured = false;
+      } finally {
+        this.indexPromise = null;
+      }
+    })();
   }
 
   public async save(session: SessionDocument): Promise<SessionDocument> {

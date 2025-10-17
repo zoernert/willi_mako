@@ -39,6 +39,8 @@ export declare class ToolingService {
     private buildScriptPrompt;
     private isRecoverableValidationError;
     private extractCandidateCodeForFeedback;
+    private extractRunFunctionSnippet;
+    private findMatchingBrace;
     private serializeInputSchemaForPrompt;
     private stringifyExample;
     private formatConstraintsForPrompt;

@@ -442,7 +442,7 @@ export const apiV2OpenApiDocument = {
     },
     '/tools/generate-script': {
       post: {
-        summary: 'Deterministisches Tool-Skript generieren',
+        summary: 'Job zur deterministischen Skriptgenerierung einreichen',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -455,8 +455,8 @@ export const apiV2OpenApiDocument = {
           }
         },
         responses: {
-          '200': {
-            description: 'Deterministisches Node.js-Skript erfolgreich erzeugt',
+          '202': {
+            description: 'Job angenommen – Ergebnisse können später abgefragt werden.',
             content: {
               'application/json': {
                 schema: {
@@ -464,7 +464,7 @@ export const apiV2OpenApiDocument = {
                   properties: {
                     success: { type: 'boolean' },
                     data: {
-                      $ref: '#/components/schemas/GenerateToolScriptResponse'
+                      $ref: '#/components/schemas/GenerateToolScriptJobResponse'
                     }
                   }
                 }
@@ -513,6 +513,46 @@ export const apiV2OpenApiDocument = {
                         sessionId: { type: 'string', format: 'uuid' },
                         job: {
                           $ref: '#/components/schemas/ToolJob'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/tools/jobs': {
+      get: {
+        summary: 'Tool-Jobs einer Session auflisten',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'sessionId',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'uuid' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Alle bekannten Jobs der Session',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        jobs: {
+                          type: 'array',
+                          items: {
+                            $ref: '#/components/schemas/ToolJob'
+                          }
                         }
                       }
                     }
@@ -749,6 +789,12 @@ export const apiV2OpenApiDocument = {
         }
       },
       ToolJob: {
+        oneOf: [
+          { $ref: '#/components/schemas/RunNodeScriptJob' },
+          { $ref: '#/components/schemas/GenerateScriptJob' }
+        ]
+      },
+      RunNodeScriptJob: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
@@ -777,6 +823,61 @@ export const apiV2OpenApiDocument = {
           },
           diagnostics: {
             $ref: '#/components/schemas/ToolJobDiagnostics'
+          }
+        }
+      },
+      GenerateScriptJobProgress: {
+        type: 'object',
+        properties: {
+          stage: {
+            type: 'string',
+            enum: ['queued', 'collecting-context', 'prompting', 'repairing', 'validating', 'testing', 'completed']
+          },
+          message: { type: 'string', nullable: true },
+          attempt: { type: 'integer', nullable: true }
+        },
+        required: ['stage']
+      },
+      GenerateScriptJobError: {
+        type: 'object',
+        properties: {
+          message: { type: 'string' },
+          code: { type: 'string', nullable: true },
+          details: { type: 'object', nullable: true }
+        },
+        required: ['message']
+      },
+      GenerateScriptJob: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          type: { type: 'string', enum: ['generate-script'] },
+          sessionId: { type: 'string', format: 'uuid' },
+          status: {
+            type: 'string',
+            enum: ['queued', 'running', 'succeeded', 'failed', 'cancelled']
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+          progress: {
+            $ref: '#/components/schemas/GenerateScriptJobProgress'
+          },
+          attempts: { type: 'integer' },
+          warnings: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          result: {
+            oneOf: [
+              { $ref: '#/components/schemas/GenerateToolScriptResponse' },
+              { type: 'null' }
+            ]
+          },
+          error: {
+            oneOf: [
+              { $ref: '#/components/schemas/GenerateScriptJobError' },
+              { type: 'null' }
+            ]
           }
         }
       },
@@ -882,6 +983,15 @@ export const apiV2OpenApiDocument = {
             $ref: '#/components/schemas/ToolScriptInputSchema'
           },
           expectedOutputDescription: { type: 'string', nullable: true }
+        }
+      },
+      GenerateToolScriptJobResponse: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          job: {
+            $ref: '#/components/schemas/GenerateScriptJob'
+          }
         }
       },
       ArtifactStorage: {

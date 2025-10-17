@@ -27,10 +27,102 @@ export function cleanJsonResponse(response: string): string {
   
   // Fix common AI response issues with quotes
   // Remove triple quotes that might appear at beginning/end
-  cleanResponse = cleanResponse.replace(/^"""/, '').replace(/"""$/, '');
-  cleanResponse = cleanResponse.replace(/^"/, '').replace(/"$/, '');
+  cleanResponse = cleanResponse
+    .replace(/^"""/, '')
+    .replace(/"""$/, '')
+    .replace(/^"/, '')
+    .replace(/"$/, '');
   
   return cleanResponse;
+}
+
+function stripJsonComments(input: string): string {
+  let result = '';
+  let index = 0;
+  let inDoubleQuote = false;
+  let inSingleQuote = false;
+  let inTemplate = false;
+  let escaped = false;
+
+  while (index < input.length) {
+    const char = input[index];
+    const next = input[index + 1];
+
+    if (escaped) {
+      result += char;
+      escaped = false;
+      index += 1;
+      continue;
+    }
+
+    if (char === '\\' && (inDoubleQuote || inSingleQuote || inTemplate)) {
+      escaped = true;
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    if (!inSingleQuote && !inTemplate && char === '"') {
+      inDoubleQuote = !inDoubleQuote;
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    if (!inDoubleQuote && !inTemplate && char === "'") {
+      inSingleQuote = !inSingleQuote;
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    if (!inDoubleQuote && !inSingleQuote && char === '`') {
+      inTemplate = !inTemplate;
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    if (inDoubleQuote || inSingleQuote || inTemplate) {
+      result += char;
+      index += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      index += 2;
+      while (index < input.length && input[index] !== '\n') {
+        index += 1;
+      }
+      if (index < input.length) {
+        result += '\n';
+        index += 1;
+      }
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      index += 2;
+      while (index < input.length) {
+        const current = input[index];
+        const upcoming = input[index + 1];
+        if (current === '*' && upcoming === '/') {
+          index += 2;
+          break;
+        }
+        if (current === '\n') {
+          result += '\n';
+        }
+        index += 1;
+      }
+      continue;
+    }
+
+    result += char;
+    index += 1;
+  }
+
+  return result;
 }
 
 /**
@@ -41,7 +133,8 @@ export function cleanJsonResponse(response: string): string {
 export function safeParseJsonResponse(response: string): any | null {
   try {
     let cleanResponse = cleanJsonResponse(response);
-    
+
+    cleanResponse = stripJsonComments(cleanResponse);
     // First attempt: try direct parsing
     try {
       return JSON.parse(cleanResponse);
@@ -80,9 +173,7 @@ export function safeParseJsonResponse(response: string): any | null {
                 const stringValue = line.substring(startQuoteIndex + 1, afterValueStart);
                 const afterValue = line.substring(afterValueStart);
                 
-                // Escape quotes within the string value
-                const escapedValue = stringValue.replace(/"/g, '\\"');
-                
+                const escapedValue = JSON.stringify(stringValue).slice(1, -1);
                 return beforeValue + escapedValue + afterValue;
               }
             }

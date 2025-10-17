@@ -46,7 +46,8 @@
   "reindex:providers": "npx tsx scripts/reindex-providers.ts",
   "export:marktpartnersuche": "npx tsx scripts/export-marketpartnersuche-dataset.ts",
   "ingest:consultation": "npx tsx scripts/ingest-consultation-sources.ts",
-  "ingest:consultation:slug": "npx tsx scripts/ingest-consultation-by-slug.ts --slug mitteilung-53"
+  "ingest:consultation:slug": "npx tsx scripts/ingest-consultation-by-slug.ts --slug mitteilung-53",
+  "logs:session": "npx tsx scripts/find-session-logs.ts"
   },
   "repository": {
     "type": "git",

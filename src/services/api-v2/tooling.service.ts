@@ -6,6 +6,10 @@ import { AppError } from '../../middleware/errorHandler';
 import {
   GenerateToolScriptRequest,
   GenerateToolScriptResponse,
+  GenerateScriptJob,
+  GenerateScriptJobError,
+  GenerateScriptJobStage,
+  RunNodeScriptJob,
   ToolJob,
   ToolJobDiagnostics,
   ToolJobResult,
@@ -33,9 +37,16 @@ interface NodeScriptJobInput {
   metadata?: Record<string, unknown>;
 }
 
-interface ToolJobRecord extends ToolJob {
+interface RunNodeScriptJobRecord extends RunNodeScriptJob {
   userId: string;
 }
+
+interface GenerateScriptJobRecord extends GenerateScriptJob {
+  userId: string;
+  normalizedInput: NormalizedGenerateScriptInput;
+}
+
+type ToolJobRecord = RunNodeScriptJobRecord | GenerateScriptJobRecord;
 
 interface GenerateToolScriptInternalInput extends GenerateToolScriptRequest {
   userId: string;
@@ -113,6 +124,8 @@ const DEFAULT_INPUT_SCHEMA_TEMPLATE: ToolScriptInputSchema = {
 
 export class ToolingService {
   private readonly jobs = new Map<string, ToolJobRecord>();
+  private readonly generateScriptQueue: GenerateScriptJobRecord[] = [];
+  private generateScriptWorkerActive = false;
 
   public async createNodeScriptJob(input: NodeScriptJobInput): Promise<ToolJob> {
     this.assertValidSource(input.source);
@@ -126,7 +139,7 @@ export class ToolingService {
       ]
     };
 
-    const record: ToolJobRecord = {
+    const record: RunNodeScriptJobRecord = {
       id: randomUUID(),
       type: 'run-node-script',
       sessionId: input.sessionId,
@@ -172,9 +185,131 @@ export class ToolingService {
     return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  public async enqueueGenerateScriptJob(input: GenerateToolScriptInternalInput): Promise<GenerateScriptJob> {
+    const normalized = this.normalizeGenerateScriptInput(input);
+    const now = new Date().toISOString();
+
+    const record: GenerateScriptJobRecord = {
+      id: randomUUID(),
+      type: 'generate-script',
+      sessionId: normalized.sessionId,
+      status: 'queued',
+      createdAt: now,
+      updatedAt: now,
+      progress: {
+        stage: 'queued',
+        message: 'Job wurde eingereiht'
+      },
+      attempts: 0,
+      warnings: [],
+      userId: normalized.userId,
+      normalizedInput: normalized
+    };
+
+    this.jobs.set(record.id, record);
+    this.generateScriptQueue.push(record);
+    this.startGenerateScriptWorker();
+
+    return this.toPublicJob(record) as GenerateScriptJob;
+  }
+
   public async generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse> {
     const normalized = this.normalizeGenerateScriptInput(input);
+    const nowIso = new Date().toISOString();
+
+    const job: GenerateScriptJobRecord = {
+      id: randomUUID(),
+      type: 'generate-script',
+      sessionId: normalized.sessionId,
+      status: 'running',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      progress: {
+        stage: 'prompting',
+        attempt: 1
+      },
+      attempts: 0,
+      warnings: [],
+      userId: normalized.userId,
+      normalizedInput: normalized
+    };
+
+    return this.executeGenerateScript(job);
+  }
+
+  private startGenerateScriptWorker(): void {
+    if (this.generateScriptWorkerActive) {
+      return;
+    }
+
+    this.generateScriptWorkerActive = true;
+    setImmediate(() => {
+      this.processGenerateScriptQueue().catch((error) => {
+        console.error('Generate-script worker terminated unexpectedly:', error);
+        this.generateScriptWorkerActive = false;
+      });
+    });
+  }
+
+  private async processGenerateScriptQueue(): Promise<void> {
+    while (this.generateScriptQueue.length > 0) {
+      const job = this.generateScriptQueue.shift();
+      if (!job) {
+        continue;
+      }
+
+      try {
+        await this.handleGenerateScriptJob(job);
+      } catch (error) {
+        console.error('Generate-script job failed:', error);
+      }
+    }
+
+    this.generateScriptWorkerActive = false;
+  }
+
+  private async handleGenerateScriptJob(job: GenerateScriptJobRecord): Promise<void> {
+    job.status = 'running';
+    job.updatedAt = new Date().toISOString();
+
+    try {
+      const response = await this.executeGenerateScript(job);
+      job.result = response;
+
+      const warnings = new Set<string>(response.script.validation.warnings ?? []);
+      if (job.result.script.validation.warnings) {
+        job.result.script.validation.warnings = Array.from(new Set(job.result.script.validation.warnings));
+      }
+      if (!response.script.validation.deterministic) {
+        warnings.add('Skript verletzt deterministische Vorgaben.');
+      }
+      if (response.testResults && !response.testResults.passed) {
+        warnings.add('Mindestens ein automatischer Test ist fehlgeschlagen.');
+      }
+
+      job.warnings = Array.from(warnings);
+      job.status = 'succeeded';
+      this.updateGenerateJobProgress(job, 'completed', 'Skript erfolgreich generiert', job.attempts || undefined);
+    } catch (error) {
+      job.error = this.buildGenerateScriptError(error);
+      job.status = 'failed';
+      job.warnings = job.warnings ?? [];
+      this.updateGenerateJobProgress(job, 'completed', 'Skriptgenerierung fehlgeschlagen', job.attempts || undefined);
+    } finally {
+      job.updatedAt = new Date().toISOString();
+
+      if (!job.result && job.status === 'failed' && !job.error) {
+        job.error = { message: 'Skript konnte nicht generiert werden' };
+      }
+    }
+  }
+
+  private async executeGenerateScript(job: GenerateScriptJobRecord): Promise<GenerateToolScriptResponse> {
+    const normalized = job.normalizedInput;
+
+    this.updateGenerateJobProgress(job, 'collecting-context', 'Kontext wird gesammelt', job.attempts || undefined);
     const contextSnippets = await this.collectContextSnippets(normalized);
+
     let descriptor: ToolScriptDescriptor | null = null;
     let validationError: AppError | null = null;
     let lastCandidateCode: string | undefined;
@@ -182,6 +317,19 @@ export class ToolingService {
     let attempts = 0;
 
     for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
+      job.attempts = attempts;
+
+      if (attempts === 1) {
+        this.updateGenerateJobProgress(job, 'prompting', 'LLM wird aufgerufen', attempts);
+      } else {
+        this.updateGenerateJobProgress(
+          job,
+          'repairing',
+          'Vorheriger Versuch schlug fehl – erneuter Prompt mit Feedback',
+          attempts
+        );
+      }
+
       const feedback = validationError
         ? {
             attempt: attempts,
@@ -242,7 +390,21 @@ export class ToolingService {
       throw fallbackError;
     }
 
+    job.attempts = attempts;
+
+    this.updateGenerateJobProgress(job, 'validating', 'Skript wird validiert', attempts);
+
+    const hasTests = normalized.testCases.length > 0;
+    if (hasTests) {
+      this.updateGenerateJobProgress(job, 'testing', 'Automatische Tests werden ausgeführt', attempts);
+    }
+
     const testResults = await this.executeTestCases(descriptor, normalized);
+
+    if (hasTests) {
+      this.updateGenerateJobProgress(job, 'testing', 'Tests abgeschlossen', attempts);
+    }
+
     if (attempts > 1) {
       descriptor.notes = this.ensureNotesLimit([
         ...(descriptor.notes || []),
@@ -266,6 +428,37 @@ export class ToolingService {
     }
 
     return response;
+  }
+
+  private updateGenerateJobProgress(
+    job: GenerateScriptJobRecord,
+    stage: GenerateScriptJobStage,
+    message?: string,
+    attempt?: number
+  ): void {
+    job.progress = {
+      stage,
+      ...(message ? { message } : {}),
+      ...(attempt ? { attempt } : {})
+    };
+    job.updatedAt = new Date().toISOString();
+  }
+
+  private buildGenerateScriptError(error: unknown): GenerateScriptJobError {
+    if (error instanceof AppError) {
+      const context = (error as any).context;
+      return {
+        message: error.message,
+        code: context?.code,
+        details: context && typeof context === 'object' ? { ...context } : undefined
+      };
+    }
+
+    if (error instanceof Error) {
+      return { message: error.message };
+    }
+
+    return { message: String(error ?? 'Unbekannter Fehler') };
   }
 
   private normalizeGenerateScriptInput(input: GenerateToolScriptInternalInput): NormalizedGenerateScriptInput {
@@ -1568,8 +1761,13 @@ ${snippet.snippet}`;
   }
 
   private toPublicJob(record: ToolJobRecord): ToolJob {
-    const { userId: _userId, ...publicJob } = record;
-    return publicJob;
+    if (record.type === 'generate-script') {
+      const { userId: _userId, normalizedInput: _normalizedInput, ...rest } = record;
+      return rest;
+    }
+
+    const { userId: _userId, ...rest } = record;
+    return rest;
   }
 }
 
