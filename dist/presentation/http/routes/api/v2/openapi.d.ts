@@ -1429,6 +1429,7 @@ export declare const apiV2OpenApiDocument: {
                     content: {
                         type: string;
                         description: string;
+                        maxLength: number;
                     };
                     mimeType: {
                         type: string;

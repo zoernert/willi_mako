@@ -33,8 +33,9 @@ const MAX_JOB_WARNINGS = 6;
 const MAX_RATE_LIMIT_RECOVERY_ATTEMPTS = 2;
 const RATE_LIMIT_RECOVERY_DELAY_MS = 10000;
 const MAX_ATTACHMENT_COUNT = 4;
-const MAX_ATTACHMENT_CONTENT_LENGTH = 60000;
-const MAX_ATTACHMENT_TOTAL_LENGTH = 160000;
+const ONE_MEBIBYTE = 1024 * 1024;
+const MAX_ATTACHMENT_CONTENT_LENGTH = ONE_MEBIBYTE; // 1 MiB pro Attachment
+const MAX_ATTACHMENT_TOTAL_LENGTH = MAX_ATTACHMENT_CONTENT_LENGTH * MAX_ATTACHMENT_COUNT; // 4 MiB gesamt
 const MAX_ATTACHMENT_CHUNK_LENGTH = 1800;
 const MIN_ATTACHMENT_CHUNK_LENGTH = 600;
 const ATTACHMENT_WEIGHT_DEFAULT = 5;
@@ -569,11 +570,13 @@ class ToolingService {
                 this.raiseValidationError('attachments.content muss Text enthalten', 'missing_attachment_content', { index });
             }
             if (contentRaw.length > MAX_ATTACHMENT_CONTENT_LENGTH) {
-                this.raiseValidationError(`Attachment überschreitet ${MAX_ATTACHMENT_CONTENT_LENGTH} Zeichen`, 'attachment_too_large', { index, maxLength: MAX_ATTACHMENT_CONTENT_LENGTH, length: contentRaw.length });
+                this.raiseValidationError(`Attachment überschreitet ${MAX_ATTACHMENT_CONTENT_LENGTH} Zeichen (~${(MAX_ATTACHMENT_CONTENT_LENGTH /
+                    (1024 * 1024)).toFixed(0)} MB)`, 'attachment_too_large', { index, maxLength: MAX_ATTACHMENT_CONTENT_LENGTH, length: contentRaw.length });
             }
             totalLength += contentRaw.length;
             if (totalLength > MAX_ATTACHMENT_TOTAL_LENGTH) {
-                this.raiseValidationError(`Gesamtgröße der Attachments überschreitet ${MAX_ATTACHMENT_TOTAL_LENGTH} Zeichen`, 'attachments_total_too_large', { maxLength: MAX_ATTACHMENT_TOTAL_LENGTH });
+                this.raiseValidationError(`Gesamtgröße der Attachments überschreitet ${MAX_ATTACHMENT_TOTAL_LENGTH} Zeichen (~${(MAX_ATTACHMENT_TOTAL_LENGTH /
+                    (1024 * 1024)).toFixed(0)} MB)`, 'attachments_total_too_large', { maxLength: MAX_ATTACHMENT_TOTAL_LENGTH });
             }
             const mimeTypeRaw = attachment.mimeType;
             let mimeType;

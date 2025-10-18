@@ -51,6 +51,97 @@ const router = (0, express_1.Router)();
 // Initialize services
 const qdrantService = new qdrant_1.QdrantService();
 const gamificationService = new gamification_service_1.GamificationService();
+const MAX_SHORT_ANSWER_CHARS = 450;
+const MAX_FOLLOW_UP_CHARS = 180;
+const MAX_REWRITE_SOURCE_CHARS = 4000;
+const normalizeWhitespace = (value) => value.replace(/\s+/g, ' ').trim();
+const extractFirstSentences = (text, maxSentences) => {
+    const normalized = normalizeWhitespace(text);
+    if (!normalized) {
+        return '';
+    }
+    const sentences = normalized
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+    const sourceUnits = sentences.length > 0
+        ? sentences
+        : normalized
+            .split(/\n+/)
+            .map((sentence) => sentence.trim())
+            .filter(Boolean);
+    const candidate = sourceUnits.slice(0, Math.max(1, maxSentences)).join(' ');
+    return candidate.slice(0, MAX_SHORT_ANSWER_CHARS).trim();
+};
+const deriveFollowUpQuestion = (userMessage) => {
+    const normalized = userMessage.toLowerCase();
+    const keywordMappings = [
+        { keyword: /gpke/, question: 'In welchem GPKE-Schritt stehst du gerade und welche Rolle (z.\u202fB. NB, LF, MSB) nimmst du ein?' },
+        { keyword: /wim/, question: 'Welche WiM-Prozessvariante betrifft dich und welches Ergebnis brauchst du konkret?' },
+        { keyword: /mabis/, question: 'Geht es dir um eine MaBiS-Abrechnung oder um Fristen im Fahrplanprozess?' },
+        { keyword: /utilmd/, question: 'Welche UTILMD-Nachricht möchtest du erzeugen oder prüfen?' },
+        { keyword: /mscons/, question: 'Beziehst du dich auf MSCONS-Messwerte und wenn ja, für welchen Anwendungsfall?' },
+        { keyword: /(redispatch|rd2)/, question: 'Beziehst du dich auf Redispatch 2.0 und welche Abstimmung hakt gerade?' }
+    ];
+    const matched = keywordMappings.find((entry) => entry.keyword.test(normalized));
+    const question = matched
+        ? matched.question
+        : 'In welchem Marktprozess befindest du dich gerade und welche Information fehlt dir, um weiterzukommen?';
+    return question.length > MAX_FOLLOW_UP_CHARS
+        ? `${question.slice(0, MAX_FOLLOW_UP_CHARS - 1).trimEnd()}?`
+        : question;
+};
+const heuristicCoachingRewrite = (userMessage, draftResponse) => {
+    const shortAnswer = extractFirstSentences(draftResponse, 2);
+    if (!shortAnswer) {
+        return null;
+    }
+    const followUpQuestion = deriveFollowUpQuestion(userMessage);
+    const sanitizedShortAnswer = shortAnswer.slice(0, MAX_SHORT_ANSWER_CHARS).trim();
+    const sanitizedFollowUp = followUpQuestion.slice(0, MAX_FOLLOW_UP_CHARS).trim();
+    const finalMessage = sanitizedFollowUp
+        ? `${sanitizedShortAnswer}\n\n${sanitizedFollowUp}`
+        : sanitizedShortAnswer;
+    return {
+        message: finalMessage,
+        shortAnswer: sanitizedShortAnswer,
+        followUpQuestion: sanitizedFollowUp,
+        strategy: 'heuristic'
+    };
+};
+const buildFirstTurnCoachingResponse = async (userMessage, draftResponse, userPreferences) => {
+    if (!draftResponse || !draftResponse.trim()) {
+        return null;
+    }
+    const truncatedDraft = draftResponse.slice(0, MAX_REWRITE_SOURCE_CHARS);
+    const prompt = `Du bist Coach für Marktkommunikation (Energiewirtschaft) und möchtest zunächst ein kurzes, vertrauensbildendes Signal senden. Arbeite mit der Nutzerfrage und einer internen langen Antwort. Formatiere deine Antwort als JSON mit den Feldern short_answer und follow_up_question.\n\nRahmenbedingungen:\n- short_answer: maximal 3 Sätze, höchstens 450 Zeichen, klare Handlungsempfehlung oder Zusammenfassung.\n- follow_up_question: offene Rückfrage (keine Ja/Nein-Frage), maximal 180 Zeichen, um den Kontext des Nutzers besser zu verstehen.\n- Verwende die Ansprache \"du\".\n- Wenn dir Informationen fehlen, frage gezielt danach.\n\nNutzerfrage:\n"""${userMessage}"""\n\nInterne Antwort (nur als Hintergrund, ggf. gekürzt):\n"""${truncatedDraft}"""\n\nGib ausschließlich gültiges JSON mit den Feldern short_answer und follow_up_question zurück.`;
+    try {
+        const structured = await llmProvider_1.default.generateStructuredOutput(prompt, userPreferences);
+        if (structured && typeof structured === 'object') {
+            const shortAnswerRaw = normalizeWhitespace(String(structured.short_answer || structured.shortAnswer || ''));
+            const followUpRaw = normalizeWhitespace(String(structured.follow_up_question || structured.followUpQuestion || ''));
+            if (shortAnswerRaw) {
+                const sanitizedShort = shortAnswerRaw.slice(0, MAX_SHORT_ANSWER_CHARS).trim();
+                const sanitizedFollowUp = followUpRaw
+                    ? followUpRaw.slice(0, MAX_FOLLOW_UP_CHARS).trim()
+                    : deriveFollowUpQuestion(userMessage);
+                const finalMessage = sanitizedFollowUp
+                    ? `${sanitizedShort}\n\n${sanitizedFollowUp}`
+                    : sanitizedShort;
+                return {
+                    message: finalMessage,
+                    shortAnswer: sanitizedShort,
+                    followUpQuestion: sanitizedFollowUp,
+                    strategy: 'llm'
+                };
+            }
+        }
+    }
+    catch (error) {
+        console.warn('⚠️  Erste-Antwort-Coaching (LLM) fehlgeschlagen:', error);
+    }
+    return heuristicCoachingRewrite(userMessage, truncatedDraft);
+};
 // CR-CS30: Helper function to generate CS30 additional response
 async function generateCs30AdditionalResponse(userQuery, userHasCs30Access, userId) {
     if (!userHasCs30Access) {
@@ -444,7 +535,7 @@ router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
 }));
 // Send message in chat
 router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g;
     const { chatId } = req.params;
     const { content, contextSettings, timelineId } = req.body;
     const userId = req.user.id;
@@ -528,8 +619,10 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     // Proceed with normal response generation using configured pipeline
     const previousMessages = await database_1.default.query('SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
     const userPreferences = await database_1.default.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userId]);
+    const assistantTurnsBefore = previousMessages.rows.filter((msg) => msg.role === 'assistant').length;
+    const userPreferencesRow = userPreferences.rows[0] || {};
     // Use the advanced reasoning pipeline for better quality responses with timeout protection
-    const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, { ...(userPreferences.rows[0] || {}), userId }, contextSettings);
+    const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, { ...userPreferencesRow, userId }, contextSettings);
     // Add timeout protection: use a budget slightly lower than server timeout to allow graceful fallback
     const serverTimeoutMs = Number(process.env.CHAT_TIMEOUT_MS || '90000');
     const reasoningBudgetMs = Math.max(15000, serverTimeoutMs - 5000); // keep 5s for fallback/write
@@ -544,9 +637,9 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         if (error.message === 'REASONING_TIMEOUT') {
             console.warn('⚠️ Advanced reasoning timed out, using fallback');
             // Fallback to simple response
-            const fallbackContext = await retrieval.getContextualCompressedResults(content, userPreferences.rows[0] || {}, 5);
+            const fallbackContext = await retrieval.getContextualCompressedResults(content, userPreferencesRow, 5);
             const contextText = fallbackContext.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
-            const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, { ...(userPreferences.rows[0] || {}), userId });
+            const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), contextText, { ...userPreferencesRow, userId });
             reasoningResult = {
                 response: fallbackResponse,
                 reasoningSteps: [{
@@ -607,7 +700,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                 contextMode = 'system-only';
             }
             aiResponse = await llmProvider_1.default.generateResponseWithUserContext(previousMessages.rows.map(msg => ({ role: msg.role, content: msg.content })), reasoningResult.response, // Use reasoning result as enhanced context
-            userContext.userDocuments, userContext.userNotes, userPreferences.rows[0] || {}, contextMode);
+            userContext.userDocuments, userContext.userNotes, userPreferencesRow, contextMode);
             responseMetadata = {
                 ...responseMetadata,
                 userContextUsed: true,
@@ -619,6 +712,33 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
             };
         }
     }
+    let firstTurnRewrite = null;
+    const shouldApplyFirstTurnCoaching = assistantTurnsBefore === 0 &&
+        (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.disableFirstTurnCoaching) !== true;
+    if (shouldApplyFirstTurnCoaching) {
+        const normalizedResponse = normalizeWhitespace(aiResponse || '');
+        const responseLooksLong = normalizedResponse.length > MAX_SHORT_ANSWER_CHARS;
+        const endsWithQuestion = /\?\s*$/.test(normalizedResponse);
+        if (responseLooksLong || !endsWithQuestion) {
+            firstTurnRewrite = await buildFirstTurnCoachingResponse(content, aiResponse, { ...userPreferencesRow, userId });
+            if (firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.message) {
+                aiResponse = firstTurnRewrite.message;
+            }
+        }
+    }
+    responseMetadata.assistantMetadata = {
+        ...(responseMetadata.assistantMetadata || {}),
+        assistantTurnsBefore,
+        firstTurnCoachingApplied: Boolean(firstTurnRewrite),
+        ...(firstTurnRewrite
+            ? {
+                firstTurnCoachingStrategy: firstTurnRewrite.strategy,
+                firstTurnFollowUp: firstTurnRewrite.followUpQuestion,
+                firstTurnShortAnswer: firstTurnRewrite.shortAnswer,
+                firstTurnShortAnswerChars: firstTurnRewrite.shortAnswer.length
+            }
+            : {})
+    };
     const assistantMessage = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', aiResponse, JSON.stringify(responseMetadata)]);
     await database_1.default.query('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
     // Award points for document usage if documents were used in the response
@@ -742,8 +862,11 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                 rawData: {
                     chat_id: chatId,
                     user_message: content,
-                    assistant_response: reasoningResult.response,
+                    assistant_response: aiResponse,
                     cs30_additional: false,
+                    first_turn_coaching_applied: Boolean(firstTurnRewrite),
+                    first_turn_follow_up: (_f = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.followUpQuestion) !== null && _f !== void 0 ? _f : null,
+                    first_turn_short_answer: (_g = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.shortAnswer) !== null && _g !== void 0 ? _g : null,
                     reasoning_quality: reasoningResult.finalQuality,
                     api_calls_used: reasoningResult.apiCallsUsed,
                     processing_time_ms: Date.now() - startTime

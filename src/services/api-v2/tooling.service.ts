@@ -866,6 +866,7 @@ export class ToolingService {
 
       for (let index = 0; index < totalChunks && references.length < maxSlots; index++) {
         const chunk = chunks[index];
+        const formattedChunk = this.formatAttachmentChunkForPrompt(chunk, attachment);
         const chunkLabel = totalChunks > 1 ? ` (Teil ${index + 1}/${totalChunks})` : '';
 
         const headerLines: string[] = [
@@ -880,7 +881,7 @@ export class ToolingService {
           headerLines.push(`Beschreibung: ${attachment.description}`);
         }
 
-        const body = `${headerLines.join('\n')}\n\n${chunk}`.trim();
+  const body = `${headerLines.join('\n')}\n\n${formattedChunk}`.trim();
         const snippet = this.truncateText(body, MAX_REFERENCE_SNIPPET_LENGTH);
 
         const chunkIdSeed = `${attachment.filename}:${attachment.id ?? ''}:${index}`;
@@ -897,6 +898,63 @@ export class ToolingService {
     }
 
     return references;
+  }
+
+  private formatAttachmentChunkForPrompt(
+    content: string,
+    attachment: NormalizedToolScriptAttachment
+  ): string {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return trimmed;
+    }
+
+    if (!this.isLikelyEdifactAttachment(trimmed, attachment)) {
+      return trimmed;
+    }
+
+    const withBreaks = this.insertEdifactSegmentBreaks(trimmed);
+    return withBreaks.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  private isLikelyEdifactAttachment(
+    content: string,
+    attachment: NormalizedToolScriptAttachment
+  ): boolean {
+    const filename = attachment.filename.toLowerCase();
+    const mimeType = attachment.mimeType?.toLowerCase() ?? '';
+
+    if (filename.endsWith('.edi') || filename.endsWith('.edifact')) {
+      return true;
+    }
+
+    if (mimeType.includes('edifact')) {
+      return true;
+    }
+
+    if (/UNH\+/.test(content) && /UNT\+/.test(content)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private insertEdifactSegmentBreaks(content: string): string {
+    let result = '';
+
+    for (let index = 0; index < content.length; index++) {
+      const char = content[index];
+      result += char;
+
+      if (char === "'" && content[index - 1] !== '?') {
+        const nextChar = content[index + 1];
+        if (nextChar !== '\n' && nextChar !== '\r') {
+          result += '\n';
+        }
+      }
+    }
+
+    return result;
   }
 
   private mergeReferences(

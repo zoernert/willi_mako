@@ -14,11 +14,12 @@ Dieses Change Request Dokument beschreibt die Erweiterung des Tooling-Services u
    - OpenAPI-Dokumentation ergänzt (Schemas für Attachments, Referenzen, Testcases).
 2. **Service-Logik (`tooling.service.ts`)**
   - Normalisierung mit Validierung: ≤4 Attachments, max. 1 MB Text je Datei, 4 MB je Anfrage.
-   - Chunking pro Attachment (bis 3 Chunks, 600–1 800 Zeichen) und Gewichtung.
-   - Automatische Umwandlung in Prompt-Referenzen inkl. Header-Metadaten.
-   - Merge mit bestehenden Referenzen und Sortierung nach Gewicht.
-   - Verbesserte Rate-Limit-Erholung (bis 2 zusätzliche Wartezyklen, Statusupdates & Warnungen).
-   - Pseudocode-Retrieval für relevante EDIFACT-Typen (MSCONS etc.) mit deduplizierten Snippets.
+  - Chunking pro Attachment (bis 3 Chunks, 600–1 800 Zeichen) und Gewichtung.
+  - Automatische Umwandlung in Prompt-Referenzen inkl. Header-Metadaten.
+  - EDIFACT-Anhänge werden segmentweise (`'` → Zeilenumbruch) formatiert, damit das LLM reale Segmentgrenzen erkennt.
+  - Merge mit bestehenden Referenzen und Sortierung nach Gewicht.
+  - Verbesserte Rate-Limit-Erholung (bis 2 zusätzliche Wartezyklen, Statusupdates & Warnungen).
+  - Pseudocode-Retrieval für relevante EDIFACT-Typen (MSCONS etc.) mit deduplizierten Snippets.
 3. **Routes & Validierung**
    - `POST /api/v2/tools/generate-script` reicht Attachments und Testcases an den Service weiter.
 4. **Dokumentation**

@@ -1,203 +1,129 @@
-const { readFile, writeFile } = require('fs/promises');
-const { join, basename, extname } = require('path');
-
 /**
- * MSCONS-zu-CSV-Konverter für EDIFACT-Nachrichten im Energiemarkt
- * 
- * Zweck:
- *   - Extrahiere Messwerte (OBIS-Codes) aus MSCONS-Nachrichten
- *   - Konvertiere in strukturiertes CSV mit Zeilen pro Ablesezeitpunkt
- *   - Behandle Intervallwerte (QTY+DTM) und Register-IDs (PIA/LIN)
- * 
- * Nutzung:
- *   node mscons2csv.js <Eingabepfad>
- *   Ausgabe: <Eingabename>.csv im Arbeitsverzeichnis
+ * @file mscons-to-csv.js
+ * @description Konvertiert MSCONS-Nachrichten in CSV-Dateien. Liest eine MSCONS-Datei ein, extrahiert die Messwerte
+ *              und speichert diese als CSV im aktuellen Arbeitsverzeichnis. Jeder Messzeitpunkt entspricht einer Zeile.
+ * @usage node mscons-to-csv.js <mscons-datei>
  */
 
-const EDIFACT_ESCAPE = '?';
-const SEGMENT_TERMINATOR = "'\n";
-const DATA_SEPARATOR = '+';
-const COMPOSITE_SEPARATOR = ':';
+const fs = require('fs/promises');
+const path = require('path');
 
 /**
- * Parsed eine MSCONS-Nachricht in strukturierte Segmente
- * @throws {Error} Bei Formatfehlern oder fehlenden Pflichtsegmenten
+ * Konvertiert eine MSCONS-Nachricht in eine CSV-Datei.
+ * @param {object} input - Ein Objekt mit der MSCONS-Nachricht als Payload.
+ * @param {string} input.payload - Die MSCONS-Nachricht als String.
+ * @returns {Promise<object>} - Ein Objekt mit Informationen zum Erfolg oder Misserfolg der Konvertierung.
  */
-function parseMscons(edifact) {
-  if (!edifact.trim().startsWith('UNH') || !edifact.includes('UNT')) {
-    throw new Error('Ungültige MSCONS-Struktur: Fehlende UNH/UNT-Segmente');
-  }
-
-  const segments = edifact
-    .split(SEGMENT_TERMINATOR)
-    .filter(Boolean)
-    .map(line => {
-      const [code, ...elements] = line.split(DATA_SEPARATOR);
-      return { code, elements: elements.map(el => el.replace(new RegExp(`${EDIFACT_ESCAPE}([+:'?])`, 'g'), '$1')) };
-    });
-
-  // Validierung: UNH muss vor UNT kommen
-  const unhIndex = segments.findIndex(s => s.code === 'UNH');
-  const untIndex = segments.findIndex(s => s.code === 'UNT');
-  if (unhIndex === -1 || untIndex === -1 || unhIndex > untIndex) {
-    throw new Error('Segmentreihenfolge verletzt: UNH muss vor UNT stehen');
-  }
-
-  return segments;
-}
-
-/**
- * Extrahiere OBIS-Codes aus PIA-Segmenten (Format: PIA+5+<OBIS1>+<OBIS2>)
- */
-function extractObisCodes(segments) {
-  return segments
-    .filter(s => s.code === 'PIA' && s.elements[0] === '5')
-    .map(s => {
-      const [obis1, obis2] = s.elements.slice(1, 3);
-      return `${obis1.replace(/\?/g, '')}:${obis2.replace(/\?/g, '')}`;
-    });
-}
-
-/**
- * Verarbeite QTY+DTM-Gruppen zu Intervall-Messwerten
- */
-function processIntervalReadings(segments, obisCodes) {
-  const readings = [];
-  let currentObisIndex = 0;
-
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-
-    if (seg.code === 'QTY' && seg.elements[0] === '187') {
-      const value = seg.elements[1] || '0';
-      const startSeg = segments[i + 1];
-      const endSeg = segments[i + 2];
-
-      if (!startSeg?.code === 'DTM' || startSeg.elements[0] !== '163' ||
-          !endSeg?.code === 'DTM' || endSeg.elements[0] !== '164') {
-        continue; // Ungültige Intervalldefinition
-      }
-
-      const obisCode = obisCodes[currentObisIndex % obisCodes.length];
-      readings.push({
-        obisCode,
-        value,
-        start: startSeg.elements[1].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
-        end: endSeg.elements[1].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
-        unit: seg.elements[2] || 'kWh' // Default-Einheit
-      });
-
-      currentObisIndex++;
-      i += 2; // Überspringe verarbeitete DTM-Segmente
-    }
-  }
-
-  return readings;
-}
-
-/**
- * Generiere CSV-Inhalt mit Kopfzeile
- */
-function generateCsv(readings) {
-  const header = ['OBIS-Code', 'Wert', 'Einheit', 'Startdatum', 'Enddatum'];
-  const rows = readings.map(r =>
-    `${r.obisCode};${r.value};${r.unit};${r.start};${r.end}`
-  );
-  return [header.join(';'), ...rows].join('\n');
-}
-
 async function run(input) {
-  const { payload: filePath } = input || {};
-  if (!filePath) {
-    throw new Error('Eingabepfad fehlt: Bitte Pfad zur MSCONS-Datei als Argument angeben');
+  if (!input || !input.payload) {
+    return { code: 'missing_payload', description: 'Die Eingabe muss eine Payload enthalten.', entrypoint: 'run', runtime: 'node18', deterministic: true, dependencies: [], warnings: [], notes: [] };
   }
 
-  // Dateioperationen
-  const content = await readFile(filePath, 'utf8');
-  const segments = parseMscons(content);
-  const obisCodes = extractObisCodes(segments);
+  const msconsData = input.payload;
 
-  if (obisCodes.length === 0) {
-    throw new Error('Keine OBIS-Codes (PIA+5) in der Nachricht gefunden');
+  const lines = msconsData.split('\n');
+  const segments = lines.map(line => line.trim());
+
+  let obisCodes = new Set();
+  let data = [];
+
+  let currentObisCode = null;
+  let qtyValues = [];
+  let dtm163Values = [];
+  let dtm164Values = [];
+
+  for (const segment of segments) {
+    if (segment.startsWith('PIA+5')) {
+      const piaParts = segment.split('+');
+      if (piaParts.length > 2) {
+        const obisCodeRaw = piaParts[2];
+        const obisCodeParts = obisCodeRaw.split(':');
+        if (obisCodeParts.length >= 2) {
+          currentObisCode = `${obisCodeParts[0].replace(/\?/g, '')}:${obisCodeParts[1].replace(/\?/g, '')}`;
+          obisCodes.add(currentObisCode);
+        }
+      }
+    } else if (segment.startsWith('QTY+187')) {
+      const qtyParts = segment.split(':');
+      qtyValues.push(qtyParts[1]);
+    } else if (segment.startsWith('DTM+163')) {
+      const dtmParts = segment.split(':');
+      dtm163Values.push(dtmParts[1].replace(/\?/g, ''));
+    } else if (segment.startsWith('DTM+164')) {
+      const dtmParts = segment.split(':');
+      dtm164Values.push(dtmParts[1].replace(/\?/g, ''));
+    }
   }
 
-  const readings = processIntervalReadings(segments, obisCodes);
-  if (readings.length === 0) {
-    throw new Error('Keine Messwerte (QTY+187) in der Nachricht gefunden');
+  if (dtm163Values.length !== dtm164Values.length || dtm163Values.length !== qtyValues.length) {
+    return { code: 'data_mismatch', description: 'Die Anzahl der Zeitstempel und Messwerte stimmt nicht überein.', entrypoint: 'run', runtime: 'node18', deterministic: true, dependencies: [], warnings: [], notes: [] };
   }
 
-  const csvContent = generateCsv(readings);
-  const outputPath = join(
-    process.cwd(),
-    `${basename(filePath, extname(filePath))}.csv`
-  );
+  for (let i = 0; i < dtm163Values.length; i++) {
+    if (!currentObisCode) {
+      currentObisCode = 'UNKNOWN';
+    }
+    data.push({
+      obisCode: currentObisCode,
+      start: formatEdifactTimestamp(dtm163Values[i]),
+      end: formatEdifactTimestamp(dtm164Values[i]),
+      value: qtyValues[i],
+    });
+  }
 
-  // Überschreibschutz
+  const csvHeader = `OBIS;Start;Ende;Wert\n`;
+  const csvRows = data.map(item => `${item.obisCode};${item.start};${item.end};${item.value}`).join('\n');
+  const csvContent = csvHeader + csvRows;
+
+  const filename = 'mscons.csv';
+  const filepath = path.join(process.cwd(), filename);
+
   try {
-    await writeFile(outputPath, csvContent, { flag: 'wx' }); // wx = fail if exists
-  } catch (err) {
-    if (err.code === 'EEXIST') {
-      throw new Error(`Zieldatei existiert bereits: ${outputPath}`);
-    }
-    throw err;
+    await fs.writeFile(filepath, csvContent, 'utf8');
+    console.log(`MSCONS Daten erfolgreich in ${filename} konvertiert.`);
+    return { code: 'success', description: `MSCONS Daten erfolgreich in ${filename} konvertiert.`, entrypoint: 'run', runtime: 'node18', deterministic: true, dependencies: [], warnings: [], notes: [] };
+  } catch (error) {
+    return { code: 'file_write_error', description: `Fehler beim Schreiben der CSV-Datei: ${error.message}`, entrypoint: 'run', runtime: 'node18', deterministic: true, dependencies: [], warnings: [], notes: [] };
   }
+}
 
-  return {
-    success: true,
-    outputPath,
-    stats: {
-      obisCodes: obisCodes.length,
-      readings: readings.length
-    }
-  };
+function formatEdifactTimestamp(edifactTimestamp) {
+  const year = edifactTimestamp.substring(0, 4);
+  const month = edifactTimestamp.substring(4, 2 + 4);
+  const day = edifactTimestamp.substring(6, 2 + 6);
+  const hour = edifactTimestamp.substring(8, 2 + 8);
+  const minute = edifactTimestamp.substring(10, 2 + 10);
+
+  return `${year}-${month}-${day}T${hour}:${minute}:00`;
 }
 
 module.exports = { run };
 
-// Automatische Ausführung bei direktem Aufruf
 if (require.main === module) {
-  (async () => {
-    try {
-      const result = await run({ payload: process.argv[2] });
-      console.log(`Erfolg: CSV generiert unter ${result.outputPath} (${result.stats.readings} Messwerte)`);
-    } catch (err) {
-      console.error('FEHLER:', err.message);
-      process.exitCode = 1;
+  async function main() {
+    const args = process.argv.slice(2);
+    if (args.length === 0) {
+      console.error('Bitte gib den Pfad zur MSCONS-Datei als Argument an.');
+      process.exit(1);
     }
-  })();
-}
 
-// __AUTO_RUN_RETURN_WRAPPER__
-if (typeof module !== 'undefined' && module.exports) {
-  const __exports = module.exports;
-  let __originalRun = null;
-  if (typeof __exports === 'function') {
-    __originalRun = __exports;
-  } else if (__exports && typeof __exports.run === 'function') {
-    __originalRun = __exports.run;
-  }
-  if (!__originalRun && typeof exports !== 'undefined' && exports && typeof exports === 'object') {
-    if (typeof exports.run === 'function') {
-      __originalRun = exports.run;
+    const filePath = args[0];
+
+    try {
+      const fileContent = await fs.readFile(filePath, 'utf8');
+      const result = await run({ payload: fileContent });
+      if (result.code !== 'success') {
+        console.error(`Fehler: ${result.description}`);
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(`Fehler beim Lesen der Datei: ${error.message}`);
+      process.exit(1);
     }
   }
-  if (!__originalRun && typeof run === 'function') {
-    __originalRun = run;
-  }
-  if (typeof __originalRun === 'function') {
-    const __wrapRun = async function run(input) {
-      const __result = await __originalRun(input);
-      return __result === undefined ? '' : __result;
-    };
-    if (typeof __exports === 'function') {
-      module.exports = __wrapRun;
-    } else if (__exports && typeof __exports === 'object') {
-      module.exports.run = __wrapRun;
-    } else {
-      module.exports = { run: __wrapRun };
-    }
-    if (typeof exports !== 'undefined' && exports) {
-      exports.run = typeof module.exports === 'function' ? module.exports : module.exports.run;
-    }
-  }
+
+  main().catch(err => {
+    console.error('Unerwarteter Fehler:', err);
+    process.exit(1);
+  });
 }
