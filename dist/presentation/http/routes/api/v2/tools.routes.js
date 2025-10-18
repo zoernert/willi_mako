@@ -9,7 +9,7 @@ const tooling_service_1 = require("../../../../../services/api-v2/tooling.servic
 const router = (0, express_1.Router)();
 router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)({ capacity: 3, refillTokens: 3, intervalMs: 60000 }), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const body = (req.body || {});
-    const { sessionId, instructions, inputSchema, expectedOutputDescription, additionalContext, constraints } = body;
+    const { sessionId, instructions, inputSchema, expectedOutputDescription, additionalContext, constraints, referenceDocuments, testCases, attachments } = body;
     if (!sessionId || typeof sessionId !== 'string') {
         throw new errorHandler_1.AppError('sessionId ist erforderlich', 400);
     }
@@ -33,7 +33,10 @@ router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV
         inputSchema: inputSchema,
         expectedOutputDescription,
         additionalContext,
-        constraints
+        constraints,
+        referenceDocuments,
+        testCases,
+        attachments
     });
     await session_service_1.sessionService.touchSession(sessionId);
     const payload = {

@@ -100,6 +100,7 @@ export interface GenerateToolScriptRequest {
     constraints?: ToolScriptConstraints;
     referenceDocuments?: ToolScriptReference[];
     testCases?: ToolScriptTestCase[];
+    attachments?: ToolScriptAttachment[];
 }
 export interface ToolScriptValidationReport {
     syntaxValid: boolean;
@@ -141,6 +142,14 @@ export interface ToolScriptReference {
     snippet: string;
     weight?: number;
     useForPrompt?: boolean;
+}
+export interface ToolScriptAttachment {
+    id?: string;
+    filename: string;
+    content: string;
+    mimeType?: string;
+    description?: string;
+    weight?: number;
 }
 export interface ToolScriptContextSnippet {
     id?: string;

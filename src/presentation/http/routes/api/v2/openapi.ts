@@ -966,7 +966,8 @@ export const apiV2OpenApiDocument = {
           filename: { type: 'string', maxLength: 160 },
           content: {
             type: 'string',
-            description: 'UTF-8 Textinhalt des Attachments, z. B. EDIFACT-Datei oder CSV-Ausschnitt.'
+            description: 'UTF-8 Textinhalt des Attachments, z. B. EDIFACT-Datei oder CSV-Ausschnitt.',
+            maxLength: 1_048_576
           },
           mimeType: { type: 'string' },
           description: { type: 'string', maxLength: 240 },
@@ -1035,7 +1036,7 @@ export const apiV2OpenApiDocument = {
           },
           attachments: {
             type: 'array',
-            description: 'Textbasierte Dateien, die automatisch in Prompt-Snippets aufgeteilt werden sollen.',
+            description: 'Textbasierte Dateien (max. 1 MB pro Attachment, 4 MB gesamt), die automatisch in Prompt-Snippets aufgeteilt werden sollen.',
             items: { $ref: '#/components/schemas/ToolScriptAttachment' }
           }
         }

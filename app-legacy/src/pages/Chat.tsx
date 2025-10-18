@@ -1117,299 +1117,299 @@ const Chat: React.FC = () => {
                       </Typography>
                     </ListItem>
                   ) : (
-                    messages.map((message) => (
-                      <ListItem
-                        key={`${message.id}-${message.role}-${message.created_at}`}
-                        sx={{
-                          alignItems: 'flex-start',
-                          mb: 2,
-                          flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
-                        }}
-                      >
-                        <Avatar
+                    messages.map((message) => {
+                      const messageWithCs30 = message as MessageWithCs30;
+                      const hasCs30Response = messageWithCs30.cs30AdditionalResponse;
+                      const shouldShowCs30 = userHasCs30Access && showCs30Mode && !!hasCs30Response;
+
+                      const assistantMetadata = message.metadata?.assistantMetadata || null;
+                      const isFirstTurnCoaching = Boolean(assistantMetadata?.firstTurnCoachingApplied);
+                      const firstTurnShortAnswer = typeof assistantMetadata?.firstTurnShortAnswer === 'string'
+                        ? assistantMetadata.firstTurnShortAnswer
+                        : '';
+                      const firstTurnFollowUp = typeof assistantMetadata?.firstTurnFollowUp === 'string'
+                        ? assistantMetadata.firstTurnFollowUp
+                        : '';
+
+                      const baseContent = shouldShowCs30
+                        ? messageWithCs30.cs30AdditionalResponse?.content || message.content
+                        : message.content;
+                      const useCoachShortAnswer = !shouldShowCs30 && isFirstTurnCoaching && firstTurnShortAnswer.length > 0;
+                      const contentToShow = useCoachShortAnswer ? firstTurnShortAnswer : baseContent;
+                      const shouldShowFollowUp = !shouldShowCs30 && isFirstTurnCoaching && firstTurnFollowUp.length > 0;
+                      const isCs30Content = shouldShowCs30;
+
+                      return (
+                        <ListItem
+                          key={`${message.id}-${message.role}-${message.created_at}`}
                           sx={{
-                            mx: 1,
-                            bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
+                            alignItems: 'flex-start',
+                            mb: 2,
+                            flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                           }}
                         >
-                          {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
-                        </Avatar>
-                        <Paper
-                          data-message-id={message.id}
-                          sx={{
-                            p: 2,
-                            maxWidth: '70%',
-                            bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
-                          color: message.role === 'user' ? 'white' : 'text.primary',
-                        }}
-                      >
-                        {message.role === 'user' ? (
-                          <Typography 
-                            variant="body1" 
-                            sx={{ whiteSpace: 'pre-wrap' }}
-                            className="chat-message user-message"
-                          >
-                            {message.content}
-                          </Typography>
-                        ) : (
-                          <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                              <Box sx={{ flex: 1 }}>
-                                <div className="chat-message assistant-message">
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                              components={{
-                                p: ({ children }) => (
-                                  <Typography variant="body1" sx={{ mb: 1 }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                h1: ({ children }) => (
-                                  <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                h2: ({ children }) => (
-                                  <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                h3: ({ children }) => (
-                                  <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                ul: ({ children }) => (
-                                  <Box component="ul" sx={{ mb: 1, pl: 2 }}>
-                                    {children}
-                                  </Box>
-                                ),
-                                ol: ({ children }) => (
-                                  <Box component="ol" sx={{ mb: 1, pl: 2 }}>
-                                    {children}
-                                  </Box>
-                                ),
-                                li: ({ children }) => (
-                                  <Typography component="li" variant="body1" sx={{ mb: 0.5 }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                strong: ({ children }) => (
-                                  <Typography component="strong" sx={{ fontWeight: 'bold' }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                em: ({ children }) => (
-                                  <Typography component="em" sx={{ fontStyle: 'italic' }}>
-                                    {children}
-                                  </Typography>
-                                ),
-                                code: ({ children }) => (
-                                  <Typography
-                                    component="code"
-                                    sx={{
-                                      backgroundColor: 'rgba(0,0,0,0.1)',
-                                      padding: '2px 4px',
-                                      borderRadius: '4px',
-                                      fontFamily: 'monospace',
-                                      fontSize: '0.9em',
-                                    }}
-                                  >
-                                    {children}
-                                  </Typography>
-                                ),
-                                pre: ({ children }) => (
-                                  <Paper
-                                    sx={{
-                                      p: 1,
-                                      backgroundColor: 'rgba(0,0,0,0.1)',
-                                      overflow: 'auto',
-                                      mb: 1,
-                                    }}
-                                  >
-                                    <Typography
-                                      component="pre"
-                                      sx={{
-                                        fontFamily: 'monospace',
-                                        fontSize: '0.9em',
-                                        whiteSpace: 'pre-wrap',
-                                        margin: 0,
-                                      }}
-                                    >
-                                      {children}
-                                    </Typography>
-                                  </Paper>
-                                ),
-                                blockquote: ({ children }) => (
-                                  <Paper
-                                    sx={{
-                                      p: 1,
-                                      borderLeft: '4px solid',
-                                      borderLeftColor: 'primary.main',
-                                      backgroundColor: 'rgba(0,0,0,0.05)',
-                                      mb: 1,
-                                    }}
-                                  >
-                                    {children}
-                                  </Paper>
-                                ),
-                                      // GFM tables
-                                      table: ({ children }) => (
-                                        <TableContainer component={MuiPaper} sx={{ mb: 2, overflow: 'auto' }}>
-                                          <Table size="small">{children}</Table>
-                                        </TableContainer>
-                                      ),
-                                      thead: ({ children }) => <TableHead>{children}</TableHead>,
-                                      tbody: ({ children }) => <TableBody>{children}</TableBody>,
-                                      tr: ({ children }) => <TableRow>{children}</TableRow>,
-                                      th: ({ children }) => (
-                                        <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.light', color: 'primary.contrastText' }}>
-                                          {children}
-                                        </TableCell>
-                                      ),
-                                      td: ({ children }) => <TableCell>{children}</TableCell>,
-                              }}
-                            >
-                              {/* CR-CS30: Toggle-based content display */}
-                              {(() => {
-                                const messageWithCs30 = message as MessageWithCs30;
-                                const hasCs30Response = messageWithCs30.cs30AdditionalResponse;
-                                const shouldShowCs30 = userHasCs30Access && showCs30Mode && hasCs30Response;
-                                const contentToShow = shouldShowCs30 
-                                  ? messageWithCs30.cs30AdditionalResponse?.content || message.content
-                                  : message.content;
-                                const isCs30Content = shouldShowCs30;
-
-                                // Debug logging
-                                if (message.role === 'assistant') {
-                                  console.log('Message render debug:', {
-                                    messageId: message.id,
-                                    userHasCs30Access,
-                                    showCs30Mode,
-                                    hasCs30Response: !!hasCs30Response,
-                                    shouldShowCs30,
-                                    contentPreview: contentToShow?.substring(0, 50) + '...',
-                                    cs30ContentPreview: messageWithCs30.cs30AdditionalResponse?.content?.substring(0, 50) + '...'
-                                  });
-                                }
-
-                                return unwrapMarkdownCodeFence(contentToShow || '');
-                              })()}
-                            </ReactMarkdown>
-                            
-                            {/* CR-CS30: Display indicator and source info outside ReactMarkdown */}
-                            {(() => {
-                              const messageWithCs30 = message as MessageWithCs30;
-                              const hasCs30Response = messageWithCs30.cs30AdditionalResponse;
-                              const shouldShowCs30 = userHasCs30Access && showCs30Mode && hasCs30Response;
-                              const isCs30Content = shouldShowCs30;
-
-                              if (!userHasCs30Access || !hasCs30Response) {
-                                return null;
-                              }
-
-                              return (
-                                <Box sx={{ mt: 1 }}>
-                                  {/* Display toggle indicator - smaller styling */}
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      display: 'inline-block',
-                                      mb: 1,
-                                      px: 0.8,
-                                      py: 0.3,
-                                      backgroundColor: isCs30Content ? 'primary.light' : 'grey.200',
-                                      color: isCs30Content ? 'primary.contrastText' : 'text.secondary',
-                                      borderRadius: 1,
-                                      fontWeight: 'medium',
-                                      fontSize: '0.65rem'
-                                    }}
-                                  >
-                                    {isCs30Content ? 'Schleupen-Dokumentation' : 'Allgemeine Wissensbasis'}
-                                  </Typography>
-                                  
-                                  {/* CS30 Source Information - smaller styling */}
-                                  {isCs30Content && messageWithCs30.cs30AdditionalResponse?.metadata?.sources && (
-                                    <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderTopColor: 'divider' }}>
-                                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                                        Quellen: {messageWithCs30.cs30AdditionalResponse.metadata.sourceCount} Schleupen-Dokument(e)
-                                      </Typography>
-                                    </Box>
-                                  )}
-                                </Box>
-                              );
-                            })()}
-                                </div>
-                              </Box>
-                              
-                              {/* Pipeline Info Button for assistant messages */}
-                              {message.metadata && (
-                                message.metadata.reasoningSteps || 
-                                message.metadata.pipelineDecisions || 
-                                message.metadata.type === 'cs30_additional' || 
-                                message.metadata.qaAnalysis
-                              ) && (
-                                <PipelineInfoDialog 
-                                  pipelineInfo={{
-                                    // CS30 Pipeline details
-                                    contextSources: message.metadata.contextSources,
-                                    userContextUsed: message.metadata.userContextUsed,
-                                    contextReason: message.metadata.contextReason,
-                                    reasoningSteps: message.metadata.reasoningSteps,
-                                    finalQuality: message.metadata.finalQuality,
-                                    iterationsUsed: message.metadata.iterationsUsed,
-                                    qdrantQueries: message.metadata.qdrantQueries,
-                                    qdrantResults: message.metadata.qdrantResults,
-                                    semanticClusters: message.metadata.semanticClusters,
-                                    pipelineDecisions: message.metadata.pipelineDecisions,
-                                    qaAnalysis: message.metadata.qaAnalysis,
-                                    contextAnalysis: message.metadata.contextAnalysis,
-                                    // CS30 Additional sources
-                                    type: message.metadata.type,
-                                    sources: message.metadata.sources,
-                                    sourceCount: message.metadata.sourceCount
-                                  }}
-                                />
-                              )}
-                            </Box>
-                          </Box>
-                        )}
-                        
-                        {/* Context Indicator for assistant messages */}
-                        {message.role !== 'user' && message.metadata && (
-                          <ContextIndicator
-                            contextInfo={message.metadata.userContextUsed ? {
-                              userContextUsed: message.metadata.userContextUsed || false,
-                              userDocumentsUsed: message.metadata.userDocumentsUsed || 0,
-                              userNotesUsed: message.metadata.userNotesUsed || 0,
-                              contextSummary: message.metadata.contextSummary || '',
-                              contextReason: message.metadata.contextReason || '',
-                              suggestedDocuments: message.metadata.suggestedDocuments || [],
-                              relatedNotes: message.metadata.relatedNotes || []
-                            } : null}
-                          />
-                        )}
-                        
-                        {/* Bilaterale Klärung Button removed, using only the icon button in the message header */}
-                        
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          mt: 1
-                        }}>
-                          <Typography
-                            variant="caption"
+                          <Avatar
                             sx={{
-                              opacity: 0.7,
+                              mx: 1,
+                              bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
                             }}
                           >
-                            {formatTime(message.created_at)}
-                          </Typography>
-                        </Box>
-                      </Paper>
-                    </ListItem>
-                    ))
+                            {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
+                          </Avatar>
+                          <Paper
+                            data-message-id={message.id}
+                            sx={{
+                              p: 2,
+                              maxWidth: '70%',
+                              bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
+                              color: message.role === 'user' ? 'white' : 'text.primary',
+                            }}
+                          >
+                            {message.role === 'user' ? (
+                              <Typography 
+                                variant="body1" 
+                                sx={{ whiteSpace: 'pre-wrap' }}
+                                className="chat-message user-message"
+                              >
+                                {message.content}
+                              </Typography>
+                            ) : (
+                              <Box>
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                  <Box sx={{ flex: 1 }}>
+                                    <div className="chat-message assistant-message">
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                          p: ({ children }) => (
+                                            <Typography variant="body1" sx={{ mb: 1 }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          h1: ({ children }) => (
+                                            <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          h2: ({ children }) => (
+                                            <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          h3: ({ children }) => (
+                                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          ul: ({ children }) => (
+                                            <Box component="ul" sx={{ mb: 1, pl: 2 }}>
+                                              {children}
+                                            </Box>
+                                          ),
+                                          ol: ({ children }) => (
+                                            <Box component="ol" sx={{ mb: 1, pl: 2 }}>
+                                              {children}
+                                            </Box>
+                                          ),
+                                          li: ({ children }) => (
+                                            <Typography component="li" variant="body1" sx={{ mb: 0.5 }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          strong: ({ children }) => (
+                                            <Typography component="strong" sx={{ fontWeight: 'bold' }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          em: ({ children }) => (
+                                            <Typography component="em" sx={{ fontStyle: 'italic' }}>
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          code: ({ children }) => (
+                                            <Typography
+                                              component="code"
+                                              sx={{
+                                                backgroundColor: 'rgba(0,0,0,0.1)',
+                                                padding: '2px 4px',
+                                                borderRadius: '4px',
+                                                fontFamily: 'monospace',
+                                                fontSize: '0.9em',
+                                              }}
+                                            >
+                                              {children}
+                                            </Typography>
+                                          ),
+                                          pre: ({ children }) => (
+                                            <Paper
+                                              sx={{
+                                                p: 1,
+                                                backgroundColor: 'rgba(0,0,0,0.1)',
+                                                overflow: 'auto',
+                                                mb: 1,
+                                              }}
+                                            >
+                                              <Typography
+                                                component="pre"
+                                                sx={{
+                                                  fontFamily: 'monospace',
+                                                  fontSize: '0.9em',
+                                                  whiteSpace: 'pre-wrap',
+                                                  margin: 0,
+                                                }}
+                                              >
+                                                {children}
+                                              </Typography>
+                                            </Paper>
+                                          ),
+                                          blockquote: ({ children }) => (
+                                            <Paper
+                                              sx={{
+                                                p: 1,
+                                                borderLeft: '4px solid',
+                                                borderLeftColor: 'primary.main',
+                                                backgroundColor: 'rgba(0,0,0,0.05)',
+                                                mb: 1,
+                                              }}
+                                            >
+                                              {children}
+                                            </Paper>
+                                          ),
+                                          // GFM tables
+                                          table: ({ children }) => (
+                                            <TableContainer component={MuiPaper} sx={{ mb: 2, overflow: 'auto' }}>
+                                              <Table size="small">{children}</Table>
+                                            </TableContainer>
+                                          ),
+                                          thead: ({ children }) => <TableHead>{children}</TableHead>,
+                                          tbody: ({ children }) => <TableBody>{children}</TableBody>,
+                                          tr: ({ children }) => <TableRow>{children}</TableRow>,
+                                          th: ({ children }) => (
+                                            <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.light', color: 'primary.contrastText' }}>
+                                              {children}
+                                            </TableCell>
+                                          ),
+                                          td: ({ children }) => <TableCell>{children}</TableCell>,
+                                        }}
+                                      >
+                                        {unwrapMarkdownCodeFence(contentToShow || '')}
+                                      </ReactMarkdown>
+
+                                      {userHasCs30Access && hasCs30Response && (
+                                        <Box sx={{ mt: 1 }}>
+                                          <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                              display: 'inline-block',
+                                              mb: 1,
+                                              px: 0.8,
+                                              py: 0.3,
+                                              backgroundColor: isCs30Content ? 'primary.light' : 'grey.200',
+                                              color: isCs30Content ? 'primary.contrastText' : 'text.secondary',
+                                              borderRadius: 1,
+                                              fontWeight: 'medium',
+                                              fontSize: '0.65rem'
+                                            }}
+                                          >
+                                            {isCs30Content ? 'Schleupen-Dokumentation' : 'Allgemeine Wissensbasis'}
+                                          </Typography>
+
+                                          {isCs30Content && messageWithCs30.cs30AdditionalResponse?.metadata?.sources && (
+                                            <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderTopColor: 'divider' }}>
+                                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                Quellen: {messageWithCs30.cs30AdditionalResponse.metadata.sourceCount} Schleupen-Dokument(e)
+                                              </Typography>
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      )}
+
+                                      {shouldShowFollowUp && (
+                                        <Alert
+                                          severity="info"
+                                          variant="outlined"
+                                          icon={<PsychologyIcon fontSize="small" />}
+                                          sx={{
+                                            mt: 2,
+                                            borderStyle: 'dashed',
+                                            borderColor: 'primary.light',
+                                            bgcolor: 'rgba(25,118,210,0.05)'
+                                          }}
+                                        >
+                                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                            Coach-Rückfrage
+                                          </Typography>
+                                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                            {firstTurnFollowUp}
+                                          </Typography>
+                                        </Alert>
+                                      )}
+                                    </div>
+                                  </Box>
+
+                                  {message.metadata && (
+                                    message.metadata.reasoningSteps || 
+                                    message.metadata.pipelineDecisions || 
+                                    message.metadata.type === 'cs30_additional' || 
+                                    message.metadata.qaAnalysis
+                                  ) && (
+                                    <PipelineInfoDialog 
+                                      pipelineInfo={{
+                                        contextSources: message.metadata.contextSources,
+                                        userContextUsed: message.metadata.userContextUsed,
+                                        contextReason: message.metadata.contextReason,
+                                        reasoningSteps: message.metadata.reasoningSteps,
+                                        finalQuality: message.metadata.finalQuality,
+                                        iterationsUsed: message.metadata.iterationsUsed,
+                                        qdrantQueries: message.metadata.qdrantQueries,
+                                        qdrantResults: message.metadata.qdrantResults,
+                                        semanticClusters: message.metadata.semanticClusters,
+                                        pipelineDecisions: message.metadata.pipelineDecisions,
+                                        qaAnalysis: message.metadata.qaAnalysis,
+                                        contextAnalysis: message.metadata.contextAnalysis,
+                                        type: message.metadata.type,
+                                        sources: message.metadata.sources,
+                                        sourceCount: message.metadata.sourceCount
+                                      }}
+                                    />
+                                  )}
+                                </Box>
+                              </Box>
+                            )}
+
+                            {message.role !== 'user' && message.metadata && (
+                              <ContextIndicator
+                                contextInfo={message.metadata.userContextUsed ? {
+                                  userContextUsed: message.metadata.userContextUsed || false,
+                                  userDocumentsUsed: message.metadata.userDocumentsUsed || 0,
+                                  userNotesUsed: message.metadata.userNotesUsed || 0,
+                                  contextSummary: message.metadata.contextSummary || '',
+                                  contextReason: message.metadata.contextReason || '',
+                                  suggestedDocuments: message.metadata.suggestedDocuments || [],
+                                  relatedNotes: message.metadata.relatedNotes || []
+                                } : null}
+                              />
+                            )}
+
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between',
+                              mt: 1
+                            }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  opacity: 0.7,
+                                }}
+                              >
+                                {formatTime(message.created_at)}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        </ListItem>
+                      );
+                    })
                   )}
                   
                   {/* Clarification UI */}

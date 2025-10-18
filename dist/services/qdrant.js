@@ -84,6 +84,7 @@ class QdrantService {
                 {
                     key: 'chunk_type',
                     match: { any: [
+                            'pseudocode_raw',
                             'pseudocode_flow',
                             'pseudocode_validations_rules',
                             'pseudocode_functions',

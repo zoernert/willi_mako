@@ -31,10 +31,17 @@ export declare class ToolingService {
     private normalizeOptionalText;
     private cloneDefaultInputSchema;
     private normalizeReferences;
+    private normalizeAttachments;
+    private transformAttachmentsToReferences;
+    private mergeReferences;
+    private splitAttachmentIntoChunks;
+    private sanitizeAttachmentWeight;
     private normalizeTestCases;
     private normalizeAssertions;
     private cloneTestCaseInput;
     private collectContextSnippets;
+    private collectPseudocodeSnippets;
+    private inferEdifactMessageTypes;
     private extractPayloadSnippet;
     private extractPayloadTitle;
     private truncateText;

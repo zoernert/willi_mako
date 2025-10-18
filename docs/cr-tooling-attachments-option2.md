@@ -13,7 +13,7 @@ Dieses Change Request Dokument beschreibt die Erweiterung des Tooling-Services u
    - Neues DTO `ToolScriptAttachment` (Dateiname, Inhalt, MIME-Type, Beschreibung, Gewicht).
    - OpenAPI-Dokumentation ergänzt (Schemas für Attachments, Referenzen, Testcases).
 2. **Service-Logik (`tooling.service.ts`)**
-   - Normalisierung mit Validierung: ≤4 Attachments, max. 60 k Zeichen je Datei, 160 k Zeichen gesamt.
+  - Normalisierung mit Validierung: ≤4 Attachments, max. 1 MB Text je Datei, 4 MB je Anfrage.
    - Chunking pro Attachment (bis 3 Chunks, 600–1 800 Zeichen) und Gewichtung.
    - Automatische Umwandlung in Prompt-Referenzen inkl. Header-Metadaten.
    - Merge mit bestehenden Referenzen und Sortierung nach Gewicht.
@@ -43,7 +43,7 @@ Dieses Change Request Dokument beschreibt die Erweiterung des Tooling-Services u
 - **Anforderungen:**
   - Nur UTF‑8-Textdateien (MSCONS, CSV, JSON, etc.).
   - Gewicht (1–10) optional; Standardwert 5.
-  - Pro Anfrage max. 4 Dateien, zusammen ≤160 k Zeichen.
+  - Pro Anfrage max. 4 Dateien, jeweils ≤1 MB (gesamt ≤4 MB).
 - **Ausgabe:** Generierte Skripte enthalten weiterhin CommonJS-Code unter `script.code`. Kontext-Snippets listen Attachment-Teile als `origin: "reference"`.
 
 ## Auswirkungen & Vorteile
@@ -61,7 +61,8 @@ Dieses Change Request Dokument beschreibt die Erweiterung des Tooling-Services u
 - Type-Check derzeit ausstehend (npm im Zielsystem nicht verfügbar). Lokale Ausführung empfohlen:
   - `npm run type-check`
   - `npm run build:next`
-- Manuelle Prüfung: Testanfrage mit MSCONS-Datei (≤60 k Zeichen) gegen `/api/v2/tools/generate-script` senden und Ergebnis-Snippets kontrollieren.
+- Manuelle Prüfung: Testanfrage mit MSCONS-Datei (≤1 MB) gegen `/api/v2/tools/generate-script` senden und Ergebnis-Snippets kontrollieren.
+  - Empfohlene Testgröße: vollständige Tagesprofile oder andere Beispiele bis 1 MB.
 
 ## Deploy-Checkliste
 - [ ] Sicherstellen, dass Backend-Abhängigkeiten installiert (`npm install`).

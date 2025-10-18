@@ -1393,6 +1393,99 @@ export declare const apiV2OpenApiDocument: {
                     };
                 };
             };
+            ToolScriptReference: {
+                type: string;
+                required: string[];
+                properties: {
+                    id: {
+                        type: string;
+                    };
+                    title: {
+                        type: string;
+                    };
+                    snippet: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    weight: {
+                        type: string;
+                    };
+                    useForPrompt: {
+                        type: string;
+                    };
+                };
+            };
+            ToolScriptAttachment: {
+                type: string;
+                required: string[];
+                properties: {
+                    id: {
+                        type: string;
+                    };
+                    filename: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    content: {
+                        type: string;
+                        description: string;
+                    };
+                    mimeType: {
+                        type: string;
+                    };
+                    description: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    weight: {
+                        type: string;
+                        minimum: number;
+                        maximum: number;
+                    };
+                };
+            };
+            ToolScriptTestAssertion: {
+                type: string;
+                required: string[];
+                properties: {
+                    type: {
+                        type: string;
+                        enum: string[];
+                    };
+                    value: {
+                        type: string;
+                    };
+                };
+            };
+            ToolScriptTestCase: {
+                type: string;
+                required: string[];
+                properties: {
+                    name: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    description: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    input: {
+                        oneOf: ({
+                            type: string;
+                            additionalProperties: boolean;
+                        } | {
+                            type: string;
+                            additionalProperties?: undefined;
+                        })[];
+                    };
+                    assertions: {
+                        type: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                };
+            };
             ToolScriptConstraints: {
                 type: string;
                 properties: {
@@ -1437,6 +1530,25 @@ export declare const apiV2OpenApiDocument: {
                     };
                     constraints: {
                         $ref: string;
+                    };
+                    referenceDocuments: {
+                        type: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                    testCases: {
+                        type: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                    attachments: {
+                        type: string;
+                        description: string;
+                        items: {
+                            $ref: string;
+                        };
                     };
                 };
             };
