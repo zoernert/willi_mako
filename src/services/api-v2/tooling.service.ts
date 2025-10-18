@@ -98,6 +98,8 @@ interface NormalizedGenerateScriptInput extends GenerateToolScriptInternalInput 
   referenceDocuments: NormalizedToolScriptReference[];
   testCases: ToolScriptTestCase[];
   attachments: NormalizedToolScriptAttachment[];
+  detectedMessageTypes: string[];
+  primaryMessageType?: string;
 }
 
 interface ScriptRepairFeedback {
@@ -141,6 +143,10 @@ const MAX_ATTACHMENT_CHUNK_LENGTH = 1800;
 const MIN_ATTACHMENT_CHUNK_LENGTH = 600;
 const ATTACHMENT_WEIGHT_DEFAULT = 5;
 const MAX_ATTACHMENT_CHUNKS_PER_ATTACHMENT = 3;
+const ATTACHMENT_REFERENCE_WEIGHT_BOOST = 40;
+const ATTACHMENT_MESSAGE_HINT_SCAN_LENGTH = 8000;
+const MESSAGE_TYPE_PRIMARY_THRESHOLD = 4;
+const MESSAGE_TYPE_MAX_RESULTS = 3;
 const EDIFACT_MESSAGE_TYPES = [
   'MSCONS',
   'UTILMD',
@@ -160,6 +166,12 @@ const EDIFACT_MESSAGE_TYPES = [
   'INVRPT',
   'PARTIN'
 ];
+
+const EDIFACT_BGM_HINTS: Record<string, string> = {
+  'BGM+Z06': 'MSCONS',
+  'BGM+Z08': 'UTILMD',
+  'BGM+380': 'INVOIC'
+};
 
 const DEFAULT_INPUT_SCHEMA_TEMPLATE: ToolScriptInputSchema = {
   type: 'object',
@@ -700,6 +712,13 @@ export class ToolingService {
     const attachmentReferences = this.transformAttachmentsToReferences(attachments, MAX_REFERENCE_COUNT);
     const referenceDocuments = this.mergeReferences(attachmentReferences, baseReferences);
     const testCases = this.normalizeTestCases(input.testCases);
+    const { detectedTypes, primaryType } = this.resolveEdifactMessageHints({
+      instructions,
+      additionalContext,
+      expectedOutputDescription,
+      attachments,
+      referenceDocuments
+    });
 
     return {
       ...input,
@@ -710,7 +729,9 @@ export class ToolingService {
       constraints,
       referenceDocuments,
       testCases,
-      attachments
+      attachments,
+      detectedMessageTypes: detectedTypes,
+      primaryMessageType: primaryType
     };
   }
 
@@ -993,11 +1014,13 @@ export class ToolingService {
         const chunkIdSeed = `${attachment.filename}:${attachment.id ?? ''}:${index}`;
         const chunkId = createHash('sha1').update(chunkIdSeed).digest('hex');
 
+        const boostedWeight = Math.max(attachment.weight, ATTACHMENT_REFERENCE_WEIGHT_BOOST);
+
         references.push({
           id: `${attachment.id ?? attachment.filename}#${chunkId}`.slice(0, 160),
           title: attachment.displayName.slice(0, 160),
           snippet,
-          weight: attachment.weight,
+          weight: boostedWeight,
           useForPrompt: true
         });
       }
@@ -1245,6 +1268,7 @@ export class ToolingService {
   private async collectContextSnippets(input: NormalizedGenerateScriptInput): Promise<ToolScriptContextSnippet[]> {
     const snippets: ToolScriptContextSnippet[] = [];
     const seen = new Set<string>();
+    const expectedTypes = Array.isArray(input.detectedMessageTypes) ? input.detectedMessageTypes : [];
 
     for (const reference of input.referenceDocuments) {
       if (!reference.useForPrompt) {
@@ -1298,6 +1322,14 @@ export class ToolingService {
 
         const snippetText = this.extractPayloadSnippet(result.payload, result.highlight);
         if (!snippetText) {
+          continue;
+        }
+
+        if (this.isPayloadMessageTypeMismatch(result.payload, expectedTypes)) {
+          continue;
+        }
+
+        if (this.isMessageTypeMismatch(snippetText, expectedTypes)) {
           continue;
         }
 
@@ -1401,6 +1433,10 @@ export class ToolingService {
             continue;
           }
 
+          if (this.isMessageTypeMismatch(snippetText, input.detectedMessageTypes ?? [])) {
+            continue;
+          }
+
           const dedupeKey = `${messageType}|${source ?? ''}|${originalDocId ?? ''}|${snippetText.slice(0, 160)}`.toLowerCase();
           if (seen.has(dedupeKey)) {
             continue;
@@ -1432,29 +1468,23 @@ export class ToolingService {
   }
 
   private inferEdifactMessageTypes(input: NormalizedGenerateScriptInput): string[] {
-    const detected: string[] = [];
-    const seen = new Set<string>();
+    if (input.detectedMessageTypes && input.detectedMessageTypes.length) {
+      return input.detectedMessageTypes;
+    }
 
-    const collectFromText = (text?: string) => {
-      if (typeof text !== 'string' || !text.trim()) {
-        return;
-      }
+    const fallbacks = new Set<string>();
 
-      const upper = text.toUpperCase();
-      for (const type of EDIFACT_MESSAGE_TYPES) {
-        if (!seen.has(type) && upper.includes(type)) {
-          seen.add(type);
-          detected.push(type);
-        }
-      }
+    const addFromText = (text?: string) => {
+      const matches = this.collectMessageTypesFromText(text);
+      matches.forEach((match) => fallbacks.add(match));
     };
 
-    collectFromText(input.instructions);
-    collectFromText(input.additionalContext);
-    collectFromText(input.expectedOutputDescription);
+    addFromText(input.instructions);
+    addFromText(input.additionalContext);
+    addFromText(input.expectedOutputDescription);
 
     if (input.inputSchema?.description) {
-      collectFromText(input.inputSchema.description);
+      addFromText(input.inputSchema.description);
     }
 
     if (input.inputSchema?.properties) {
@@ -1463,19 +1493,19 @@ export class ToolingService {
           continue;
         }
 
-        collectFromText(value.description);
+        addFromText(value.description);
         if (typeof value.example === 'string') {
-          collectFromText(value.example);
+          addFromText(value.example);
         }
       }
     }
 
     for (const reference of input.referenceDocuments) {
-      collectFromText(reference.title);
-      collectFromText(reference.snippet);
+      addFromText(reference.title);
+      addFromText(reference.snippet);
     }
 
-    return detected.slice(0, 3);
+    return Array.from(fallbacks).slice(0, MESSAGE_TYPE_MAX_RESULTS);
   }
 
   private extractPayloadSnippet(payload: any, highlight?: string | null): string | null {
@@ -1765,6 +1795,12 @@ export class ToolingService {
       + '- Segmentgruppen bilden wiederholbare Strukturen; Reihenfolge und Wiederholbarkeit müssen gewahrt bleiben (z.\u202fB. Kopf-, Positions-, Summensegmente).\n'
       + '- Eine Nachricht beginnt mit `UNH` und endet mit `UNT`; stelle sicher, dass zwischen diesen Segmenten sämtliche Pflichtsegmente laut Formatbeschreibung vorhanden sind.'
     );
+
+    if (input.primaryMessageType) {
+      parts.push(
+        `Fokus: ${input.primaryMessageType}. Nutze ausschließlich Segmente und Geschäftsregeln dieses Nachrichtentyps. Vermeide Ausflüge in andere Formate (z.\u202fB. UTILMD, ORDERS) und stütze dich primär auf die bereitgestellten Attachments.`
+      );
+    }
 
     parts.push(
       'Erfahrungen aus jüngsten Fehlersuchen:\n'
@@ -2796,6 +2832,7 @@ ${hintLines.join('\n')}`;
     }
 
     const code = job.error?.code;
+    const messageType = job.normalizedInput?.primaryMessageType;
 
     switch (code) {
       case 'missing_code':
@@ -2803,6 +2840,11 @@ ${hintLines.join('\n')}`;
           'Gib zwingend ein JSON-Objekt mit dem Feld "code" zurück. Dieses Feld muss den vollständigen CommonJS-Quelltext mit `async function run(input)` und `module.exports = { run };` enthalten. '
           + 'Vermeide Markdown, Kommentare oder verkürzte Platzhalter.'
         );
+        if (messageType) {
+          parts.push(
+            `Nutze die bereitgestellten ${messageType}-Segmente (z. B. UNH/BGM/DTM/QTY) aus den Attachments und bilde deren Struktur vollständig im Parser ab.`
+          );
+        }
         break;
       case 'invalid_llm_payload':
         parts.push('Stelle sicher, dass die Antwort gültiges JSON im vereinbarten Schema ist – keine Markdown-Hülle, keine losen Strings.');
@@ -2812,6 +2854,9 @@ ${hintLines.join('\n')}`;
         break;
       case 'script_generation_failed':
         parts.push('Erzeuge ein lauffähiges Node.js-Tool und beachte alle deterministischen Vorgaben.');
+        if (messageType) {
+          parts.push(`Stelle sicher, dass die ${messageType}-Kernsegmente (z. B. PIA, QTY, DTM) korrekt interpretiert werden.`);
+        }
         break;
       default:
         break;
@@ -2834,6 +2879,170 @@ ${hintLines.join('\n')}`;
     }
 
     return warnings.slice(-MAX_JOB_WARNINGS);
+  }
+
+  private resolveEdifactMessageHints(params: {
+    instructions: string;
+    additionalContext?: string;
+    expectedOutputDescription?: string;
+    attachments: NormalizedToolScriptAttachment[];
+    referenceDocuments: NormalizedToolScriptReference[];
+  }): { detectedTypes: string[]; primaryType?: string } {
+    const scores = new Map<string, number>();
+
+    this.addMessageTypeEvidence(scores, params.instructions, 4);
+    this.addMessageTypeEvidence(scores, params.additionalContext, 3);
+    this.addMessageTypeEvidence(scores, params.expectedOutputDescription, 2);
+
+    for (const attachment of params.attachments) {
+      if (!attachment || !attachment.content) {
+        continue;
+      }
+
+      this.addMessageTypeEvidence(scores, attachment.filename, 2);
+      this.addMessageTypeEvidence(scores, attachment.description, 2);
+
+      const sample = attachment.content.slice(0, ATTACHMENT_MESSAGE_HINT_SCAN_LENGTH);
+      this.addMessageTypeEvidence(scores, sample, 6);
+    }
+
+    for (const reference of params.referenceDocuments) {
+      this.addMessageTypeEvidence(scores, reference.title, 1.5);
+      this.addMessageTypeEvidence(scores, reference.snippet, 1.5);
+    }
+
+    const sorted = Array.from(scores.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([type]) => type)
+      .slice(0, MESSAGE_TYPE_MAX_RESULTS);
+
+    const primaryCandidate = sorted.length ? sorted[0] : undefined;
+    const primaryScore = primaryCandidate ? scores.get(primaryCandidate) ?? 0 : 0;
+    const primaryType = primaryScore >= MESSAGE_TYPE_PRIMARY_THRESHOLD ? primaryCandidate : undefined;
+
+    return {
+      detectedTypes: sorted,
+      primaryType
+    };
+  }
+
+  private addMessageTypeEvidence(scores: Map<string, number>, text: string | undefined, weight: number): void {
+    if (!text || typeof text !== 'string') {
+      return;
+    }
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const upper = trimmed.toUpperCase();
+
+    for (const type of EDIFACT_MESSAGE_TYPES) {
+      if (upper.includes(type)) {
+        scores.set(type, (scores.get(type) ?? 0) + weight);
+      }
+    }
+
+    for (const [pattern, type] of Object.entries(EDIFACT_BGM_HINTS)) {
+      if (upper.includes(pattern)) {
+        scores.set(type, (scores.get(type) ?? 0) + weight + 0.5);
+      }
+    }
+  }
+
+  private collectMessageTypesFromText(text: string | undefined): string[] {
+    if (!text || typeof text !== 'string') {
+      return [];
+    }
+
+    const upper = text.toUpperCase();
+    const matches: string[] = [];
+
+    for (const type of EDIFACT_MESSAGE_TYPES) {
+      if (upper.includes(type)) {
+        matches.push(type);
+      }
+    }
+
+    for (const [pattern, mappedType] of Object.entries(EDIFACT_BGM_HINTS)) {
+      if (upper.includes(pattern) && !matches.includes(mappedType)) {
+        matches.push(mappedType);
+      }
+    }
+
+    return matches;
+  }
+
+  private collectMessageTypesFromPayload(payload: any): string[] {
+    if (!payload || typeof payload !== 'object') {
+      return [];
+    }
+
+    const fields = ['message_format', 'messageType', 'document_type', 'source', 'summary_text', 'title'];
+    const distinct = new Set<string>();
+
+    for (const field of fields) {
+      const value = (payload as Record<string, unknown>)[field];
+      if (typeof value === 'string') {
+        const matches = this.collectMessageTypesFromText(value);
+        matches.forEach((match) => distinct.add(match));
+      }
+    }
+
+    return Array.from(distinct);
+  }
+
+  private isPayloadMessageTypeMismatch(payload: any, expectedTypes: string[]): boolean {
+    if (!expectedTypes.length) {
+      return false;
+    }
+
+    const payloadTypes = this.collectMessageTypesFromPayload(payload);
+    if (!payloadTypes.length) {
+      return false;
+    }
+
+    const expectedSet = new Set(expectedTypes);
+    const hasExpected = payloadTypes.some((type) => expectedSet.has(type));
+    if (hasExpected) {
+      return false;
+    }
+
+    return payloadTypes.some((type) => !expectedSet.has(type));
+  }
+
+  private isMessageTypeMismatch(snippet: string, expectedTypes: string[]): boolean {
+    if (!expectedTypes.length) {
+      return false;
+    }
+
+    const upper = snippet.toUpperCase();
+    const expectedSet = new Set(expectedTypes);
+    let mentionsForeign = false;
+
+    for (const type of EDIFACT_MESSAGE_TYPES) {
+      if (!upper.includes(type)) {
+        continue;
+      }
+
+      if (!expectedSet.has(type)) {
+        mentionsForeign = true;
+        break;
+      }
+    }
+
+    if (!mentionsForeign) {
+      return false;
+    }
+
+    for (const type of expectedTypes) {
+      if (upper.includes(type)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private sanitizeDependencies(dependencies: any): string[] {

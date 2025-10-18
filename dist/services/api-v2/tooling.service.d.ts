@@ -1,4 +1,4 @@
-import { GenerateToolScriptRequest, GenerateToolScriptResponse, GenerateScriptJob, ToolJob } from '../../domain/api-v2/tooling.types';
+import { GenerateToolScriptRequest, GenerateToolScriptRepairRequest, GenerateToolScriptResponse, GenerateScriptJob, ToolJob } from '../../domain/api-v2/tooling.types';
 interface NodeScriptJobInput {
     userId: string;
     sessionId: string;
@@ -9,6 +9,14 @@ interface NodeScriptJobInput {
 interface GenerateToolScriptInternalInput extends GenerateToolScriptRequest {
     userId: string;
 }
+interface GenerateToolScriptRepairInternalInput extends GenerateToolScriptRepairRequest {
+    userId: string;
+}
+interface GenerateScriptJobOptions {
+    continuedFromJobId?: string;
+    initialProgressMessage?: string;
+    initialWarnings?: string[];
+}
 export declare class ToolingService {
     private readonly jobs;
     private readonly generateScriptQueue;
@@ -16,7 +24,8 @@ export declare class ToolingService {
     createNodeScriptJob(input: NodeScriptJobInput): Promise<ToolJob>;
     getJobForUser(jobId: string, userId: string): Promise<ToolJob>;
     listJobsForSession(sessionId: string, userId: string): Promise<ToolJob[]>;
-    enqueueGenerateScriptJob(input: GenerateToolScriptInternalInput): Promise<GenerateScriptJob>;
+    enqueueGenerateScriptJob(input: GenerateToolScriptInternalInput, options?: GenerateScriptJobOptions): Promise<GenerateScriptJob>;
+    resumeGenerateScriptJob(input: GenerateToolScriptRepairInternalInput): Promise<GenerateScriptJob>;
     generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse>;
     private startGenerateScriptWorker;
     private processGenerateScriptQueue;
@@ -75,6 +84,16 @@ export declare class ToolingService {
     private getRateLimitBackoffDelay;
     private delay;
     private appendJobWarning;
+    private computeRepairChainDepth;
+    private composeRepairInstructions;
+    private composeRepairAdditionalContext;
+    private mergeRepairAttachments;
+    private mergeRepairReferences;
+    private normalizeAttachmentForRepair;
+    private buildAttachmentDedupKey;
+    private buildReferenceDedupKey;
+    private buildAutomaticRepairHint;
+    private buildRepairWarnings;
     private sanitizeDependencies;
     private sanitizeValidationContext;
     private ensureNotesLimit;

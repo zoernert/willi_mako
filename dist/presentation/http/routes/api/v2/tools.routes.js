@@ -48,6 +48,54 @@ router.post('/generate-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV
         data: payload
     });
 }));
+router.post('/generate-script/repair', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)({ capacity: 3, refillTokens: 3, intervalMs: 60000 }), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const body = (req.body || {});
+    const { sessionId, jobId, repairInstructions, additionalContext, referenceDocuments, attachments, testCases } = body;
+    if (!sessionId || typeof sessionId !== 'string') {
+        throw new errorHandler_1.AppError('sessionId ist erforderlich', 400);
+    }
+    if (!jobId || typeof jobId !== 'string') {
+        throw new errorHandler_1.AppError('jobId ist erforderlich', 400);
+    }
+    if (repairInstructions !== undefined && typeof repairInstructions !== 'string') {
+        throw new errorHandler_1.AppError('repairInstructions muss ein String sein', 400);
+    }
+    if (additionalContext !== undefined && typeof additionalContext !== 'string') {
+        throw new errorHandler_1.AppError('additionalContext muss ein String sein', 400);
+    }
+    if (referenceDocuments !== undefined && !Array.isArray(referenceDocuments)) {
+        throw new errorHandler_1.AppError('referenceDocuments muss ein Array sein', 400);
+    }
+    if (attachments !== undefined && !Array.isArray(attachments)) {
+        throw new errorHandler_1.AppError('attachments muss ein Array sein', 400);
+    }
+    if (testCases !== undefined && !Array.isArray(testCases)) {
+        throw new errorHandler_1.AppError('testCases muss ein Array sein', 400);
+    }
+    const session = await session_service_1.sessionService.getSession(sessionId);
+    if (session.userId !== req.user.id) {
+        throw new errorHandler_1.AppError('Session wurde nicht gefunden', 404);
+    }
+    const job = await tooling_service_1.toolingService.resumeGenerateScriptJob({
+        userId: req.user.id,
+        sessionId,
+        jobId,
+        repairInstructions,
+        additionalContext,
+        referenceDocuments,
+        attachments,
+        testCases
+    });
+    await session_service_1.sessionService.touchSession(sessionId);
+    const payload = {
+        sessionId,
+        job
+    };
+    res.status(202).json({
+        success: true,
+        data: payload
+    });
+}));
 router.post('/run-node-script', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { sessionId, source, timeoutMs, metadata } = req.body || {};
     if (!sessionId || typeof sessionId !== 'string') {

@@ -142,6 +142,170 @@ const buildFirstTurnCoachingResponse = async (userMessage, draftResponse, userPr
     }
     return heuristicCoachingRewrite(userMessage, truncatedDraft);
 };
+const KNOWN_JARGON_TERMS = [
+    'GPKE',
+    'WIM',
+    'WIM',
+    'MABIS',
+    'MABiS',
+    'MSCONS',
+    'UTILMD',
+    'OBIS',
+    'BDEW',
+    'LPZ',
+    'MPES',
+    'RLM',
+    'SLP',
+    'EDIFACT',
+    'EAN',
+    'MaLo',
+    'MaKo',
+    'MaKo2022',
+    'Bilanzkreis',
+    'Fahrplan',
+    'Lieferbeginn',
+    'Schleupen',
+    'NTP',
+    'VDE',
+    'DATENFAKTOR'
+];
+const detectDomainJargon = (text) => {
+    if (!text) {
+        return [];
+    }
+    const normalized = text.replace(/[^\w\s:\-\.]/g, ' ');
+    const matches = new Set();
+    for (const term of KNOWN_JARGON_TERMS) {
+        const pattern = new RegExp(`\\b${term}\\b`, 'i');
+        if (pattern.test(normalized)) {
+            matches.add(term.toUpperCase());
+        }
+    }
+    const obisMatches = normalized.match(/\b\d{1,2}-\d{1,2}:\d{1,2}\.\d{1,2}\.\d{1,2}\b/g);
+    if (obisMatches) {
+        obisMatches.forEach((code) => matches.add(code));
+    }
+    return Array.from(matches);
+};
+const formatTermList = (terms) => {
+    if (terms.length === 0) {
+        return '';
+    }
+    if (terms.length === 1) {
+        return terms[0];
+    }
+    if (terms.length === 2) {
+        return `${terms[0]} und ${terms[1]}`;
+    }
+    return `${terms.slice(0, -1).join(', ')} und ${terms[terms.length - 1]}`;
+};
+const buildClarificationPrompt = (topics, informationGap, missingInfo) => {
+    if (topics.length >= 2) {
+        const primary = formatTermList(topics.slice(0, 2));
+        return `Ich sehe Bezug zu ${primary}. Was davon trifft auf deinen Fall am ehesten zu?`;
+    }
+    if (informationGap) {
+        return `Damit ich gezielter unterstützen kann: Welche Details zu "${informationGap}" kennst du bereits?`;
+    }
+    if (missingInfo) {
+        return `Welche Angaben hast du genau zu ${missingInfo}? Dann kann ich den nächsten Schritt sauber wählen.`;
+    }
+    return 'Magst du kurz beschreiben, welche Rollen (z. B. NB, LF, MSB) beteiligt sind und welches Ergebnis du brauchst?';
+};
+const buildAmbiguityPrompt = (topics, semanticClusters) => {
+    if (topics.length >= 3) {
+        const primary = formatTermList(topics.slice(0, 3));
+        return `Es gibt mehrere mögliche Richtungen (${primary}). In welche davon möchtest du tiefer einsteigen?`;
+    }
+    if (topics.length === 2) {
+        return `Soll der Fokus eher auf ${topics[0]} oder ${topics[1]} liegen? Dann passe ich die nächsten Schritte an.`;
+    }
+    return `Ich habe mehrere ähnliche Treffer gefunden. Gibt es einen konkreten Prozessschritt oder Zeitraum, den wir eingrenzen sollten?`;
+};
+const buildJargonPrompt = (terms) => {
+    const formatted = formatTermList(terms.slice(0, 3));
+    return `Es tauchen Begriffe wie ${formatted} auf. Soll ich sie kurz einordnen, bevor wir tiefer gehen?`;
+};
+const deduplicatePrompts = (prompts) => {
+    const seen = new Set();
+    return prompts.filter((prompt) => {
+        const key = `${prompt.reason}|${prompt.question}`;
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
+};
+const buildAdditionalCoachingPrompts = (assistantTurnsBefore, reasoningResult, responseMetadata, aiResponse, firstTurnApplied) => {
+    var _a;
+    if (!reasoningResult) {
+        return [];
+    }
+    if (firstTurnApplied) {
+        // Erstes Turn hat bereits gezielte Rückfrage erhalten
+        return [];
+    }
+    const prompts = [];
+    const qaAnalysis = reasoningResult.qaAnalysis || {};
+    const contextAnalysis = reasoningResult.contextAnalysis || {};
+    const semanticClusters = Array.isArray(contextAnalysis.semanticClusters)
+        ? contextAnalysis.semanticClusters
+        : [];
+    const topics = Array.isArray(contextAnalysis.topicsIdentified)
+        ? contextAnalysis.topicsIdentified.map((topic) => topic.trim()).filter(Boolean)
+        : [];
+    const informationGaps = Array.isArray(contextAnalysis.informationGaps)
+        ? contextAnalysis.informationGaps.filter(Boolean)
+        : [];
+    const missingInfo = Array.isArray(qaAnalysis.missingInfo)
+        ? qaAnalysis.missingInfo.filter(Boolean)
+        : [];
+    const qdrantResults = typeof responseMetadata.qdrantResults === 'number'
+        ? responseMetadata.qdrantResults
+        : 0;
+    const allowClarification = assistantTurnsBefore <= 3 ||
+        qaAnalysis.needsMoreContext === true ||
+        informationGaps.length > 0 ||
+        missingInfo.length > 0;
+    if (allowClarification && (qaAnalysis.needsMoreContext || informationGaps.length > 0 || missingInfo.length > 0)) {
+        prompts.push({
+            id: (0, uuid_1.v4)(),
+            question: buildClarificationPrompt(topics, informationGaps[0] || null, missingInfo[0] || null),
+            tone: 'clarify',
+            reason: 'needs_more_context',
+            priority: 80,
+            topics: topics.slice(0, 3)
+        });
+    }
+    const ambiguousRetrieval = qdrantResults >= 12 &&
+        semanticClusters.length >= 3 &&
+        ((_a = contextAnalysis.contextQuality) !== null && _a !== void 0 ? _a : 0) <= 0.7;
+    if (ambiguousRetrieval) {
+        prompts.push({
+            id: (0, uuid_1.v4)(),
+            question: buildAmbiguityPrompt(topics, semanticClusters.length),
+            tone: 'clarify',
+            reason: 'ambiguous_context',
+            priority: 60,
+            topics: topics.slice(0, 5)
+        });
+    }
+    const jargonTerms = detectDomainJargon(aiResponse);
+    const allowJargon = assistantTurnsBefore <= 6 || jargonTerms.length >= 2;
+    if (jargonTerms.length > 0 && allowJargon) {
+        prompts.push({
+            id: (0, uuid_1.v4)(),
+            question: buildJargonPrompt(jargonTerms),
+            tone: 'explain',
+            reason: 'jargon_offer',
+            priority: 40,
+            relatedTerms: jargonTerms.slice(0, 3)
+        });
+    }
+    const sorted = prompts.sort((a, b) => b.priority - a.priority);
+    return deduplicatePrompts(sorted).slice(0, 2);
+};
 // CR-CS30: Helper function to generate CS30 additional response
 async function generateCs30AdditionalResponse(userQuery, userHasCs30Access, userId) {
     if (!userHasCs30Access) {
@@ -726,10 +890,27 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
             }
         }
     }
+    const coachingPrompts = [];
+    if (firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.followUpQuestion) {
+        coachingPrompts.push({
+            id: (0, uuid_1.v4)(),
+            question: firstTurnRewrite.followUpQuestion,
+            tone: 'clarify',
+            reason: 'first_turn',
+            priority: 100,
+            strategy: firstTurnRewrite.strategy
+        });
+    }
+    const additionalCoachingPrompts = buildAdditionalCoachingPrompts(assistantTurnsBefore, reasoningResult, responseMetadata, aiResponse, Boolean(firstTurnRewrite));
+    const allCoachingPrompts = deduplicatePrompts([
+        ...coachingPrompts,
+        ...additionalCoachingPrompts
+    ]);
     responseMetadata.assistantMetadata = {
         ...(responseMetadata.assistantMetadata || {}),
         assistantTurnsBefore,
         firstTurnCoachingApplied: Boolean(firstTurnRewrite),
+        coachingPrompts: allCoachingPrompts,
         ...(firstTurnRewrite
             ? {
                 firstTurnCoachingStrategy: firstTurnRewrite.strategy,
@@ -820,8 +1001,17 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                             rawData: {
                                 chat_id: chatId,
                                 user_message: content,
-                                assistant_response: reasoningResult.response,
+                                assistant_response: aiResponse,
                                 cs30_additional: cs30Result.hasCs30Response,
+                                coaching_prompts: allCoachingPrompts.map(prompt => {
+                                    var _a;
+                                    return ({
+                                        question: prompt.question,
+                                        reason: prompt.reason,
+                                        tone: prompt.tone,
+                                        strategy: (_a = prompt.strategy) !== null && _a !== void 0 ? _a : null
+                                    });
+                                }),
                                 reasoning_quality: reasoningResult.finalQuality,
                                 api_calls_used: reasoningResult.apiCallsUsed,
                                 processing_time_ms: Date.now() - startTime
@@ -867,6 +1057,15 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                     first_turn_coaching_applied: Boolean(firstTurnRewrite),
                     first_turn_follow_up: (_f = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.followUpQuestion) !== null && _f !== void 0 ? _f : null,
                     first_turn_short_answer: (_g = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.shortAnswer) !== null && _g !== void 0 ? _g : null,
+                    coaching_prompts: allCoachingPrompts.map(prompt => {
+                        var _a;
+                        return ({
+                            question: prompt.question,
+                            reason: prompt.reason,
+                            tone: prompt.tone,
+                            strategy: (_a = prompt.strategy) !== null && _a !== void 0 ? _a : null
+                        });
+                    }),
                     reasoning_quality: reasoningResult.finalQuality,
                     api_calls_used: reasoningResult.apiCallsUsed,
                     processing_time_ms: Date.now() - startTime

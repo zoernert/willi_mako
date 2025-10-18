@@ -26,6 +26,8 @@ const MAX_ASSERTION_VALUE_LENGTH = 240;
 const MAX_CONTEXT_SNIPPETS = 6;
 const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
 const MAX_GENERATION_ATTEMPTS = 3;
+const MAX_REPAIR_INSTRUCTIONS_LENGTH = 600;
+const MAX_REPAIR_CHAIN_LENGTH = 5;
 const AUTO_RETURN_WRAPPER_MARKER = '__AUTO_RUN_RETURN_WRAPPER__';
 const LLM_RATE_LIMIT_RETRY_LIMIT = 3;
 const LLM_RATE_LIMIT_BACKOFF_STEPS_MS = [1500, 3000, 6000];
@@ -131,9 +133,16 @@ class ToolingService {
         }
         return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
-    async enqueueGenerateScriptJob(input) {
+    async enqueueGenerateScriptJob(input, options = {}) {
+        var _a;
         const normalized = this.normalizeGenerateScriptInput(input);
         const now = new Date().toISOString();
+        const initialWarnings = Array.isArray(options.initialWarnings)
+            ? Array.from(new Set(options.initialWarnings
+                .filter((warning) => typeof warning === 'string')
+                .map((warning) => warning.trim())
+                .filter(Boolean))).slice(-MAX_JOB_WARNINGS)
+            : [];
         const record = {
             id: (0, crypto_1.randomUUID)(),
             type: 'generate-script',
@@ -143,17 +152,72 @@ class ToolingService {
             updatedAt: now,
             progress: {
                 stage: 'queued',
-                message: 'Job wurde eingereiht'
+                message: (_a = options.initialProgressMessage) !== null && _a !== void 0 ? _a : 'Job wurde eingereiht'
             },
             attempts: 0,
-            warnings: [],
+            warnings: initialWarnings,
             userId: normalized.userId,
-            normalizedInput: normalized
+            normalizedInput: normalized,
+            continuedFromJobId: options.continuedFromJobId
         };
         this.jobs.set(record.id, record);
         this.generateScriptQueue.push(record);
         this.startGenerateScriptWorker();
         return this.toPublicJob(record);
+    }
+    async resumeGenerateScriptJob(input) {
+        if (!input || typeof input !== 'object') {
+            throw new errorHandler_1.AppError('Ungültige Parameter für Reparaturanfrage', 400);
+        }
+        const jobId = typeof input.jobId === 'string' ? input.jobId.trim() : '';
+        if (!jobId) {
+            throw new errorHandler_1.AppError('jobId ist erforderlich', 400);
+        }
+        const record = this.jobs.get(jobId);
+        if (!record || record.type !== 'generate-script' || record.userId !== input.userId) {
+            throw new errorHandler_1.AppError('Tool-Job wurde nicht gefunden', 404);
+        }
+        if (record.sessionId !== input.sessionId) {
+            throw new errorHandler_1.AppError('Session passt nicht zum Job', 400);
+        }
+        if (record.status !== 'failed') {
+            throw new errorHandler_1.AppError('Nur fehlgeschlagene Skript-Jobs können fortgesetzt werden', 409);
+        }
+        const repairChainDepth = this.computeRepairChainDepth(record);
+        if (repairChainDepth >= MAX_REPAIR_CHAIN_LENGTH) {
+            const error = new errorHandler_1.AppError('Maximale Anzahl an Reparaturversuchen erreicht', 429);
+            error.context = {
+                code: 'repair_limit_reached',
+                attempts: repairChainDepth
+            };
+            throw error;
+        }
+        const baseInput = record.normalizedInput;
+        const sanitizedRepairInstructions = this.normalizeOptionalText(input.repairInstructions, 'repairInstructions', MAX_REPAIR_INSTRUCTIONS_LENGTH);
+        const sanitizedRepairContext = this.normalizeOptionalText(input.additionalContext, 'additionalContext', MAX_CONTEXT_LENGTH);
+        const mergedInstructions = this.composeRepairInstructions(baseInput.instructions, record, sanitizedRepairInstructions);
+        const mergedAdditionalContext = this.composeRepairAdditionalContext(baseInput.additionalContext, sanitizedRepairContext);
+        const mergedReferences = this.mergeRepairReferences(baseInput.referenceDocuments, input.referenceDocuments);
+        const mergedAttachments = this.mergeRepairAttachments(baseInput.attachments, input.attachments);
+        const mergedTestCases = Array.isArray(input.testCases) ? input.testCases : baseInput.testCases;
+        const resumedJob = await this.enqueueGenerateScriptJob({
+            userId: input.userId,
+            sessionId: baseInput.sessionId,
+            instructions: mergedInstructions,
+            inputSchema: baseInput.inputSchema,
+            expectedOutputDescription: baseInput.expectedOutputDescription,
+            additionalContext: mergedAdditionalContext,
+            constraints: baseInput.constraints,
+            referenceDocuments: mergedReferences,
+            testCases: mergedTestCases,
+            attachments: mergedAttachments
+        }, {
+            continuedFromJobId: record.id,
+            initialProgressMessage: 'Reparaturversuch wird neu gestartet',
+            initialWarnings: this.buildRepairWarnings(record)
+        });
+        this.appendJobWarning(record, `Folgeauftrag ${resumedJob.id} zur Reparatur wurde erstellt.`);
+        return resumedJob;
     }
     async generateDeterministicScript(input) {
         const normalized = this.normalizeGenerateScriptInput(input);
@@ -1896,6 +1960,199 @@ ${snippet.snippet}`;
             job.warnings = job.warnings.slice(job.warnings.length - MAX_JOB_WARNINGS);
         }
         job.updatedAt = new Date().toISOString();
+    }
+    computeRepairChainDepth(job) {
+        let depth = 1;
+        let current = job;
+        const visited = new Set([job.id]);
+        while (current === null || current === void 0 ? void 0 : current.continuedFromJobId) {
+            if (visited.has(current.continuedFromJobId)) {
+                break;
+            }
+            const parentRecord = this.jobs.get(current.continuedFromJobId);
+            if (!parentRecord || parentRecord.type !== 'generate-script') {
+                break;
+            }
+            visited.add(parentRecord.id);
+            depth += 1;
+            current = parentRecord;
+        }
+        return depth;
+    }
+    composeRepairInstructions(baseInstructions, job, repairInstructions) {
+        const hints = [];
+        const automaticHint = this.buildAutomaticRepairHint(job);
+        if (automaticHint) {
+            hints.push(automaticHint);
+        }
+        if (repairInstructions) {
+            hints.push(repairInstructions);
+        }
+        if (!hints.length) {
+            return baseInstructions;
+        }
+        const hintLines = hints.map((hint, index) => `${index + 1}. ${hint}`);
+        const merged = `${baseInstructions.trim()}
+
+---
+Korrekturhinweise:
+${hintLines.join('\n')}`;
+        return merged.length > MAX_INSTRUCTIONS_LENGTH ? this.truncateText(merged, MAX_INSTRUCTIONS_LENGTH) : merged;
+    }
+    composeRepairAdditionalContext(baseContext, repairContext) {
+        const parts = [];
+        if (typeof baseContext === 'string' && baseContext.trim()) {
+            parts.push(baseContext.trim());
+        }
+        if (typeof repairContext === 'string' && repairContext.trim()) {
+            parts.push(`Reparaturhinweis:\n${repairContext.trim()}`);
+        }
+        if (!parts.length) {
+            return undefined;
+        }
+        const merged = parts.join('\n\n');
+        return merged.length > MAX_CONTEXT_LENGTH ? this.truncateText(merged, MAX_CONTEXT_LENGTH) : merged;
+    }
+    mergeRepairAttachments(base, overrides) {
+        const merged = [];
+        const seen = new Set();
+        const add = (candidate) => {
+            if (!candidate) {
+                return;
+            }
+            const normalized = this.normalizeAttachmentForRepair(candidate);
+            if (!normalized.filename || !normalized.content) {
+                return;
+            }
+            const key = this.buildAttachmentDedupKey(normalized.filename, normalized.content);
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            merged.push(normalized);
+        };
+        base.forEach((attachment) => add(attachment));
+        if (Array.isArray(overrides)) {
+            overrides.forEach((attachment) => {
+                if (attachment && typeof attachment === 'object') {
+                    add(attachment);
+                }
+            });
+        }
+        return merged;
+    }
+    mergeRepairReferences(base, overrides) {
+        const merged = [];
+        const seen = new Set();
+        const addNormalized = (reference) => {
+            if (!(reference === null || reference === void 0 ? void 0 : reference.snippet)) {
+                return;
+            }
+            const snippet = reference.snippet.trim();
+            if (!snippet) {
+                return;
+            }
+            const key = this.buildReferenceDedupKey(snippet);
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            merged.push({
+                id: reference.id,
+                title: reference.title,
+                snippet,
+                weight: reference.weight,
+                useForPrompt: reference.useForPrompt
+            });
+        };
+        const addRaw = (reference) => {
+            if (!reference || typeof reference !== 'object') {
+                return;
+            }
+            const snippetRaw = typeof reference.snippet === 'string' ? reference.snippet.trim() : '';
+            if (!snippetRaw) {
+                return;
+            }
+            const key = this.buildReferenceDedupKey(snippetRaw);
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            merged.push({
+                id: reference.id,
+                title: reference.title,
+                snippet: snippetRaw,
+                weight: reference.weight,
+                useForPrompt: reference.useForPrompt
+            });
+        };
+        base.forEach(addNormalized);
+        if (Array.isArray(overrides)) {
+            overrides.forEach((reference) => addRaw(reference));
+        }
+        return merged;
+    }
+    normalizeAttachmentForRepair(attachment) {
+        const normalized = {
+            filename: attachment.filename,
+            content: attachment.content,
+            ...(attachment.description ? { description: attachment.description } : {}),
+            ...(attachment.mimeType ? { mimeType: attachment.mimeType } : {})
+        };
+        if (attachment.id) {
+            normalized.id = attachment.id;
+        }
+        if (typeof attachment.weight === 'number' && Number.isFinite(attachment.weight)) {
+            normalized.weight = attachment.weight;
+        }
+        return normalized;
+    }
+    buildAttachmentDedupKey(filename, content) {
+        const normalizedName = (filename !== null && filename !== void 0 ? filename : '').trim().toLowerCase();
+        const hash = (0, crypto_1.createHash)('sha256').update(content || '', 'utf8').digest('hex');
+        return `${normalizedName}::${hash}`;
+    }
+    buildReferenceDedupKey(snippet) {
+        return (0, crypto_1.createHash)('sha256').update(snippet, 'utf8').digest('hex');
+    }
+    buildAutomaticRepairHint(job) {
+        var _a, _b;
+        const parts = [];
+        if ((_a = job.error) === null || _a === void 0 ? void 0 : _a.message) {
+            parts.push(`Vorheriger Versuch scheiterte mit: ${job.error.message}.`);
+        }
+        const code = (_b = job.error) === null || _b === void 0 ? void 0 : _b.code;
+        switch (code) {
+            case 'missing_code':
+                parts.push('Gib zwingend ein JSON-Objekt mit dem Feld "code" zurück. Dieses Feld muss den vollständigen CommonJS-Quelltext mit `async function run(input)` und `module.exports = { run };` enthalten. '
+                    + 'Vermeide Markdown, Kommentare oder verkürzte Platzhalter.');
+                break;
+            case 'invalid_llm_payload':
+                parts.push('Stelle sicher, dass die Antwort gültiges JSON im vereinbarten Schema ist – keine Markdown-Hülle, keine losen Strings.');
+                break;
+            case 'invalid_artifacts':
+                parts.push('Wenn du `artifacts` nutzt, fülle jedes Objekt mit { id, order, code } und optional title/description.');
+                break;
+            case 'script_generation_failed':
+                parts.push('Erzeuge ein lauffähiges Node.js-Tool und beachte alle deterministischen Vorgaben.');
+                break;
+            default:
+                break;
+        }
+        if (!parts.length) {
+            return undefined;
+        }
+        return parts.join(' ');
+    }
+    buildRepairWarnings(job) {
+        var _a, _b;
+        const warnings = [];
+        const codeFragment = ((_a = job.error) === null || _a === void 0 ? void 0 : _a.code) ? ` (${job.error.code})` : '';
+        warnings.push(`Fortsetzung von Job ${job.id}${codeFragment}`);
+        if ((_b = job.error) === null || _b === void 0 ? void 0 : _b.message) {
+            warnings.push(`Letzter Fehler: ${this.truncateText(job.error.message, 160)}`);
+        }
+        return warnings.slice(-MAX_JOB_WARNINGS);
     }
     sanitizeDependencies(dependencies) {
         if (!Array.isArray(dependencies)) {
