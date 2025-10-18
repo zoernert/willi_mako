@@ -42,6 +42,10 @@ const MAX_ATTACHMENT_CHUNK_LENGTH = 1800;
 const MIN_ATTACHMENT_CHUNK_LENGTH = 600;
 const ATTACHMENT_WEIGHT_DEFAULT = 5;
 const MAX_ATTACHMENT_CHUNKS_PER_ATTACHMENT = 3;
+const ATTACHMENT_REFERENCE_WEIGHT_BOOST = 40;
+const ATTACHMENT_MESSAGE_HINT_SCAN_LENGTH = 8000;
+const MESSAGE_TYPE_PRIMARY_THRESHOLD = 4;
+const MESSAGE_TYPE_MAX_RESULTS = 3;
 const EDIFACT_MESSAGE_TYPES = [
     'MSCONS',
     'UTILMD',
@@ -61,6 +65,11 @@ const EDIFACT_MESSAGE_TYPES = [
     'INVRPT',
     'PARTIN'
 ];
+const EDIFACT_BGM_HINTS = {
+    'BGM+Z06': 'MSCONS',
+    'BGM+Z08': 'UTILMD',
+    'BGM+380': 'INVOIC'
+};
 const DEFAULT_INPUT_SCHEMA_TEMPLATE = {
     type: 'object',
     description: 'Standard-Eingabe für deterministische Tools. Der Aufruf erfolgt über `await run(input)`.',
@@ -487,6 +496,13 @@ class ToolingService {
         const attachmentReferences = this.transformAttachmentsToReferences(attachments, MAX_REFERENCE_COUNT);
         const referenceDocuments = this.mergeReferences(attachmentReferences, baseReferences);
         const testCases = this.normalizeTestCases(input.testCases);
+        const { detectedTypes, primaryType } = this.resolveEdifactMessageHints({
+            instructions,
+            additionalContext,
+            expectedOutputDescription,
+            attachments,
+            referenceDocuments
+        });
         return {
             ...input,
             instructions,
@@ -496,7 +512,9 @@ class ToolingService {
             constraints,
             referenceDocuments,
             testCases,
-            attachments
+            attachments,
+            detectedMessageTypes: detectedTypes,
+            primaryMessageType: primaryType
         };
     }
     normalizeConstraints(constraints) {
@@ -697,11 +715,12 @@ class ToolingService {
                 const snippet = this.truncateText(body, MAX_REFERENCE_SNIPPET_LENGTH);
                 const chunkIdSeed = `${attachment.filename}:${(_a = attachment.id) !== null && _a !== void 0 ? _a : ''}:${index}`;
                 const chunkId = (0, crypto_1.createHash)('sha1').update(chunkIdSeed).digest('hex');
+                const boostedWeight = Math.max(attachment.weight, ATTACHMENT_REFERENCE_WEIGHT_BOOST);
                 references.push({
                     id: `${(_b = attachment.id) !== null && _b !== void 0 ? _b : attachment.filename}#${chunkId}`.slice(0, 160),
                     title: attachment.displayName.slice(0, 160),
                     snippet,
-                    weight: attachment.weight,
+                    weight: boostedWeight,
                     useForPrompt: true
                 });
             }
@@ -891,6 +910,7 @@ class ToolingService {
         var _a, _b, _c;
         const snippets = [];
         const seen = new Set();
+        const expectedTypes = Array.isArray(input.detectedMessageTypes) ? input.detectedMessageTypes : [];
         for (const reference of input.referenceDocuments) {
             if (!reference.useForPrompt) {
                 continue;
@@ -935,6 +955,12 @@ class ToolingService {
                 if (!snippetText) {
                     continue;
                 }
+                if (this.isPayloadMessageTypeMismatch(result.payload, expectedTypes)) {
+                    continue;
+                }
+                if (this.isMessageTypeMismatch(snippetText, expectedTypes)) {
+                    continue;
+                }
                 const key = snippetText.trim().toLowerCase();
                 if (seen.has(key)) {
                     continue;
@@ -961,7 +987,7 @@ class ToolingService {
         return snippets.slice(0, MAX_CONTEXT_SNIPPETS);
     }
     async collectPseudocodeSnippets(input, snippets, seen) {
-        var _a, _b;
+        var _a, _b, _c;
         if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
             return;
         }
@@ -1016,6 +1042,9 @@ class ToolingService {
                     if (!snippetText.trim()) {
                         continue;
                     }
+                    if (this.isMessageTypeMismatch(snippetText, (_b = input.detectedMessageTypes) !== null && _b !== void 0 ? _b : [])) {
+                        continue;
+                    }
                     const dedupeKey = `${messageType}|${source !== null && source !== void 0 ? source : ''}|${originalDocId !== null && originalDocId !== void 0 ? originalDocId : ''}|${snippetText.slice(0, 160)}`.toLowerCase();
                     if (seen.has(dedupeKey)) {
                         continue;
@@ -1032,7 +1061,7 @@ class ToolingService {
                         id: originalDocId !== null && originalDocId !== void 0 ? originalDocId : item.id,
                         title: titleParts.join(' – '),
                         source,
-                        score: (_b = item.score) !== null && _b !== void 0 ? _b : undefined,
+                        score: (_c = item.score) !== null && _c !== void 0 ? _c : undefined,
                         snippet: snippetText,
                         origin: 'retrieval'
                     });
@@ -1045,42 +1074,36 @@ class ToolingService {
     }
     inferEdifactMessageTypes(input) {
         var _a, _b;
-        const detected = [];
-        const seen = new Set();
-        const collectFromText = (text) => {
-            if (typeof text !== 'string' || !text.trim()) {
-                return;
-            }
-            const upper = text.toUpperCase();
-            for (const type of EDIFACT_MESSAGE_TYPES) {
-                if (!seen.has(type) && upper.includes(type)) {
-                    seen.add(type);
-                    detected.push(type);
-                }
-            }
+        if (input.detectedMessageTypes && input.detectedMessageTypes.length) {
+            return input.detectedMessageTypes;
+        }
+        const fallbacks = new Set();
+        const addFromText = (text) => {
+            const matches = this.collectMessageTypesFromText(text);
+            matches.forEach((match) => fallbacks.add(match));
         };
-        collectFromText(input.instructions);
-        collectFromText(input.additionalContext);
-        collectFromText(input.expectedOutputDescription);
+        addFromText(input.instructions);
+        addFromText(input.additionalContext);
+        addFromText(input.expectedOutputDescription);
         if ((_a = input.inputSchema) === null || _a === void 0 ? void 0 : _a.description) {
-            collectFromText(input.inputSchema.description);
+            addFromText(input.inputSchema.description);
         }
         if ((_b = input.inputSchema) === null || _b === void 0 ? void 0 : _b.properties) {
             for (const value of Object.values(input.inputSchema.properties)) {
                 if (!value) {
                     continue;
                 }
-                collectFromText(value.description);
+                addFromText(value.description);
                 if (typeof value.example === 'string') {
-                    collectFromText(value.example);
+                    addFromText(value.example);
                 }
             }
         }
         for (const reference of input.referenceDocuments) {
-            collectFromText(reference.title);
-            collectFromText(reference.snippet);
+            addFromText(reference.title);
+            addFromText(reference.snippet);
         }
-        return detected.slice(0, 3);
+        return Array.from(fallbacks).slice(0, MESSAGE_TYPE_MAX_RESULTS);
     }
     extractPayloadSnippet(payload, highlight) {
         const candidates = [
@@ -1312,6 +1335,9 @@ class ToolingService {
             + '- Jede Segmentinstanz bildet eine eigene Zeile ohne zusätzliche Zeilenumbrüche innerhalb des Segments.\n'
             + '- Segmentgruppen bilden wiederholbare Strukturen; Reihenfolge und Wiederholbarkeit müssen gewahrt bleiben (z.\u202fB. Kopf-, Positions-, Summensegmente).\n'
             + '- Eine Nachricht beginnt mit `UNH` und endet mit `UNT`; stelle sicher, dass zwischen diesen Segmenten sämtliche Pflichtsegmente laut Formatbeschreibung vorhanden sind.');
+        if (input.primaryMessageType) {
+            parts.push(`Fokus: ${input.primaryMessageType}. Nutze ausschließlich Segmente und Geschäftsregeln dieses Nachrichtentyps. Vermeide Ausflüge in andere Formate (z.\u202fB. UTILMD, ORDERS) und stütze dich primär auf die bereitgestellten Attachments.`);
+        }
         parts.push('Erfahrungen aus jüngsten Fehlersuchen:\n'
             + '- MSCONS-Lastgänge liefern Intervallwerte über `QTY+187` mit unmittelbar folgenden `DTM+163` (Beginn) und `DTM+164` (Ende); erzeuge daraus deterministische Zeitstempel, z.\u202fB. ISO-Intervalle `start/end`.\n'
             + '- OBIS-Kennzahlen stehen häufig in `PIA+5`-Segmenten; entferne Freistellzeichen `?` korrekt und kombiniere die ersten beiden Komponenten (z.\u202fB. `1-1` + `1.29.0` \u2192 `1-1:1.29.0`).\n'
@@ -2116,16 +2142,20 @@ ${hintLines.join('\n')}`;
         return (0, crypto_1.createHash)('sha256').update(snippet, 'utf8').digest('hex');
     }
     buildAutomaticRepairHint(job) {
-        var _a, _b;
+        var _a, _b, _c;
         const parts = [];
         if ((_a = job.error) === null || _a === void 0 ? void 0 : _a.message) {
             parts.push(`Vorheriger Versuch scheiterte mit: ${job.error.message}.`);
         }
         const code = (_b = job.error) === null || _b === void 0 ? void 0 : _b.code;
+        const messageType = (_c = job.normalizedInput) === null || _c === void 0 ? void 0 : _c.primaryMessageType;
         switch (code) {
             case 'missing_code':
                 parts.push('Gib zwingend ein JSON-Objekt mit dem Feld "code" zurück. Dieses Feld muss den vollständigen CommonJS-Quelltext mit `async function run(input)` und `module.exports = { run };` enthalten. '
                     + 'Vermeide Markdown, Kommentare oder verkürzte Platzhalter.');
+                if (messageType) {
+                    parts.push(`Nutze die bereitgestellten ${messageType}-Segmente (z. B. UNH/BGM/DTM/QTY) aus den Attachments und bilde deren Struktur vollständig im Parser ab.`);
+                }
                 break;
             case 'invalid_llm_payload':
                 parts.push('Stelle sicher, dass die Antwort gültiges JSON im vereinbarten Schema ist – keine Markdown-Hülle, keine losen Strings.');
@@ -2135,6 +2165,9 @@ ${hintLines.join('\n')}`;
                 break;
             case 'script_generation_failed':
                 parts.push('Erzeuge ein lauffähiges Node.js-Tool und beachte alle deterministischen Vorgaben.');
+                if (messageType) {
+                    parts.push(`Stelle sicher, dass die ${messageType}-Kernsegmente (z. B. PIA, QTY, DTM) korrekt interpretiert werden.`);
+                }
                 break;
             default:
                 break;
@@ -2153,6 +2186,132 @@ ${hintLines.join('\n')}`;
             warnings.push(`Letzter Fehler: ${this.truncateText(job.error.message, 160)}`);
         }
         return warnings.slice(-MAX_JOB_WARNINGS);
+    }
+    resolveEdifactMessageHints(params) {
+        var _a;
+        const scores = new Map();
+        this.addMessageTypeEvidence(scores, params.instructions, 4);
+        this.addMessageTypeEvidence(scores, params.additionalContext, 3);
+        this.addMessageTypeEvidence(scores, params.expectedOutputDescription, 2);
+        for (const attachment of params.attachments) {
+            if (!attachment || !attachment.content) {
+                continue;
+            }
+            this.addMessageTypeEvidence(scores, attachment.filename, 2);
+            this.addMessageTypeEvidence(scores, attachment.description, 2);
+            const sample = attachment.content.slice(0, ATTACHMENT_MESSAGE_HINT_SCAN_LENGTH);
+            this.addMessageTypeEvidence(scores, sample, 6);
+        }
+        for (const reference of params.referenceDocuments) {
+            this.addMessageTypeEvidence(scores, reference.title, 1.5);
+            this.addMessageTypeEvidence(scores, reference.snippet, 1.5);
+        }
+        const sorted = Array.from(scores.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([type]) => type)
+            .slice(0, MESSAGE_TYPE_MAX_RESULTS);
+        const primaryCandidate = sorted.length ? sorted[0] : undefined;
+        const primaryScore = primaryCandidate ? (_a = scores.get(primaryCandidate)) !== null && _a !== void 0 ? _a : 0 : 0;
+        const primaryType = primaryScore >= MESSAGE_TYPE_PRIMARY_THRESHOLD ? primaryCandidate : undefined;
+        return {
+            detectedTypes: sorted,
+            primaryType
+        };
+    }
+    addMessageTypeEvidence(scores, text, weight) {
+        var _a, _b;
+        if (!text || typeof text !== 'string') {
+            return;
+        }
+        const trimmed = text.trim();
+        if (!trimmed) {
+            return;
+        }
+        const upper = trimmed.toUpperCase();
+        for (const type of EDIFACT_MESSAGE_TYPES) {
+            if (upper.includes(type)) {
+                scores.set(type, ((_a = scores.get(type)) !== null && _a !== void 0 ? _a : 0) + weight);
+            }
+        }
+        for (const [pattern, type] of Object.entries(EDIFACT_BGM_HINTS)) {
+            if (upper.includes(pattern)) {
+                scores.set(type, ((_b = scores.get(type)) !== null && _b !== void 0 ? _b : 0) + weight + 0.5);
+            }
+        }
+    }
+    collectMessageTypesFromText(text) {
+        if (!text || typeof text !== 'string') {
+            return [];
+        }
+        const upper = text.toUpperCase();
+        const matches = [];
+        for (const type of EDIFACT_MESSAGE_TYPES) {
+            if (upper.includes(type)) {
+                matches.push(type);
+            }
+        }
+        for (const [pattern, mappedType] of Object.entries(EDIFACT_BGM_HINTS)) {
+            if (upper.includes(pattern) && !matches.includes(mappedType)) {
+                matches.push(mappedType);
+            }
+        }
+        return matches;
+    }
+    collectMessageTypesFromPayload(payload) {
+        if (!payload || typeof payload !== 'object') {
+            return [];
+        }
+        const fields = ['message_format', 'messageType', 'document_type', 'source', 'summary_text', 'title'];
+        const distinct = new Set();
+        for (const field of fields) {
+            const value = payload[field];
+            if (typeof value === 'string') {
+                const matches = this.collectMessageTypesFromText(value);
+                matches.forEach((match) => distinct.add(match));
+            }
+        }
+        return Array.from(distinct);
+    }
+    isPayloadMessageTypeMismatch(payload, expectedTypes) {
+        if (!expectedTypes.length) {
+            return false;
+        }
+        const payloadTypes = this.collectMessageTypesFromPayload(payload);
+        if (!payloadTypes.length) {
+            return false;
+        }
+        const expectedSet = new Set(expectedTypes);
+        const hasExpected = payloadTypes.some((type) => expectedSet.has(type));
+        if (hasExpected) {
+            return false;
+        }
+        return payloadTypes.some((type) => !expectedSet.has(type));
+    }
+    isMessageTypeMismatch(snippet, expectedTypes) {
+        if (!expectedTypes.length) {
+            return false;
+        }
+        const upper = snippet.toUpperCase();
+        const expectedSet = new Set(expectedTypes);
+        let mentionsForeign = false;
+        for (const type of EDIFACT_MESSAGE_TYPES) {
+            if (!upper.includes(type)) {
+                continue;
+            }
+            if (!expectedSet.has(type)) {
+                mentionsForeign = true;
+                break;
+            }
+        }
+        if (!mentionsForeign) {
+            return false;
+        }
+        for (const type of expectedTypes) {
+            if (upper.includes(type)) {
+                return false;
+            }
+        }
+        return true;
     }
     sanitizeDependencies(dependencies) {
         if (!Array.isArray(dependencies)) {

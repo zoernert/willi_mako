@@ -94,6 +94,12 @@ export declare class ToolingService {
     private buildReferenceDedupKey;
     private buildAutomaticRepairHint;
     private buildRepairWarnings;
+    private resolveEdifactMessageHints;
+    private addMessageTypeEvidence;
+    private collectMessageTypesFromText;
+    private collectMessageTypesFromPayload;
+    private isPayloadMessageTypeMismatch;
+    private isMessageTypeMismatch;
     private sanitizeDependencies;
     private sanitizeValidationContext;
     private ensureNotesLimit;
