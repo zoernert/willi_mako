@@ -15,6 +15,7 @@ import {
   ToolJobResult,
   ToolJobSourceInfo,
   ToolScriptArtifact,
+  ToolScriptAttachment,
   ToolScriptConstraints,
   ToolScriptContextSnippet,
   ToolScriptDescriptor,
@@ -67,6 +68,16 @@ interface NormalizedToolScriptReference {
   useForPrompt: boolean;
 }
 
+interface NormalizedToolScriptAttachment {
+  id?: string;
+  filename: string;
+  displayName: string;
+  content: string;
+  mimeType?: string;
+  description?: string;
+  weight: number;
+}
+
 interface NormalizedGenerateScriptInput extends GenerateToolScriptInternalInput {
   instructions: string;
   additionalContext?: string;
@@ -75,6 +86,7 @@ interface NormalizedGenerateScriptInput extends GenerateToolScriptInternalInput 
   constraints: NormalizedToolScriptConstraints;
   referenceDocuments: NormalizedToolScriptReference[];
   testCases: ToolScriptTestCase[];
+  attachments: NormalizedToolScriptAttachment[];
 }
 
 interface ScriptRepairFeedback {
@@ -106,6 +118,34 @@ const AUTO_RETURN_WRAPPER_MARKER = '__AUTO_RUN_RETURN_WRAPPER__';
 const LLM_RATE_LIMIT_RETRY_LIMIT = 3;
 const LLM_RATE_LIMIT_BACKOFF_STEPS_MS = [1500, 3000, 6000];
 const MAX_JOB_WARNINGS = 6;
+const MAX_RATE_LIMIT_RECOVERY_ATTEMPTS = 2;
+const RATE_LIMIT_RECOVERY_DELAY_MS = 10000;
+const MAX_ATTACHMENT_COUNT = 4;
+const MAX_ATTACHMENT_CONTENT_LENGTH = 60000;
+const MAX_ATTACHMENT_TOTAL_LENGTH = 160000;
+const MAX_ATTACHMENT_CHUNK_LENGTH = 1800;
+const MIN_ATTACHMENT_CHUNK_LENGTH = 600;
+const ATTACHMENT_WEIGHT_DEFAULT = 5;
+const MAX_ATTACHMENT_CHUNKS_PER_ATTACHMENT = 3;
+const EDIFACT_MESSAGE_TYPES = [
+  'MSCONS',
+  'UTILMD',
+  'INVOIC',
+  'ORDERS',
+  'REMADV',
+  'APERAK',
+  'ORDCHG',
+  'PRICAT',
+  'IFTSTA',
+  'IFCSUM',
+  'IFTMIN',
+  'DELFOR',
+  'DESADV',
+  'CONTRL',
+  'QUOTES',
+  'INVRPT',
+  'PARTIN'
+];
 
 const DEFAULT_INPUT_SCHEMA_TEMPLATE: ToolScriptInputSchema = {
   type: 'object',
@@ -324,6 +364,7 @@ export class ToolingService {
     let lastCandidateCode: string | undefined;
     let lastRunSnippet: string | undefined;
     let attempts = 0;
+  let rateLimitRecoveryAttempts = 0;
 
     for (attempts = 1; attempts <= MAX_GENERATION_ATTEMPTS; attempts++) {
       job.attempts = attempts;
@@ -394,18 +435,39 @@ export class ToolingService {
       }
 
       if (rawCandidate === undefined) {
-        const message = 'Rate-Limit erreicht. Bitte warte einen Moment und versuche es erneut.';
-        const appError = new AppError(message, 429);
-        (appError as any).context = {
-          code: 'RATE_LIMITED',
-          attempt: attempts,
-          retryAfterMs: this.getRateLimitBackoffDelay(LLM_RATE_LIMIT_RETRY_LIMIT - 1),
-          details: lastRateLimitError?.message || undefined
-        };
-        throw appError;
+        rateLimitRecoveryAttempts += 1;
+
+        if (rateLimitRecoveryAttempts > MAX_RATE_LIMIT_RECOVERY_ATTEMPTS) {
+          const message = 'Rate-Limit erreicht. Bitte warte einen Moment und versuche es erneut.';
+          const appError = new AppError(message, 429);
+          (appError as any).context = {
+            code: 'RATE_LIMITED',
+            attempt: attempts,
+            retryAfterMs: this.getRateLimitBackoffDelay(LLM_RATE_LIMIT_RETRY_LIMIT - 1),
+            details: lastRateLimitError?.message || undefined
+          };
+          throw appError;
+        }
+
+        const additionalDelay = this.getRateLimitBackoffDelay(LLM_RATE_LIMIT_RETRY_LIMIT - 1) + RATE_LIMIT_RECOVERY_DELAY_MS;
+        const stageForRetry = attempts === 1 ? 'prompting' : 'repairing';
+        this.appendJobWarning(
+          job,
+          `LLM Rate-Limit – zusätzlicher Wartezyklus ${rateLimitRecoveryAttempts}/${MAX_RATE_LIMIT_RECOVERY_ATTEMPTS}. Neuer Versuch in ${Math.ceil(additionalDelay / 1000)}s.`
+        );
+        this.updateGenerateJobProgress(
+          job,
+          stageForRetry,
+          `LLM Rate-Limit – erneuter Versuch in ${Math.ceil(additionalDelay / 1000)}s`,
+          attempts
+        );
+        await this.delay(additionalDelay);
+        attempts -= 1;
+        continue;
       }
 
       try {
+        rateLimitRecoveryAttempts = 0;
         descriptor = this.normalizeScriptCandidate(rawCandidate, normalized);
         validationError = null;
         break;
@@ -526,7 +588,10 @@ export class ToolingService {
     const schemaSource = input.inputSchema ? input.inputSchema : this.cloneDefaultInputSchema();
     const inputSchema = this.normalizeInputSchema(schemaSource);
     const constraints = this.normalizeConstraints(input.constraints);
-    const referenceDocuments = this.normalizeReferences(input.referenceDocuments);
+    const attachments = this.normalizeAttachments(input.attachments);
+    const baseReferences = this.normalizeReferences(input.referenceDocuments);
+    const attachmentReferences = this.transformAttachmentsToReferences(attachments, MAX_REFERENCE_COUNT);
+    const referenceDocuments = this.mergeReferences(attachmentReferences, baseReferences);
     const testCases = this.normalizeTestCases(input.testCases);
 
     return {
@@ -537,7 +602,8 @@ export class ToolingService {
       inputSchema,
       constraints,
       referenceDocuments,
-      testCases
+      testCases,
+      attachments
     };
   }
 
@@ -685,6 +751,241 @@ export class ToolingService {
     return sanitized.sort((a, b) => b.weight - a.weight);
   }
 
+  private normalizeAttachments(attachments?: ToolScriptAttachment[]): NormalizedToolScriptAttachment[] {
+    if (attachments === undefined || attachments === null) {
+      return [];
+    }
+
+    if (!Array.isArray(attachments)) {
+      this.raiseValidationError('attachments muss ein Array sein', 'invalid_attachments_type');
+    }
+
+    if (!attachments.length) {
+      return [];
+    }
+
+    if (attachments.length > MAX_ATTACHMENT_COUNT) {
+      this.raiseValidationError(
+        `Es sind maximal ${MAX_ATTACHMENT_COUNT} Attachments erlaubt`,
+        'too_many_attachments',
+        { maxCount: MAX_ATTACHMENT_COUNT }
+      );
+    }
+
+    const normalized: NormalizedToolScriptAttachment[] = [];
+    let totalLength = 0;
+
+    attachments.forEach((attachment, index) => {
+      if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) {
+        this.raiseValidationError('attachments enthält ungültige Einträge', 'invalid_attachment_item', { index });
+      }
+
+      const filenameRaw = (attachment as any).filename;
+      if (typeof filenameRaw !== 'string' || !filenameRaw.trim()) {
+        this.raiseValidationError('attachments.filename ist erforderlich', 'missing_attachment_filename', { index });
+      }
+      const filename = filenameRaw.trim().slice(0, 160);
+
+      const contentRaw = (attachment as any).content;
+      if (typeof contentRaw !== 'string' || !contentRaw.trim()) {
+        this.raiseValidationError('attachments.content muss Text enthalten', 'missing_attachment_content', { index });
+      }
+
+      if (contentRaw.length > MAX_ATTACHMENT_CONTENT_LENGTH) {
+        this.raiseValidationError(
+          `Attachment überschreitet ${MAX_ATTACHMENT_CONTENT_LENGTH} Zeichen`,
+          'attachment_too_large',
+          { index, maxLength: MAX_ATTACHMENT_CONTENT_LENGTH, length: contentRaw.length }
+        );
+      }
+
+      totalLength += contentRaw.length;
+      if (totalLength > MAX_ATTACHMENT_TOTAL_LENGTH) {
+        this.raiseValidationError(
+          `Gesamtgröße der Attachments überschreitet ${MAX_ATTACHMENT_TOTAL_LENGTH} Zeichen`,
+          'attachments_total_too_large',
+          { maxLength: MAX_ATTACHMENT_TOTAL_LENGTH }
+        );
+      }
+
+      const mimeTypeRaw = (attachment as any).mimeType;
+      let mimeType: string | undefined;
+      if (mimeTypeRaw !== undefined) {
+        if (typeof mimeTypeRaw !== 'string' || !mimeTypeRaw.trim()) {
+          this.raiseValidationError('attachments.mimeType muss ein String sein', 'invalid_attachment_mime', { index });
+        }
+        mimeType = mimeTypeRaw.trim().slice(0, 120);
+      }
+
+      const description = this.normalizeOptionalText((attachment as any).description, `attachments[${index}].description`, 240);
+      const weight = this.sanitizeAttachmentWeight((attachment as any).weight);
+      const idValue = (attachment as any).id;
+      const id = typeof idValue === 'string' && idValue.trim() ? idValue.trim().slice(0, 120) : undefined;
+
+      const displayName = description || filename;
+
+      normalized.push({
+        id,
+        filename,
+        displayName,
+        content: contentRaw,
+        mimeType,
+        description: description || undefined,
+        weight
+      });
+    });
+
+    return normalized;
+  }
+
+  private transformAttachmentsToReferences(
+    attachments: NormalizedToolScriptAttachment[],
+    maxSlots: number
+  ): NormalizedToolScriptReference[] {
+    if (!attachments.length || maxSlots <= 0) {
+      return [];
+    }
+
+    const references: NormalizedToolScriptReference[] = [];
+
+    for (const attachment of attachments) {
+      if (references.length >= maxSlots) {
+        break;
+      }
+
+      const availableChunks = Math.max(1, Math.min(maxSlots - references.length, MAX_ATTACHMENT_CHUNKS_PER_ATTACHMENT));
+      const chunks = this.splitAttachmentIntoChunks(attachment.content, availableChunks);
+      const totalChunks = chunks.length;
+
+      for (let index = 0; index < totalChunks && references.length < maxSlots; index++) {
+        const chunk = chunks[index];
+        const chunkLabel = totalChunks > 1 ? ` (Teil ${index + 1}/${totalChunks})` : '';
+
+        const headerLines: string[] = [
+          `Attachment: ${attachment.displayName}${chunkLabel}`
+        ];
+
+        if (attachment.mimeType) {
+          headerLines.push(`Content-Type: ${attachment.mimeType}`);
+        }
+
+        if (attachment.description && attachment.description !== attachment.displayName) {
+          headerLines.push(`Beschreibung: ${attachment.description}`);
+        }
+
+        const body = `${headerLines.join('\n')}\n\n${chunk}`.trim();
+        const snippet = this.truncateText(body, MAX_REFERENCE_SNIPPET_LENGTH);
+
+        const chunkIdSeed = `${attachment.filename}:${attachment.id ?? ''}:${index}`;
+        const chunkId = createHash('sha1').update(chunkIdSeed).digest('hex');
+
+        references.push({
+          id: `${attachment.id ?? attachment.filename}#${chunkId}`.slice(0, 160),
+          title: attachment.displayName.slice(0, 160),
+          snippet,
+          weight: attachment.weight,
+          useForPrompt: true
+        });
+      }
+    }
+
+    return references;
+  }
+
+  private mergeReferences(
+    attachmentRefs: NormalizedToolScriptReference[],
+    referenceDocs: NormalizedToolScriptReference[]
+  ): NormalizedToolScriptReference[] {
+    const merged: NormalizedToolScriptReference[] = [];
+    const seen = new Set<string>();
+
+    const add = (ref: NormalizedToolScriptReference) => {
+      if (!ref || !ref.snippet?.trim()) {
+        return;
+      }
+
+      const key = `${ref.title ?? ''}|${ref.snippet}`.toLowerCase();
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      merged.push(ref);
+    };
+
+    attachmentRefs.forEach(add);
+    referenceDocs.forEach(add);
+
+    merged.sort((a, b) => b.weight - a.weight);
+    return merged.slice(0, MAX_REFERENCE_COUNT);
+  }
+
+  private splitAttachmentIntoChunks(content: string, maxChunks: number): string[] {
+    if (!content) {
+      return [];
+    }
+
+    const normalized = content.replace(/\r\n/g, '\n').trimEnd();
+    const effectiveMaxChunks = Math.max(1, Math.min(maxChunks, MAX_ATTACHMENT_CHUNKS_PER_ATTACHMENT));
+    const targetChunkLength = Math.max(
+      MIN_ATTACHMENT_CHUNK_LENGTH,
+      Math.min(MAX_ATTACHMENT_CHUNK_LENGTH, MAX_REFERENCE_SNIPPET_LENGTH - 100)
+    );
+
+    const chunks: string[] = [];
+    let buffer = '';
+
+    const pushBuffer = () => {
+      if (buffer) {
+        chunks.push(buffer.trimEnd());
+        buffer = '';
+      }
+    };
+
+    const lines = normalized.split('\n');
+    for (const line of lines) {
+      const candidate = buffer ? `${buffer}\n${line}` : line;
+      if (candidate.length > targetChunkLength && buffer) {
+        pushBuffer();
+      }
+
+      if (candidate.length > targetChunkLength) {
+        let start = 0;
+        while (start < candidate.length && chunks.length < effectiveMaxChunks) {
+          const end = Math.min(candidate.length, start + targetChunkLength);
+          chunks.push(candidate.slice(start, end));
+          start = end;
+        }
+        buffer = '';
+      } else {
+        buffer = candidate;
+      }
+
+      if (chunks.length >= effectiveMaxChunks) {
+        break;
+      }
+    }
+
+    if (chunks.length < effectiveMaxChunks && buffer) {
+      pushBuffer();
+    }
+
+    if (!chunks.length) {
+      return [normalized.slice(0, targetChunkLength)];
+    }
+
+    return chunks.slice(0, effectiveMaxChunks);
+  }
+
+  private sanitizeAttachmentWeight(weight: unknown): number {
+    if (typeof weight !== 'number' || !Number.isFinite(weight)) {
+      return ATTACHMENT_WEIGHT_DEFAULT;
+    }
+
+    const clamped = Math.max(1, Math.min(10, Math.trunc(weight)));
+    return clamped;
+  }
+
   private normalizeTestCases(testCases?: ToolScriptTestCase[]): ToolScriptTestCase[] {
     if (!Array.isArray(testCases) || testCases.length === 0) {
       return [];
@@ -798,6 +1099,12 @@ export class ToolingService {
       }
     }
 
+    await this.collectPseudocodeSnippets(input, snippets, seen);
+
+    if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+      return snippets.slice(0, MAX_CONTEXT_SNIPPETS);
+    }
+
     const queryParts = [input.instructions, input.additionalContext, input.expectedOutputDescription]
       .filter(Boolean)
       .join('\n\n');
@@ -849,6 +1156,155 @@ export class ToolingService {
     }
 
     return snippets.slice(0, MAX_CONTEXT_SNIPPETS);
+  }
+
+  private async collectPseudocodeSnippets(
+    input: NormalizedGenerateScriptInput,
+    snippets: ToolScriptContextSnippet[],
+    seen: Set<string>
+  ): Promise<void> {
+    if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+      return;
+    }
+
+    const messageTypes = this.inferEdifactMessageTypes(input);
+    if (!messageTypes.length) {
+      return;
+    }
+
+    const limitPerQuery = Math.max(8, MAX_CONTEXT_SNIPPETS * 3);
+
+    for (const messageType of messageTypes) {
+      if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+        break;
+      }
+
+      try {
+        const response = await retrievalService.semanticSearch(`${messageType} EDIFACT Pseudocode`, {
+          limit: limitPerQuery,
+          outlineScoping: false,
+          excludeVisual: false
+        });
+
+        for (const item of response.results) {
+          if (snippets.length >= MAX_CONTEXT_SNIPPETS) {
+            break;
+          }
+
+          const payload = item.payload ?? {};
+          const chunkType = typeof payload.chunk_type === 'string' ? payload.chunk_type.toLowerCase() : '';
+          if (chunkType !== 'pseudocode_raw') {
+            continue;
+          }
+
+          const source = typeof payload.source === 'string' ? payload.source : undefined;
+          if (source && !source.toUpperCase().includes(messageType)) {
+            continue;
+          }
+
+          const pseudocode = typeof payload.content === 'string' ? payload.content.trim() : undefined;
+          const summary = typeof payload.summary_text === 'string' ? payload.summary_text.trim() : undefined;
+
+          if (!pseudocode && !summary) {
+            continue;
+          }
+
+          const page = typeof payload.page === 'number'
+            ? payload.page
+            : typeof payload.page_number === 'number'
+              ? payload.page_number
+              : undefined;
+          const originalDocId = typeof payload.original_doc_id === 'string' ? payload.original_doc_id : undefined;
+
+          const sections: string[] = [];
+          if (summary) {
+            const pageInfo = page !== undefined ? ` (Seite ${page})` : '';
+            sections.push(`Kurzfassung${pageInfo}: ${summary}`);
+          }
+          if (pseudocode) {
+            sections.push(`Pseudocode (bitte in Node.js überführen):\n${this.truncateText(pseudocode, 600)}`);
+          }
+
+          const snippetText = sections.join('\n\n');
+          if (!snippetText.trim()) {
+            continue;
+          }
+
+          const dedupeKey = `${messageType}|${source ?? ''}|${originalDocId ?? ''}|${snippetText.slice(0, 160)}`.toLowerCase();
+          if (seen.has(dedupeKey)) {
+            continue;
+          }
+
+          seen.add(dedupeKey);
+
+          const titleParts = [`Pseudocode ${messageType}`];
+          if (source) {
+            titleParts.push(source);
+          }
+          if (originalDocId && (!source || !source.includes(originalDocId))) {
+            titleParts.push(originalDocId);
+          }
+
+          snippets.push({
+            id: originalDocId ?? item.id,
+            title: titleParts.join(' – '),
+            source,
+            score: item.score ?? undefined,
+            snippet: snippetText,
+            origin: 'retrieval'
+          });
+        }
+      } catch (error) {
+        console.warn(`Pseudocode retrieval failed for ${messageType}:`, error);
+      }
+    }
+  }
+
+  private inferEdifactMessageTypes(input: NormalizedGenerateScriptInput): string[] {
+    const detected: string[] = [];
+    const seen = new Set<string>();
+
+    const collectFromText = (text?: string) => {
+      if (typeof text !== 'string' || !text.trim()) {
+        return;
+      }
+
+      const upper = text.toUpperCase();
+      for (const type of EDIFACT_MESSAGE_TYPES) {
+        if (!seen.has(type) && upper.includes(type)) {
+          seen.add(type);
+          detected.push(type);
+        }
+      }
+    };
+
+    collectFromText(input.instructions);
+    collectFromText(input.additionalContext);
+    collectFromText(input.expectedOutputDescription);
+
+    if (input.inputSchema?.description) {
+      collectFromText(input.inputSchema.description);
+    }
+
+    if (input.inputSchema?.properties) {
+      for (const value of Object.values(input.inputSchema.properties)) {
+        if (!value) {
+          continue;
+        }
+
+        collectFromText(value.description);
+        if (typeof value.example === 'string') {
+          collectFromText(value.example);
+        }
+      }
+    }
+
+    for (const reference of input.referenceDocuments) {
+      collectFromText(reference.title);
+      collectFromText(reference.snippet);
+    }
+
+    return detected.slice(0, 3);
   }
 
   private extractPayloadSnippet(payload: any, highlight?: string | null): string | null {
@@ -1148,6 +1604,15 @@ export class ToolingService {
       + '- `run` muss immer mit `return` antworten; vermeide Side-Effects und liefere strukturierte Fehlermeldungen statt Konsolen-Logs.'
     );
 
+    parts.push(
+      'Nutzung bereitgestellter Pseudocode-Snippets:\n'
+      + '- Verwende Pseudocode aus den Kontext-Snippets als maßgebliche Quelle und überführe ihn schrittweise in ausführbaren Node.js-Code.\n'
+      + '- Prüfe Felder wie `source`, `summary_text`, `page` und `original_doc_id`, um Aufbau und Segment-Reihenfolge korrekt zu übernehmen.\n'
+      + '- Übernimm Bedingungen, Schleifen und Segmentgruppen exakt; passe nur an, wenn die Aufgabe explizit Abweichungen verlangt.\n'
+      + '- Ergänze deterministische Hilfsfunktionen statt neuer Logik, wenn der Pseudocode bereits sämtliche Fachregeln abdeckt.\n'
+      + '- Konvertiere jeden Pseudocode-Schritt in getesteten Node.js-Quellcode und liefere niemals nur Pseudocode oder Platzhalter.'
+    );
+
     parts.push(`Aufgabe:\n${input.instructions}`);
 
     if (input.additionalContext) {
@@ -1193,6 +1658,8 @@ ${snippet.snippet}`;
       + '"dependencies": string[], "warnings": string[], "notes": string[], "artifacts"?: Artifact[]}. '
       + 'Code als reiner String ohne ```-Blöcke.'
     );
+
+    parts.push('Das Feld "code" MUSS den vollständigen CommonJS-Quelltext enthalten und darf nicht leer sein.');
 
     parts.push('Nutze deutschsprachige Beschreibungen für description/notes, halte sie knapp (max 240 Zeichen pro Eintrag).');
 

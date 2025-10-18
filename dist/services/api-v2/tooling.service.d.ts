@@ -49,6 +49,7 @@ export declare class ToolingService {
     private isRecoverableValidationError;
     private extractCandidateCodeForFeedback;
     private extractRunFunctionSnippet;
+    private extractRunFunctionBody;
     private findMatchingBrace;
     private serializeInputSchemaForPrompt;
     private stringifyExample;
@@ -57,7 +58,15 @@ export declare class ToolingService {
     private normalizeArtifacts;
     private extractCodeBlock;
     private validateGeneratedScript;
+    private runFunctionHasReturn;
+    private hasReturnWrapperMarker;
+    private ensureRunReturnWrapper;
+    private isRateLimitError;
+    private getRateLimitBackoffDelay;
+    private delay;
+    private appendJobWarning;
     private sanitizeDependencies;
+    private sanitizeValidationContext;
     private ensureNotesLimit;
     private safeParseJson;
     private raiseValidationError;

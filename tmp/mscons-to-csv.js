@@ -1,192 +1,171 @@
 const { readFile, writeFile } = require('fs/promises');
-const { join, basename } = require('path');
+const { join, basename, extname } = require('path');
 
 /**
- * MSCONS-zu-CSV-Konverter für EDIFACT-Nachrichten im Energiemarkt.
+ * MSCONS-zu-CSV-Konverter für EDIFACT-Nachrichten im Energiemarkt
  * 
  * Zweck:
- * - Extrahiere Messwerte (QTY+187) mit Zeitstempeln (DTM+163/164) und OBIS-Kennzahlen (PIA+5)
- * - Generiere CSV mit einer Zeile pro Ablesezeitpunkt und allen Zählwerken
- * - Behandle Freistellzeichen (`?`) und Segmentgruppen korrekt
+ *   - Extrahiere Messwerte (OBIS-Codes) aus MSCONS-Nachrichten
+ *   - Konvertiere in strukturiertes CSV mit Zeilen pro Ablesezeitpunkt
+ *   - Behandle Intervallwerte (QTY+DTM) und Register-IDs (PIA/LIN)
  * 
  * Nutzung:
- *   node mscons-to-csv.js <Eingabepfad>
+ *   node mscons2csv.js <Eingabepfad>
  *   Ausgabe: <Eingabename>.csv im Arbeitsverzeichnis
  */
 
+const EDIFACT_ESCAPE = '?';
+const SEGMENT_TERMINATOR = "'\n";
+const DATA_SEPARATOR = '+';
+const COMPOSITE_SEPARATOR = ':';
+
 /**
- * Hauptfunktion: Liest MSCONS-Datei, parst Segmente und generiert CSV.
- * @param {string} inputPath - Pfad zur EDIFACT-Datei
- * @returns {Promise<{success: boolean, message: string, outputPath?: string}>}
+ * Parsed eine MSCONS-Nachricht in strukturierte Segmente
+ * @throws {Error} Bei Formatfehlern oder fehlenden Pflichtsegmenten
  */
-async function run(inputPath) {
-  try {
-    // Validierung
-    if (!inputPath) throw new Error('Eingabepfad fehlt. Nutzung: node mscons-to-csv.js <Dateipfad>');
-    const fullPath = join(process.cwd(), inputPath);
-    let content;
-    try {
-      content = await readFile(fullPath, 'utf8');
-    } catch (err) {
-      throw new Error(`Datei nicht lesbar: ${basename(fullPath)} (${err.code})`);
-    }
-
-    // Parsing
-    const segments = content.split(/\r?\n/).filter(line => line.trim().endsWith("'"));
-    if (segments[0] !== "UNA:+.? '" && !segments.some(s => s.startsWith('UNH'))) {
-      throw new Error('Ungültiges EDIFACT-Format: Fehlende UNA/UNH-Segmente');
-    }
-
-    const { header, readings } = parseMSCONS(segments);
-    if (readings.length === 0) {
-      throw new Error('Keine Messwerte (QTY+187) in der Nachricht gefunden');
-    }
-
-    // CSV-Generierung
-    const csvHeader = ['Zeitstempel_ISO', 'OBIS_Kennzahl', 'Messwert', 'Einheit', 'Register_ID'];
-    const csvRows = readings.map(r => (
-      `"${r.timestamp}";"${r.obis}";"${r.value}";"${r.unit}";"${r.registerId}"`
-    ));
-    const csvContent = [csvHeader.join(';'), ...csvRows].join('\n');
-
-    // Ausgabe
-    const outputPath = join(process.cwd(), `${basename(inputPath, '.edi')}.csv`);
-    try {
-      await writeFile(outputPath, csvContent, { flag: 'wx' }); // wx = fail if exists
-    } catch (err) {
-      if (err.code === 'EEXIST') {
-        throw new Error(`Datei existiert bereits: ${basename(outputPath)}. Überschreiben? (Abbruch)`);
-      }
-      throw new Error(`Schreibfehler: ${err.message}`);
-    }
-
-    return {
-      success: true,
-      message: `Erfolg: ${readings.length} Messwerte nach ${outputPath} exportiert`,
-      outputPath
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-      outputPath: undefined
-    };
+function parseMscons(edifact) {
+  if (!edifact.trim().startsWith('UNH') || !edifact.includes('UNT')) {
+    throw new Error('Ungültige MSCONS-Struktur: Fehlende UNH/UNT-Segmente');
   }
+
+  const segments = edifact
+    .split(SEGMENT_TERMINATOR)
+    .filter(Boolean)
+    .map(line => {
+      const [code, ...elements] = line.split(DATA_SEPARATOR);
+      return { code, elements: elements.map(el => el.replace(new RegExp(`${EDIFACT_ESCAPE}([+:'?])`, 'g'), '$1')) };
+    });
+
+  // Validierung: UNH muss vor UNT kommen
+  const unhIndex = segments.findIndex(s => s.code === 'UNH');
+  const untIndex = segments.findIndex(s => s.code === 'UNT');
+  if (unhIndex === -1 || untIndex === -1 || unhIndex > untIndex) {
+    throw new Error('Segmentreihenfolge verletzt: UNH muss vor UNT stehen');
+  }
+
+  return segments;
 }
 
 /**
- * Parsed MSCONS-Segmente in strukturierte Messwerte.
- * @param {string[]} segments - Array von EDIFACT-Segmentzeilen
- * @returns {{header: object, readings: Array<{timestamp: string, obis: string, value: string, unit: string, registerId: string}>}}
+ * Extrahiere OBIS-Codes aus PIA-Segmenten (Format: PIA+5+<OBIS1>+<OBIS2>)
  */
-function parseMSCONS(segments) {
+function extractObisCodes(segments) {
+  return segments
+    .filter(s => s.code === 'PIA' && s.elements[0] === '5')
+    .map(s => {
+      const [obis1, obis2] = s.elements.slice(1, 3);
+      return `${obis1.replace(/\?/g, '')}:${obis2.replace(/\?/g, '')}`;
+    });
+}
+
+/**
+ * Verarbeite QTY+DTM-Gruppen zu Intervall-Messwerten
+ */
+function processIntervalReadings(segments, obisCodes) {
   const readings = [];
-  let currentRegisterId = null;
-  let currentObis = null;
-  let currentUnit = 'KWH'; // Default für Strom
+  let currentObisIndex = 0;
 
-  for (const segment of segments) {
-    if (segment.startsWith('RFF+AEV:')) {
-      currentRegisterId = segment.split('+')[1].replace(/'$/, '').replace(/\?/g, '');
-    }
-    else if (segment.startsWith('PIA+5:')) {
-      const [_, obisPart1, obisPart2] = segment.split('+')[1].split(':').map(s => s.replace(/\?/g, ''));
-      currentObis = `${obisPart1}:${obisPart2}`;
-    }
-    else if (segment.startsWith('QTY+187:')) {
-      const value = segment.split('+')[1].split(':')[0].replace(/\?/g, '');
-      readings.push({
-        timestamp: '', // Wird später gefüllt
-        obis: currentObis || 'UNBEKANNT',
-        value,
-        unit: currentUnit,
-        registerId: currentRegisterId || 'DEFAULT'
-      });
-    }
-    else if (segment.startsWith('DTM+163:') || segment.startsWith('DTM+164:')) {
-      const isStart = segment.startsWith('DTM+163:');
-      const rawDate = segment.split('+')[1].split(':')[0].replace(/\?/g, '');
-      const date = parseEDIFACTDate(rawDate);
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
 
-      // Aktualisiere den letzten Eintrag (falls vorhanden)
-      if (readings.length > 0) {
-        const lastReading = readings[readings.length - 1];
-        if (isStart) {
-          lastReading.timestamp = date;
-        } else {
-          lastReading.timestamp = `${lastReading.timestamp}/${date}`;
-        }
+    if (seg.code === 'QTY' && seg.elements[0] === '187') {
+      const value = seg.elements[1] || '0';
+      const startSeg = segments[i + 1];
+      const endSeg = segments[i + 2];
+
+      if (!startSeg?.code === 'DTM' || startSeg.elements[0] !== '163' ||
+          !endSeg?.code === 'DTM' || endSeg.elements[0] !== '164') {
+        continue; // Ungültige Intervalldefinition
       }
-    }
-    else if (segment.startsWith('MEA+AAE:')) {
-      currentUnit = segment.split('+')[2].split(':')[0].replace(/\?/g, '');
+
+      const obisCode = obisCodes[currentObisIndex % obisCodes.length];
+      readings.push({
+        obisCode,
+        value,
+        start: startSeg.elements[1].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+        end: endSeg.elements[1].replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+        unit: seg.elements[2] || 'kWh' // Default-Einheit
+      });
+
+      currentObisIndex++;
+      i += 2; // Überspringe verarbeitete DTM-Segmente
     }
   }
 
-  // Post-Processing: ISO-Intervalle generieren
+  return readings;
+}
+
+/**
+ * Generiere CSV-Inhalt mit Kopfzeile
+ */
+function generateCsv(readings) {
+  const header = ['OBIS-Code', 'Wert', 'Einheit', 'Startdatum', 'Enddatum'];
+  const rows = readings.map(r =>
+    `${r.obisCode};${r.value};${r.unit};${r.start};${r.end}`
+  );
+  return [header.join(';'), ...rows].join('\n');
+}
+
+async function run(input) {
+  const { payload: filePath } = input || {};
+  if (!filePath) {
+    throw new Error('Eingabepfad fehlt: Bitte Pfad zur MSCONS-Datei als Argument angeben');
+  }
+
+  // Dateioperationen
+  const content = await readFile(filePath, 'utf8');
+  const segments = parseMscons(content);
+  const obisCodes = extractObisCodes(segments);
+
+  if (obisCodes.length === 0) {
+    throw new Error('Keine OBIS-Codes (PIA+5) in der Nachricht gefunden');
+  }
+
+  const readings = processIntervalReadings(segments, obisCodes);
+  if (readings.length === 0) {
+    throw new Error('Keine Messwerte (QTY+187) in der Nachricht gefunden');
+  }
+
+  const csvContent = generateCsv(readings);
+  const outputPath = join(
+    process.cwd(),
+    `${basename(filePath, extname(filePath))}.csv`
+  );
+
+  // Überschreibschutz
+  try {
+    await writeFile(outputPath, csvContent, { flag: 'wx' }); // wx = fail if exists
+  } catch (err) {
+    if (err.code === 'EEXIST') {
+      throw new Error(`Zieldatei existiert bereits: ${outputPath}`);
+    }
+    throw err;
+  }
+
   return {
-    header: extractHeaderInfo(segments),
-    readings: readings.map(r => ({
-      ...r,
-      timestamp: r.timestamp.includes('/') ? 
-        `PT${formatISODuration(r.timestamp)}` : 
-        `${r.timestamp}T00:00:00`
-    }))
+    success: true,
+    outputPath,
+    stats: {
+      obisCodes: obisCodes.length,
+      readings: readings.length
+    }
   };
 }
 
-/**
- * Extrahiere Kopfdaten (UNH, BGM, DTM).
- */
-function extractHeaderInfo(segments) {
-  const header = {};
-  for (const seg of segments) {
-    if (seg.startsWith('UNH')) header.reference = seg.split('+')[1].replace(/'$/, '');
-    else if (seg.startsWith('BGM')) header.messageType = seg.split('+')[1].replace(/'$/, '');
-    else if (seg.startsWith('DTM+137:')) {
-      header.documentDate = parseEDIFACTDate(seg.split('+')[1].split(':')[0]);
-    }
-  }
-  return header;
-}
+module.exports = { run };
 
-/**
- * Konvertiert EDIFACT-Datum (YYYYMMDD) zu ISO (YYYY-MM-DD).
- */
-function parseEDIFACTDate(edifactDate) {
-  const year = edifactDate.substring(0, 4);
-  const month = edifactDate.substring(4, 6);
-  const day = edifactDate.substring(6, 8);
-  return `${year}-${month}-${day}`;
-}
-
-/**
- * Formatiert Intervall (YYYY-MM-DD/YYYY-MM-DD) als ISO-Dauer (P...D).
- */
-function formatISODuration(interval) {
-  const [start, end] = interval.split('/');
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
-  return `P${diffDays}D`;
-}
-
-// Auto-Execution
+// Automatische Ausführung bei direktem Aufruf
 if (require.main === module) {
-  run(process.argv[2]).then(result => {
-    if (result.success) {
-      console.log(`✅ ${result.message}`);
-    } else {
-      console.error(`❌ Fehler: ${result.message}`);
+  (async () => {
+    try {
+      const result = await run({ payload: process.argv[2] });
+      console.log(`Erfolg: CSV generiert unter ${result.outputPath} (${result.stats.readings} Messwerte)`);
+    } catch (err) {
+      console.error('FEHLER:', err.message);
       process.exitCode = 1;
     }
-  }).catch(err => {
-    console.error(`❌ Unbehandelter Fehler: ${err.message}`);
-    process.exitCode = 1;
-  });
+  })();
 }
-
-module.exports = { run };
 
 // __AUTO_RUN_RETURN_WRAPPER__
 if (typeof module !== 'undefined' && module.exports) {

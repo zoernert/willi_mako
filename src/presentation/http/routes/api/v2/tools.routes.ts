@@ -24,7 +24,10 @@ router.post(
       inputSchema,
       expectedOutputDescription,
       additionalContext,
-      constraints
+      constraints,
+      referenceDocuments,
+      testCases,
+      attachments
     } = body;
 
     if (!sessionId || typeof sessionId !== 'string') {
@@ -56,7 +59,10 @@ router.post(
       inputSchema: inputSchema as GenerateToolScriptRequest['inputSchema'],
       expectedOutputDescription,
       additionalContext,
-      constraints
+      constraints,
+      referenceDocuments,
+      testCases,
+      attachments
     });
 
     await sessionService.touchSession(sessionId);

@@ -26,6 +26,10 @@ const MAX_ASSERTION_VALUE_LENGTH = 240;
 const MAX_CONTEXT_SNIPPETS = 6;
 const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
 const MAX_GENERATION_ATTEMPTS = 3;
+const AUTO_RETURN_WRAPPER_MARKER = '__AUTO_RUN_RETURN_WRAPPER__';
+const LLM_RATE_LIMIT_RETRY_LIMIT = 3;
+const LLM_RATE_LIMIT_BACKOFF_STEPS_MS = [1500, 3000, 6000];
+const MAX_JOB_WARNINGS = 6;
 const DEFAULT_INPUT_SCHEMA_TEMPLATE = {
     type: 'object',
     description: 'Standard-Eingabe für deterministische Tools. Der Aufruf erfolgt über `await run(input)`.',
@@ -171,15 +175,17 @@ class ToolingService {
         this.generateScriptWorkerActive = false;
     }
     async handleGenerateScriptJob(job) {
-        var _a, _b;
+        var _a, _b, _c;
         job.status = 'running';
         job.updatedAt = new Date().toISOString();
         try {
             const response = await this.executeGenerateScript(job);
             job.result = response;
-            const warnings = new Set((_a = response.script.validation.warnings) !== null && _a !== void 0 ? _a : []);
-            if (job.result.script.validation.warnings) {
-                job.result.script.validation.warnings = Array.from(new Set(job.result.script.validation.warnings));
+            const warnings = new Set((_a = job.warnings) !== null && _a !== void 0 ? _a : []);
+            const validationWarnings = (_b = response.script.validation.warnings) !== null && _b !== void 0 ? _b : [];
+            if (validationWarnings.length) {
+                validationWarnings.forEach((warning) => warnings.add(warning));
+                job.result.script.validation.warnings = Array.from(new Set(validationWarnings));
             }
             if (!response.script.validation.deterministic) {
                 warnings.add('Skript verletzt deterministische Vorgaben.');
@@ -187,14 +193,14 @@ class ToolingService {
             if (response.testResults && !response.testResults.passed) {
                 warnings.add('Mindestens ein automatischer Test ist fehlgeschlagen.');
             }
-            job.warnings = Array.from(warnings);
+            job.warnings = Array.from(warnings).slice(-MAX_JOB_WARNINGS);
             job.status = 'succeeded';
             this.updateGenerateJobProgress(job, 'completed', 'Skript erfolgreich generiert', job.attempts || undefined);
         }
         catch (error) {
             job.error = this.buildGenerateScriptError(error);
             job.status = 'failed';
-            job.warnings = (_b = job.warnings) !== null && _b !== void 0 ? _b : [];
+            job.warnings = (_c = job.warnings) !== null && _c !== void 0 ? _c : [];
             this.updateGenerateJobProgress(job, 'completed', 'Skriptgenerierung fehlgeschlagen', job.attempts || undefined);
         }
         finally {
@@ -205,7 +211,7 @@ class ToolingService {
         }
     }
     async executeGenerateScript(job) {
-        var _a, _b, _c;
+        var _a, _b;
         const normalized = job.normalizedInput;
         this.updateGenerateJobProgress(job, 'collecting-context', 'Kontext wird gesammelt', job.attempts || undefined);
         const contextSnippets = await this.collectContextSnippets(normalized);
@@ -222,31 +228,58 @@ class ToolingService {
             else {
                 this.updateGenerateJobProgress(job, 'repairing', 'Vorheriger Versuch schlug fehl – erneuter Prompt mit Feedback', attempts);
             }
+            const validationContext = validationError === null || validationError === void 0 ? void 0 : validationError.context;
             const feedback = validationError
                 ? {
                     attempt: attempts,
                     validationErrorMessage: validationError.message,
-                    validationErrorCode: ((_a = validationError === null || validationError === void 0 ? void 0 : validationError.context) === null || _a === void 0 ? void 0 : _a.code) || (validationError === null || validationError === void 0 ? void 0 : validationError.code),
+                    validationErrorCode: (validationContext === null || validationContext === void 0 ? void 0 : validationContext.code) || (validationError === null || validationError === void 0 ? void 0 : validationError.code),
+                    validationContext: validationContext ? this.sanitizeValidationContext(validationContext) : undefined,
                     previousCode: lastCandidateCode ? this.truncateText(lastCandidateCode, 4000) : undefined,
                     runSnippet: lastRunSnippet
                 }
                 : undefined;
             const prompt = this.buildScriptPrompt(normalized, contextSnippets, feedback);
             let rawCandidate;
-            try {
-                rawCandidate = await llmProvider_1.default.generateStructuredOutput(prompt, {
-                    user_id: normalized.userId,
-                    session_id: normalized.sessionId,
-                    persona: 'tooling-script-generator',
-                    attempt: attempts
-                });
+            let lastRateLimitError = null;
+            for (let rateAttempt = 0; rateAttempt < LLM_RATE_LIMIT_RETRY_LIMIT; rateAttempt++) {
+                try {
+                    rawCandidate = await llmProvider_1.default.generateStructuredOutput(prompt, {
+                        user_id: normalized.userId,
+                        session_id: normalized.sessionId,
+                        persona: 'tooling-script-generator',
+                        attempt: attempts
+                    });
+                    lastRateLimitError = null;
+                    break;
+                }
+                catch (error) {
+                    if (this.isRateLimitError(error)) {
+                        lastRateLimitError = error;
+                        const backoffMs = this.getRateLimitBackoffDelay(rateAttempt);
+                        const stageForRetry = attempts === 1 ? 'prompting' : 'repairing';
+                        this.appendJobWarning(job, `LLM Rate-Limit erreicht – automatischer Retry in ${Math.ceil(backoffMs / 1000)}s.`);
+                        this.updateGenerateJobProgress(job, stageForRetry, `LLM Rate-Limit – neuer Versuch in ${Math.ceil(backoffMs / 1000)}s`, attempts);
+                        await this.delay(backoffMs);
+                        continue;
+                    }
+                    const appError = new errorHandler_1.AppError('Skript konnte nicht generiert werden', 502);
+                    appError.context = {
+                        code: 'llm_generation_failed',
+                        attempt: attempts,
+                        details: (error === null || error === void 0 ? void 0 : error.message) || String(error || 'unbekannter Fehler')
+                    };
+                    throw appError;
+                }
             }
-            catch (error) {
-                const appError = new errorHandler_1.AppError('Skript konnte nicht generiert werden', 502);
+            if (rawCandidate === undefined) {
+                const message = 'Rate-Limit erreicht. Bitte warte einen Moment und versuche es erneut.';
+                const appError = new errorHandler_1.AppError(message, 429);
                 appError.context = {
-                    code: 'llm_generation_failed',
+                    code: 'RATE_LIMITED',
                     attempt: attempts,
-                    details: (error === null || error === void 0 ? void 0 : error.message) || String(error || 'unbekannter Fehler')
+                    retryAfterMs: this.getRateLimitBackoffDelay(LLM_RATE_LIMIT_RETRY_LIMIT - 1),
+                    details: (lastRateLimitError === null || lastRateLimitError === void 0 ? void 0 : lastRateLimitError.message) || undefined
                 };
                 throw appError;
             }
@@ -274,7 +307,7 @@ class ToolingService {
             }
             fallbackError.context = {
                 ...fallbackError.context,
-                code: (_c = (_b = fallbackError.context) === null || _b === void 0 ? void 0 : _b.code) !== null && _c !== void 0 ? _c : 'script_generation_failed',
+                code: (_b = (_a = fallbackError.context) === null || _a === void 0 ? void 0 : _a.code) !== null && _b !== void 0 ? _b : 'script_generation_failed',
                 attempts
             };
             throw fallbackError;
@@ -819,6 +852,22 @@ class ToolingService {
         const parts = [];
         parts.push('Du bist ein strenger Code-Generator für deterministische Node.js-Tools. '
             + 'Erzeuge ausschließlich CommonJS-Module mit `async function run(input)` und `module.exports = { run };`');
+        parts.push('Rolle & Kontext:\n'
+            + '- Du bist Softwareentwickler für die EDIFACT-Marktkommunikation im deutschsprachigen Energiemarkt.\n'
+            + '- Nutze Fachwissen zu Formaten wie MSCONS, UTILMD, INVOIC, ORDERS, um feldgenaue Umsetzungen zu liefern.\n'
+            + '- Behalte deterministische Verarbeitung und reproduzierbare Ergebnisse ohne Hidden-State im Blick.');
+        parts.push('EDIFACT-Grundlagen, die strikt einzuhalten sind:\n'
+            + '- Einfache Datenelemente enthalten genau einen Wert; zusammengesetzte Datenelemente (Composites) trennen ihre Komponenten mit `:`.\n'
+            + '- Segmente bestehen aus Datenelementen, getrennt durch `+`, beginnen mit einem dreistelligen Segmentcode (z.\u202fB. `UNH`, `BGM`, `DTM`) und enden mit einem einzelnen Apostroph (`\'`).\n'
+            + '- Jede Segmentinstanz bildet eine eigene Zeile ohne zusätzliche Zeilenumbrüche innerhalb des Segments.\n'
+            + '- Segmentgruppen bilden wiederholbare Strukturen; Reihenfolge und Wiederholbarkeit müssen gewahrt bleiben (z.\u202fB. Kopf-, Positions-, Summensegmente).\n'
+            + '- Eine Nachricht beginnt mit `UNH` und endet mit `UNT`; stelle sicher, dass zwischen diesen Segmenten sämtliche Pflichtsegmente laut Formatbeschreibung vorhanden sind.');
+        parts.push('Erfahrungen aus jüngsten Fehlersuchen:\n'
+            + '- MSCONS-Lastgänge liefern Intervallwerte über `QTY+187` mit unmittelbar folgenden `DTM+163` (Beginn) und `DTM+164` (Ende); erzeuge daraus deterministische Zeitstempel, z.\u202fB. ISO-Intervalle `start/end`.\n'
+            + '- OBIS-Kennzahlen stehen häufig in `PIA+5`-Segmenten; entferne Freistellzeichen `?` korrekt und kombiniere die ersten beiden Komponenten (z.\u202fB. `1-1` + `1.29.0` \u2192 `1-1:1.29.0`).\n'
+            + '- Verlasse dich nicht allein auf `RFF+AEV`; nutze `PIA`, `LIN` und Kontextsegmente als Fallback für Register-IDs.\n'
+            + '- Das EDIFACT-Freistellzeichen `?` schützt `+`, `:`, `\'` und `?`; splitte nur auf echte Trennzeichen, sonst verlierst du Nutzdaten.\n'
+            + '- `run` muss immer mit `return` antworten; vermeide Side-Effects und liefere strukturierte Fehlermeldungen statt Konsolen-Logs.');
         parts.push(`Aufgabe:\n${input.instructions}`);
         if (input.additionalContext) {
             parts.push(`Zusätzlicher Kontext:\n${input.additionalContext}`);
@@ -845,7 +894,10 @@ ${snippet.snippet}`;
             + '\n- Kein Zugriff auf Netzwerk (http, https, fetch) oder Dateisystem (fs) ohne explizite Freigabe.'
             + '\n- Kein Aufruf von process.exit, child_process, worker_threads oder Shell-Kommandos.'
             + '\n- Nutze nur synchronen Node.js-Standard ohne zusätzliche NPM-Pakete.'
-            + '\n- Rückgabe muss über `return` innerhalb von `run` erfolgen und ausschließlich vom input abhängen.');
+            + '\n- Rückgabe muss über `return` innerhalb von `run` erfolgen und ausschließlich vom input abhängen.'
+            + '\n- Erzeuge Text-Output mit expliziten Zeilenumbrüchen (\\n) und achte auf UTF-8 ohne Byte-Order-Mark.'
+            + '\n- Bei CSV- oder Tabellen-Ausgaben: setze Kopfzeilen klar, nutze Trennzeichen aus der Aufgabenstellung (Standard: Semikolon) und maskiere Werte gemäß RFC 4180.'
+            + '\n- Bewahre originalgetreue EDIFACT-Segmentierung (ein Segment = eine Zeile, Segmentabschluss \') ohne zusätzliche Leerzeilen oder Entfernen der Abschlusszeichen.');
         parts.push('Antwortformat: JSON ohne Markdown, ohne Kommentare. Felder: '
             + '{"code": string, "description": string, "entrypoint": "run", "runtime": "node18", "deterministic": true, '
             + '"dependencies": string[], "warnings": string[], "notes": string[]}. '
@@ -863,6 +915,29 @@ ${snippet.snippet}`;
                     + (feedback.validationErrorCode ? ` (Code: ${feedback.validationErrorCode})` : '') + '.',
                 'Behebe diesen Fehler zwingend. Stelle sicher, dass `run` den Eingabeparameter nutzt und mit `return` antwortet.'
             ];
+            const context = feedback.validationContext;
+            if (context) {
+                const contextViolations = Array.isArray(context['violations']) ? context['violations'] : undefined;
+                const violations = contextViolations === null || contextViolations === void 0 ? void 0 : contextViolations.filter((item) => typeof item === 'string');
+                if (violations && violations.length) {
+                    feedbackLines.push('Folgende Verstöße wurden festgestellt – entferne sie vollständig und ersetze sie durch deterministische Alternativen:');
+                    feedbackLines.push(...violations.map((violation, index) => `  ${index + 1}. ${violation}`));
+                }
+                const contextForbidden = Array.isArray(context['forbiddenApis']) ? context['forbiddenApis'] : undefined;
+                const forbiddenApis = contextForbidden === null || contextForbidden === void 0 ? void 0 : contextForbidden.filter((item) => typeof item === 'string');
+                if (forbiddenApis && forbiddenApis.length) {
+                    feedbackLines.push('Diese APIs sind verboten. Entferne sie und nutze stattdessen reine Input-basierte Logik:');
+                    feedbackLines.push(...forbiddenApis.map((api, index) => `  ${index + 1}. ${api}`));
+                }
+                const details = context['details'];
+                if (typeof details === 'string' && details) {
+                    feedbackLines.push(`Hinweis: ${details}`);
+                }
+                const hint = context['hint'];
+                if (typeof hint === 'string' && hint) {
+                    feedbackLines.push(`Zusätzlicher Hinweis: ${hint}`);
+                }
+            }
             if (feedback.previousCode) {
                 feedbackLines.push('Vorheriger fehlerhafter Code (nur zur Analyse, bitte komplett neu schreiben):');
                 feedbackLines.push(feedback.previousCode);
@@ -937,6 +1012,25 @@ ${snippet.snippet}`;
             }
         }
         return this.truncateText(code.trim(), 1200);
+    }
+    extractRunFunctionBody(code, entrypoint) {
+        if (typeof code !== 'string') {
+            return undefined;
+        }
+        const patterns = [
+            new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\([^)]*\\)\\s*{([\\s\\S]*?)}`),
+            new RegExp(`${entrypoint}\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}`),
+            new RegExp(`exports\\.${entrypoint}\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}`),
+            new RegExp(`module\\.exports\\s*=\\s*async\\s*function\\s+${entrypoint}\\s*\\([^)]*\\)\\s*{([\\s\\S]*?)}`),
+            new RegExp(`module\\.exports\\s*=\\s*{[\\s\\S]*?${entrypoint}\\s*:\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}[\\s\\S]*?}`)
+        ];
+        for (const pattern of patterns) {
+            const match = code.match(pattern);
+            if (match) {
+                return match[1];
+            }
+        }
+        return undefined;
     }
     findMatchingBrace(source, openIndex) {
         let depth = 0;
@@ -1054,8 +1148,25 @@ ${snippet.snippet}`;
                 `Skript wurde aus ${artifacts.length} Artefakt(en) zusammengesetzt.`
             ]);
         }
+        const returnWrapper = this.ensureRunReturnWrapper(code, entrypoint);
+        if (returnWrapper.wrapped) {
+            code = returnWrapper.code;
+            notes = this.ensureNotesLimit([
+                ...notes,
+                'Automatischer Wrapper ergänzt, damit run stets einen Rückgabewert liefert.'
+            ]);
+        }
         const validation = this.validateGeneratedScript(code, input.constraints, entrypoint);
+        if (returnWrapper.wrapped) {
+            validation.warnings.push('Return-Wrapper wurde automatisch ergänzt. Bitte ursprünglichen Code prüfen.');
+        }
         validation.warnings = Array.from(new Set([...validation.warnings, ...candidateWarnings]));
+        if (validation.forbiddenApis.length > 0) {
+            const forbiddenNote = validation.forbiddenApis.length === 1
+                ? `Skript verwendet potenziell unsichere API: ${validation.forbiddenApis[0]}.`
+                : `Skript verwendet potenziell unsichere APIs: ${validation.forbiddenApis.join(', ')}.`;
+            notes = this.ensureNotesLimit([...notes, forbiddenNote]);
+        }
         return {
             code,
             language: 'javascript',
@@ -1193,21 +1304,16 @@ ${snippet.snippet}`;
         if (!hasInputParameter) {
             this.raiseValidationError('Die Funktion run muss den Parameter `input` verwenden.', 'missing_input_parameter');
         }
-        const runBlockMatch = code.match(new RegExp(`async\\s+function\\s+${entrypoint}\\s*\\([^)]*\\)\\s*{([\\s\\S]*?)}`));
-        let runBody = runBlockMatch ? runBlockMatch[1] : undefined;
-        if (!runBody) {
-            const arrowBlockMatch = code.match(new RegExp(`${entrypoint}\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>\\s*{([\\s\\S]*?)}`));
-            if (arrowBlockMatch) {
-                runBody = arrowBlockMatch[1];
-            }
+        const runBody = this.extractRunFunctionBody(code, entrypoint);
+        const hasReturnWrapper = this.hasReturnWrapperMarker(code);
+        const runReturnsValue = typeof runBody === 'string'
+            ? new RegExp(String.raw `\breturn\b`).test(runBody)
+            : false;
+        if (!runReturnsValue && !hasReturnWrapper) {
+            this.raiseValidationError('Die Funktion run muss eine Antwort mit `return` liefern.', 'missing_return_statement');
         }
-        if (runBody) {
-            if (!/return\b/.test(runBody)) {
-                this.raiseValidationError('Die Funktion run muss eine Antwort mit `return` liefern.', 'missing_return_statement');
-            }
-            if (!/\binput\b/.test(runBody)) {
-                validation.warnings.push('Die Funktion run nutzt den Eingabe-Parameter `input` nicht.');
-            }
+        if (runBody && !new RegExp(String.raw `\binput\b`).test(runBody)) {
+            validation.warnings.push('Die Funktion run nutzt den Eingabe-Parameter `input` nicht.');
         }
         const deterministicViolations = [];
         if (constraints.deterministic) {
@@ -1268,7 +1374,11 @@ ${snippet.snippet}`;
             }
         }
         if (validation.forbiddenApis.length > 0) {
-            this.raiseValidationError('Der Code verwendet verbotene APIs', 'forbidden_apis', { forbiddenApis: Array.from(new Set(validation.forbiddenApis)) });
+            const uniqueForbidden = Array.from(new Set(validation.forbiddenApis));
+            validation.forbiddenApis = uniqueForbidden;
+            validation.warnings.push(uniqueForbidden.length === 1
+                ? `Skript verwendet potenziell unsichere API: ${uniqueForbidden[0]}`
+                : `Skript verwendet potenziell unsichere APIs: ${uniqueForbidden.join(', ')}`);
         }
         validation.deterministic = constraints.deterministic;
         const warningPatterns = [
@@ -1285,6 +1395,115 @@ ${snippet.snippet}`;
         validation.warnings = Array.from(new Set(validation.warnings));
         return validation;
     }
+    runFunctionHasReturn(code, entrypoint) {
+        const body = this.extractRunFunctionBody(code, entrypoint);
+        return typeof body === 'string' ? new RegExp(String.raw `\breturn\b`).test(body) : false;
+    }
+    hasReturnWrapperMarker(code) {
+        return typeof code === 'string' && code.includes(AUTO_RETURN_WRAPPER_MARKER);
+    }
+    ensureRunReturnWrapper(code, entrypoint) {
+        if (!code || !code.trim()) {
+            return { code, wrapped: false };
+        }
+        if (this.runFunctionHasReturn(code, entrypoint) || this.hasReturnWrapperMarker(code)) {
+            return { code, wrapped: false };
+        }
+        const wrapperLines = [
+            `// ${AUTO_RETURN_WRAPPER_MARKER}`,
+            "if (typeof module !== 'undefined' && module.exports) {",
+            '  const __exports = module.exports;',
+            '  let __originalRun = null;',
+            "  if (typeof __exports === 'function') {",
+            '    __originalRun = __exports;',
+            `  } else if (__exports && typeof __exports.${entrypoint} === 'function') {`,
+            `    __originalRun = __exports.${entrypoint};`,
+            '  }',
+            "  if (!__originalRun && typeof exports !== 'undefined' && exports && typeof exports === 'object') {",
+            `    if (typeof exports.${entrypoint} === 'function') {`,
+            `      __originalRun = exports.${entrypoint};`,
+            '    }',
+            '  }',
+            `  if (!__originalRun && typeof ${entrypoint} === 'function') {`,
+            `    __originalRun = ${entrypoint};`,
+            '  }',
+            "  if (typeof __originalRun === 'function') {",
+            `    const __wrapRun = async function ${entrypoint}(input) {`,
+            '      const __result = await __originalRun(input);',
+            "      return __result === undefined ? '' : __result;",
+            '    };',
+            "    if (typeof __exports === 'function') {",
+            '      module.exports = __wrapRun;',
+            "    } else if (__exports && typeof __exports === 'object') {",
+            `      module.exports.${entrypoint} = __wrapRun;`,
+            '    } else {',
+            `      module.exports = { ${entrypoint}: __wrapRun };`,
+            '    }',
+            "    if (typeof exports !== 'undefined' && exports) {",
+            `      exports.${entrypoint} = typeof module.exports === 'function' ? module.exports : module.exports.${entrypoint};`,
+            '    }',
+            '  }',
+            '}'
+        ];
+        const wrapperSnippet = wrapperLines.join('\n');
+        const augmentedCode = `${code}\n\n${wrapperSnippet}\n`;
+        return {
+            code: augmentedCode,
+            wrapped: true,
+            wrapperSnippet
+        };
+    }
+    isRateLimitError(error) {
+        var _a, _b, _c;
+        if (!error || typeof error !== 'object') {
+            return false;
+        }
+        const candidate = error;
+        const context = candidate.context;
+        const codeCandidate = ((context === null || context === void 0 ? void 0 : context.code) || candidate.code);
+        if (typeof codeCandidate === 'string' && codeCandidate.toUpperCase() === 'RATE_LIMITED') {
+            return true;
+        }
+        const statusCandidate = (_b = (_a = candidate.statusCode) !== null && _a !== void 0 ? _a : candidate.status) !== null && _b !== void 0 ? _b : (_c = candidate.response) === null || _c === void 0 ? void 0 : _c.status;
+        if (statusCandidate === 429) {
+            return true;
+        }
+        const message = typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
+        if (!message) {
+            return false;
+        }
+        return message.includes('rate limit') || message.includes('too many requests') || message.includes('quota');
+    }
+    getRateLimitBackoffDelay(rateAttempt) {
+        const index = Math.min(rateAttempt, LLM_RATE_LIMIT_BACKOFF_STEPS_MS.length - 1);
+        return LLM_RATE_LIMIT_BACKOFF_STEPS_MS[index];
+    }
+    async delay(ms) {
+        if (!Number.isFinite(ms) || ms <= 0) {
+            return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    appendJobWarning(job, warning) {
+        if (!warning || typeof warning !== 'string') {
+            return;
+        }
+        const normalized = warning.trim();
+        if (!normalized) {
+            return;
+        }
+        if (!Array.isArray(job.warnings)) {
+            job.warnings = [];
+        }
+        if (job.warnings.includes(normalized)) {
+            return;
+        }
+        job.warnings.push(normalized);
+        if (job.warnings.length > MAX_JOB_WARNINGS) {
+            job.warnings = job.warnings.slice(job.warnings.length - MAX_JOB_WARNINGS);
+        }
+        job.updatedAt = new Date().toISOString();
+    }
     sanitizeDependencies(dependencies) {
         if (!Array.isArray(dependencies)) {
             return [];
@@ -1294,6 +1513,43 @@ ${snippet.snippet}`;
             .map((dep) => dep.trim())
             .filter(Boolean);
         return Array.from(new Set(sanitized)).slice(0, 10);
+    }
+    sanitizeValidationContext(context) {
+        if (!context || typeof context !== 'object') {
+            return undefined;
+        }
+        const result = {};
+        const ctx = context;
+        if (Array.isArray(ctx.violations)) {
+            const violations = ctx.violations
+                .filter((item) => typeof item === 'string')
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0)
+                .slice(0, 6);
+            if (violations.length) {
+                result.violations = violations;
+            }
+        }
+        if (Array.isArray(ctx.forbiddenApis)) {
+            const forbiddenApis = ctx.forbiddenApis
+                .filter((item) => typeof item === 'string')
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0)
+                .slice(0, 6);
+            if (forbiddenApis.length) {
+                result.forbiddenApis = forbiddenApis;
+            }
+        }
+        if (typeof ctx.details === 'string' && ctx.details.trim()) {
+            result.details = ctx.details.trim().slice(0, 400);
+        }
+        if (typeof ctx.hint === 'string' && ctx.hint.trim()) {
+            result.hint = ctx.hint.trim().slice(0, 200);
+        }
+        if (typeof ctx.code === 'string' && ctx.code.trim()) {
+            result.code = ctx.code.trim().slice(0, 80);
+        }
+        return Object.keys(result).length ? result : undefined;
     }
     ensureNotesLimit(notes) {
         if (!Array.isArray(notes)) {

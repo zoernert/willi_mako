@@ -947,6 +947,61 @@ export const apiV2OpenApiDocument = {
           }
         }
       },
+      ToolScriptReference: {
+        type: 'object',
+        required: ['snippet'],
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          snippet: { type: 'string', maxLength: 2000 },
+          weight: { type: 'number' },
+          useForPrompt: { type: 'boolean' }
+        }
+      },
+      ToolScriptAttachment: {
+        type: 'object',
+        required: ['filename', 'content'],
+        properties: {
+          id: { type: 'string' },
+          filename: { type: 'string', maxLength: 160 },
+          content: {
+            type: 'string',
+            description: 'UTF-8 Textinhalt des Attachments, z. B. EDIFACT-Datei oder CSV-Ausschnitt.'
+          },
+          mimeType: { type: 'string' },
+          description: { type: 'string', maxLength: 240 },
+          weight: { type: 'number', minimum: 1, maximum: 10 }
+        }
+      },
+      ToolScriptTestAssertion: {
+        type: 'object',
+        required: ['type', 'value'],
+        properties: {
+          type: { type: 'string', enum: ['contains', 'equals', 'regex'] },
+          value: { type: 'string' }
+        }
+      },
+      ToolScriptTestCase: {
+        type: 'object',
+        required: ['input'],
+        properties: {
+          name: { type: 'string', maxLength: 120 },
+          description: { type: 'string', maxLength: 240 },
+          input: {
+            oneOf: [
+              { type: 'object', additionalProperties: true },
+              { type: 'string' },
+              { type: 'number' },
+              { type: 'boolean' },
+              { type: 'null' }
+            ]
+          },
+          assertions: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/ToolScriptTestAssertion' }
+          }
+        }
+      },
       ToolScriptConstraints: {
         type: 'object',
         properties: {
@@ -969,6 +1024,19 @@ export const apiV2OpenApiDocument = {
           additionalContext: { type: 'string', maxLength: 2000 },
           constraints: {
             $ref: '#/components/schemas/ToolScriptConstraints'
+          },
+          referenceDocuments: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/ToolScriptReference' }
+          },
+          testCases: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/ToolScriptTestCase' }
+          },
+          attachments: {
+            type: 'array',
+            description: 'Textbasierte Dateien, die automatisch in Prompt-Snippets aufgeteilt werden sollen.',
+            items: { $ref: '#/components/schemas/ToolScriptAttachment' }
           }
         }
       },
