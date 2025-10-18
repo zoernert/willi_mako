@@ -6,6 +6,8 @@ import { sessionService } from '../../../../../services/api-v2/session.service';
 import { toolingService } from '../../../../../services/api-v2/tooling.service';
 import {
   GenerateToolScriptJobResponse,
+  GenerateToolScriptRepairRequest,
+  GenerateToolScriptRepairResponse,
   GenerateToolScriptRequest,
   RunNodeScriptJobResponse
 } from '../../../../../domain/api-v2/tooling.types';
@@ -68,6 +70,81 @@ router.post(
     await sessionService.touchSession(sessionId);
 
     const payload: GenerateToolScriptJobResponse = {
+      sessionId,
+      job
+    };
+
+    res.status(202).json({
+      success: true,
+      data: payload
+    });
+  })
+);
+
+router.post(
+  '/generate-script/repair',
+  authenticateToken,
+  apiV2RateLimiter({ capacity: 3, refillTokens: 3, intervalMs: 60_000 }),
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const body = (req.body || {}) as GenerateToolScriptRepairRequest;
+    const {
+      sessionId,
+      jobId,
+      repairInstructions,
+      additionalContext,
+      referenceDocuments,
+      attachments,
+      testCases
+    } = body;
+
+    if (!sessionId || typeof sessionId !== 'string') {
+      throw new AppError('sessionId ist erforderlich', 400);
+    }
+
+    if (!jobId || typeof jobId !== 'string') {
+      throw new AppError('jobId ist erforderlich', 400);
+    }
+
+    if (repairInstructions !== undefined && typeof repairInstructions !== 'string') {
+      throw new AppError('repairInstructions muss ein String sein', 400);
+    }
+
+    if (additionalContext !== undefined && typeof additionalContext !== 'string') {
+      throw new AppError('additionalContext muss ein String sein', 400);
+    }
+
+    if (referenceDocuments !== undefined && !Array.isArray(referenceDocuments)) {
+      throw new AppError('referenceDocuments muss ein Array sein', 400);
+    }
+
+    if (attachments !== undefined && !Array.isArray(attachments)) {
+      throw new AppError('attachments muss ein Array sein', 400);
+    }
+
+    if (testCases !== undefined && !Array.isArray(testCases)) {
+      throw new AppError('testCases muss ein Array sein', 400);
+    }
+
+    const session = await sessionService.getSession(sessionId);
+
+    if (session.userId !== req.user!.id) {
+      throw new AppError('Session wurde nicht gefunden', 404);
+    }
+
+    const job = await toolingService.resumeGenerateScriptJob({
+      userId: req.user!.id,
+      sessionId,
+      jobId,
+      repairInstructions,
+      additionalContext,
+      referenceDocuments,
+      attachments,
+      testCases
+    });
+
+    await sessionService.touchSession(sessionId);
+
+    const payload: GenerateToolScriptRepairResponse = {
       sessionId,
       job
     };

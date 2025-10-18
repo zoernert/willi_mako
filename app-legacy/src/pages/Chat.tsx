@@ -1127,16 +1127,18 @@ const Chat: React.FC = () => {
                       const firstTurnShortAnswer = typeof assistantMetadata?.firstTurnShortAnswer === 'string'
                         ? assistantMetadata.firstTurnShortAnswer
                         : '';
-                      const firstTurnFollowUp = typeof assistantMetadata?.firstTurnFollowUp === 'string'
-                        ? assistantMetadata.firstTurnFollowUp
-                        : '';
+                      const coachingPromptsMeta = Array.isArray(assistantMetadata?.coachingPrompts)
+                        ? assistantMetadata.coachingPrompts
+                        : [];
 
                       const baseContent = shouldShowCs30
                         ? messageWithCs30.cs30AdditionalResponse?.content || message.content
                         : message.content;
                       const useCoachShortAnswer = !shouldShowCs30 && isFirstTurnCoaching && firstTurnShortAnswer.length > 0;
                       const contentToShow = useCoachShortAnswer ? firstTurnShortAnswer : baseContent;
-                      const shouldShowFollowUp = !shouldShowCs30 && isFirstTurnCoaching && firstTurnFollowUp.length > 0;
+                      const promptsToShow = !shouldShowCs30
+                        ? coachingPromptsMeta.slice(0, 2)
+                        : [];
                       const isCs30Content = shouldShowCs30;
 
                       return (
@@ -1324,26 +1326,41 @@ const Chat: React.FC = () => {
                                         </Box>
                                       )}
 
-                                      {shouldShowFollowUp && (
-                                        <Alert
-                                          severity="info"
-                                          variant="outlined"
-                                          icon={<PsychologyIcon fontSize="small" />}
-                                          sx={{
-                                            mt: 2,
-                                            borderStyle: 'dashed',
-                                            borderColor: 'primary.light',
-                                            bgcolor: 'rgba(25,118,210,0.05)'
-                                          }}
-                                        >
-                                          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                            Coach-Rückfrage
-                                          </Typography>
-                                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                            {firstTurnFollowUp}
-                                          </Typography>
-                                        </Alert>
-                                      )}
+                                      {promptsToShow.map((prompt: any) => {
+                                        const label = prompt?.tone === 'explain' ? 'Coach-Angebot' : 'Coach-Frage';
+                                        const promptKey = prompt?.id || `${message.id}-${label}-${prompt?.reason || 'prompt'}`;
+                                        const promptQuestion = typeof prompt?.question === 'string'
+                                          ? prompt.question
+                                          : '';
+
+                                        if (!promptQuestion) {
+                                          return null;
+                                        }
+
+                                        return (
+                                          <Alert
+                                            key={promptKey}
+                                            severity={prompt?.tone === 'explain' ? 'success' : 'info'}
+                                            variant="outlined"
+                                            icon={<PsychologyIcon fontSize="small" />}
+                                            sx={{
+                                              mt: 2,
+                                              borderStyle: 'dashed',
+                                              borderColor: prompt?.tone === 'explain' ? 'success.light' : 'primary.light',
+                                              bgcolor: prompt?.tone === 'explain'
+                                                ? 'rgba(76,175,80,0.08)'
+                                                : 'rgba(25,118,210,0.05)'
+                                            }}
+                                          >
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                              {label}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                              {promptQuestion}
+                                            </Typography>
+                                          </Alert>
+                                        );
+                                      })}
                                     </div>
                                   </Box>
 

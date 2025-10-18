@@ -53,6 +53,7 @@ export interface GenerateScriptJob extends ToolJobBase {
     warnings: string[];
     result?: GenerateToolScriptResponse;
     error?: GenerateScriptJobError;
+    continuedFromJobId?: string;
 }
 export type ToolJob = RunNodeScriptJob | GenerateScriptJob;
 export interface RunNodeScriptJobOptions {
@@ -71,6 +72,10 @@ export interface GetToolJobResponse {
     job: ToolJob;
 }
 export interface GenerateToolScriptJobResponse {
+    sessionId: string;
+    job: GenerateScriptJob;
+}
+export interface GenerateToolScriptRepairResponse {
     sessionId: string;
     job: GenerateScriptJob;
 }
@@ -101,6 +106,15 @@ export interface GenerateToolScriptRequest {
     referenceDocuments?: ToolScriptReference[];
     testCases?: ToolScriptTestCase[];
     attachments?: ToolScriptAttachment[];
+}
+export interface GenerateToolScriptRepairRequest {
+    sessionId: string;
+    jobId: string;
+    repairInstructions?: string;
+    additionalContext?: string;
+    referenceDocuments?: ToolScriptReference[];
+    attachments?: ToolScriptAttachment[];
+    testCases?: ToolScriptTestCase[];
 }
 export interface ToolScriptValidationReport {
     syntaxValid: boolean;

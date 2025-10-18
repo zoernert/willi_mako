@@ -33,6 +33,9 @@ export declare class ToolingService {
     private normalizeReferences;
     private normalizeAttachments;
     private transformAttachmentsToReferences;
+    private formatAttachmentChunkForPrompt;
+    private isLikelyEdifactAttachment;
+    private insertEdifactSegmentBreaks;
     private mergeReferences;
     private splitAttachmentIntoChunks;
     private sanitizeAttachmentWeight;

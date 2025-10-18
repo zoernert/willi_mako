@@ -654,6 +654,44 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/tools/generate-script/repair': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                $ref: string;
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '202': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
         '/tools/run-node-script': {
             post: {
                 summary: string;
@@ -1287,6 +1325,11 @@ export declare const apiV2OpenApiDocument: {
                             $ref?: undefined;
                         })[];
                     };
+                    continuedFromJobId: {
+                        type: string;
+                        format: string;
+                        nullable: boolean;
+                    };
                 };
             };
             ToolScriptValidationReport: {
@@ -1553,6 +1596,47 @@ export declare const apiV2OpenApiDocument: {
                     };
                 };
             };
+            GenerateToolScriptRepairRequest: {
+                type: string;
+                required: string[];
+                properties: {
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    jobId: {
+                        type: string;
+                        format: string;
+                    };
+                    repairInstructions: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    additionalContext: {
+                        type: string;
+                        maxLength: number;
+                    };
+                    referenceDocuments: {
+                        type: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                    attachments: {
+                        type: string;
+                        description: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                    testCases: {
+                        type: string;
+                        items: {
+                            $ref: string;
+                        };
+                    };
+                };
+            };
             GenerateToolScriptResponse: {
                 type: string;
                 properties: {
@@ -1573,6 +1657,18 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
             GenerateToolScriptJobResponse: {
+                type: string;
+                properties: {
+                    sessionId: {
+                        type: string;
+                        format: string;
+                    };
+                    job: {
+                        $ref: string;
+                    };
+                };
+            };
+            GenerateToolScriptRepairResponse: {
                 type: string;
                 properties: {
                     sessionId: {

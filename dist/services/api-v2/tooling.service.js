@@ -618,6 +618,7 @@ class ToolingService {
             const totalChunks = chunks.length;
             for (let index = 0; index < totalChunks && references.length < maxSlots; index++) {
                 const chunk = chunks[index];
+                const formattedChunk = this.formatAttachmentChunkForPrompt(chunk, attachment);
                 const chunkLabel = totalChunks > 1 ? ` (Teil ${index + 1}/${totalChunks})` : '';
                 const headerLines = [
                     `Attachment: ${attachment.displayName}${chunkLabel}`
@@ -628,7 +629,7 @@ class ToolingService {
                 if (attachment.description && attachment.description !== attachment.displayName) {
                     headerLines.push(`Beschreibung: ${attachment.description}`);
                 }
-                const body = `${headerLines.join('\n')}\n\n${chunk}`.trim();
+                const body = `${headerLines.join('\n')}\n\n${formattedChunk}`.trim();
                 const snippet = this.truncateText(body, MAX_REFERENCE_SNIPPET_LENGTH);
                 const chunkIdSeed = `${attachment.filename}:${(_a = attachment.id) !== null && _a !== void 0 ? _a : ''}:${index}`;
                 const chunkId = (0, crypto_1.createHash)('sha1').update(chunkIdSeed).digest('hex');
@@ -642,6 +643,46 @@ class ToolingService {
             }
         }
         return references;
+    }
+    formatAttachmentChunkForPrompt(content, attachment) {
+        const trimmed = content.trim();
+        if (!trimmed) {
+            return trimmed;
+        }
+        if (!this.isLikelyEdifactAttachment(trimmed, attachment)) {
+            return trimmed;
+        }
+        const withBreaks = this.insertEdifactSegmentBreaks(trimmed);
+        return withBreaks.replace(/\n{3,}/g, '\n\n').trim();
+    }
+    isLikelyEdifactAttachment(content, attachment) {
+        var _a, _b;
+        const filename = attachment.filename.toLowerCase();
+        const mimeType = (_b = (_a = attachment.mimeType) === null || _a === void 0 ? void 0 : _a.toLowerCase()) !== null && _b !== void 0 ? _b : '';
+        if (filename.endsWith('.edi') || filename.endsWith('.edifact')) {
+            return true;
+        }
+        if (mimeType.includes('edifact')) {
+            return true;
+        }
+        if (/UNH\+/.test(content) && /UNT\+/.test(content)) {
+            return true;
+        }
+        return false;
+    }
+    insertEdifactSegmentBreaks(content) {
+        let result = '';
+        for (let index = 0; index < content.length; index++) {
+            const char = content[index];
+            result += char;
+            if (char === "'" && content[index - 1] !== '?') {
+                const nextChar = content[index + 1];
+                if (nextChar !== '\n' && nextChar !== '\r') {
+                    result += '\n';
+                }
+            }
+        }
+        return result;
     }
     mergeReferences(attachmentRefs, referenceDocs) {
         const merged = [];

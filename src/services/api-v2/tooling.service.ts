@@ -5,6 +5,7 @@ import { Script } from 'node:vm';
 import { AppError } from '../../middleware/errorHandler';
 import {
   GenerateToolScriptRequest,
+  GenerateToolScriptRepairRequest,
   GenerateToolScriptResponse,
   GenerateScriptJob,
   GenerateScriptJobError,
@@ -51,6 +52,16 @@ type ToolJobRecord = RunNodeScriptJobRecord | GenerateScriptJobRecord;
 
 interface GenerateToolScriptInternalInput extends GenerateToolScriptRequest {
   userId: string;
+}
+
+interface GenerateToolScriptRepairInternalInput extends GenerateToolScriptRepairRequest {
+  userId: string;
+}
+
+interface GenerateScriptJobOptions {
+  continuedFromJobId?: string;
+  initialProgressMessage?: string;
+  initialWarnings?: string[];
 }
 
 interface NormalizedToolScriptConstraints {
@@ -114,6 +125,8 @@ const MAX_ASSERTION_VALUE_LENGTH = 240;
 const MAX_CONTEXT_SNIPPETS = 6;
 const MAX_RETRIEVAL_SNIPPET_LENGTH = 1500;
 const MAX_GENERATION_ATTEMPTS = 3;
+const MAX_REPAIR_INSTRUCTIONS_LENGTH = 600;
+const MAX_REPAIR_CHAIN_LENGTH = 5;
 const AUTO_RETURN_WRAPPER_MARKER = '__AUTO_RUN_RETURN_WRAPPER__';
 const LLM_RATE_LIMIT_RETRY_LIMIT = 3;
 const LLM_RATE_LIMIT_BACKOFF_STEPS_MS = [1500, 3000, 6000];
@@ -231,9 +244,23 @@ export class ToolingService {
     return jobs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  public async enqueueGenerateScriptJob(input: GenerateToolScriptInternalInput): Promise<GenerateScriptJob> {
+  public async enqueueGenerateScriptJob(
+    input: GenerateToolScriptInternalInput,
+    options: GenerateScriptJobOptions = {}
+  ): Promise<GenerateScriptJob> {
     const normalized = this.normalizeGenerateScriptInput(input);
     const now = new Date().toISOString();
+
+    const initialWarnings = Array.isArray(options.initialWarnings)
+      ? Array.from(
+          new Set(
+            options.initialWarnings
+              .filter((warning): warning is string => typeof warning === 'string')
+              .map((warning) => warning.trim())
+              .filter(Boolean)
+          )
+        ).slice(-MAX_JOB_WARNINGS)
+      : [];
 
     const record: GenerateScriptJobRecord = {
       id: randomUUID(),
@@ -244,12 +271,13 @@ export class ToolingService {
       updatedAt: now,
       progress: {
         stage: 'queued',
-        message: 'Job wurde eingereiht'
+        message: options.initialProgressMessage ?? 'Job wurde eingereiht'
       },
       attempts: 0,
-      warnings: [],
+      warnings: initialWarnings,
       userId: normalized.userId,
-      normalizedInput: normalized
+      normalizedInput: normalized,
+      continuedFromJobId: options.continuedFromJobId
     };
 
     this.jobs.set(record.id, record);
@@ -257,6 +285,84 @@ export class ToolingService {
     this.startGenerateScriptWorker();
 
     return this.toPublicJob(record) as GenerateScriptJob;
+  }
+
+  public async resumeGenerateScriptJob(input: GenerateToolScriptRepairInternalInput): Promise<GenerateScriptJob> {
+    if (!input || typeof input !== 'object') {
+      throw new AppError('Ungültige Parameter für Reparaturanfrage', 400);
+    }
+
+    const jobId = typeof input.jobId === 'string' ? input.jobId.trim() : '';
+    if (!jobId) {
+      throw new AppError('jobId ist erforderlich', 400);
+    }
+
+    const record = this.jobs.get(jobId);
+
+    if (!record || record.type !== 'generate-script' || record.userId !== input.userId) {
+      throw new AppError('Tool-Job wurde nicht gefunden', 404);
+    }
+
+    if (record.sessionId !== input.sessionId) {
+      throw new AppError('Session passt nicht zum Job', 400);
+    }
+
+    if (record.status !== 'failed') {
+      throw new AppError('Nur fehlgeschlagene Skript-Jobs können fortgesetzt werden', 409);
+    }
+
+    const repairChainDepth = this.computeRepairChainDepth(record);
+    if (repairChainDepth >= MAX_REPAIR_CHAIN_LENGTH) {
+      const error = new AppError('Maximale Anzahl an Reparaturversuchen erreicht', 429);
+      (error as any).context = {
+        code: 'repair_limit_reached',
+        attempts: repairChainDepth
+      };
+      throw error;
+    }
+
+    const baseInput = record.normalizedInput;
+
+    const sanitizedRepairInstructions = this.normalizeOptionalText(
+      input.repairInstructions,
+      'repairInstructions',
+      MAX_REPAIR_INSTRUCTIONS_LENGTH
+    );
+    const sanitizedRepairContext = this.normalizeOptionalText(
+      input.additionalContext,
+      'additionalContext',
+      MAX_CONTEXT_LENGTH
+    );
+
+    const mergedInstructions = this.composeRepairInstructions(baseInput.instructions, record, sanitizedRepairInstructions);
+    const mergedAdditionalContext = this.composeRepairAdditionalContext(baseInput.additionalContext, sanitizedRepairContext);
+    const mergedReferences = this.mergeRepairReferences(baseInput.referenceDocuments, input.referenceDocuments);
+    const mergedAttachments = this.mergeRepairAttachments(baseInput.attachments, input.attachments);
+    const mergedTestCases = Array.isArray(input.testCases) ? input.testCases : baseInput.testCases;
+
+    const resumedJob = await this.enqueueGenerateScriptJob(
+      {
+        userId: input.userId,
+        sessionId: baseInput.sessionId,
+        instructions: mergedInstructions,
+        inputSchema: baseInput.inputSchema,
+        expectedOutputDescription: baseInput.expectedOutputDescription,
+        additionalContext: mergedAdditionalContext,
+        constraints: baseInput.constraints,
+        referenceDocuments: mergedReferences,
+        testCases: mergedTestCases,
+        attachments: mergedAttachments
+      },
+      {
+        continuedFromJobId: record.id,
+        initialProgressMessage: 'Reparaturversuch wird neu gestartet',
+        initialWarnings: this.buildRepairWarnings(record)
+      }
+    );
+
+    this.appendJobWarning(record, `Folgeauftrag ${resumedJob.id} zur Reparatur wurde erstellt.`);
+
+    return resumedJob;
   }
 
   public async generateDeterministicScript(input: GenerateToolScriptInternalInput): Promise<GenerateToolScriptResponse> {
@@ -2469,6 +2575,265 @@ ${snippet.snippet}`;
     }
 
     job.updatedAt = new Date().toISOString();
+  }
+
+  private computeRepairChainDepth(job: GenerateScriptJobRecord): number {
+    let depth = 1;
+    let current: GenerateScriptJobRecord | undefined = job;
+    const visited = new Set<string>([job.id]);
+
+    while (current?.continuedFromJobId) {
+      if (visited.has(current.continuedFromJobId)) {
+        break;
+      }
+
+      const parentRecord = this.jobs.get(current.continuedFromJobId);
+      if (!parentRecord || parentRecord.type !== 'generate-script') {
+        break;
+      }
+
+      visited.add(parentRecord.id);
+      depth += 1;
+      current = parentRecord;
+    }
+
+    return depth;
+  }
+
+  private composeRepairInstructions(
+    baseInstructions: string,
+    job: GenerateScriptJobRecord,
+    repairInstructions?: string
+  ): string {
+    const hints: string[] = [];
+    const automaticHint = this.buildAutomaticRepairHint(job);
+
+    if (automaticHint) {
+      hints.push(automaticHint);
+    }
+
+    if (repairInstructions) {
+      hints.push(repairInstructions);
+    }
+
+    if (!hints.length) {
+      return baseInstructions;
+    }
+
+    const hintLines = hints.map((hint, index) => `${index + 1}. ${hint}`);
+    const merged = `${baseInstructions.trim()}
+
+---
+Korrekturhinweise:
+${hintLines.join('\n')}`;
+
+    return merged.length > MAX_INSTRUCTIONS_LENGTH ? this.truncateText(merged, MAX_INSTRUCTIONS_LENGTH) : merged;
+  }
+
+  private composeRepairAdditionalContext(
+    baseContext?: string,
+    repairContext?: string
+  ): string | undefined {
+    const parts: string[] = [];
+
+    if (typeof baseContext === 'string' && baseContext.trim()) {
+      parts.push(baseContext.trim());
+    }
+
+    if (typeof repairContext === 'string' && repairContext.trim()) {
+      parts.push(`Reparaturhinweis:\n${repairContext.trim()}`);
+    }
+
+    if (!parts.length) {
+      return undefined;
+    }
+
+    const merged = parts.join('\n\n');
+    return merged.length > MAX_CONTEXT_LENGTH ? this.truncateText(merged, MAX_CONTEXT_LENGTH) : merged;
+  }
+
+  private mergeRepairAttachments(
+    base: NormalizedToolScriptAttachment[],
+    overrides?: ToolScriptAttachment[]
+  ): ToolScriptAttachment[] {
+    const merged: ToolScriptAttachment[] = [];
+    const seen = new Set<string>();
+
+    const add = (candidate?: NormalizedToolScriptAttachment | ToolScriptAttachment | null) => {
+      if (!candidate) {
+        return;
+      }
+
+      const normalized = this.normalizeAttachmentForRepair(candidate);
+      if (!normalized.filename || !normalized.content) {
+        return;
+      }
+
+      const key = this.buildAttachmentDedupKey(normalized.filename, normalized.content);
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      merged.push(normalized);
+    };
+
+    base.forEach((attachment) => add(attachment));
+
+    if (Array.isArray(overrides)) {
+      overrides.forEach((attachment) => {
+        if (attachment && typeof attachment === 'object') {
+          add(attachment);
+        }
+      });
+    }
+
+    return merged;
+  }
+
+  private mergeRepairReferences(
+    base: NormalizedToolScriptReference[],
+    overrides?: ToolScriptReference[]
+  ): ToolScriptReference[] {
+    const merged: ToolScriptReference[] = [];
+    const seen = new Set<string>();
+
+    const addNormalized = (reference: NormalizedToolScriptReference) => {
+      if (!reference?.snippet) {
+        return;
+      }
+
+      const snippet = reference.snippet.trim();
+      if (!snippet) {
+        return;
+      }
+
+      const key = this.buildReferenceDedupKey(snippet);
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      merged.push({
+        id: reference.id,
+        title: reference.title,
+        snippet,
+        weight: reference.weight,
+        useForPrompt: reference.useForPrompt
+      });
+    };
+
+    const addRaw = (reference: ToolScriptReference) => {
+      if (!reference || typeof reference !== 'object') {
+        return;
+      }
+
+      const snippetRaw = typeof reference.snippet === 'string' ? reference.snippet.trim() : '';
+      if (!snippetRaw) {
+        return;
+      }
+
+      const key = this.buildReferenceDedupKey(snippetRaw);
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      merged.push({
+        id: reference.id,
+        title: reference.title,
+        snippet: snippetRaw,
+        weight: reference.weight,
+        useForPrompt: reference.useForPrompt
+      });
+    };
+
+    base.forEach(addNormalized);
+
+    if (Array.isArray(overrides)) {
+      overrides.forEach((reference) => addRaw(reference));
+    }
+
+    return merged;
+  }
+
+  private normalizeAttachmentForRepair(
+    attachment: NormalizedToolScriptAttachment | ToolScriptAttachment
+  ): ToolScriptAttachment {
+    const normalized: ToolScriptAttachment = {
+      filename: attachment.filename,
+      content: attachment.content,
+      ...(attachment.description ? { description: attachment.description } : {}),
+      ...(attachment.mimeType ? { mimeType: attachment.mimeType } : {})
+    };
+
+    if (attachment.id) {
+      normalized.id = attachment.id;
+    }
+
+    if (typeof (attachment as any).weight === 'number' && Number.isFinite((attachment as any).weight)) {
+      normalized.weight = (attachment as any).weight as number;
+    }
+
+    return normalized;
+  }
+
+  private buildAttachmentDedupKey(filename: string, content: string): string {
+    const normalizedName = (filename ?? '').trim().toLowerCase();
+    const hash = createHash('sha256').update(content || '', 'utf8').digest('hex');
+    return `${normalizedName}::${hash}`;
+  }
+
+  private buildReferenceDedupKey(snippet: string): string {
+    return createHash('sha256').update(snippet, 'utf8').digest('hex');
+  }
+
+  private buildAutomaticRepairHint(job: GenerateScriptJobRecord): string | undefined {
+    const parts: string[] = [];
+
+    if (job.error?.message) {
+      parts.push(`Vorheriger Versuch scheiterte mit: ${job.error.message}.`);
+    }
+
+    const code = job.error?.code;
+
+    switch (code) {
+      case 'missing_code':
+        parts.push(
+          'Gib zwingend ein JSON-Objekt mit dem Feld "code" zurück. Dieses Feld muss den vollständigen CommonJS-Quelltext mit `async function run(input)` und `module.exports = { run };` enthalten. '
+          + 'Vermeide Markdown, Kommentare oder verkürzte Platzhalter.'
+        );
+        break;
+      case 'invalid_llm_payload':
+        parts.push('Stelle sicher, dass die Antwort gültiges JSON im vereinbarten Schema ist – keine Markdown-Hülle, keine losen Strings.');
+        break;
+      case 'invalid_artifacts':
+        parts.push('Wenn du `artifacts` nutzt, fülle jedes Objekt mit { id, order, code } und optional title/description.');
+        break;
+      case 'script_generation_failed':
+        parts.push('Erzeuge ein lauffähiges Node.js-Tool und beachte alle deterministischen Vorgaben.');
+        break;
+      default:
+        break;
+    }
+
+    if (!parts.length) {
+      return undefined;
+    }
+
+    return parts.join(' ');
+  }
+
+  private buildRepairWarnings(job: GenerateScriptJobRecord): string[] {
+    const warnings: string[] = [];
+    const codeFragment = job.error?.code ? ` (${job.error.code})` : '';
+    warnings.push(`Fortsetzung von Job ${job.id}${codeFragment}`);
+
+    if (job.error?.message) {
+      warnings.push(`Letzter Fehler: ${this.truncateText(job.error.message, 160)}`);
+    }
+
+    return warnings.slice(-MAX_JOB_WARNINGS);
   }
 
   private sanitizeDependencies(dependencies: any): string[] {

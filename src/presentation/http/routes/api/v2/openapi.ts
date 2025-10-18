@@ -474,6 +474,40 @@ export const apiV2OpenApiDocument = {
         }
       }
     },
+    '/tools/generate-script/repair': {
+      post: {
+        summary: 'Fehlgeschlagenen Skript-Job erneut anstoßen',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/GenerateToolScriptRepairRequest'
+              }
+            }
+          }
+        },
+        responses: {
+          '202': {
+            description: 'Reparatur-Job aufgenommen – neues Ergebnis wird asynchron bereitgestellt.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      $ref: '#/components/schemas/GenerateToolScriptRepairResponse'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/tools/run-node-script': {
       post: {
         summary: 'Node.js Skript als Sandbox-Job registrieren',
@@ -878,7 +912,8 @@ export const apiV2OpenApiDocument = {
               { $ref: '#/components/schemas/GenerateScriptJobError' },
               { type: 'null' }
             ]
-          }
+          },
+          continuedFromJobId: { type: 'string', format: 'uuid', nullable: true }
         }
       },
       ToolScriptValidationReport: {
@@ -1041,6 +1076,29 @@ export const apiV2OpenApiDocument = {
           }
         }
       },
+      GenerateToolScriptRepairRequest: {
+        type: 'object',
+        required: ['sessionId', 'jobId'],
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          jobId: { type: 'string', format: 'uuid' },
+          repairInstructions: { type: 'string', maxLength: 600 },
+          additionalContext: { type: 'string', maxLength: 2000 },
+          referenceDocuments: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/ToolScriptReference' }
+          },
+          attachments: {
+            type: 'array',
+            description: 'Textbasierte Dateien (max. 1 MB pro Attachment, 4 MB gesamt), die beim Reparaturversuch erneut für den Prompt genutzt werden sollen.',
+            items: { $ref: '#/components/schemas/ToolScriptAttachment' }
+          },
+          testCases: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/ToolScriptTestCase' }
+          }
+        }
+      },
       GenerateToolScriptResponse: {
         type: 'object',
         properties: {
@@ -1055,6 +1113,15 @@ export const apiV2OpenApiDocument = {
         }
       },
       GenerateToolScriptJobResponse: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', format: 'uuid' },
+          job: {
+            $ref: '#/components/schemas/GenerateScriptJob'
+          }
+        }
+      },
+      GenerateToolScriptRepairResponse: {
         type: 'object',
         properties: {
           sessionId: { type: 'string', format: 'uuid' },
