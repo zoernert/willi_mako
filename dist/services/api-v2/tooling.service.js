@@ -1344,6 +1344,9 @@ class ToolingService {
             + '- Verlasse dich nicht allein auf `RFF+AEV`; nutze `PIA`, `LIN` und Kontextsegmente als Fallback für Register-IDs.\n'
             + '- Das EDIFACT-Freistellzeichen `?` schützt `+`, `:`, `\'` und `?`; splitte nur auf echte Trennzeichen, sonst verlierst du Nutzdaten.\n'
             + '- `run` muss immer mit `return` antworten; vermeide Side-Effects und liefere strukturierte Fehlermeldungen statt Konsolen-Logs.');
+        parts.push('Antwortformat-Verbote:\n'
+            + '- Liefere niemals Klassifikations- oder QA-Objekte (z.\u202fB. Felder wie "answerable", "needsMoreContext", "confidence", "reason").\n'
+            + '- Gib ausschließlich ausführbaren CommonJS-Code im Feld "code" zurück; wenn Informationen fehlen, arbeite mit Annahmen und beschreibe sie in den Notes.');
         parts.push('Nutzung bereitgestellter Pseudocode-Snippets:\n'
             + '- Verwende Pseudocode aus den Kontext-Snippets als maßgebliche Quelle und überführe ihn schrittweise in ausführbaren Node.js-Code.\n'
             + '- Prüfe Felder wie `source`, `summary_text`, `page` und `original_doc_id`, um Aufbau und Segment-Reihenfolge korrekt zu übernehmen.\n'
@@ -1429,6 +1432,17 @@ ${snippet.snippet}`;
                 feedbackLines.push('Ausschnitt der bisherigen `run`-Funktion (unvollständig):');
                 feedbackLines.push(feedback.runSnippet);
                 feedbackLines.push('Stelle sicher, dass diese Funktion am Ende mit einem `return`-Statement antwortet.');
+            }
+            const candidateKeysRaw = context && Array.isArray(context['candidateKeys']) ? context['candidateKeys'] : undefined;
+            const candidateKeys = candidateKeysRaw === null || candidateKeysRaw === void 0 ? void 0 : candidateKeysRaw.filter((value) => typeof value === 'string' && value.trim());
+            if (candidateKeys && candidateKeys.length) {
+                feedbackLines.push(`Deine letzte Antwort enthielt ein Klassifikationsobjekt (Schlüssel: ${candidateKeys.join(', ')}). Das ist verboten.`);
+                feedbackLines.push('Gib stattdessen vollständigen Node.js-Code im Feld "code" zurück.');
+            }
+            const rawPreview = typeof (context === null || context === void 0 ? void 0 : context['rawPayloadPreview']) === 'string' ? context['rawPayloadPreview'] : undefined;
+            if (rawPreview) {
+                feedbackLines.push('Auszug aus der letzten Modellantwort (nur zur Diagnose):');
+                feedbackLines.push(this.truncateText(rawPreview, 400));
             }
             parts.push(feedbackLines.join('\n'));
         }
@@ -1605,26 +1619,89 @@ ${snippet.snippet}`;
         if (!payload || typeof payload !== 'object') {
             this.raiseValidationError('Antwort konnte nicht als JSON interpretiert werden', 'invalid_llm_payload');
         }
-        const artifacts = this.normalizeArtifacts(payload.artifacts);
-        const codeRaw = typeof payload.code === 'string' ? payload.code : payload.script;
+        const scriptField = payload.script;
+        const scriptObject = scriptField && typeof scriptField === 'object' ? scriptField : undefined;
+        let codeRaw = typeof payload.code === 'string' ? payload.code : undefined;
+        if (codeRaw === undefined) {
+            if (typeof scriptField === 'string') {
+                codeRaw = scriptField;
+            }
+            else if (scriptObject && typeof scriptObject.code === 'string') {
+                codeRaw = scriptObject.code;
+            }
+        }
         let code = typeof codeRaw === 'string' ? this.extractCodeBlock(codeRaw) : undefined;
+        const artifactCandidates = [];
+        if (Array.isArray(scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.artifacts)) {
+            artifactCandidates.push(...scriptObject.artifacts);
+        }
+        if (Array.isArray(payload.artifacts)) {
+            artifactCandidates.push(...payload.artifacts);
+        }
+        const artifacts = artifactCandidates.length ? this.normalizeArtifacts(artifactCandidates) : this.normalizeArtifacts(payload.artifacts);
         if (!code && (artifacts === null || artifacts === void 0 ? void 0 : artifacts.length)) {
             code = artifacts.map((artifact) => artifact.code).join('\n\n');
         }
         if (!code) {
-            this.raiseValidationError('Antwort enthält keinen Code', 'missing_code');
+            const errorContext = {};
+            if (artifacts && artifacts.length) {
+                errorContext.artifactCount = artifacts.length;
+                const artifactIds = artifacts
+                    .map((artifact) => artifact.id)
+                    .filter((id) => typeof id === 'string' && id.trim().length > 0)
+                    .slice(0, 5);
+                if (artifactIds.length) {
+                    errorContext.artifactIds = artifactIds;
+                }
+            }
+            if (payload && typeof payload === 'object') {
+                errorContext.candidateKeys = Object.keys(payload).slice(0, 12);
+                try {
+                    errorContext.rawPayloadPreview = this.truncateText(JSON.stringify(payload), 800);
+                }
+                catch (_error) {
+                    // ignore preview serialization errors
+                }
+            }
+            this.raiseValidationError('Antwort enthält keinen Code', 'missing_code', errorContext);
         }
         this.assertValidSource(code);
-        const description = typeof payload.description === 'string' && payload.description.trim()
-            ? payload.description.trim().slice(0, 280)
-            : input.instructions.slice(0, 280);
+        const rawDescription = typeof payload.description === 'string' && payload.description.trim()
+            ? payload.description.trim()
+            : typeof (scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.description) === 'string' && scriptObject.description.trim()
+                ? scriptObject.description.trim()
+                : undefined;
+        const description = rawDescription ? rawDescription.slice(0, 280) : input.instructions.slice(0, 280);
         const entrypointRaw = typeof payload.entrypoint === 'string' && payload.entrypoint.trim()
             ? payload.entrypoint.trim()
-            : 'run';
+            : typeof (scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.entrypoint) === 'string' && scriptObject.entrypoint.trim()
+                ? scriptObject.entrypoint.trim()
+                : 'run';
         const entrypoint = entrypointRaw === 'run' ? 'run' : 'run';
-        const dependencies = this.sanitizeDependencies(payload.dependencies);
-        const candidateWarnings = this.ensureNotesLimit(payload.warnings);
-        let notes = this.ensureNotesLimit(payload.notes);
+        const dependencyCandidates = [];
+        if (Array.isArray(payload.dependencies)) {
+            dependencyCandidates.push(...payload.dependencies);
+        }
+        if (Array.isArray(scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.dependencies)) {
+            dependencyCandidates.push(...scriptObject.dependencies);
+        }
+        const dependencies = this.sanitizeDependencies(dependencyCandidates);
+        const warningCandidates = [];
+        if (Array.isArray(payload.warnings)) {
+            warningCandidates.push(...payload.warnings);
+        }
+        if (Array.isArray(scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.warnings)) {
+            warningCandidates.push(...scriptObject.warnings);
+        }
+        const candidateWarnings = this.ensureNotesLimit(warningCandidates);
+        const noteCandidates = [];
+        if (Array.isArray(payload.notes)) {
+            noteCandidates.push(...payload.notes);
+        }
+        if (Array.isArray(scriptObject === null || scriptObject === void 0 ? void 0 : scriptObject.notes)) {
+            noteCandidates.push(...scriptObject.notes);
+        }
+        let notes = this.ensureNotesLimit(noteCandidates);
         if (artifacts && artifacts.length) {
             notes = this.ensureNotesLimit([
                 ...notes,
