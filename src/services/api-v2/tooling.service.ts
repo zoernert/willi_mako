@@ -1812,6 +1812,12 @@ export class ToolingService {
     );
 
     parts.push(
+      'Antwortformat-Verbote:\n'
+      + '- Liefere niemals Klassifikations- oder QA-Objekte (z.\u202fB. Felder wie "answerable", "needsMoreContext", "confidence", "reason").\n'
+      + '- Gib ausschließlich ausführbaren CommonJS-Code im Feld "code" zurück; wenn Informationen fehlen, arbeite mit Annahmen und beschreibe sie in den Notes.'
+    );
+
+    parts.push(
       'Nutzung bereitgestellter Pseudocode-Snippets:\n'
       + '- Verwende Pseudocode aus den Kontext-Snippets als maßgebliche Quelle und überführe ihn schrittweise in ausführbaren Node.js-Code.\n'
       + '- Prüfe Felder wie `source`, `summary_text`, `page` und `original_doc_id`, um Aufbau und Segment-Reihenfolge korrekt zu übernehmen.\n'
@@ -1921,6 +1927,21 @@ ${snippet.snippet}`;
         feedbackLines.push('Ausschnitt der bisherigen `run`-Funktion (unvollständig):');
         feedbackLines.push(feedback.runSnippet);
         feedbackLines.push('Stelle sicher, dass diese Funktion am Ende mit einem `return`-Statement antwortet.');
+      }
+
+      const candidateKeysRaw = context && Array.isArray(context['candidateKeys']) ? context['candidateKeys'] : undefined;
+      const candidateKeys = candidateKeysRaw?.filter((value) => typeof value === 'string' && value.trim());
+      if (candidateKeys && candidateKeys.length) {
+        feedbackLines.push(
+          `Deine letzte Antwort enthielt ein Klassifikationsobjekt (Schlüssel: ${candidateKeys.join(', ')}). Das ist verboten.`
+        );
+        feedbackLines.push('Gib stattdessen vollständigen Node.js-Code im Feld "code" zurück.');
+      }
+
+      const rawPreview = typeof context?.['rawPayloadPreview'] === 'string' ? context['rawPayloadPreview'] : undefined;
+      if (rawPreview) {
+        feedbackLines.push('Auszug aus der letzten Modellantwort (nur zur Diagnose):');
+        feedbackLines.push(this.truncateText(rawPreview, 400));
       }
 
       parts.push(feedbackLines.join('\n'));
@@ -2134,32 +2155,104 @@ ${snippet.snippet}`;
       this.raiseValidationError('Antwort konnte nicht als JSON interpretiert werden', 'invalid_llm_payload');
     }
 
-    const artifacts = this.normalizeArtifacts((payload as any).artifacts);
-    const codeRaw = typeof (payload as any).code === 'string' ? (payload as any).code : (payload as any).script;
+    const scriptField = (payload as any).script;
+    const scriptObject = scriptField && typeof scriptField === 'object' ? (scriptField as Record<string, unknown>) : undefined;
+
+    let codeRaw: unknown = typeof (payload as any).code === 'string' ? (payload as any).code : undefined;
+
+    if (codeRaw === undefined) {
+      if (typeof scriptField === 'string') {
+        codeRaw = scriptField;
+      } else if (scriptObject && typeof scriptObject.code === 'string') {
+        codeRaw = scriptObject.code;
+      }
+    }
+
     let code = typeof codeRaw === 'string' ? this.extractCodeBlock(codeRaw) : undefined;
+
+    const artifactCandidates: unknown[] = [];
+    if (Array.isArray(scriptObject?.artifacts)) {
+      artifactCandidates.push(...(scriptObject!.artifacts as unknown[]));
+    }
+    if (Array.isArray((payload as any).artifacts)) {
+      artifactCandidates.push(...((payload as any).artifacts as unknown[]));
+    }
+
+    const artifacts = artifactCandidates.length ? this.normalizeArtifacts(artifactCandidates) : this.normalizeArtifacts((payload as any).artifacts);
 
     if (!code && artifacts?.length) {
       code = artifacts.map((artifact) => artifact.code).join('\n\n');
     }
 
     if (!code) {
-      this.raiseValidationError('Antwort enthält keinen Code', 'missing_code');
+      const errorContext: Record<string, unknown> = {};
+
+      if (artifacts && artifacts.length) {
+        errorContext.artifactCount = artifacts.length;
+        const artifactIds = artifacts
+          .map((artifact) => artifact.id)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          .slice(0, 5);
+        if (artifactIds.length) {
+          errorContext.artifactIds = artifactIds;
+        }
+      }
+
+      if (payload && typeof payload === 'object') {
+        errorContext.candidateKeys = Object.keys(payload as Record<string, unknown>).slice(0, 12);
+        try {
+          errorContext.rawPayloadPreview = this.truncateText(JSON.stringify(payload), 800);
+        } catch (_error) {
+          // ignore preview serialization errors
+        }
+      }
+
+      this.raiseValidationError('Antwort enthält keinen Code', 'missing_code', errorContext);
     }
 
     this.assertValidSource(code);
 
-    const description = typeof (payload as any).description === 'string' && (payload as any).description.trim()
-      ? (payload as any).description.trim().slice(0, 280)
-      : input.instructions.slice(0, 280);
+    const rawDescription = typeof (payload as any).description === 'string' && (payload as any).description.trim()
+      ? (payload as any).description.trim()
+      : typeof scriptObject?.description === 'string' && scriptObject.description.trim()
+        ? (scriptObject.description as string).trim()
+        : undefined;
+
+    const description = rawDescription ? rawDescription.slice(0, 280) : input.instructions.slice(0, 280);
 
     const entrypointRaw = typeof (payload as any).entrypoint === 'string' && (payload as any).entrypoint.trim()
       ? (payload as any).entrypoint.trim()
-      : 'run';
+      : typeof scriptObject?.entrypoint === 'string' && scriptObject.entrypoint.trim()
+        ? (scriptObject.entrypoint as string).trim()
+        : 'run';
     const entrypoint = entrypointRaw === 'run' ? 'run' : 'run';
 
-    const dependencies = this.sanitizeDependencies((payload as any).dependencies);
-    const candidateWarnings = this.ensureNotesLimit((payload as any).warnings);
-    let notes = this.ensureNotesLimit((payload as any).notes);
+    const dependencyCandidates: unknown[] = [];
+    if (Array.isArray((payload as any).dependencies)) {
+      dependencyCandidates.push(...((payload as any).dependencies as unknown[]));
+    }
+    if (Array.isArray(scriptObject?.dependencies)) {
+      dependencyCandidates.push(...(scriptObject!.dependencies as unknown[]));
+    }
+    const dependencies = this.sanitizeDependencies(dependencyCandidates);
+
+    const warningCandidates: unknown[] = [];
+    if (Array.isArray((payload as any).warnings)) {
+      warningCandidates.push(...((payload as any).warnings as unknown[]));
+    }
+    if (Array.isArray(scriptObject?.warnings)) {
+      warningCandidates.push(...(scriptObject!.warnings as unknown[]));
+    }
+    const candidateWarnings = this.ensureNotesLimit(warningCandidates);
+
+    const noteCandidates: unknown[] = [];
+    if (Array.isArray((payload as any).notes)) {
+      noteCandidates.push(...((payload as any).notes as unknown[]));
+    }
+    if (Array.isArray(scriptObject?.notes)) {
+      noteCandidates.push(...(scriptObject!.notes as unknown[]));
+    }
+    let notes = this.ensureNotesLimit(noteCandidates);
 
     if (artifacts && artifacts.length) {
       notes = this.ensureNotesLimit([
