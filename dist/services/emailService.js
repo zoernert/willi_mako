@@ -321,7 +321,7 @@ class EmailService {
      */
     generatePasswordResetHTML(userName, resetToken) {
         const baseUrl = 'https://stromhaltig.de';
-        const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
+        const resetUrl = `${baseUrl}/app/reset-password/${resetToken}`;
         return `
     <!DOCTYPE html>
     <html lang="de">
