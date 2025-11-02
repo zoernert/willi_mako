@@ -176,6 +176,7 @@ export class QdrantService {
   // Boost admin-provided markdown content slightly to help intent grounding (e.g., glossary)
   const ctype = (p?.payload?.content_type || '') as string;
   if (ctype === 'admin_markdown') b += 0.03;
+  else if (ctype === 'correction_feedback') b += 0.03;
   if (t === 'abbreviation') b += 0.04;
   // Domain boost: Ersatz-/Grundversorgung/EoG-Kontext priorisieren
   if (/\bERSATZVERSORGUNG\b/.test(upper) || /\bGRUNDVERSORGUNG\b/.test(upper) || /\bEOG\b/.test(upper)) {

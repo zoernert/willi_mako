@@ -10,6 +10,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import chatConfigRouter from './admin/chatConfig';
+import chatCorrectionsRouter from './admin/chatCorrections';
 import { initializeCommunityAdminRoutes } from './admin/community';
 import contentAdminRouter from './admin/content';
 // Import API-Schlüssel-Admin-Route
@@ -39,6 +40,7 @@ router.use(requireAdmin);
 
 // Mount chat configuration routes
 router.use('/chat-config', chatConfigRouter);
+router.use('/chat-corrections', chatCorrectionsRouter);
 
 // Mount API-Schlüssel-Routes
 router.use('/', apiKeysRouter);

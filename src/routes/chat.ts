@@ -11,6 +11,7 @@ import chatConfigurationService from '../services/chatConfigurationService';
 import advancedReasoningService from '../services/advancedReasoningService';
 import { GamificationService } from '../modules/quiz/gamification.service';
 import { ensureChatColumns } from './utils/ensureChatColumns';
+import { chatCorrectionSuggestionService } from '../modules/chat-corrections/chatCorrectionSuggestion.service';
 
 const router = Router();
 
@@ -926,14 +927,32 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
 
   // Proceed with normal response generation using configured pipeline
   const previousMessages = await pool.query(
-    'SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
+    'SELECT id, role, content, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC',
     [chatId]
   );
+
+  const historyRows = previousMessages.rows as Array<{ id: string; role: string; content: string; created_at: Date }>;
+  const lastAssistantEntry = [...historyRows].reverse().find((msg) => msg.role === 'assistant');
+  const userMessageRow = userMessage.rows[0];
+
+  if (lastAssistantEntry && userMessageRow?.id) {
+    try {
+      await chatCorrectionSuggestionService.detectAndStore({
+        chatId,
+        userId,
+        userMessage: { id: userMessageRow.id, content: userMessageRow.content },
+        assistantMessage: { id: lastAssistantEntry.id, content: lastAssistantEntry.content },
+        history: historyRows
+      });
+    } catch (error) {
+      console.warn('Chat correction detection failed:', error);
+    }
+  }
   const userPreferences = await pool.query(
     'SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1',
     [userId]
   );
-  const assistantTurnsBefore = previousMessages.rows.filter((msg: any) => msg.role === 'assistant').length;
+  const assistantTurnsBefore = historyRows.filter((msg: any) => msg.role === 'assistant').length;
   const userPreferencesRow = userPreferences.rows[0] || {};
 
   // Use the advanced reasoning pipeline for better quality responses with timeout protection
