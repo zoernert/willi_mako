@@ -12,6 +12,11 @@
     <itunes:image href="https://stromhaltig.de/media/podcast_logo.png" />
     <itunes:category text="Business" />
     <spotify:email>thorsten.zoerner@stromdao.com</spotify:email>
+    <copyright>&#xA9; 2025 STROMDAO GmbH</copyright>
+    <itunes:owner>
+        <itunes:name>STROMDAO GmbH</itunes:name>
+        <itunes:email>kontakt@stromdao.com</itunes:email>
+    </itunes:owner>
     <image>
       <url>https://stromhaltig.de/media/podcast_logo.png</url>
       <title>Willi-Mako - Marktkommunikation in der Energiewirtschaft</title>
