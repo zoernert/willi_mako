@@ -4,14 +4,18 @@ import Link from 'next/link';
 import { 
   Box, 
   Typography, 
-  Grid, 
   Card, 
   CardContent, 
   Button, 
   Chip,
   Paper,
   Container,
-  Stack
+  Stack,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Divider
 } from '@mui/material';
 import {
   QuestionAnswer as FAQIcon,
@@ -21,19 +25,43 @@ import {
   Timer as TimerIcon,
   Security as SecurityIcon,
   Visibility as TransparencyIcon,
-  Lock as LockIcon,
-  PlayArrow as PlayIcon
+  RssFeed as RssIcon,
+  Headphones as HeadphonesIcon
 } from '@mui/icons-material';
+import { useState } from 'react';
 import Layout from '../components/Layout';
 import { getAllPublicFAQs, getAllTags, StaticFAQData, FAQTag } from '../../lib/faq-api';
+import { getPodcastEpisodes, PodcastEpisode } from '../../lib/content/podcast';
 
 interface HomeProps {
   featuredFAQs: StaticFAQData[];
   popularTags: FAQTag[];
   totalFAQCount: number;
+  podcastEpisodes: PodcastEpisode[];
 }
 
-export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeProps) {
+export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcastEpisodes }: HomeProps) {
+  const [selectedEpisode, setSelectedEpisode] = useState(() => podcastEpisodes[0] ?? null);
+
+  const formatDate = (value: string) => {
+    const parsed = value ? new Date(value) : null;
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+    return parsed.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const shorten = (text: string, limit = 200) => {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    if (normalized.length <= limit) return normalized;
+    return `${normalized.slice(0, limit).trimEnd()}…`;
+  };
+
   return (
     <Layout title="Willi-Mako | Professionelle Marktkommunikation">
       <Head>
@@ -175,6 +203,156 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount }: HomeP
           </Box>
         </Box>
       </Paper>
+
+      {/* Podcast Feature */}
+      {podcastEpisodes.length > 0 && (
+        <Container maxWidth="lg" sx={{ mb: 8 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, md: 5 },
+              borderRadius: 3,
+              backgroundColor: 'rgba(20, 122, 80, 0.04)',
+              border: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                gap: { xs: 3, md: 4 },
+                alignItems: 'start'
+              }}
+            >
+              <Box>
+                <Typography variant="overline" sx={{ color: '#147a50', letterSpacing: 1.2 }}>
+                  Radio Willi Podcast
+                </Typography>
+                <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
+                  Insights zum Nachhören
+                </Typography>
+                <Typography variant="body1" color="text.secondary" paragraph>
+                  Abonnieren Sie den Podcast direkt im Player Ihrer Wahl oder hören Sie die neuesten Folgen bequem im Browser.
+                </Typography>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
+                  <Button
+                    component="a"
+                    href="https://stromhaltig.de/podcast.rss"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    color="primary"
+                    startIcon={<RssIcon />}
+                  >
+                    Podcast abonnieren
+                  </Button>
+                  {selectedEpisode?.audioUrl && (
+                    <Button
+                      component="a"
+                      href={selectedEpisode.audioUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<HeadphonesIcon />}
+                    >
+                      Aktuelle Folge öffnen
+                    </Button>
+                  )}
+                </Stack>
+
+                {selectedEpisode && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: 'uppercase' }}>
+                      Jetzt anhören
+                    </Typography>
+                    <Typography variant="h5" component="h3" sx={{ fontWeight: 600 }} gutterBottom>
+                      {selectedEpisode.title}
+                    </Typography>
+                    {formatDate(selectedEpisode.pubDate) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {formatDate(selectedEpisode.pubDate)}
+                      </Typography>
+                    )}
+                    <Box sx={{ mb: 2 }}>
+                      <audio
+                        key={selectedEpisode.guid}
+                        controls
+                        style={{ width: '100%' }}
+                      >
+                        <source src={selectedEpisode.audioUrl} type={selectedEpisode.mimeType || 'audio/mp4'} />
+                        Ihr Browser unterstützt das Audioelement nicht.
+                      </audio>
+                    </Box>
+                    {shorten(selectedEpisode.description, 360) && (
+                      <Typography variant="body2" color="text.secondary">
+                        {shorten(selectedEpisode.description, 360)}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                  Neueste Folgen
+                </Typography>
+                <List
+                  dense
+                  sx={{
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper'
+                  }}
+                >
+                  {podcastEpisodes.map((episode, index) => {
+                    const isActive = selectedEpisode?.guid === episode.guid;
+                    const dateLabel = formatDate(episode.pubDate);
+                    return (
+                      <Box component="li" key={episode.guid || `${episode.title}-${index}` } sx={{ listStyle: 'none' }}>
+                        <ListItem disablePadding>
+                          <ListItemButton
+                            selected={isActive}
+                            onClick={() => setSelectedEpisode(episode)}
+                            sx={{ alignItems: 'flex-start', py: 2 }}
+                          >
+                            <ListItemText
+                              primary={episode.title}
+                              primaryTypographyProps={{
+                                variant: 'subtitle1',
+                                fontWeight: isActive ? 700 : 600,
+                                color: isActive ? 'primary.main' : 'text.primary'
+                              }}
+                              secondary={
+                                <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+                                  {dateLabel && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                      {dateLabel}
+                                    </Typography>
+                                  )}
+                                  {shorten(episode.description, 140) && (
+                                    <Typography variant="body2" color="text.secondary">
+                                      {shorten(episode.description, 140)}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                        {index < podcastEpisodes.length - 1 && <Divider component="div" />}
+                      </Box>
+                    );
+                  })}
+                </List>
+              </Box>
+            </Box>
+          </Paper>
+        </Container>
+      )}
 
       {/* Business Value Section */}
       <Container maxWidth="lg" sx={{ mb: 8 }}>
@@ -493,6 +671,8 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
       getAllTags()
     ]);
 
+    const podcastEpisodes = getPodcastEpisodes(6);
+
     // Nehme die ersten 6 FAQs als featured
     const featuredFAQs = allFAQs.slice(0, 6);
 
@@ -505,7 +685,8 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
       props: {
         featuredFAQs,
         popularTags,
-        totalFAQCount: allFAQs.length
+        totalFAQCount: allFAQs.length,
+        podcastEpisodes
       },
       revalidate: 3600 // 1 Stunde ISR
     };
@@ -515,7 +696,8 @@ export const getStaticProps: GetStaticProps<HomeProps> = async () => {
       props: {
         featuredFAQs: [],
         popularTags: [],
-        totalFAQCount: 0
+        totalFAQCount: 0,
+        podcastEpisodes: []
       },
       revalidate: 60 // Kürzere Revalidation bei Fehlern
     };
