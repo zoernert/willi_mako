@@ -926,6 +926,455 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/documents/upload': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'multipart/form-data': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    file: {
+                                        type: string;
+                                        format: string;
+                                        description: string;
+                                    };
+                                    title: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                    description: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                    tags: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                    is_ai_context_enabled: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '201': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                document: {
+                                                    $ref: string;
+                                                };
+                                                message: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/documents/upload-multiple': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'multipart/form-data': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    files: {
+                                        type: string;
+                                        items: {
+                                            type: string;
+                                            format: string;
+                                        };
+                                        maxItems: number;
+                                        description: string;
+                                    };
+                                    is_ai_context_enabled: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '201': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                documents: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
+                                                };
+                                                message: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/documents': {
+            get: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: ({
+                    name: string;
+                    in: string;
+                    schema: {
+                        type: string;
+                        default: number;
+                    };
+                    description?: undefined;
+                } | {
+                    name: string;
+                    in: string;
+                    schema: {
+                        type: string;
+                        default?: undefined;
+                    };
+                    description: string;
+                })[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                documents: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
+                                                };
+                                                pagination: {
+                                                    type: string;
+                                                    properties: {
+                                                        page: {
+                                                            type: string;
+                                                        };
+                                                        limit: {
+                                                            type: string;
+                                                        };
+                                                        total: {
+                                                            type: string;
+                                                        };
+                                                        totalPages: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/documents/{id}': {
+            get: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            put: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                properties: {
+                                    title: {
+                                        type: string;
+                                    };
+                                    description: {
+                                        type: string;
+                                    };
+                                    tags: {
+                                        type: string;
+                                        items: {
+                                            type: string;
+                                        };
+                                    };
+                                    is_ai_context_enabled: {
+                                        type: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            delete: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                responses: {
+                    '204': {
+                        description: string;
+                    };
+                };
+            };
+        };
+        '/documents/{id}/download': {
+            get: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/octet-stream': {
+                                schema: {
+                                    type: string;
+                                    format: string;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/documents/{id}/reprocess': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                message: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/documents/{id}/ai-context': {
+            post: {
+                summary: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                parameters: {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    schema: {
+                        type: string;
+                        format: string;
+                    };
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    enabled: {
+                                        type: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
     };
     components: {
         securitySchemes: {
@@ -1767,6 +2216,76 @@ export declare const apiV2OpenApiDocument: {
                     };
                     artifact: {
                         $ref: string;
+                    };
+                };
+            };
+            Document: {
+                type: string;
+                properties: {
+                    id: {
+                        type: string;
+                        format: string;
+                    };
+                    user_id: {
+                        type: string;
+                        format: string;
+                    };
+                    title: {
+                        type: string;
+                    };
+                    description: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    original_name: {
+                        type: string;
+                    };
+                    file_path: {
+                        type: string;
+                    };
+                    file_size: {
+                        type: string;
+                        description: string;
+                    };
+                    mime_type: {
+                        type: string;
+                    };
+                    is_processed: {
+                        type: string;
+                    };
+                    is_ai_context_enabled: {
+                        type: string;
+                    };
+                    extracted_text: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    extracted_text_length: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    processing_error: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    tags: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                        nullable: boolean;
+                    };
+                    vector_point_id: {
+                        type: string;
+                        nullable: boolean;
+                    };
+                    created_at: {
+                        type: string;
+                        format: string;
+                    };
+                    updated_at: {
+                        type: string;
+                        format: string;
                     };
                 };
             };

@@ -688,6 +688,388 @@ exports.apiV2OpenApiDocument = {
                     }
                 }
             }
+        },
+        '/documents/upload': {
+            post: {
+                summary: 'Dokument hochladen',
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'multipart/form-data': {
+                            schema: {
+                                type: 'object',
+                                required: ['file'],
+                                properties: {
+                                    file: {
+                                        type: 'string',
+                                        format: 'binary',
+                                        description: 'Datei (PDF, DOCX, TXT, MD) - max. 50MB'
+                                    },
+                                    title: {
+                                        type: 'string',
+                                        description: 'Titel des Dokuments (Standard: Dateiname)'
+                                    },
+                                    description: {
+                                        type: 'string',
+                                        description: 'Optionale Beschreibung'
+                                    },
+                                    tags: {
+                                        type: 'string',
+                                        description: 'JSON-Array oder Komma-separierte Tags'
+                                    },
+                                    is_ai_context_enabled: {
+                                        type: 'boolean',
+                                        description: 'Aktiviert KI-Kontext für dieses Dokument'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    '201': {
+                        description: 'Dokument erfolgreich hochgeladen',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: {
+                                            type: 'object',
+                                            properties: {
+                                                document: { $ref: '#/components/schemas/Document' },
+                                                message: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/documents/upload-multiple': {
+            post: {
+                summary: 'Mehrere Dokumente hochladen (max. 10)',
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'multipart/form-data': {
+                            schema: {
+                                type: 'object',
+                                required: ['files'],
+                                properties: {
+                                    files: {
+                                        type: 'array',
+                                        items: {
+                                            type: 'string',
+                                            format: 'binary'
+                                        },
+                                        maxItems: 10,
+                                        description: 'Array von Dateien (max. 10)'
+                                    },
+                                    is_ai_context_enabled: {
+                                        type: 'boolean',
+                                        description: 'Aktiviert KI-Kontext für alle Dokumente'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    '201': {
+                        description: 'Dokumente erfolgreich hochgeladen',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: {
+                                            type: 'object',
+                                            properties: {
+                                                documents: {
+                                                    type: 'array',
+                                                    items: { $ref: '#/components/schemas/Document' }
+                                                },
+                                                message: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/documents': {
+            get: {
+                summary: 'Liste aller Dokumente',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'page',
+                        in: 'query',
+                        schema: { type: 'integer', default: 1 }
+                    },
+                    {
+                        name: 'limit',
+                        in: 'query',
+                        schema: { type: 'integer', default: 12 }
+                    },
+                    {
+                        name: 'search',
+                        in: 'query',
+                        schema: { type: 'string' },
+                        description: 'Suchbegriff für Titel/Beschreibung'
+                    },
+                    {
+                        name: 'processed',
+                        in: 'query',
+                        schema: { type: 'boolean' },
+                        description: 'Filter nach Verarbeitungsstatus'
+                    }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Liste der Dokumente',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: {
+                                            type: 'object',
+                                            properties: {
+                                                documents: {
+                                                    type: 'array',
+                                                    items: { $ref: '#/components/schemas/Document' }
+                                                },
+                                                pagination: {
+                                                    type: 'object',
+                                                    properties: {
+                                                        page: { type: 'integer' },
+                                                        limit: { type: 'integer' },
+                                                        total: { type: 'integer' },
+                                                        totalPages: { type: 'integer' }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/documents/{id}': {
+            get: {
+                summary: 'Einzelnes Dokument abrufen',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Dokument-Details',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: { $ref: '#/components/schemas/Document' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            put: {
+                summary: 'Dokument-Metadaten aktualisieren',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    title: { type: 'string' },
+                                    description: { type: 'string' },
+                                    tags: {
+                                        type: 'array',
+                                        items: { type: 'string' }
+                                    },
+                                    is_ai_context_enabled: { type: 'boolean' }
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    '200': {
+                        description: 'Dokument aktualisiert',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: { $ref: '#/components/schemas/Document' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            delete: {
+                summary: 'Dokument löschen',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                responses: {
+                    '204': {
+                        description: 'Dokument erfolgreich gelöscht'
+                    }
+                }
+            }
+        },
+        '/documents/{id}/download': {
+            get: {
+                summary: 'Dokument herunterladen',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Datei-Download',
+                        content: {
+                            'application/octet-stream': {
+                                schema: {
+                                    type: 'string',
+                                    format: 'binary'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/documents/{id}/reprocess': {
+            post: {
+                summary: 'Dokument neu verarbeiten',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Verarbeitung gestartet',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: {
+                                            type: 'object',
+                                            properties: {
+                                                message: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/documents/{id}/ai-context': {
+            post: {
+                summary: 'KI-Kontext aktivieren/deaktivieren',
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: 'id',
+                        in: 'path',
+                        required: true,
+                        schema: { type: 'string', format: 'uuid' }
+                    }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['enabled'],
+                                properties: {
+                                    enabled: { type: 'boolean' }
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    '200': {
+                        description: 'KI-Kontext-Status aktualisiert',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: { $ref: '#/components/schemas/Document' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     components: {
@@ -1174,6 +1556,32 @@ exports.apiV2OpenApiDocument = {
                     artifact: {
                         $ref: '#/components/schemas/Artifact'
                     }
+                }
+            },
+            Document: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    user_id: { type: 'string', format: 'uuid' },
+                    title: { type: 'string' },
+                    description: { type: 'string', nullable: true },
+                    original_name: { type: 'string' },
+                    file_path: { type: 'string' },
+                    file_size: { type: 'integer', description: 'Dateigröße in Bytes' },
+                    mime_type: { type: 'string' },
+                    is_processed: { type: 'boolean' },
+                    is_ai_context_enabled: { type: 'boolean' },
+                    extracted_text: { type: 'string', nullable: true },
+                    extracted_text_length: { type: 'integer', nullable: true },
+                    processing_error: { type: 'string', nullable: true },
+                    tags: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        nullable: true
+                    },
+                    vector_point_id: { type: 'string', nullable: true },
+                    created_at: { type: 'string', format: 'date-time' },
+                    updated_at: { type: 'string', format: 'date-time' }
                 }
             }
         }

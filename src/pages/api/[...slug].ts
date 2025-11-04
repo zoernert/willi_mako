@@ -70,11 +70,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const response = await fetch(targetUrl, {
+    // Build fetch options with duplex support for streaming bodies
+    const fetchOptions: RequestInit = {
       method: req.method,
       headers: forwardHeaders,
       body: bodyToSend,
-    } as any);
+    };
+
+    // Add duplex option when streaming (required for Node 18+ fetch with readable streams)
+    if (bodyToSend && typeof bodyToSend === 'object' && 'pipe' in bodyToSend) {
+      (fetchOptions as any).duplex = 'half';
+    }
+
+    const response = await fetch(targetUrl, fetchOptions);
 
     // Forward the response (handle JSON and non-JSON)
     const contentType = response.headers.get('content-type') || '';
