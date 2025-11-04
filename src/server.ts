@@ -194,7 +194,7 @@ app.use('/api/chat', authenticateToken, chatRoutes);
 app.use('/api', faqRoutes); // Some FAQ routes are public
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/notes', notesRoutes);
-app.use('/api/documents', documentsRoutes);
+app.use('/api/workspace/documents', documentsRoutes); // Legacy documents under /workspace/documents
 app.use('/api/message-analyzer', authenticateToken, messageAnalyzerRoutes);
 app.use('/api/v1/codes', authenticateToken, codesRoutes);
 app.use('/api', m2cRolesRoutes);
