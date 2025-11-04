@@ -53,16 +53,16 @@ export const API_ENDPOINTS = {
 
   // Documents
   documents: {
-    list: '/api/workspace/documents',
-    upload: '/api/workspace/documents/upload',
-    uploadMultiple: '/api/workspace/documents/upload-multiple',
-    detail: (documentId: string) => `/api/workspace/documents/${documentId}`,
-    update: (documentId: string) => `/api/workspace/documents/${documentId}`,
-    preview: (documentId: string) => `/api/workspace/documents/${documentId}/preview`,
-    download: (documentId: string) => `/api/workspace/documents/${documentId}/download`,
-    delete: (documentId: string) => `/api/workspace/documents/${documentId}`,
-    reprocess: (documentId: string) => `/api/workspace/documents/${documentId}/reprocess`,
-    aiContext: (documentId: string) => `/api/workspace/documents/${documentId}/ai-context`,
+    list: '/workspace/documents',
+    upload: '/workspace/documents/upload',
+    uploadMultiple: '/workspace/documents/upload-multiple',
+    detail: (documentId: string) => `/workspace/documents/${documentId}`,
+    update: (documentId: string) => `/workspace/documents/${documentId}`,
+    preview: (documentId: string) => `/workspace/documents/${documentId}/preview`,
+    download: (documentId: string) => `/workspace/documents/${documentId}/download`,
+    delete: (documentId: string) => `/workspace/documents/${documentId}`,
+    reprocess: (documentId: string) => `/workspace/documents/${documentId}/reprocess`,
+    aiContext: (documentId: string) => `/workspace/documents/${documentId}/ai-context`,
   },
 
   // Workspace
