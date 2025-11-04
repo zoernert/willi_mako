@@ -15,6 +15,7 @@ const context_routes_1 = __importDefault(require("./context.routes"));
 const clarification_routes_1 = __importDefault(require("./clarification.routes"));
 const tools_routes_1 = __importDefault(require("./tools.routes"));
 const artifacts_routes_1 = __importDefault(require("./artifacts.routes"));
+const documents_routes_1 = __importDefault(require("./documents.routes"));
 const router = (0, express_1.Router)();
 router.use(metrics_1.apiV2MetricsMiddleware);
 router.use('/auth', auth_routes_1.default);
@@ -26,6 +27,7 @@ router.use('/context', context_routes_1.default);
 router.use('/clarification', clarification_routes_1.default);
 router.use('/tools', tools_routes_1.default);
 router.use('/artifacts', artifacts_routes_1.default);
+router.use('/documents', documents_routes_1.default);
 router.get('/metrics', metrics_1.apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
     res.json(openapi_1.apiV2OpenApiDocument);
