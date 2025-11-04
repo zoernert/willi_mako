@@ -165,6 +165,8 @@ class QdrantService {
         const ctype = (((_g = p === null || p === void 0 ? void 0 : p.payload) === null || _g === void 0 ? void 0 : _g.content_type) || '');
         if (ctype === 'admin_markdown')
             b += 0.03;
+        else if (ctype === 'correction_feedback')
+            b += 0.03;
         if (t === 'abbreviation')
             b += 0.04;
         // Domain boost: Ersatz-/Grundversorgung/EoG-Kontext priorisieren

@@ -47,6 +47,7 @@ const contextManager_1 = __importDefault(require("../services/contextManager"));
 const advancedReasoningService_1 = __importDefault(require("../services/advancedReasoningService"));
 const gamification_service_1 = require("../modules/quiz/gamification.service");
 const ensureChatColumns_1 = require("./utils/ensureChatColumns");
+const chatCorrectionSuggestion_service_1 = require("../modules/chat-corrections/chatCorrectionSuggestion.service");
 const router = (0, express_1.Router)();
 // Initialize services
 const qdrantService = new qdrant_1.QdrantService();
@@ -781,9 +782,26 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         }
     }
     // Proceed with normal response generation using configured pipeline
-    const previousMessages = await database_1.default.query('SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
+    const previousMessages = await database_1.default.query('SELECT id, role, content, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC', [chatId]);
+    const historyRows = previousMessages.rows;
+    const lastAssistantEntry = [...historyRows].reverse().find((msg) => msg.role === 'assistant');
+    const userMessageRow = userMessage.rows[0];
+    if (lastAssistantEntry && (userMessageRow === null || userMessageRow === void 0 ? void 0 : userMessageRow.id)) {
+        try {
+            await chatCorrectionSuggestion_service_1.chatCorrectionSuggestionService.detectAndStore({
+                chatId,
+                userId,
+                userMessage: { id: userMessageRow.id, content: userMessageRow.content },
+                assistantMessage: { id: lastAssistantEntry.id, content: lastAssistantEntry.content },
+                history: historyRows
+            });
+        }
+        catch (error) {
+            console.warn('Chat correction detection failed:', error);
+        }
+    }
     const userPreferences = await database_1.default.query('SELECT companies_of_interest, preferred_topics FROM user_preferences WHERE user_id = $1', [userId]);
-    const assistantTurnsBefore = previousMessages.rows.filter((msg) => msg.role === 'assistant').length;
+    const assistantTurnsBefore = historyRows.filter((msg) => msg.role === 'assistant').length;
     const userPreferencesRow = userPreferences.rows[0] || {};
     // Use the advanced reasoning pipeline for better quality responses with timeout protection
     const reasoningPromise = advancedReasoningService_1.default.generateReasonedResponse(content, previousMessages.rows, { ...userPreferencesRow, userId }, contextSettings);

@@ -48,6 +48,7 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const chatConfig_1 = __importDefault(require("./admin/chatConfig"));
+const chatCorrections_1 = __importDefault(require("./admin/chatCorrections"));
 const content_1 = __importDefault(require("./admin/content"));
 // Import API-Schlüssel-Admin-Route
 const apiKeysRouter = require('./admin-api-keys');
@@ -73,6 +74,7 @@ router.use(auth_1.authenticateToken);
 router.use(requireAdmin);
 // Mount chat configuration routes
 router.use('/chat-config', chatConfig_1.default);
+router.use('/chat-corrections', chatCorrections_1.default);
 // Mount API-Schlüssel-Routes
 router.use('/', apiKeysRouter);
 // Content admin (articles/whitepapers on filesystem)

@@ -10,6 +10,7 @@
     <itunes:author>STROMDAO GmbH</itunes:author>
     <itunes:email>thorsten.zoerner@stromdao.com</itunes:email>
     <itunes:image href="https://stromhaltig.de/media/podcast_logo.png" />
+    <category>Business</category>
     <itunes:category text="Business">
       <itunes:category text="Management" />
     </itunes:category>
