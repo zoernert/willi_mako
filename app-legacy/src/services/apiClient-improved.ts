@@ -5,7 +5,7 @@ import axios, { AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequ
 import { TokenService } from './TokenService';
 
 // Base URL konfigurieren
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
 // Axios-Instanz erstellen
 const apiClient = axios.create({

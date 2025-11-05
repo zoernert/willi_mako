@@ -138,7 +138,7 @@ const getTokenExpirationTime = (token: string): number | null => {
 };
 
 // Configure axios
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 axios.defaults.baseURL = API_BASE_URL;
 
 // Request interceptor to add auth token
