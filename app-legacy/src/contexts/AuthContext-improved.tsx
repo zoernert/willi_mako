@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../services/apiEndpoints';
 
 interface User {
   id: string;
@@ -138,7 +139,7 @@ const getTokenExpirationTime = (token: string): number | null => {
 };
 
 // Configure axios
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 axios.defaults.baseURL = API_BASE_URL;
 
 // Request interceptor to add auth token
@@ -248,7 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
     
     try {
-      const response = await axios.post('/auth/login', { email, password });
+      const response = await axios.post(API_ENDPOINTS.auth.login, { email, password });
       const { user, token } = response.data.data;
       
       // Prüfe Token-Gültigkeit vor Speicherung

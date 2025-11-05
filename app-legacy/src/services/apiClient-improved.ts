@@ -3,9 +3,10 @@
  */
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { TokenService } from './TokenService';
+import { API_ENDPOINTS } from './apiEndpoints';
 
 // Base URL konfigurieren
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Axios-Instanz erstellen
 const apiClient = axios.create({
@@ -197,7 +198,7 @@ export const apiUtils = {
    */
   async validateToken(): Promise<boolean> {
     try {
-      await apiClient.get('/v2/user/profile');
+      await apiClient.get(API_ENDPOINTS.user.profile);
       return true;
     } catch (error) {
       console.error('Token validation failed:', error);
@@ -212,7 +213,7 @@ export const authApi = {
    * Login
    */
   async login(email: string, password: string): Promise<{ user: any; token: string }> {
-    const response = await apiClient.post('/auth/login', { email, password });
+    const response = await apiClient.post(API_ENDPOINTS.auth.login, { email, password });
     return response.data.data;
   },
 
@@ -220,7 +221,7 @@ export const authApi = {
    * Registrierung
    */
   async register(email: string, password: string, name: string, company?: string): Promise<{ user: any; token: string }> {
-    const response = await apiClient.post('/auth/register', {
+    const response = await apiClient.post(API_ENDPOINTS.auth.register, {
       email,
       password,
       name,
@@ -247,7 +248,7 @@ export const authApi = {
    * Benutzerprofil abrufen
    */
   async getProfile(): Promise<any> {
-    const response = await apiClient.get('/v2/user/profile');
+    const response = await apiClient.get(API_ENDPOINTS.user.profile);
     return response.data.data;
   },
 
@@ -255,7 +256,7 @@ export const authApi = {
    * Benutzerprofil aktualisieren
    */
   async updateProfile(data: any): Promise<any> {
-    const response = await apiClient.put('/v2/user/profile', data);
+    const response = await apiClient.put(API_ENDPOINTS.user.profile, data);
     return response.data.data;
   },
 };

@@ -69,7 +69,7 @@ export const documentsApi = {
       };
 
       const token = localStorage.getItem('token');
-      xhr.open('POST', API_ENDPOINTS.documents.upload);
+      xhr.open('POST', `/api${API_ENDPOINTS.documents.upload}`);
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
