@@ -6,19 +6,25 @@ const matter = require('gray-matter') as (input: string) => { data: any; content
 export type ArticleFrontmatter = {
   title: string;
   slug?: string; // may be inferred from path
-  shortDescription?: string;
+  shortDescription?: string; // deprecated, use excerpt
+  excerpt?: string; // preferred over shortDescription
   whitepaperSlug?: string; // may be inferred from path when nested
-  publishedDate?: string; // ISO date
+  date?: string; // ISO date or string, preferred over publishedDate
+  publishedDate?: string; // ISO date, deprecated
+  modifiedDate?: string; // ISO date for last modification
   status?: 'draft' | 'published';
+  tags?: string[]; // array of tags
   seoTitle?: string;
   seoDescription?: string;
   canonicalUrl?: string;
 };
 
-export type Article = Required<Omit<ArticleFrontmatter, 'seoTitle' | 'seoDescription' | 'canonicalUrl'>> & {
+export type Article = Required<Omit<ArticleFrontmatter, 'seoTitle' | 'seoDescription' | 'canonicalUrl' | 'modifiedDate' | 'tags'>> & {
   seoTitle?: string;
   seoDescription?: string;
   canonicalUrl?: string;
+  modifiedDate?: string;
+  tags: string[];
   content: string;
 };
 
@@ -49,20 +55,36 @@ function parseArticleFromFile(filePath: string, inferred: { slug?: string; white
   const whitepaperSlug = (fm.whitepaperSlug || inferred.whitepaperSlug || '').trim();
   const title = (fm.title || '').trim();
   if (!title) return null;
-  const publishedDate = (fm.publishedDate || new Date().toISOString()).toString();
-  const status = (fm.status as 'draft' | 'published') || 'draft';
+  
+  // Support both date and publishedDate (date is preferred)
+  const date = fm.date || fm.publishedDate || new Date().toISOString();
+  const publishedDate = date;
+  
+  // Support both excerpt and shortDescription (excerpt is preferred)
+  const excerpt = fm.excerpt || fm.shortDescription || '';
+  const shortDescription = excerpt;
+  
+  const status = (fm.status as 'draft' | 'published') || 'published'; // default to published
+  const tags = Array.isArray(fm.tags) ? fm.tags : [];
+  
   const article: Article = {
     title,
     slug,
-    shortDescription: fm.shortDescription || '',
+    shortDescription,
+    excerpt,
     whitepaperSlug,
+    date,
     publishedDate,
     status,
+    tags,
     content,
   };
+  
+  if (fm.modifiedDate) article.modifiedDate = fm.modifiedDate;
   if (fm.seoTitle) article.seoTitle = fm.seoTitle;
   if (fm.seoDescription) article.seoDescription = fm.seoDescription;
   if (fm.canonicalUrl) article.canonicalUrl = fm.canonicalUrl;
+  
   return article;
 }
 

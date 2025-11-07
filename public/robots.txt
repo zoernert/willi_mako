@@ -5,6 +5,7 @@ Sitemap: https://stromhaltig.de/sitemap.xml
 User-agent: *
 Allow: /
 Allow: /wissen/
+Allow: /articles/
 Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /atom.xml
@@ -13,6 +14,7 @@ Allow: /sitemap.xml
 # AI-Crawler spezifische Regeln
 User-agent: ChatGPT-User
 Allow: /wissen/
+Allow: /articles/
 Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /sitemap.xml
@@ -20,6 +22,7 @@ Crawl-delay: 1
 
 User-agent: Claude-Web
 Allow: /wissen/
+Allow: /articles/
 Allow: /whitepaper/
 Allow: /feed.xml
 Allow: /sitemap.xml
@@ -27,19 +30,23 @@ Crawl-delay: 1
 
 User-agent: Google-Extended
 Allow: /wissen/
+Allow: /articles/
 Allow: /whitepaper/
 Allow: /feed.xml
 
 User-agent: CCBot
 Allow: /wissen/
+Allow: /articles/
 Allow: /feed.xml
 
 User-agent: anthropic-ai
 Allow: /wissen/
+Allow: /articles/
 Allow: /feed.xml
 
 User-agent: Applebot-Extended
 Allow: /wissen/
+Allow: /articles/
 
 # Standard Crawler
 User-agent: Googlebot

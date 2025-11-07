@@ -1,6 +1,5 @@
 import React from 'react';
 import { GetStaticPaths, GetStaticProps } from 'next';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Container, Typography, Box, Button, Paper, Alert } from '@mui/material';
 import Link from 'next/link';
@@ -9,6 +8,7 @@ import MarkdownRenderer from '../../../components/MarkdownRenderer';
 import { getAllArticles, getArticleBySlug, getArticleSlugs, Article } from '../../../lib/content/articles';
 import { getWhitepaperBySlug } from '../../../lib/content/whitepapers';
 import Layout from '../../../components/Layout';
+import { ArticleSEO } from '../../../components/ArticleSEO';
 
 interface ArticleDetailProps {
 	article: Article;
@@ -30,12 +30,15 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 	}
 		return (
 			<Layout title={article.seoTitle || article.title}>
+				<ArticleSEO
+					title={article.title}
+					description={(article as any).excerpt || article.shortDescription}
+					canonical={`/articles/${article.slug}`}
+					publishedTime={(article as any).date || article.publishedDate}
+					modifiedTime={(article as any).modifiedDate}
+					tags={(article as any).tags || []}
+				/>
 				<Container maxWidth="lg">
-			<Head>
-				<title>{article.seoTitle || article.title}</title>
-				<meta name="description" content={article.seoDescription || article.shortDescription} />
-				{article.canonicalUrl && <link rel="canonical" href={article.canonicalUrl} />}
-			</Head>
 			<Box sx={{ py: 4 }}>
 				<Box sx={{ mb: 4 }}>
 					<Button

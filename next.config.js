@@ -37,6 +37,16 @@ const nextConfig = {
       // Rewrites applied after checking filesystem and pages
       // Ensures that Next page /data/[slug] is NOT overridden by this rule
       afterFiles: [
+        // SEO-friendly URL: /articles -> /wissen/artikel
+        {
+          source: '/articles',
+          destination: '/wissen/artikel',
+        },
+        // SEO-friendly URL: /articles/[slug] -> /wissen/artikel/[slug]
+        {
+          source: '/articles/:slug',
+          destination: '/wissen/artikel/:slug',
+        },
         // Only rewrite actual data files (avoid hijacking /data/:slug page)
         {
           source: '/data/:slug/:file((?:[^/]+)\\.(?:json|csv))',

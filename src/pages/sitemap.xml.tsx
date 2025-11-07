@@ -78,10 +78,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 
   <!-- Artikel Overview -->
   <url>
-    <loc>https://stromhaltig.de/wissen/artikel</loc>
+    <loc>https://stromhaltig.de/articles</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
 
   <!-- Benutzerhandbuch -->
@@ -172,13 +172,17 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   </url>`).join('')}
 
   <!-- Artikel Pages -->
-  ${articles.map(a => `
+  ${articles.map(a => {
+    const lastmod = (a as any).date || a.publishedDate || new Date().toISOString();
+    const priority = a.tags && a.tags.length > 3 ? 0.75 : 0.7; // Higher priority for comprehensive articles
+    return `
   <url>
-    <loc>https://stromhaltig.de/wissen/artikel/${a.slug}</loc>
-    <lastmod>${a.publishedDate}</lastmod>
+    <loc>https://stromhaltig.de/articles/${a.slug}</loc>
+    <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`).join('')}
+    <priority>${priority}</priority>
+  </url>`;
+  }).join('')}
 
   <!-- Dataset Pages -->
   ${datasets.map(d => {
