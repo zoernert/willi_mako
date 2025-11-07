@@ -103,7 +103,16 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 	if (!article) {
 		return { notFound: true };
 	}
-	const props: { article: Article; whitepaperTitle?: string | null } = { article };
+	
+	// Serialisiere alle Date-Objekte zu ISO-Strings
+	const serializedArticle: any = { ...article };
+	['date', 'publishedDate', 'modifiedDate'].forEach(field => {
+		if (serializedArticle[field] instanceof Date) {
+			serializedArticle[field] = serializedArticle[field].toISOString();
+		}
+	});
+	
+	const props: { article: any; whitepaperTitle?: string | null } = { article: serializedArticle };
 	if (article.whitepaperSlug) {
 		const wp = getWhitepaperBySlug(article.whitepaperSlug);
 		props.whitepaperTitle = wp?.title || null;

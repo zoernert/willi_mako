@@ -285,9 +285,11 @@ export default function FAQDetail({ faq, relatedDatasets = [] }: FAQDetailProps)
 export const getStaticPaths: GetStaticPaths = async () => {
   try {
     const faqs = await getAllPublicFAQs();
-    const paths = faqs.map((faq) => ({
-      params: { slug: faq.slug },
-    }));
+    const paths = faqs
+      .filter((faq) => faq.slug.length <= 200) // Skip slugs that are too long for filesystem
+      .map((faq) => ({
+        params: { slug: faq.slug },
+      }));
 
     return {
       paths,

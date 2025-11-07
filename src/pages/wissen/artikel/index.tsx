@@ -68,17 +68,17 @@ const ArticleListPage: React.FC<Props> = ({ articles }) => {
 
 export const getStaticProps: GetStaticProps = async () => {
   const articles = getAllArticles().map((article: any) => {
-    // Konvertiere Date-Objekte zu ISO-Strings (nur wenn es ein Date ist)
-    const dateValue = article.date instanceof Date ? article.date.toISOString() : 
-                      (article.date || null);
-    const modifiedDateValue = article.modifiedDate instanceof Date ? article.modifiedDate.toISOString() : 
-                              (article.modifiedDate || null);
+    // Konvertiere alle Date-Objekte zu ISO-Strings (für JSON-Serialisierung)
+    const result: any = { ...article };
     
-    return {
-      ...article,
-      date: dateValue,
-      modifiedDate: modifiedDateValue,
-    };
+    // Konvertiere alle möglichen Date-Felder
+    ['date', 'publishedDate', 'modifiedDate'].forEach(field => {
+      if (result[field] instanceof Date) {
+        result[field] = result[field].toISOString();
+      }
+    });
+    
+    return result;
   });
   
   return {
