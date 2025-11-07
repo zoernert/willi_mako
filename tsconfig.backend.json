@@ -39,6 +39,7 @@
   "exclude": [
     "src/pages/**/*",
     "src/components/**/*",
+    "src/lib/analytics.ts",
     "src/routes/archived/**/*",
     "src/services/processService_old.ts",
     "pages/**/*",

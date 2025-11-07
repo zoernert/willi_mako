@@ -40,17 +40,28 @@ function parseArticleFromFile(filePath, inferred = {}) {
     const title = (fm.title || '').trim();
     if (!title)
         return null;
-    const publishedDate = (fm.publishedDate || new Date().toISOString()).toString();
-    const status = fm.status || 'draft';
+    // Support both date and publishedDate (date is preferred)
+    const date = fm.date || fm.publishedDate || new Date().toISOString();
+    const publishedDate = date;
+    // Support both excerpt and shortDescription (excerpt is preferred)
+    const excerpt = fm.excerpt || fm.shortDescription || '';
+    const shortDescription = excerpt;
+    const status = fm.status || 'published'; // default to published
+    const tags = Array.isArray(fm.tags) ? fm.tags : [];
     const article = {
         title,
         slug,
-        shortDescription: fm.shortDescription || '',
+        shortDescription,
+        excerpt,
         whitepaperSlug,
+        date,
         publishedDate,
         status,
+        tags,
         content,
     };
+    if (fm.modifiedDate)
+        article.modifiedDate = fm.modifiedDate;
     if (fm.seoTitle)
         article.seoTitle = fm.seoTitle;
     if (fm.seoDescription)
