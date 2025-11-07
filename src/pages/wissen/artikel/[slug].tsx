@@ -33,7 +33,7 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 			<Layout title={article.seoTitle || article.title}>
 				<ArticleSEO
 					title={article.title}
-					description={(article as any).excerpt || article.shortDescription}
+					description={(article as any).description || (article as any).excerpt || article.shortDescription}
 					canonical={`/articles/${article.slug}`}
 					publishedTime={(article as any).date || article.publishedDate}
 					modifiedTime={(article as any).modifiedDate}
