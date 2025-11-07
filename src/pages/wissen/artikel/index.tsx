@@ -61,8 +61,14 @@ const ArticleListPage: React.FC<Props> = ({ articles }) => {
 };
 
 export const getStaticProps: GetStaticProps = async () => {
+  const articles = getAllArticles().map((article: any) => ({
+    ...article,
+    date: article.date ? article.date.toISOString() : null,
+    modifiedDate: article.modifiedDate ? article.modifiedDate.toISOString() : null,
+  }));
+  
   return {
-    props: { articles: getAllArticles() },
+    props: { articles },
     revalidate: 60,
   };
 };
