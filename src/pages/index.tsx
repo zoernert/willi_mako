@@ -68,7 +68,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
         <title>Willi-Mako | Marktkommunikation auf neuem Level - Effizienz, Sicherheit, Erfolg</title>
         <meta 
           name="description" 
-          content="Steigern Sie Effizienz, minimieren Sie Risiken und sichern Sie Ihren Vorsprung in der Energiewirtschaft. Speziell für Sachbearbeiter und Entscheider. 7 Tage kostenlos testen!"
+          content="Marktkommunikation (MaKo) erklärt: Prozesse, EDIFACT & Best Practices 2025. ✅ Mit KI-Tool kostenlos testen! Jetzt starten."
         />
         <meta name="keywords" content="Energiewirtschaft, Marktkommunikation, BDEW, EIC, Bilanzkreise, Effizienz, Compliance, Zeitersparnis" />
         <link rel="canonical" href="https://stromhaltig.de" />

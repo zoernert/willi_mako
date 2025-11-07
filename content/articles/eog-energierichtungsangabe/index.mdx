@@ -1,0 +1,146 @@
+---
+title: "EOG Energierichtungsangabe: Kompletter Guide 2025"
+date: "2025-11-07"
+excerpt: "EOG (Energierichtungsangabe) in der Energiewirtschaft verstehen: Definition, Codeliste, EDIFACT-Verwendung und praktische Anwendung."
+description: "EOG Energierichtungsangabe erklärt! ✅ Definition ✅ Codeliste ✅ EDIFACT-Verwendung. Jetzt in 3 Min. verstehen – kostenlos!"
+tags: ["EOG", "Energierichtungsangabe", "EDIFACT", "UTILMD", "Marktkommunikation"]
+---
+
+import { CTATop, CTAMiddle, CTABottom } from '../../../components/ArticleCTA';
+
+# EOG Energierichtungsangabe: Alles was Sie wissen müssen
+
+Die **EOG (Energierichtungsangabe)** ist ein zentrales Konzept in der Marktkommunikation der Energiewirtschaft. In diesem umfassenden Guide erklären wir Ihnen, was EOG bedeutet, welche Codes verwendet werden und wie die Energierichtungsangabe in EDIFACT-Nachrichten eingesetzt wird.
+
+<CTATop articleSlug="eog-energierichtungsangabe" processName="EOG-Prozesse" />
+
+## Was ist EOG?
+
+**EOG** steht für **Energierichtungsangabe** (manchmal auch "Energy Orientation Group" oder "End of Grid" genannt, je nach Kontext) und beschreibt die **Richtung des Energieflusses** an einer Marktlokation oder Messlokation:
+
+- **Bezug (E):** Energie wird aus dem Netz entnommen (Verbrauch)
+- **Lieferung (A):** Energie wird in das Netz eingespeist (Erzeugung)
+
+Die korrekte Angabe der Energierichtung ist essenziell für:
+- ✅ Korrekte Abrechnung
+- ✅ Bilanzkreismanagement
+- ✅ Netzentgeltberechnung
+- ✅ Stammdatenverwaltung
+
+## EOG Codeliste: Die wichtigsten Codes
+
+In EDIFACT-Nachrichten (insbesondere UTILMD) wird die Energierichtung mit standardisierten Codes angegeben:
+
+### Hauptcodes
+
+| Code | Bedeutung | Beschreibung |
+|------|-----------|--------------|
+| **E** | Entnahme / Bezug | Energie wird aus dem Netz entnommen (Verbrauch) |
+| **A** | Ausspeisung / Lieferung | Energie wird ins Netz eingespeist (Erzeugung) |
+
+### Erweiterte Codes (seltener)
+
+| Code | Bedeutung | Verwendung |
+|------|-----------|------------|
+| **EA** | Entnahme + Ausspeisung | Kombination (z.B. bei Speichern oder PV mit Eigenverbrauch) |
+| **Z** | Unbekannt/Nicht zutreffend | Wird in Sonderfällen verwendet |
+
+## EOG in EDIFACT UTILMD
+
+In der **UTILMD-Nachricht** wird die Energierichtung im Segment **LOC+172** (Marktlokation) angegeben:
+
+```
+LOC+172+123456789012::293'
+DTM+92:20250101:102'
+RFF+Z13:DE0001234567890123456789012'
+CTA+IC+:Max Mustermann'
+COM+max.mustermann@example.com:EM'
+NAD+DP+++MUSTERMANN GMBH'
+RFF+AVN:1234567890'
+IDE+24+E'    ← Energierichtung: E = Bezug
+```
+
+**Segment IDE+24:** Hier wird die Energierichtungsangabe hinterlegt
+- `IDE+24+E` = Bezug (Entnahme)
+- `IDE+24+A` = Lieferung (Ausspeisung)
+
+<CTAMiddle articleSlug="eog-energierichtungsangabe" processName="UTILMD-Prozesse" />
+
+## Praktische Anwendungsfälle
+
+### 1. Private Haushalte
+- **Energierichtung:** E (Bezug)
+- **Typischer Fall:** Stromverbrauch ohne eigene Erzeugung
+
+### 2. PV-Anlage mit Volleinspeisung
+- **Energierichtung:** A (Ausspeisung)
+- **Typischer Fall:** Alle erzeugte Energie wird ins Netz eingespeist
+
+### 3. PV-Anlage mit Eigenverbrauch
+- **Energierichtung:** Oft **zwei separate Marktlokationen**:
+  - MaLo 1: E (Bezug aus dem Netz)
+  - MaLo 2: A (Einspeisung ins Netz)
+- **Alternative:** EA (kombiniert) - wird seltener verwendet
+
+### 4. Industriebetriebe mit Blockheizkraftwerk
+- **Energierichtung:** EA oder separate MaLos
+- **Komplexität:** Gleichzeitiger Bezug und Einspeisung
+
+### 5. Batteriespeicher
+- **Energierichtung:** EA (beide Richtungen möglich)
+- **Besonderheit:** Zeitabhängige Richtungsänderung (Laden/Entladen)
+
+## Häufige Fehler bei der EOG
+
+### ❌ Fehler 1: Falsche Energierichtung
+**Problem:** MaLo wird als "E" (Bezug) erfasst, obwohl eine PV-Anlage ausschließlich einspeist  
+**Folge:** Falsche Abrechnung, Bilanzkreisfehler  
+**Lösung:** Vor-Ort-Prüfung und Korrektur in UTILMD
+
+### ❌ Fehler 2: Fehlende EA-Kennzeichnung bei Speichern
+**Problem:** Batteriespeicher nur als "E" oder "A" erfasst  
+**Folge:** Unvollständige Stammdaten, Abrechnungsprobleme  
+**Lösung:** EA verwenden oder zwei separate MaLos anlegen
+
+### ❌ Fehler 3: Änderung nicht kommuniziert
+**Problem:** PV-Anlage wurde nachträglich installiert, aber MaLo bleibt "E"  
+**Folge:** Einspeisung wird nicht abgerechnet  
+**Lösung:** UTILMD-Änderungsnachricht senden (IDE+24 aktualisieren)
+
+## EOG im Lieferantenwechsel-Prozess
+
+Bei einem **Lieferantenwechsel (GPKE)** muss die Energierichtung korrekt übermittelt werden:
+
+1. **Anmeldung:** Neuer Lieferant erhält UTILMD mit EOG
+2. **Prüfung:** Lieferant prüft, ob EOG zur geplanten Belieferung passt
+3. **Ablehnung möglich:** Bei Abweichung kann APERAK mit Z17 ("Energierichtung passt nicht") gesendet werden
+
+**Beispiel:**
+- Lieferant bietet nur Bezugsverträge an
+- MaLo ist aber als "A" (Einspeisung) registriert
+- → Ablehnung via APERAK Z17
+
+<CTABottom articleSlug="eog-energierichtungsangabe" />
+
+## Zusammenfassung
+
+Die **Energierichtungsangabe (EOG)** ist ein fundamentales Element der Stammdatenverwaltung in der Energiewirtschaft:
+
+- ✅ **E = Bezug** (Energie aus dem Netz)
+- ✅ **A = Ausspeisung** (Energie ins Netz)
+- ✅ Wird in UTILMD im Segment IDE+24 übermittelt
+- ✅ Kritisch für korrekte Abrechnung und Bilanzierung
+- ✅ Muss bei Änderungen (z.B. PV-Installation) aktualisiert werden
+
+**Pro-Tipp:** Automatisieren Sie die Prüfung der Energierichtung bei Lieferantenwechseln, um APERAK-Fehler zu vermeiden. Willi-Mako unterstützt Sie dabei mit intelligenten Validierungsregeln!
+
+## Verwandte Artikel
+
+- [UTILMD Stammdaten-Nachricht: Kompletter Guide 2025](/wissen/artikel/utilmd-stammdaten)
+- [GPKE Geschäftsprozesse: Vollständiger Leitfaden 2025](/wissen/artikel/gpke-geschaeftsprozesse)
+- [Lieferantenwechsel Prozess: Schritt-für-Schritt Anleitung](/wissen/artikel/lieferantenwechsel-prozess)
+- [APERAK Z17 Fehler beheben: 5-Schritte-Anleitung](/wissen/artikel/aperak-z17-fehler)
+
+---
+
+**Haben Sie Fragen zur Energierichtungsangabe?** Testen Sie Willi-Mako kostenlos und lassen Sie sich komplexe Stammdaten-Prozesse automatisch erklären!
