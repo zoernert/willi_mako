@@ -175,9 +175,9 @@ class QdrantService {
         }
         return b;
     }
-    static async outlineScopePages(client, queryVector, topPages = 3) {
+    static async outlineScopePages(client, queryVector, topPages = 3, collectionName = QDRANT_COLLECTION_NAME) {
         try {
-            const outlineRes = await client.search(QDRANT_COLLECTION_NAME, {
+            const outlineRes = await client.search(collectionName, {
                 vector: queryVector,
                 limit: topPages,
                 with_payload: true,
@@ -192,6 +192,9 @@ class QdrantService {
         }
     }
     static async semanticSearchGuided(query, options) {
+        return this.semanticSearchGuidedByCollection(query, options, QDRANT_COLLECTION_NAME);
+    }
+    static async semanticSearchGuidedByCollection(query, options, collectionName = QDRANT_COLLECTION_NAME) {
         var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
         const client = new js_client_rest_1.QdrantClient({ url: QDRANT_URL, apiKey: QDRANT_API_KEY, checkCompatibility: false });
         const limit = (_b = options === null || options === void 0 ? void 0 : options.limit) !== null && _b !== void 0 ? _b : 20;
@@ -204,13 +207,13 @@ class QdrantService {
             // Optional outline scoping to top pages
             let pageFilter;
             if (useOutline) {
-                const pages = await this.outlineScopePages(client, v, 3);
+                const pages = await this.outlineScopePages(client, v, 3, collectionName);
                 if (pages === null || pages === void 0 ? void 0 : pages.length)
                     pageFilter = this.filterByPages(pages);
             }
             // Phase 1: pseudocode-focused
             const filterA = this.combineFilters(this.filterPseudocode(), pageFilter);
-            const resA = await client.search(QDRANT_COLLECTION_NAME, {
+            const resA = await client.search(collectionName, {
                 vector: v,
                 limit: Math.max(25, limit),
                 with_payload: true,
@@ -219,7 +222,7 @@ class QdrantService {
             });
             // Phase 2: broad (exclude visual if requested)
             const filterB = this.combineFilters(excludeVisual ? this.filterExcludeVisual() : undefined, pageFilter);
-            const resB = await client.search(QDRANT_COLLECTION_NAME, {
+            const resB = await client.search(collectionName, {
                 vector: v,
                 limit: Math.max(25, limit),
                 with_payload: true,
@@ -227,7 +230,7 @@ class QdrantService {
                 ...(filterB ? { filter: filterB } : {})
             });
             // Phase 3: plain full vector (no filters) to capture domain full_page / paragraph that were being missed
-            const resC = await client.search(QDRANT_COLLECTION_NAME, {
+            const resC = await client.search(collectionName, {
                 vector: v,
                 limit: Math.max(40, limit * 2),
                 with_payload: true,
@@ -236,7 +239,7 @@ class QdrantService {
             // Optional Phase 4 (cardinality intent): slight additional plain search with increased limit for nuanced cardinality docs
             let resD = [];
             if (cardinalityIntent) {
-                resD = await client.search(QDRANT_COLLECTION_NAME, {
+                resD = await client.search(collectionName, {
                     vector: v,
                     limit: Math.max(50, limit * 2 + 10),
                     with_payload: true,
@@ -288,11 +291,11 @@ class QdrantService {
             return merged.slice(0, limit);
         }
         catch (error) {
-            console.error('Error in semanticSearchGuided:', error);
+            console.error('Error in semanticSearchGuidedByCollection:', error);
             // Fallback to simple vector search
             try {
                 const v = await this.getEmbeddingCached(query);
-                const results = await client.search(QDRANT_COLLECTION_NAME, { vector: v, limit });
+                const results = await client.search(collectionName, { vector: v, limit });
                 return results;
             }
             catch (e) {

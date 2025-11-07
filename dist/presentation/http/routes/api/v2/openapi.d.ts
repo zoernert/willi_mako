@@ -330,6 +330,360 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/willi-netz/semantic-search': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    sessionId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                    query: {
+                                        type: string;
+                                    };
+                                    options: {
+                                        type: string;
+                                        properties: {
+                                            limit: {
+                                                type: string;
+                                                minimum: number;
+                                                maximum: number;
+                                            };
+                                            alpha: {
+                                                type: string;
+                                            };
+                                            outlineScoping: {
+                                                type: string;
+                                            };
+                                            excludeVisual: {
+                                                type: string;
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                sessionId: {
+                                                    type: string;
+                                                    format: string;
+                                                };
+                                                collection: {
+                                                    type: string;
+                                                    enum: string[];
+                                                };
+                                                query: {
+                                                    type: string;
+                                                };
+                                                totalResults: {
+                                                    type: string;
+                                                };
+                                                durationMs: {
+                                                    type: string;
+                                                };
+                                                options: {
+                                                    type: string;
+                                                    properties: {
+                                                        limit: {
+                                                            type: string;
+                                                        };
+                                                        alpha: {
+                                                            type: string;
+                                                            nullable: boolean;
+                                                        };
+                                                        outlineScoping: {
+                                                            type: string;
+                                                        };
+                                                        excludeVisual: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                                results: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/willi-netz/chat': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    sessionId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                    message: {
+                                        type: string;
+                                    };
+                                    contextSettings: {
+                                        type: string;
+                                    };
+                                    timelineId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                collection: {
+                                                    type: string;
+                                                    enum: string[];
+                                                };
+                                            };
+                                            additionalProperties: boolean;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/combined/semantic-search': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    sessionId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                    query: {
+                                        type: string;
+                                    };
+                                    options: {
+                                        type: string;
+                                        properties: {
+                                            limit: {
+                                                type: string;
+                                                minimum: number;
+                                                maximum: number;
+                                            };
+                                            alpha: {
+                                                type: string;
+                                            };
+                                            outlineScoping: {
+                                                type: string;
+                                            };
+                                            excludeVisual: {
+                                                type: string;
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                sessionId: {
+                                                    type: string;
+                                                    format: string;
+                                                };
+                                                collections: {
+                                                    type: string;
+                                                    items: {
+                                                        type: string;
+                                                    };
+                                                    example: string[];
+                                                };
+                                                query: {
+                                                    type: string;
+                                                };
+                                                totalResults: {
+                                                    type: string;
+                                                };
+                                                durationMs: {
+                                                    type: string;
+                                                };
+                                                options: {
+                                                    type: string;
+                                                    properties: {
+                                                        limit: {
+                                                            type: string;
+                                                        };
+                                                        alpha: {
+                                                            type: string;
+                                                            nullable: boolean;
+                                                        };
+                                                        outlineScoping: {
+                                                            type: string;
+                                                        };
+                                                        excludeVisual: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                                results: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/combined/chat': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    sessionId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                    message: {
+                                        type: string;
+                                    };
+                                    contextSettings: {
+                                        type: string;
+                                    };
+                                    timelineId: {
+                                        type: string;
+                                        format: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                collections: {
+                                                    type: string;
+                                                    items: {
+                                                        type: string;
+                                                    };
+                                                    example: string[];
+                                                };
+                                            };
+                                            additionalProperties: boolean;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
         '/reasoning/generate': {
             post: {
                 summary: string;

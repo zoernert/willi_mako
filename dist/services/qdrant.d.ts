@@ -37,6 +37,12 @@ export declare class QdrantService {
         outlineScoping?: boolean;
         excludeVisual?: boolean;
     }): Promise<any[]>;
+    static semanticSearchGuidedByCollection(query: string, options?: {
+        limit?: number;
+        alpha?: number;
+        outlineScoping?: boolean;
+        excludeVisual?: boolean;
+    }, collectionName?: string): Promise<any[]>;
     private ensureCollection;
     private ensureCs30Collection;
     upsertDocument(document: UserDocument, text: string): Promise<void>;

@@ -1,0 +1,404 @@
+---
+title: "Standardlastprofile 2025: H25, P25, S25 erklärt [Kompletter Leitfaden]"
+date: "2025-11-07"
+excerpt: "Vollständiger Praxis-Leitfaden zu den neuen BDEW-Standardlastprofilen 2025: H25, P25, S25, G25, L25. Technische Unterschiede zu H0, Umstellungsprozess, UTILMD-Marktkommunikation und rechtliche Grundlagen für Netzbetreiber, Lieferanten und EVUs."
+description: "Standardlastprofile 2025 (H25, P25, S25) erklärt: Technische Unterschiede zu H0, UTILMD-Prozesse & Umstellungsleitfaden. ✅ Für Netzbetreiber & EVUs. Jetzt informieren!"
+tags: ["Standardlastprofile", "H25", "P25", "S25", "BDEW", "UTILMD", "GPKE", "Marktkommunikation", "Bilanzierung"]
+---
+
+import { CTATop, CTAMiddle, CTABottom } from '../../../components/ArticleCTA';
+
+# Standardlastprofile 2025: H25, P25, S25 erklärt [Kompletter Leitfaden]
+
+Am 18. März 2025 hat der BDEW die erste grundlegende Überarbeitung der Standardlastprofile seit 1999 veröffentlicht. Nach 26 Jahren stehen modernisierte Profile zur Verfügung, die die tiefgreifenden Veränderungen im deutschen Stromverbrauchsverhalten endlich präzise abbilden. Für Verteilnetzbetreiber, EVUs und Stadtwerke bedeutet dies eine historische Zäsur in der Bilanzierung.
+
+<CTATop articleSlug="standardlastprofile-2025" processName="Standardlastprofil-Umstellung" />
+
+## Was ist H25? Die Definition
+
+**H25 ist das aktualisierte Standard-Haushaltsprofil 2025** – der direkte Nachfolger von H0 aus dem Jahr 1999. Die Zahl „25" bezeichnet das Aktualisierungsjahr der BDEW-Veröffentlichung. H25 bildet typische Haushalte ab: Privatkunden nach § 3 Nr. 22 EnWG mit überwiegend Eigenverbrauch im Haushalt oder maximal 10.000 kWh pro Jahr für berufliche, landwirtschaftliche oder gewerbliche Zwecke.
+
+### Für wen H25 NICHT gedacht ist
+
+- **Haushalte mit PV-Anlagen:** nutzen **P25** (Prosumer ohne Speicher)
+- **Haushalte mit PV + Batteriespeicher:** nutzen **S25** (Prosumer mit Speicher)
+- **Kunden mit besonderen Verbrauchseinrichtungen:** Speicherheizungen, unterbrechbare Lasten nutzen temperaturabhängige Lastprofile (TLP)
+
+Die regulatorische Grundlage bleibt unverändert: **§ 12 Abs. 1 StromNZV** verpflichtet Verteilnetzbetreiber zur Nutzung von Standardlastprofilen für Kunden ohne registrierende Leistungsmessung (RLM) und ohne intelligente Messsysteme (iMSys) bis 100.000 kWh Jahresverbrauch.
+
+## Die BDEW-Profile 2025 im Überblick
+
+Der BDEW veröffentlichte fünf neue Profile, durchgeführt durch die BTU EVU Beratung GmbH:
+
+### Aktualisierte Standardprofile (Ersatz bestehender Profile)
+
+**H25** ersetzt H0 → Standard-Haushaltsprofil
+- **Datenbasis:** Top-Down-Ansatz mit Bilanzierungsdaten von 62 Verteilnetzbetreibern (2018/2019)
+- **Dynamisierung:** Ja, temperaturabhängig (wie H0)
+- **Normierung:** 1 Million kWh Jahresverbrauch
+- **Zeitauflösung:** 12 Monate × 3 Tagestypen = 36 Typtag-Profile
+
+**G25** ersetzt G0-G6 → Konsolidierung von sieben auf ein Gewerbeprofil
+- **Datenbasis:** circa 2.000 iMSys-Zeitreihen (2022/2023) von zehn Netzbetreibern
+- **Dynamisierung:** Nein
+- **Begründung:** Moderne Gewerbeprofile zeigen homogeneres Verbrauchsverhalten
+
+**L25** ersetzt L0-L2 → Konsolidierung von drei auf ein Landwirtschaftsprofil
+- **Datenbasis:** Erweiterung des alten L0-Profils auf 12 Monate
+- **Dynamisierung:** Nein
+
+### Völlig neue Prosumer-Profile – die eigentliche Revolution
+
+**P25** → Haushalte mit PV-Anlage (ohne Speicher)
+- **Datenbasis:** 400 iMSys-Zeitreihen (2022-2023)
+- **Dynamisierung:** Ja, obligatorisch
+- **Besonderheit:** Kombinationsprofil (Supply-Oriented Timing + Load-Oriented Timing)
+
+**S25** → Haushalte mit PV-Anlage und Batteriespeicher
+- **Datenbasis:** 200 iMSys-Zeitreihen (2022-2023)
+- **Dynamisierung:** Ja, obligatorisch
+- **Besonderheit:** Berücksichtigt Eigenverbrauchsoptimierung durch Speicher
+
+Die revolutionäre Neuerung sind **P25 und S25** – erstmals existieren standardisierte Profile für Eigenverbrauch mit bidirektionalen Energieflüssen. Diese Profile tragen der energiewirtschaftlichen Realität von über 3,7 Millionen PV-Dachanlagen Rechnung.
+
+<CTAMiddle 
+  articleSlug="standardlastprofile-2025" 
+  processName="Bilanzierung und Standardlastprofile"
+  screenshotUrl="/screenshots/standardlastprofile-demo.png"
+  screenshotAlt="Willi-Mako Standardlastprofil-Beratung"
+/>
+
+## Technische Unterschiede: H0 (1999) vs. H25 (2025)
+
+### Datengrundlage und Methodik
+
+**H0 (VDEW 1999):**
+- Basiert auf 1.209 Lastgangmessungen aus den Jahren 1981-1997
+- Erhebung durch analoge Ferrariszähler
+- Regionale Stichproben ohne flächendeckende Abdeckung
+
+**H25 (BDEW 2025):**
+- Basiert auf Bilanzierungsdaten von 62 Verteilnetzbetreibern aus 2018/2019
+- Nutzung digitaler Mess- und Abrechnungssysteme
+- Bundesweite, repräsentative Datenbasis
+- Verfeinerte statistische Methodik mit Ausreißerbereinigung
+
+### Zeitliche Granularität
+
+**H0:** 3 Jahreszeiten × 3 Tagestypen = 9 Basisprofile
+- Winter: 01.11. - 20.03.
+- Sommer: 15.05. - 14.09.
+- Übergang: 21.03. - 14.05. und 15.09. - 31.10.
+
+**H25:** 12 Monate × 3 Tagestypen = 36 Typtag-Profile
+- Monatsscharfe Differenzierung eliminiert künstliche Sprünge
+- Präzisere Abbildung saisonaler Übergänge
+- Bessere Erfassung von Heizlasten im Frühjahr und Herbst
+
+### Feiertagsbehandlung
+
+**H0:** Generischer Feiertagskalender ohne Bundesland-Differenzierung
+
+**H25:** Bundeslandspezifischer Feiertagskalender nach BDEW-Definition
+- Fronleichnam in NRW, Bayern, etc. → Sonntagsprofil
+- Reformationstag in Brandenburg, Bremen, etc. → Sonntagsprofil
+- 24.12. und 31.12.: Samstagsprofil (wenn nicht auf Sonntag)
+
+### Lastgangcharakteristik
+
+**Wesentliche Verschiebungen bei H25:**
+1. **Verflachte Spitzen:** 5-10% niedrigere Spitzen durch LED-Beleuchtung
+2. **Erhöhte Grundlast:** +15-20% durch Standby-Verbrauch (Smart-Home, Router, Streaming)
+3. **Homeoffice-Effekt:** Höherer Mittagsverbrauch (+8-12%)
+4. **Zeitverschiebung:** Abendspitze verschiebt sich von 19:00 auf 19:30-20:00 Uhr
+
+## Regulatorische Grundlagen für Standardlastprofile
+
+### StromNZV §12: Die zentrale rechtliche Grundlage
+
+§ 12 StromNZV bildet die zentrale rechtliche Grundlage für die Anwendung von Standardlastprofilen. Er regelt:
+
+- **Anwendungsbereich:** Kunden mit Jahresverbrauch bis 100.000 kWh
+- **Profilzuordnung:** Netzbetreiber ordnen Kunden einem Lastprofil zu
+- **Vereinfachung:** Kein Echtzeit-Messung, sondern Profilschätzung
+- **Jahresabgleich:** Korrektur basierend auf tatsächlichem Zählerstand
+
+Die Einführung neuer Profile wie H25 ist eine Weiterentwicklung dieser standardisierten Vorgehensweise.
+
+### GPKE-Bezüge: Geschäftsprozesse und Datenformate
+
+Während die StromNZV das *was* und *wer* regelt, definiert die [GPKE die Geschäftsprozesse](/wissen/artikel/gpke-geschaeftsprozesse) das *wie*:
+
+- **Standardisierte Prozesse:** Zuweisung, Änderung und Abrechnung von Lastprofilen
+- **Datenaustausch:** [Lieferantenwechsel](/wissen/artikel/lieferantenwechsel-prozess), Stammdatenänderungen
+- **EDIFACT-Integration:** [UTILMD](/wissen/artikel/utilmd-stammdaten) für Stammdaten, MSCONS für Messwerte
+- **Einheitlichkeit:** Marktpartner kommunizieren GPKE-konform
+
+## Zusammenhang mit Marktkommunikation: UTILMD und MSCONS
+
+Standardlastprofile sind eng mit der Marktkommunikation verknüpft. Die zentralen EDIFACT-Nachrichtenformate:
+
+### UTILMD (Utility Master Data)
+
+[UTILMD wird verwendet](/wissen/artikel/utilmd-stammdaten), um:
+
+- **Profildaten zu übermitteln:** Wenn sich das zugeordnete Lastprofil eines Kunden ändert (z.B. H0 → H25), wird diese Information über UTILMD vom Netzbetreiber an den Lieferanten kommuniziert
+- **Prozessmeldungen zu steuern:** Bei einem Lieferantenwechsel mit SLP-Abrechnung werden Prozessschritte über UTILMD abgewickelt (z.B. A11 für Anmeldung)
+- **Stammdaten zu synchronisieren:** UTILMD gewährleistet, dass alle Marktpartner über aktuelle Lastprofilzuordnung informiert sind
+
+### MSCONS (Metered Services Consumption Report)
+
+MSCONS übermittelt:
+
+- **SLP-basierte Verbrauchswerte:** Auf dem Standardlastprofil basierende Verbrauchswerte für Abrechnung und Bilanzierung
+- **Profilinformationen:** Übertragung normierter Profile (BGM 1001 Z06) oder Profilscharen (BGM 1001 Z16)
+- **Fristen:** Übermittlung spätestens zum 10. Werktag des Folgemonats
+
+Der reibungslose Austausch dieser EDIFACT-Nachrichten ist entscheidend für die korrekte Abwicklung der [GPKE-Geschäftsprozesse](/wissen/artikel/gpke-geschaeftsprozesse).
+
+## Der Umstellungsprozess für Netzbetreiber
+
+Die Implementierung der neuen BDEW-Profile ist **nicht verpflichtend**. § 12 Abs. 1 StromNZV schreibt lediglich die Verwendung von Standardlastprofilen vor, nicht deren konkrete Ausgestaltung.
+
+### Phase 1: Profilvalidierung und Testphase
+
+**Entscheidung für Pilotierung:**
+Der Netzbetreiber führt eine retrospektive Analyse durch:
+
+1. **Historische Bilanzkreisauswertung:** Vergleich tatsächlicher Abweichungen mit H25-Simulation
+2. **Kundenstrukturanalyse:** Anzahl H0-Kunden, PV-Haushalte, regionale Besonderheiten
+3. **Kosten-Nutzen-Rechnung:** Erwartete Ausgleichsenergie-Reduktion vs. IT-Kosten
+
+**Empfohlener Testzeitraum:** 6-12 Monate Parallelberechnung (Shadowrun)
+
+### Phase 2: IT-Systemanpassung
+
+**Betroffene Systeme:**
+1. **Bilanzierungssoftware:** Import der 36 Typtag-Profile, Dynamisierungsalgorithmen
+2. **Abrechnungssystem:** Integration neuer Profilcodes (H25, G25, L25, P25, S25)
+3. **Marktkommunikations-Gateway:** UTILMD-Versand mit neuen Profilcodes
+4. **Kundendatenverwaltung:** Historisierung der Profilzuordnung
+
+### Phase 3: Marktkommunikation mit Marktpartnern
+
+**PRICAT – Preiskatalog-Nachricht:**
+Versand aktualisierter Preisblätter per PRICAT an alle Lieferanten:
+- Gültigkeitsbeginn der neuen Preise
+- Komplette Artikel-ID-Struktur
+- Preise pro Artikel
+
+**UTILMD – Stammdatenmeldung:**
+Für jede Marktlokation mit Profilwechsel: UTILMD mit Transaktionsgrund **E01** (Stammdatenänderung)
+
+**Kritischer Zeitplan:**
+- **T-90 Tage:** Ankündigung der Umstellung
+- **T-30 Tage:** PRICAT-Versand mit neuen Preisblättern
+- **T-14 Tage:** UTILMD-Versand für Massenstammdatenänderung
+- **T-0 Tag:** Go-Live der neuen Profile
+
+### Phase 4: Parallelbetrieb und Monitoring
+
+**Key Performance Indicators (KPIs):**
+- **Bilanzkreisabweichung:** Δ zwischen Prognose und Ist
+- **Ausgleichsenergiekosten:** Vergleich H0 vs. H25
+- **Prognosegenauigkeit:** Mean Absolute Percentage Error (MAPE)
+- **IT-Stabilität:** Anzahl UTILMD-Fehler
+
+## UTILMD-Marktkommunikation: Technische Details
+
+### Struktur der UTILMD bei Profilwechsel
+
+**BGM-Segment:** Dokumentenkennung
+- E01 = Stammdatenänderung (bei Profilwechsel)
+- E03 = Neuanlage Marktlokation (bei Neuanschluss mit H25)
+
+### SG7 – Zählpunktattribute (kritisch für Profile)
+
+**CAV-Segment:** Charakteristik (Lastprofil)
+```
+CAV+Z02+H25D::89'
+```
+
+Bedeutung:
+- Z02 = Zählpunktcharakteristik
+- H25D = Netzbetreiber-spezifischer Profilcode (H25 dynamisiert)
+- 89 = Codelistenverantwortlicher = Netzbetreiber
+
+### DTM-Segment: Gültigkeitsdatum
+
+**Kritisch für Massenumstellungen:**
+```
+DTM+157:20260101:102'
+```
+- 157 = Gültigkeitsbeginn
+- 20260101 = 01.01.2026
+
+Der Netzbetreiber muss sicherstellen, dass das Gültigkeitsdatum mit dem Preisblatt-Gültigkeitsbeginn übereinstimmt!
+
+### Reaktionsfrist und Zustimmungsfiktion
+
+Nach GPKE 1.4.2 hat der Lieferant **drei Werktage** zur Reaktion:
+
+1. **Zustimmung:** CONTRL mit ACK
+2. **Ablehnung:** CONTRL mit REJ (muss begründet werden)
+3. **Keine Reaktion:** Nach drei Werktagen gilt die Änderung als zugestimmt (**Zustimmungsfiktion**)
+
+## Praktische Implikationen für Marktakteure
+
+### Für Verteilnetzbetreiber
+
+**Strategische Entscheidung:**
+- Wann erfolgt die Umstellung? (2025, 2026, später?)
+- Welche Profile werden eingeführt?
+- Schrittweise oder Big-Bang-Umstellung?
+
+**Sofortmaßnahmen:**
+1. Profilvalidierung: Retrospektive Analyse
+2. Kosten-Nutzen-Rechnung
+3. Kundenstruktur-Analyse (H0-Kunden, PV-Haushalte)
+4. IT-Readiness-Check
+
+### Für Stromlieferanten
+
+**Prognosemanagement:**
+- Update der Lastprognose-Software: Integration H25-Zeitreihen
+- Parameteranpassung: Dynamisierungskoeffizienten aktualisieren
+- P25/S25-Implementierung: Essentiell für Portfolio-Steuerung
+- Bilanzkreismanagement: Neuberechnung der Fahrpläne
+
+**Kundenkommunikation:**
+- Proaktive Information 6 Wochen vor Umstellung
+- FAQ: "Was ist H25? Muss ich etwas tun?"
+- Keine Mehrkosten für Endkunden
+
+### Für Messstellenbetreiber
+
+**Operative Anpassungen:**
+- Stammdatenpflege: Profilzuordnung aktualisieren
+- MSCONS-Anpassung: Profilwert-Übermittlung für neue Profile
+- Smart-Meter-Rollout: P25/S25 erfordern teilweise iMSys
+
+**Besonderheit P25/S25:**
+Nach § 12 Abs. 5 StromNZV dürfen Kunden mit PV **und** iMSys nicht über SLP bilanziert werden.
+
+## Warum die Profile aktualisiert werden mussten
+
+Die VDEW-Profile von 1999 basierten auf Lastgangmessungen aus 1981-1997. In 26 Jahren hat sich das Verbrauchsverhalten fundamental verändert:
+
+### Gesellschaftliche Transformation
+
+**Arbeitswelt:**
+- Homeoffice-Revolution: 5% → 25-30% der Arbeitstage
+- Verlagerte Mittagslast in Privathaushalte
+- Flexibilisierte Arbeitszeiten
+
+**Gerätetechnik:**
+- LED-Beleuchtung: 80% weniger Verbrauch
+- Energieeffizienzklassen: A+++ verbraucht 70% weniger
+- Aber: Geräteproliferation (Streaming, Smart-Home)
+
+### Energiewirtschaftliche Veränderungen
+
+**Prosumer-Explosion:**
+- 1999: ~50.000 PV-Anlagen mit 70 MW
+- 2024: ~3,7 Millionen PV-Anlagen mit 88 GW
+- Eigenverbrauch verändert Netzbezugsprofil fundamental
+
+**Elektrifizierung:**
+- ~1,4 Millionen Elektrofahrzeuge (2024)
+- ~1,5 Millionen Wärmepumpen
+- Wachsende Kühllasten durch Klimatisierung
+
+### Praktische Konsequenzen veralteter Profile
+
+**Bilanzierungsabweichungen:**
+- Differenz zwischen prognostiziertem und tatsächlichem Verbrauch stieg
+- Ausgleichsenergiekosten +10-15% gegenüber optimalem Profil
+- Kritisch bei hohem Prosumer-Anteil
+
+## Häufige Missverständnisse zu H25
+
+### Missverständnis 1: "Ab 2026 muss jeder H25 nutzen"
+**Korrektur:** Es gibt keine regulatorische Umstellungspflicht. Netzbetreiber entscheiden individuell.
+
+### Missverständnis 2: "Die Umstellung kostet Endkunden Geld"
+**Korrektur:** Endkunden zahlen nur ihren tatsächlich gemessenen Jahresverbrauch. H25 vs. H0 hat null Einfluss auf die Stromrechnung.
+
+### Missverständnis 3: "P25/S25 sind Varianten von H25"
+**Korrektur:** P25 und S25 sind eigenständige Profile für bidirektionale Energieflüsse, keine H25-Untervarianten.
+
+### Missverständnis 4: "Netzbetreiber müssen Preise ändern bei H25"
+**Korrektur:** Netzentgelte sind lastprofilunabhängig. Ein Haushaltskunde zahlt identische Netzentgelte.
+
+<CTABottom 
+  articleSlug="standardlastprofile-2025"
+  relatedArticles={[
+    {
+      slug: 'gpke-geschaeftsprozesse',
+      title: 'GPKE einfach erklärt: Geschäftsprozesse Strommarkt 2025',
+      excerpt: 'Vollständiger Leitfaden zu GPKE-Geschäftsprozessen: Lieferantenwechsel, Sperrprozess, EoG und mehr.'
+    },
+    {
+      slug: 'utilmd-stammdaten',
+      title: 'UTILMD Stammdaten-Nachricht: Kompletter Guide 2025',
+      excerpt: 'Vollständiger Leitfaden zur UTILMD-Nachricht: Aufbau, Segmente, Praxis-Beispiele und Automatisierung.'
+    },
+    {
+      slug: 'lieferantenwechsel-prozess',
+      title: 'Lieferantenwechsel-Prozess: End-to-End Leitfaden',
+      excerpt: 'Vollständiger Prozess des Lieferantenwechsels: Von der Kundenanfrage bis zur erfolgreichen Umsetzung.'
+    }
+  ]}
+/>
+
+## Ausblick: Was kommt nach 2025?
+
+Die Veröffentlichung von H25/G25/L25/P25/S25 ist erst der Beginn einer kontinuierlichen Evolution:
+
+### Weitere Profil-Differenzierung (2026-2028)
+
+**Elektromobilität-Profile:**
+- **E25:** Haushalte mit Wallbox (Nachtladen-Muster)
+- **E26:** Haushalte mit Wallbox und PV
+- **E27:** Bidirektionales Laden (Vehicle-to-Grid)
+
+### Smart-Meter-basierte Echtzeit-Profilierung (2027-2030)
+
+Mit zunehmendem iMSys-Rollout (Ziel: 95% bis 2032) wird die Rolle von Standardlastprofilen abnehmen:
+- Kunden >6.000 kWh/Jahr: Verpflichtender Smart-Meter-Einbau
+- RLM-Bilanzierung statt SLP
+
+### KI-gestützte dynamische Profilierung (2028+)
+
+Zukünftige Profile werden kundenindividuell und selbstlernend:
+- Machine-Learning-Algorithmen analysieren historische Verbräuche
+- Dynamische Anpassung basierend auf Wetter, Wochentag, Feiertagen
+- "Profile of One" – jeder Kunde hat sein eigenes Profil
+
+## Fazit: Die Modernisierung der Bilanzierung
+
+Die BDEW-Veröffentlichung vom 18. März 2025 markiert einen Wendepunkt in der deutschen Strombilanzierung. Nach 26 Jahren mit identischen Profilen stehen Netzbetreibern Werkzeuge zur Verfügung, die die energiewirtschaftliche Realität von 2025 präzise abbilden.
+
+**H25 ist das solide Fundament:** Eine überfällige Modernisierung des Basis-Haushaltsprofils mit verbesserter Datengrundlage, monatsscharfer Granularität und bundeslandspezifischem Feiertagskalender.
+
+**P25 und S25 sind die Revolution:** Erstmals existieren standardisierte Profile für bidirektionale Energieflüsse. Für Netzbetreiber mit hohem PV-Anteil sind diese Profile geschäftskritisch.
+
+### Für Netzbetreiber: Strategische Chance
+
+Netzbetreiber, die frühzeitig auf H25/P25/S25 umstellen, erzielen:
+- **Ausgleichsenergiekostenreduktion:** 5-15% bei typischen Netzen
+- **Wettbewerbsvorteil:** Präzisere Prognose
+- **Zukunftssicherheit:** Skalierbar für kommende Technologien
+
+### Zeitplan der Transformation
+
+- **2025:** Early Adopters (5-10% der Netzbetreiber)
+- **2026-2027:** Mainstream-Adoption (50-60%)
+- **2028+:** Konsolidierung (80%+ nutzen H25)
+- **2030:** Nächste BDEW-Aktualisierung?
+
+**Für jetzt gilt:** H25 ist nicht verpflichtend, aber empfehlenswert. Die Implementierung ist aufwändig, aber lohnenswert. Die korrekte Zuordnung (H25 für Haushalte, P25/S25 für Prosumer) ist geschäftskritisch für präzise Bilanzierung.
+
+---
+
+*Letzte Aktualisierung: November 2025*
