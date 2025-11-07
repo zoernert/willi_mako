@@ -184,9 +184,9 @@ export class QdrantService {
     }
     return b;
   }
-  private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3): Promise<number[]> {
+  private static async outlineScopePages(client: QdrantClient, queryVector: number[], topPages = 3, collectionName: string = QDRANT_COLLECTION_NAME): Promise<number[]> {
     try {
-      const outlineRes: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+      const outlineRes: any[] = await client.search(collectionName, {
         vector: queryVector,
         limit: topPages,
         with_payload: true as any,
@@ -201,6 +201,14 @@ export class QdrantService {
   }
 
   static async semanticSearchGuided(query: string, options?: { limit?: number; alpha?: number; outlineScoping?: boolean; excludeVisual?: boolean; }): Promise<any[]> {
+    return this.semanticSearchGuidedByCollection(query, options, QDRANT_COLLECTION_NAME);
+  }
+
+  static async semanticSearchGuidedByCollection(
+    query: string, 
+    options?: { limit?: number; alpha?: number; outlineScoping?: boolean; excludeVisual?: boolean; },
+    collectionName: string = QDRANT_COLLECTION_NAME
+  ): Promise<any[]> {
     const client = new QdrantClient({ url: QDRANT_URL, apiKey: QDRANT_API_KEY, checkCompatibility: false });
     const limit = options?.limit ?? 20;
     const alpha = options?.alpha ?? 0.75;
@@ -214,13 +222,13 @@ export class QdrantService {
       // Optional outline scoping to top pages
       let pageFilter: any | undefined;
       if (useOutline) {
-        const pages = await this.outlineScopePages(client, v, 3);
+        const pages = await this.outlineScopePages(client, v, 3, collectionName);
         if (pages?.length) pageFilter = this.filterByPages(pages);
       }
 
       // Phase 1: pseudocode-focused
       const filterA = this.combineFilters(this.filterPseudocode(), pageFilter);
-      const resA: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+      const resA: any[] = await client.search(collectionName, {
         vector: v,
         limit: Math.max(25, limit),
         with_payload: true as any,
@@ -230,7 +238,7 @@ export class QdrantService {
 
       // Phase 2: broad (exclude visual if requested)
       const filterB = this.combineFilters(excludeVisual ? this.filterExcludeVisual() : undefined, pageFilter);
-      const resB: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+      const resB: any[] = await client.search(collectionName, {
         vector: v,
         limit: Math.max(25, limit),
         with_payload: true as any,
@@ -239,7 +247,7 @@ export class QdrantService {
       } as any);
 
       // Phase 3: plain full vector (no filters) to capture domain full_page / paragraph that were being missed
-      const resC: any[] = await client.search(QDRANT_COLLECTION_NAME, {
+      const resC: any[] = await client.search(collectionName, {
         vector: v,
         limit: Math.max(40, limit * 2),
         with_payload: true as any,
@@ -249,7 +257,7 @@ export class QdrantService {
       // Optional Phase 4 (cardinality intent): slight additional plain search with increased limit for nuanced cardinality docs
       let resD: any[] = [];
       if (cardinalityIntent) {
-        resD = await client.search(QDRANT_COLLECTION_NAME, {
+        resD = await client.search(collectionName, {
           vector: v,
             limit: Math.max(50, limit * 2 + 10),
             with_payload: true as any,
@@ -298,11 +306,11 @@ export class QdrantService {
       merged.sort((a, b) => (b.merged_score ?? 0) - (a.merged_score ?? 0));
       return merged.slice(0, limit);
     } catch (error) {
-      console.error('Error in semanticSearchGuided:', error);
+      console.error('Error in semanticSearchGuidedByCollection:', error);
       // Fallback to simple vector search
       try {
   const v = await this.getEmbeddingCached(query);
-        const results = await client.search(QDRANT_COLLECTION_NAME, { vector: v, limit } as any);
+        const results = await client.search(collectionName, { vector: v, limit } as any);
         return results as any[];
       } catch (e) {
         console.error('Fallback vector search failed:', e);

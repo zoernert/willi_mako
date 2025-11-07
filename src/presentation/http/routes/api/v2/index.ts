@@ -11,6 +11,8 @@ import clarificationRoutes from './clarification.routes';
 import toolsRoutes from './tools.routes';
 import artifactsRoutes from './artifacts.routes';
 import documentsRoutes from './documents.routes';
+import williNetzRoutes from './willi-netz.routes';
+import combinedRoutes from './combined.routes';
 
 const router = Router();
 
@@ -26,6 +28,8 @@ router.use('/clarification', clarificationRoutes);
 router.use('/tools', toolsRoutes);
 router.use('/artifacts', artifactsRoutes);
 router.use('/documents', documentsRoutes);
+router.use('/willi-netz', williNetzRoutes);
+router.use('/combined', combinedRoutes);
 router.get('/metrics', apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
 	res.json(apiV2OpenApiDocument);
