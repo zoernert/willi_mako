@@ -6,8 +6,14 @@ import { Box, Button, Card, CardContent, Container, Typography } from '@mui/mate
 import { getAllArticles, Article } from '../../../lib/content/articles';
 import Layout from '../../../components/Layout';
 
+// Article mit serialisierten Dates (Strings statt Date-Objekte)
+interface SerializedArticle extends Omit<Article, 'date' | 'modifiedDate'> {
+  date: string | null;
+  modifiedDate: string | null;
+}
+
 interface Props {
-  articles: Article[];
+  articles: SerializedArticle[];
 }
 
 const ArticleListPage: React.FC<Props> = ({ articles }) => {
@@ -61,11 +67,19 @@ const ArticleListPage: React.FC<Props> = ({ articles }) => {
 };
 
 export const getStaticProps: GetStaticProps = async () => {
-  const articles = getAllArticles().map((article: any) => ({
-    ...article,
-    date: article.date ? article.date.toISOString() : null,
-    modifiedDate: article.modifiedDate ? article.modifiedDate.toISOString() : null,
-  }));
+  const articles = getAllArticles().map((article: any) => {
+    // Konvertiere Date-Objekte zu ISO-Strings (nur wenn es ein Date ist)
+    const dateValue = article.date instanceof Date ? article.date.toISOString() : 
+                      (article.date || null);
+    const modifiedDateValue = article.modifiedDate instanceof Date ? article.modifiedDate.toISOString() : 
+                              (article.modifiedDate || null);
+    
+    return {
+      ...article,
+      date: dateValue,
+      modifiedDate: modifiedDateValue,
+    };
+  });
   
   return {
     props: { articles },
