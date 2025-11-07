@@ -15,7 +15,7 @@
 import React from 'react';
 import { Box, Typography, Button, Paper, Grid, Card, CardContent } from '@mui/material';
 import { useRouter } from 'next/router';
-import { trackEvent, AnalyticsEvents, addUTMParams } from '@/lib/analytics';
+import { trackEvent, AnalyticsEvents, addUTMParams } from '../lib/analytics';
 
 interface CTABaseProps {
   articleSlug: string;

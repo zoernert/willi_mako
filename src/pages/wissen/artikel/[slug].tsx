@@ -9,6 +9,7 @@ import { getAllArticles, getArticleBySlug, getArticleSlugs, Article } from '../.
 import { getWhitepaperBySlug } from '../../../lib/content/whitepapers';
 import Layout from '../../../components/Layout';
 import { ArticleSEO } from '../../../components/ArticleSEO';
+import { CTATop, CTAMiddle, CTABottom } from '../../../components/ArticleCTA';
 
 interface ArticleDetailProps {
 	article: Article;
@@ -61,9 +62,19 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 				</Box>
 				<Paper sx={{ p: 4, mb: 4 }}>
 					<div className="whitepaper-article-content">
-						<MarkdownRenderer>{article.content}</MarkdownRenderer>
+						{/* Entferne MDX-Import Zeilen aus dem Content */}
+						<MarkdownRenderer>
+							{article.content
+								.replace(/^import\s+{[^}]+}\s+from\s+['"][^'"]+['"]\s*$/gm, '')
+								.replace(/<CTA(Top|Middle|Bottom)\s*\/>/g, '')}
+						</MarkdownRenderer>
 					</div>
 				</Paper>
+				
+				{/* CTA am Ende des Artikels */}
+				<Box sx={{ mb: 4 }}>
+					<CTABottom articleSlug={article.slug} />
+				</Box>
 				<Box sx={{ mb: 4 }}>
 					<Typography variant="body2" color="text.secondary">
 						Praxisleitfaden gesucht? Besuchen Sie das{' '}
