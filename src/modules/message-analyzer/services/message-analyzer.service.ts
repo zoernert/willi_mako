@@ -228,43 +228,56 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
   /**
    * Phase 2: Identify message type from EDIFACT structure
-   * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, etc.
+   * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, QUOTES, etc.
    */
   private identifyMessageType(segments: EdiSegment[]): string {
-    // First: Check UNH segment (Message Header)
+    // PRIORITY 1: Always check UNH segment first (most reliable)
     const unhSegment = segments.find(s => s.tag === 'UNH');
     if (unhSegment && unhSegment.elements.length > 1) {
+      // UNH+1+QUOTES:D:10A:UN:1.3a -> Extract QUOTES
       // UNH+1+MSCONS:D:04B:UN:2.4c -> Extract MSCONS
       const messageTypeField = unhSegment.elements[1];
-      if (messageTypeField && messageTypeField.includes(':')) {
-        const messageType = messageTypeField.split(':')[0].toUpperCase();
-        console.log('✅ Message type from UNH:', messageType);
-        return messageType;
+      if (messageTypeField && typeof messageTypeField === 'string') {
+        const messageType = messageTypeField.split(':')[0].toUpperCase().trim();
+        if (messageType && messageType.length > 0) {
+          console.log('✅ Message type from UNH segment:', messageType);
+          return messageType;
+        }
       }
     }
 
-    // Fallback: Try to detect from other indicators
+    // PRIORITY 2: Fallback heuristics (only if UNH fails)
+    console.warn('⚠️ UNH segment missing or invalid, using fallback detection');
+    
     const hasLIN = segments.some(s => s.tag === 'LIN');
     const hasQTY = segments.some(s => s.tag === 'QTY');
     const hasIDE = segments.some(s => s.tag === 'IDE');
     const hasCTA = segments.some(s => s.tag === 'CTA');
     const hasMOA = segments.some(s => s.tag === 'MOA');
+    const hasPRI = segments.some(s => s.tag === 'PRI');
+    const hasIMD = segments.some(s => s.tag === 'IMD');
 
-    // MSCONS typically has LIN + QTY (consumption data)
-    if (hasLIN && hasQTY) {
-      console.log('✅ Message type inferred from structure: MSCONS');
+    // QUOTES: Has PRI (price) + IMD (item description) + LIN
+    if (hasPRI && hasLIN && hasIMD) {
+      console.log('✅ Message type inferred: QUOTES (PRI+IMD+LIN)');
+      return 'QUOTES';
+    }
+
+    // MSCONS: Has LIN + QTY (consumption data)
+    if (hasLIN && hasQTY && !hasPRI) {
+      console.log('✅ Message type inferred: MSCONS (LIN+QTY)');
       return 'MSCONS';
     }
 
-    // UTILMD typically has IDE (identification)
-    if (hasIDE || hasCTA) {
-      console.log('✅ Message type inferred from structure: UTILMD');
+    // UTILMD: Has IDE (identification) but no monetary fields
+    if (hasIDE && !hasMOA) {
+      console.log('✅ Message type inferred: UTILMD (IDE)');
       return 'UTILMD';
     }
 
-    // INVOIC/REMADV typically has MOA (monetary amount)
+    // INVOIC/REMADV: Has MOA (monetary amount)
     if (hasMOA) {
-      console.log('✅ Message type inferred from structure: INVOIC/REMADV');
+      console.log('✅ Message type inferred: INVOIC/REMADV (MOA)');
       return 'INVOIC';
     }
 
@@ -482,7 +495,208 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       }).filter(Boolean);
     }
 
+    // Extract PRI segments (Price Details) - QUOTES specific
+    if (messageType === 'QUOTES') {
+      const priSegments = segments.filter(s => s.tag === 'PRI');
+      info.prices = priSegments.map(pri => {
+        if (pri.elements.length >= 1) {
+          const priceData = pri.elements[0].split(':');
+          return {
+            qualifier: priceData[0],
+            price: priceData[4] || priceData[1],
+            unit: priceData[5] || priceData[2]
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      // Extract IMD segments (Item Description)
+      const imdSegments = segments.filter(s => s.tag === 'IMD');
+      info.itemDescriptions = imdSegments.map(imd => {
+        if (imd.elements.length >= 2) {
+          return {
+            code: imd.elements[2] || imd.elements[1],
+            description: imd.elements[3] || ''
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+
+    // NEW: Build segment-level table for comprehensive overview
+    info.segmentTable = this.buildSegmentTable(segments, messageType);
+
     return info;
+  }
+
+  /**
+   * Build comprehensive segment table with intelligent interpretation
+   */
+  private buildSegmentTable(segments: EdiSegment[], messageType: string): any[] {
+    const table: any[] = [];
+
+    // Segment meaning mappings
+    const segmentMeanings: { [key: string]: string } = {
+      'UNH': 'Nachrichtenkopf',
+      'BGM': 'Nachrichtenfunktion',
+      'DTM': 'Zeitangabe',
+      'NAD': 'Beteiligte Partei',
+      'LOC': 'Lokation',
+      'RFF': 'Referenz',
+      'LIN': 'Position',
+      'QTY': 'Menge',
+      'PRI': 'Preis',
+      'MOA': 'Geldbetrag',
+      'IMD': 'Artikelbeschreibung',
+      'CTA': 'Kontakt',
+      'COM': 'Kommunikation',
+      'IDE': 'Identifikation',
+      'CCI': 'Merkmal',
+      'STS': 'Status'
+    };
+
+    // DTM qualifier meanings
+    const dtmQualifiers: { [key: string]: string } = {
+      '137': 'Nachrichtenzeitpunkt',
+      '203': 'Gültig ab',
+      '204': 'Gültig bis',
+      '7': 'Ablesung'
+    };
+
+    // NAD qualifier meanings
+    const nadQualifiers: { [key: string]: string } = {
+      'MS': 'Absender (MSB)',
+      'MR': 'Empfänger (Messstellennutzer)',
+      'DP': 'Lieferadresse'
+    };
+
+    // BGM code meanings
+    const bgmCodes: { [key: string]: string } = {
+      '312': 'Status: Positiv',
+      '313': 'Status: Negativ',
+      'Z29': 'Preisanfrage',
+      'E01': 'Messwerte',
+      '7': 'Stammdaten',
+      '220': 'Bestellung',
+      '380': 'Rechnung'
+    };
+
+    // RFF qualifier meanings
+    const rffQualifiers: { [key: string]: string } = {
+      'MG': 'Zählernummer',
+      'Z13': 'Prozessreferenz'
+    };
+
+    for (const segment of segments) {
+      // Skip envelope segments
+      if (['UNA', 'UNB', 'UNZ', 'UNT', 'UNS'].includes(segment.tag)) {
+        continue;
+      }
+
+      let meaning = segmentMeanings[segment.tag] || segment.tag;
+      let value = '';
+
+      // Interpret specific segments
+      switch (segment.tag) {
+        case 'BGM':
+          const bgmCode = segment.elements[0];
+          value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+          break;
+
+        case 'DTM':
+          if (segment.elements.length >= 1) {
+            const [qualifier, dtmValue] = segment.elements[0].split(':');
+            meaning = dtmQualifiers[qualifier] || `Zeitangabe ${qualifier}`;
+            if (dtmValue && dtmValue.length >= 12) {
+              value = `${dtmValue.substring(6, 8)}.${dtmValue.substring(4, 6)}.${dtmValue.substring(0, 4)} ${dtmValue.substring(8, 10)}:${dtmValue.substring(10, 12)}`;
+            } else {
+              value = dtmValue;
+            }
+          }
+          break;
+
+        case 'NAD':
+          const nadQualifier = segment.elements[0];
+          meaning = nadQualifiers[nadQualifier] || `Partei ${nadQualifier}`;
+          const nadCode = segment.elements[2] || segment.elements[1];
+          const resolvedName = (segment as any).resolved_meta?.companyName;
+          value = resolvedName ? `${resolvedName} (${nadCode})` : nadCode;
+          break;
+
+        case 'LOC':
+          const locValue = segment.elements[1];
+          if (locValue && locValue.length >= 18 && locValue.length < 30) {
+            meaning = 'Messlokation (MeLo)';
+          } else if (locValue && locValue.length >= 30) {
+            meaning = 'Marktlokation (MaLo)';
+          }
+          value = locValue;
+          break;
+
+        case 'RFF':
+          if (segment.elements.length >= 1) {
+            const [rffQualifier, rffValue] = segment.elements[0].split(':');
+            meaning = rffQualifiers[rffQualifier] || `Referenz ${rffQualifier}`;
+            value = rffValue;
+          }
+          break;
+
+        case 'QTY':
+          meaning = 'Menge';
+          if (segment.elements.length >= 1) {
+            const [, qtyValue, unit] = segment.elements[0].split(':');
+            value = `${qtyValue} ${unit || ''}`.trim();
+          }
+          break;
+
+        case 'PRI':
+          meaning = 'Preis';
+          if (segment.elements.length >= 1) {
+            const priParts = segment.elements[0].split(':');
+            const priceValue = priParts[4] || priParts[1];
+            const priceUnit = priParts[5] || priParts[2];
+            value = `${priceValue} ${priceUnit || ''}`.trim();
+          }
+          break;
+
+        case 'LIN':
+          meaning = 'Position';
+          value = segment.elements[0] || '1';
+          if (segment.elements.length >= 3) {
+            value += ` (${segment.elements[2]})`;
+          }
+          break;
+
+        case 'IMD':
+          meaning = 'Artikelbeschreibung';
+          value = segment.elements[2] || segment.elements[1] || '';
+          break;
+
+        case 'MOA':
+          meaning = 'Geldbetrag';
+          if (segment.elements.length >= 1) {
+            const [, amount, currency] = segment.elements[0].split(':');
+            value = `${amount} ${currency || 'EUR'}`;
+          }
+          break;
+
+        case 'UNH':
+          meaning = 'Nachrichtentyp';
+          value = segment.elements[1]?.split(':')[0] || 'EDIFACT';
+          break;
+
+        default:
+          value = segment.elements.join(' : ');
+      }
+
+      table.push({
+        segment: `${segment.tag}${segment.elements[0]?.split(':')[0] ? '+' + segment.elements[0].split(':')[0] : ''}`,
+        meaning,
+        value
+      });
+    }
+
+    return table;
   }
 
   /**
@@ -517,6 +731,9 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     if (structuredInfo.purpose) {
       dataOverview += `\n- Zweck: ${structuredInfo.purpose}`;
     }
+    if (structuredInfo.messageFunction) {
+      dataOverview += `\n- Nachrichtenfunktion: ${structuredInfo.messageFunction}`;
+    }
     if (structuredInfo.measurements?.length > 0) {
       dataOverview += `\n- Messwerte: ${structuredInfo.measurements.length} Zeitreihen`;
       const firstMeasurement = structuredInfo.measurements[0];
@@ -525,85 +742,105 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       }
     }
     if (structuredInfo.timestamps?.length > 0) {
-      dataOverview += `\n- Zeitstempel: ${structuredInfo.timestamps.length}`;
+      const firstTimestamp = structuredInfo.timestamps[0];
+      dataOverview += `\n- Zeitstempel: ${structuredInfo.timestamps.length} (z.B. Qualifier ${firstTimestamp.qualifier}: ${firstTimestamp.value})`;
     }
     if (structuredInfo.references?.length > 0) {
-      dataOverview += `\n- Referenzen: ${structuredInfo.references.length}`;
+      dataOverview += `\n- Referenzen: ${structuredInfo.references.map((r: any) => `${r.qualifier}:${r.value}`).join(', ')}`;
     }
     if (structuredInfo.monetaryAmounts?.length > 0) {
       dataOverview += `\n- Geldbeträge: ${structuredInfo.monetaryAmounts.length}`;
     }
+    if (structuredInfo.prices?.length > 0) {
+      const firstPrice = structuredInfo.prices[0];
+      dataOverview += `\n- Preise: ${structuredInfo.prices.length} (z.B. ${firstPrice.price} ${firstPrice.unit || ''})`;
+    }
+    if (structuredInfo.itemDescriptions?.length > 0) {
+      dataOverview += `\n- Artikelbeschreibungen: ${structuredInfo.itemDescriptions.map((i: any) => i.code).join(', ')}`;
+    }
     if (structuredInfo.parties?.length > 0) {
-      dataOverview += `\n- Beteiligte Parteien: ${structuredInfo.parties.length}`;
+      dataOverview += `\n- Beteiligte Parteien (${structuredInfo.parties.length}):`;
+      for (const party of structuredInfo.parties) {
+        dataOverview += `\n  • ${party.qualifier}: ${party.name} (Code: ${party.code})`;
+      }
     }
 
     // Build segment list
     const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
     
+    // Build segment table for prompt
+    let segmentTableText = '';
+    if (structuredInfo.segmentTable && structuredInfo.segmentTable.length > 0) {
+      segmentTableText = '\n**SEGMENT-ÜBERSICHT (NUTZE DIESE FÜR DIE TABELLE):**\n';
+      for (const row of structuredInfo.segmentTable) {
+        segmentTableText += `\n${row.segment} | ${row.meaning} | ${row.value}`;
+      }
+    }
+    
     return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht.
-
-**EXTRAHIERTE STRUKTURDATEN (VERWENDE DIESE DIREKT):**${dataOverview}
+${segmentTableText}
 
 **WISSENSBASIS:**
 ${knowledgeContext.messageTypeInfo}
 ${knowledgeContext.processInfo}
 
-**VOLLSTÄNDIGE NACHRICHT (REFERENZ):**
-${parsedMessage.segments.map(s => s.original).join('\n')}
+**AUFGABE FÜR SACHBEARBEITER:**
+Erstelle eine VOLLSTÄNDIGE Segment-Tabelle. **Jedes Segment = eine Zeile!**
 
-**AUFGABE FÜR SACHBEARBEITER IN DER MARKTKOMMUNIKATION:**
-Erstelle eine übersichtliche TABELLARISCHE Analyse mit konkreten Werten aus den extrahierten Daten.
+**AUSGABEFORMAT (ZWINGEND):**
 
-**AUSGABEFORMAT (ZWINGEND EINHALTEN):**
+## Nachrichtendaten (${messageType})
 
-## Nachrichtendaten
-
-| Feld | Wert |
-|------|------|
-| Nachrichtentyp | ${messageType} |
-| Absender | [Name aus extrahierten Daten] (Code: [Code]) |
-| Empfänger | [Name aus extrahierten Daten] (Code: [Code]) |
-| MaLo/MeLo | [ID mit Typ-Kennzeichnung: "MaLo:" oder "MeLo:"] |
-| Zählernummer | [Wert aus RFF+MG] |
-| Messwert | [Wert + Einheit] |
-| Zeitpunkt | [Formatiertes Datum/Zeit aus DTM] |
-| Zweck | [purpose aus extrahierten Daten] |
+| Segment | Bedeutung | Wert |
+|---------|-----------|------|
+[Füge ALLE Segmente aus der SEGMENT-ÜBERSICHT ein - jedes Segment = eine Zeile]
+[Nutze die vorbereiteten Werte aus der Segment-Übersicht]
+[Beispiel: BGM | Nachrichtenfunktion | Status: Positiv]
+[Beispiel: NAD+MS | Absender (MSB) | Bayernwerk Netz GmbH (9906532000008)]
+[Beispiel: QTY | Menge | 2729.000 kWh]
 
 ## Prüfergebnisse
 
 | Prüfung | Status | Details |
 |---------|--------|---------|
-| EDIFACT-Struktur | ✅/⚠️/❌ | [Pflichtsegmente vorhanden?] |
-| ${messageType}-Spezifisch | ✅/⚠️/❌ | [QTY, LIN, DTM, STS vorhanden?] |
-| Datenqualität | ✅/⚠️/❌ | [Zeitformat, ID-Format, Messwert plausibel?] |
-| Geschäftslogik | ✅/⚠️/❌ | [Prozess erkennbar? NAD-Qualifizierer korrekt?] |
-| Vollständigkeit | ✅/⚠️/❌ | [Alle relevanten Daten vorhanden?] |
-
-## Zusatzinformationen
-
-- [Weitere relevante Details aus STS-Codes, Referenzen, etc.]
-- [Besonderheiten oder Auffälligkeiten]
+| EDIFACT-Struktur | ✅/⚠️/❌ | UNH, BGM, NAD, UNT vorhanden? |
+| ${messageType}-Spezifisch | ✅/⚠️/❌ | Typspezifische Segmente komplett? |
+| Geschäftslogik | ✅/⚠️/❌ | Prozess erkennbar? |
 
 **KRITISCHE REGELN:**
-1. TABELLEN-FORMAT verwenden (Markdown-Tabellen mit | Spalte | Spalte |)
-2. KONKRETE WERTE aus den extrahierten Daten einsetzen
-3. MaLo vs. MeLo KORREKT unterscheiden:
-   - MeLo: DE + 16 Ziffern (18 Zeichen, z.B. DE0071373163400000)
-   - MaLo: DE + 31 Ziffern (33 Zeichen)
-4. Firmennamen aus extrahierten Daten verwenden, NICHT nur Codes
-5. Status-Icons: ✅ (OK), ⚠️ (Warnung), ❌ (Fehler)
-6. KEINE vagen Aussagen - nur wenn Daten fehlen, dann Status ❌ mit "Fehlt: [Feld]"
+1. **JEDES Segment aus SEGMENT-ÜBERSICHT = eine Tabellenzeile!**
+2. Nutze die vorinterpretierten Werte (Segment | Bedeutung | Wert)
+3. Intelligente Übersetzungen:
+   - QTY → "Menge" statt "QTY"
+   - BGM+312 → "Status: Positiv" statt "312"
+   - BGM+313 → "Status: Negativ" statt "313"
+   - NAD+MS → "Absender (MSB)" mit Firmennamen
+   - DTM → Formatierte Zeitangaben (DD.MM.YYYY HH:MM)
+4. Firmennamen IMMER aus resolved_meta verwenden wenn vorhanden
+5. Fallback: Wenn keine Interpretation → zeige "Segment: Rohdaten"
 
-**BEISPIEL KORREKTE AUSGABE:**
-| Feld | Wert |
-|------|------|
-| Nachrichtentyp | MSCONS |
-| Absender | Stromnetz Berlin GmbH (Code: 9905766000008) |
-| Empfänger | Vattenfall Europe Sales GmbH (Code: 9903756000004) |
-| MeLo | DE0071373163400000 |
-| Zählernummer | 1LGZ0056829358 |
-| Messwert | 2729.000 kWh |
-| Zeitpunkt | 31.05.2025 22:00 Uhr |
+**BEISPIEL APERAK-TABELLE:**
+| Segment | Bedeutung | Wert |
+|---------|-----------|------|
+| UNH | Nachrichtentyp | APERAK |
+| BGM | Status | Positiv (Code 312) |
+| DTM+137 | Nachrichtenzeitpunkt | 15.10.2025 14:30 |
+| RFF+ACE | Referenz Bestätigung | 123456789 |
+| NAD+MS | Absender | Stromnetz GmbH (9901234000001) |
+
+**BEISPIEL QUOTES-TABELLE:**
+| Segment | Bedeutung | Wert |
+|---------|-----------|------|
+| UNH | Nachrichtentyp | QUOTES |
+| BGM | Nachrichtenfunktion | Z29 (Preisanfrage) |
+| DTM+137 | Nachrichtenzeitpunkt | 04.09.2025 23:20 |
+| DTM+203 | Gültig ab | 21.08.2025 22:00 |
+| NAD+MS | Absender (MSB) | Bayernwerk Netz GmbH (9906532000008) |
+| NAD+MR | Empfänger | Vattenfall Europe Sales (9903756000004) |
+| LOC+172 | Marktlokation (MaLo) | 50332318506 |
+| RFF+Z13 | Prozessreferenz | 15002 |
+| LIN | Position | 1 (4-02-0-011:Z09) |
+| PRI+CAL | Preis | 1 H87 |
 
 **VERMEIDE:**
 - Fließtext statt Tabellen

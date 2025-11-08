@@ -11,7 +11,7 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
     private createIntelligentFallbackAnalysis;
     /**
      * Phase 2: Identify message type from EDIFACT structure
-     * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, etc.
+     * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, QUOTES, etc.
      */
     private identifyMessageType;
     /**
@@ -23,6 +23,10 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
      * Universal structure extraction that works for all energy market EDIFACT types
      */
     private extractStructuredInfo;
+    /**
+     * Build comprehensive segment table with intelligent interpretation
+     */
+    private buildSegmentTable;
     /**
      * Phase 6: Build intelligent analysis prompt based on message type and structure
      */
