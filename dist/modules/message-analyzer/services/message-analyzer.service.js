@@ -189,18 +189,35 @@ class MessageAnalyzerService {
      * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, QUOTES, etc.
      */
     identifyMessageType(segments) {
-        // PRIORITY 1: Always check UNH segment first (most reliable)
+        // PRIORITY 1: Robust UNH parsing (most reliable when present)
         const unhSegment = segments.find(s => s.tag === 'UNH');
-        if (unhSegment && unhSegment.elements.length > 1) {
-            // UNH+1+QUOTES:D:10A:UN:1.3a -> Extract QUOTES
-            // UNH+1+MSCONS:D:04B:UN:2.4c -> Extract MSCONS
-            const messageTypeField = unhSegment.elements[1];
-            if (messageTypeField && typeof messageTypeField === 'string') {
-                const messageType = messageTypeField.split(':')[0].toUpperCase().trim();
-                if (messageType && messageType.length > 0) {
-                    console.log('✅ Message type from UNH segment:', messageType);
+        if (unhSegment) {
+            // Try element-wise first
+            try {
+                const el = unhSegment.elements[1];
+                if (el && typeof el === 'string') {
+                    const messageType = el.split(':')[0].toUpperCase().trim();
+                    if (messageType) {
+                        console.log('✅ Message type from UNH.elements[1]:', messageType);
+                        return messageType;
+                    }
+                }
+            }
+            catch (e) {
+                // ignore
+            }
+            // Fallback: parse raw original segment (handles parsers that keep raw)
+            try {
+                // e.g. UNH+002601965225+QUOTES:D:10A:UN:1.3a'
+                const m = unhSegment.original.match(/UNH\+[^+]+\+([A-Za-z0-9_\-]+)/i);
+                if (m && m[1]) {
+                    const messageType = m[1].toUpperCase();
+                    console.log('✅ Message type from UNH.original regex:', messageType);
                     return messageType;
                 }
+            }
+            catch (e) {
+                // ignore
             }
         }
         // PRIORITY 2: Fallback heuristics (only if UNH fails)
@@ -232,6 +249,9 @@ class MessageAnalyzerService {
             console.log('✅ Message type inferred: INVOIC/REMADV (MOA)');
             return 'INVOIC';
         }
+        // Last resort: mark as EDIFACT generic
+        console.log('⚠️ Unable to detect specific type - returning EDIFACT');
+        return 'EDIFACT';
         console.log('⚠️ Message type could not be determined, using EDIFACT');
         return 'EDIFACT';
     }
@@ -662,11 +682,14 @@ class MessageAnalyzerService {
         const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
         // Build segment table for prompt
         let segmentTableText = '';
+        let markdownRows = '';
         if (structuredInfo.segmentTable && structuredInfo.segmentTable.length > 0) {
             segmentTableText = '\n**SEGMENT-ÜBERSICHT (NUTZE DIESE FÜR DIE TABELLE):**\n';
             for (const row of structuredInfo.segmentTable) {
                 segmentTableText += `\n${row.segment} | ${row.meaning} | ${row.value}`;
             }
+            // Build ready-to-insert markdown rows for the Nachrichtendaten table
+            markdownRows = structuredInfo.segmentTable.map((r) => `| ${r.segment} | ${r.meaning} | ${r.value} |`).join('\n');
         }
         return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht.
 ${segmentTableText}
@@ -679,16 +702,14 @@ ${knowledgeContext.processInfo}
 Erstelle eine VOLLSTÄNDIGE Segment-Tabelle. **Jedes Segment = eine Zeile!**
 
 **AUSGABEFORMAT (ZWINGEND):**
+BEACHTE: DIE ANTWORT DARF AUSSCHLIEßLICH AUS DEN BEIDEN MARKDOWN-Tabellen BESTEHEN ("## Nachrichtendaten" und "## Prüfergebnisse").
+FÜGE KEINE ERLÄUTERUNGEN, KEINEN FLIESSTEXT UND KEINE ZUSÄTZLICHEN ABSCHNITTE HINZU. (Nur valide Markdown-Tabellen.)
 
 ## Nachrichtendaten (${messageType})
 
 | Segment | Bedeutung | Wert |
 |---------|-----------|------|
-[Füge ALLE Segmente aus der SEGMENT-ÜBERSICHT ein - jedes Segment = eine Zeile]
-[Nutze die vorbereiteten Werte aus der Segment-Übersicht]
-[Beispiel: BGM | Nachrichtenfunktion | Status: Positiv]
-[Beispiel: NAD+MS | Absender (MSB) | Bayernwerk Netz GmbH (9906532000008)]
-[Beispiel: QTY | Menge | 2729.000 kWh]
+${markdownRows || '| - | - | - |'}
 
 ## Prüfergebnisse
 
