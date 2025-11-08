@@ -277,14 +277,16 @@ const MessageAnalyzerEnhanced: React.FC = () => {
         Analysieren, hinterfragen und bearbeiten Sie EDIFACT-Nachrichten interaktiv mit KI-Unterstützung
       </Typography>
 
+      {/* Top Row - Message Input & Chat */}
       <Box
         sx={{
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           gap: 3,
+          mb: 3,
         }}
       >
-        {/* Left Panel - Message Input & Display */}
+        {/* Left Panel - Message Input */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="h6" gutterBottom>
@@ -431,37 +433,11 @@ const MessageAnalyzerEnhanced: React.FC = () => {
               </Stack>
             </Paper>
           )}
-
-          {/* Initial Analysis */}
-          {initialAnalysis && (
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Initiale KI-Analyse
-              </Typography>
-              <Box
-                sx={{
-                  '& h1, & h2, & h3': { fontWeight: 600, mt: 2 },
-                  '& p': { mb: 1.5 },
-                  '& ul, & ol': { pl: 3, mb: 1.5 },
-                  '& code': {
-                    fontFamily: 'monospace',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '4px',
-                    px: 0.5,
-                  },
-                }}
-              >
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {initialAnalysis}
-                </ReactMarkdown>
-              </Box>
-            </Paper>
-          )}
         </Box>
 
-        {/* Right Panel - Interactive Chat */}
+        {/* Right Panel - Interactive Chat (same height as message input) */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h6" gutterBottom>
               Interaktiver Chat
             </Typography>
@@ -477,8 +453,8 @@ const MessageAnalyzerEnhanced: React.FC = () => {
                 flex: 1,
                 overflowY: 'auto',
                 mb: 2,
-                minHeight: '400px',
-                maxHeight: '600px',
+                minHeight: '200px',
+                maxHeight: '400px',
               }}
             >
               {chatHistory.length === 0 ? (
@@ -575,6 +551,50 @@ const MessageAnalyzerEnhanced: React.FC = () => {
           </Paper>
         </Box>
       </Box>
+
+      {/* Full Width Analysis Table */}
+      {initialAnalysis && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Nachrichtenanalyse
+          </Typography>
+          <Box
+            sx={{
+              overflowX: 'auto',
+              '& table': {
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.9rem',
+              },
+              '& th, & td': {
+                border: '1px solid #ddd',
+                padding: '8px 12px',
+                textAlign: 'left',
+              },
+              '& th': {
+                backgroundColor: '#f5f5f5',
+                fontWeight: 600,
+              },
+              '& tr:hover': {
+                backgroundColor: '#f9f9f9',
+              },
+              '& h1, & h2, & h3': { fontWeight: 600, mt: 2, mb: 1 },
+              '& p': { mb: 1.5 },
+              '& ul, & ol': { pl: 3, mb: 1.5 },
+              '& code': {
+                fontFamily: 'monospace',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '4px',
+                px: 0.5,
+              },
+            }}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {initialAnalysis}
+            </ReactMarkdown>
+          </Box>
+        </Paper>
+      )}
     </Container>
   );
 };

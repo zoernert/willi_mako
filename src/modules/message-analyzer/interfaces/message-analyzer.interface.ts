@@ -7,6 +7,10 @@ export interface EdiSegment {
   description?: string;
   subElements?: { value: string; description?: string; resolvedName?: string }[];
   resolvedCodes?: { [key: string]: string }; // For resolved BDEW/EIC codes
+  resolved_meta?: {
+    companyName?: string;
+    processDescription?: string; // For RFF+Z13 process indicator resolution
+  };
 }
 
 export interface ParsedEdiMessage {

@@ -109,8 +109,8 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       
       console.log('📋 Phase 3: Code-Auflösung und Segment-Anreicherung');
       
-      // Phase 3: Enrich segments with code lookup
-      segments = await this.enrichSegmentsWithCodeLookup(segments);
+      // Phase 3: Enrich segments with code lookup and process references
+      segments = await this.enrichSegmentsWithCodeLookup(segments, messageType);
       console.log('✅ Enriched segments with code lookup');
       
       const parsedMessage: ParsedEdiMessage = { segments };
@@ -730,7 +730,13 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
             if (rffValue) {
               rffValue = rffValue.replace(/\?[+:.'?]/g, '');
             }
-            value = rffValue || rffQualifier;
+            
+            // Use resolved process description if available (from semantic search)
+            if (segment.resolved_meta?.processDescription) {
+              value = `${rffValue} (${segment.resolved_meta.processDescription})`;
+            } else {
+              value = rffValue || rffQualifier;
+            }
           }
           break;
 
@@ -1038,8 +1044,12 @@ ${markdownRows || '| - | - | - |'}
 
   /**
    * Löst BDEW/EIC-Codes in den analysierten Segmenten auf
+   * Löst auch RFF+Z13 Prozessreferenzen über semantische Suche auf
    */
-  private async enrichSegmentsWithCodeLookup(segments: EdiSegment[]): Promise<EdiSegment[]> {
+  private async enrichSegmentsWithCodeLookup(
+    segments: EdiSegment[], 
+    messageType?: string
+  ): Promise<EdiSegment[]> {
     console.log('🔍 Enriching segments with code lookup...');
     
     const enrichedSegments = await Promise.all(
@@ -1088,17 +1098,69 @@ ${markdownRows || '| - | - | - |'}
                 // Erweitere Beschreibung
                 enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${primary.companyName} (${code})${roleText}`;
                 // Hänge aussagekräftige Hinweise an
-                (enrichedSegment as any).resolved_meta = {
-                  partyQualifier,
-                  code,
-                  companyName: primary.companyName,
-                  roles: uniqueRoles,
-                  contactSheetUrl: primary.contactSheetUrl,
-                  allSoftwareSystems: primary.allSoftwareSystems
-                };
+                if (!enrichedSegment.resolved_meta) {
+                  enrichedSegment.resolved_meta = {};
+                }
+                enrichedSegment.resolved_meta.companyName = primary.companyName;
               }
             } catch (error) {
               console.warn(`⚠️ Failed to resolve NAD code ${code}:`, error);
+            }
+          }
+        }
+        
+        // Behandle RFF+Z13 Prozessreferenzen mit semantischer Suche
+        if (segment.tag === 'RFF' && segment.elements[0] === 'Z13' && segment.elements[1]) {
+          const processId = segment.elements[1];
+          
+          // Nur bei UTILMD-Nachrichten
+          if (messageType === 'UTILMD') {
+            try {
+              const query = `UTILMD Prozessindikator ${processId} Prüfidentifikator PID Lieferbeginn Lieferende`;
+              const results = await this.qdrantService.searchByText(query, 1, 0.7);
+              
+              if (results && results.length > 0) {
+                const bestMatch = results[0];
+                // Extrahiere relevante Beschreibung aus dem Kontext
+                let processDesc = '';
+                
+                // Payload kann text oder content enthalten
+                const payload = bestMatch.payload as any;
+                const text = payload?.text || payload?.content || '';
+                
+                if (text) {
+                  const lines = text.split('\n');
+                  
+                  // Versuche spezifische Muster zu erkennen
+                  for (const line of lines) {
+                    if (line.includes(processId) && (line.includes('Lieferbeginn') || line.includes('Lieferende'))) {
+                      processDesc = line.trim();
+                      break;
+                    }
+                  }
+                  
+                  // Fallback: Verwende ersten relevanten Satz
+                  if (!processDesc) {
+                    const sentences = text.split(/[.!?]\s+/);
+                    for (const sentence of sentences) {
+                      if (sentence.includes(processId) || sentence.includes('Prozess')) {
+                        processDesc = sentence.substring(0, 100);
+                        break;
+                      }
+                    }
+                  }
+                }
+                
+                if (processDesc) {
+                  if (!enrichedSegment.resolved_meta) {
+                    enrichedSegment.resolved_meta = {};
+                  }
+                  enrichedSegment.resolved_meta.processDescription = processDesc;
+                  console.log(`✅ Resolved process reference Z13:${processId} to: ${processDesc}`);
+                }
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
             }
           }
         }
