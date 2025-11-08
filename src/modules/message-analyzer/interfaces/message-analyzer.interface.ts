@@ -18,6 +18,7 @@ export interface AnalysisResult {
   plausibilityChecks: string[];
   structuredData: ParsedEdiMessage;
   format: 'EDIFACT' | 'XML' | 'TEXT' | 'UNKNOWN';
+  debug?: any; // Optional debug information for all 6 phases
 }
 
 export interface IMessageAnalyzerService {

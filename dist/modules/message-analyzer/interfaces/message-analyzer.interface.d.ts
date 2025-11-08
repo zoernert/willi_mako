@@ -20,6 +20,7 @@ export interface AnalysisResult {
     plausibilityChecks: string[];
     structuredData: ParsedEdiMessage;
     format: 'EDIFACT' | 'XML' | 'TEXT' | 'UNKNOWN';
+    debug?: any;
 }
 export interface IMessageAnalyzerService {
     analyze(message: string): Promise<AnalysisResult>;

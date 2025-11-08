@@ -79,6 +79,7 @@ class MessageAnalyzerService {
         };
     }
     async analyzeEdifact(message) {
+        var _a, _b, _c, _d, _e, _f, _g;
         try {
             console.log('🔍 Starting EDIFACT analysis...');
             console.log('📋 Phase 1: Syntaktische Validierung und Parsing');
@@ -116,11 +117,57 @@ class MessageAnalyzerService {
                 return this.createIntelligentFallbackAnalysis(parsedMessage, messageType, structuredInfo);
             }
             const { summary, plausibilityChecks } = this.parseAnalysisResponse(rawAnalysis);
+            // NEW: Build debug output for all 6 phases
+            const debugInfo = {
+                phase1_parsing: {
+                    segmentCount: segments.length,
+                    segmentTags: [...new Set(segments.map(s => s.tag))],
+                    sampleSegments: segments.slice(0, 5).map(s => s.original)
+                },
+                phase2_messageType: {
+                    detected: messageType,
+                    unhSegment: ((_a = segments.find(s => s.tag === 'UNH')) === null || _a === void 0 ? void 0 : _a.original) || null
+                },
+                phase3_codeResolution: {
+                    enrichedSegments: segments.filter(s => s.resolved_meta).length,
+                    resolvedCompanies: segments
+                        .filter(s => { var _a; return s.tag === 'NAD' && ((_a = s.resolved_meta) === null || _a === void 0 ? void 0 : _a.companyName); })
+                        .map(s => ({
+                        code: s.elements[2] || s.elements[1],
+                        name: s.resolved_meta.companyName
+                    }))
+                },
+                phase4_knowledgeBase: {
+                    messageTypeInfo: ((_b = knowledgeContext.messageTypeInfo) === null || _b === void 0 ? void 0 : _b.substring(0, 200)) || '',
+                    processInfo: ((_c = knowledgeContext.processInfo) === null || _c === void 0 ? void 0 : _c.substring(0, 200)) || '',
+                    segmentInfo: ((_d = knowledgeContext.segmentInfo) === null || _d === void 0 ? void 0 : _d.substring(0, 200)) || ''
+                },
+                phase5_structuredInfo: {
+                    sender: structuredInfo.sender,
+                    receiver: structuredInfo.receiver,
+                    marketLocation: structuredInfo.marketLocation,
+                    meteringLocation: structuredInfo.meteringLocation,
+                    meterNumber: structuredInfo.meterNumber,
+                    purpose: structuredInfo.purpose,
+                    segmentTableRows: ((_e = structuredInfo.segmentTable) === null || _e === void 0 ? void 0 : _e.length) || 0,
+                    partiesCount: ((_f = structuredInfo.parties) === null || _f === void 0 ? void 0 : _f.length) || 0
+                },
+                phase6_prompt: {
+                    promptLength: prompt.length,
+                    promptPreview: prompt.substring(0, 500),
+                    segmentTablePreview: ((_g = structuredInfo.segmentTable) === null || _g === void 0 ? void 0 : _g.slice(0, 3)) || []
+                },
+                geminiResponse: {
+                    rawLength: rawAnalysis.length,
+                    rawPreview: rawAnalysis.substring(0, 300)
+                }
+            };
             return {
                 summary,
                 plausibilityChecks,
                 structuredData: parsedMessage,
                 format: 'EDIFACT',
+                debug: debugInfo // NEW: Include debug info
             };
         }
         catch (error) {

@@ -61,7 +61,8 @@ router.post(
       data: { 
         explanation,
         messageType: analysis.format,
-        success: true 
+        success: true,
+        debug: analysis.debug  // NEW: Include debug info
       } 
     });
   })

@@ -148,11 +148,58 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
       const { summary, plausibilityChecks } = this.parseAnalysisResponse(rawAnalysis);
 
+      // NEW: Build debug output for all 6 phases
+      const debugInfo = {
+        phase1_parsing: {
+          segmentCount: segments.length,
+          segmentTags: [...new Set(segments.map(s => s.tag))],
+          sampleSegments: segments.slice(0, 5).map(s => s.original)
+        },
+        phase2_messageType: {
+          detected: messageType,
+          unhSegment: segments.find(s => s.tag === 'UNH')?.original || null
+        },
+        phase3_codeResolution: {
+          enrichedSegments: segments.filter(s => (s as any).resolved_meta).length,
+          resolvedCompanies: segments
+            .filter(s => s.tag === 'NAD' && (s as any).resolved_meta?.companyName)
+            .map(s => ({
+              code: s.elements[2] || s.elements[1],
+              name: (s as any).resolved_meta.companyName
+            }))
+        },
+        phase4_knowledgeBase: {
+          messageTypeInfo: knowledgeContext.messageTypeInfo?.substring(0, 200) || '',
+          processInfo: knowledgeContext.processInfo?.substring(0, 200) || '',
+          segmentInfo: knowledgeContext.segmentInfo?.substring(0, 200) || ''
+        },
+        phase5_structuredInfo: {
+          sender: structuredInfo.sender,
+          receiver: structuredInfo.receiver,
+          marketLocation: structuredInfo.marketLocation,
+          meteringLocation: structuredInfo.meteringLocation,
+          meterNumber: structuredInfo.meterNumber,
+          purpose: structuredInfo.purpose,
+          segmentTableRows: structuredInfo.segmentTable?.length || 0,
+          partiesCount: structuredInfo.parties?.length || 0
+        },
+        phase6_prompt: {
+          promptLength: prompt.length,
+          promptPreview: prompt.substring(0, 500),
+          segmentTablePreview: structuredInfo.segmentTable?.slice(0, 3) || []
+        },
+        geminiResponse: {
+          rawLength: rawAnalysis.length,
+          rawPreview: rawAnalysis.substring(0, 300)
+        }
+      };
+
       return {
         summary,
         plausibilityChecks,
         structuredData: parsedMessage,
         format: 'EDIFACT',
+        debug: debugInfo  // NEW: Include debug info
       };
     } catch (error) {
       console.error('❌ Error analyzing EDIFACT message:', error);

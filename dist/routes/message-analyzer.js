@@ -41,7 +41,8 @@ router.post('/ai-explanation', auth_1.requireAuth, async (req, res, next) => {
             data: {
                 explanation,
                 messageType: analysis.format,
-                success: true
+                success: true,
+                debug: analysis.debug // NEW: Include debug info for all 6 phases
             }
         });
     }

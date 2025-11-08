@@ -47,7 +47,8 @@ router.post('/explanation', auth_1.authenticateToken, (0, rateLimiter_1.apiV2Rat
         data: {
             explanation,
             messageType: analysis.format,
-            success: true
+            success: true,
+            debug: analysis.debug // NEW: Include debug info
         }
     });
 }));
