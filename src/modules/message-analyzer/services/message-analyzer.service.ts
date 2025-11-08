@@ -672,12 +672,26 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
         case 'DTM':
           if (segment.elements.length >= 1) {
-            const [qualifier, dtmValue] = segment.elements[0].split(':');
+            const dtmParts = segment.elements[0].split(':');
+            const qualifier = dtmParts[0];
+            let dtmValue = dtmParts[1];
             meaning = dtmQualifiers[qualifier] || `Zeitangabe ${qualifier}`;
-            if (dtmValue && dtmValue.length >= 12) {
-              value = `${dtmValue.substring(6, 8)}.${dtmValue.substring(4, 6)}.${dtmValue.substring(0, 4)} ${dtmValue.substring(8, 10)}:${dtmValue.substring(10, 12)}`;
+            
+            // Remove EDIFACT release characters (e.g. ?+)
+            if (dtmValue) {
+              dtmValue = dtmValue.replace(/\?[+:.'?]/g, '');
+              
+              // Format: 202509042320 → 04.09.2025 23:20
+              if (dtmValue.length >= 12) {
+                value = `${dtmValue.substring(6, 8)}.${dtmValue.substring(4, 6)}.${dtmValue.substring(0, 4)} ${dtmValue.substring(8, 10)}:${dtmValue.substring(10, 12)}`;
+              } else if (dtmValue.length === 8) {
+                // Date only: 20250904 → 04.09.2025
+                value = `${dtmValue.substring(6, 8)}.${dtmValue.substring(4, 6)}.${dtmValue.substring(0, 4)}`;
+              } else {
+                value = dtmValue;
+              }
             } else {
-              value = dtmValue;
+              value = qualifier; // Fallback
             }
           }
           break;
@@ -702,9 +716,15 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
         case 'RFF':
           if (segment.elements.length >= 1) {
-            const [rffQualifier, rffValue] = segment.elements[0].split(':');
+            const rffParts = segment.elements[0].split(':');
+            const rffQualifier = rffParts[0];
+            let rffValue = rffParts[1];
             meaning = rffQualifiers[rffQualifier] || `Referenz ${rffQualifier}`;
-            value = rffValue;
+            // Remove release characters
+            if (rffValue) {
+              rffValue = rffValue.replace(/\?[+:.'?]/g, '');
+            }
+            value = rffValue || rffQualifier;
           }
           break;
 
