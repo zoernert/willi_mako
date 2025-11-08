@@ -30,27 +30,23 @@ router.post('/analyze', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLim
 /**
  * POST /message-analyzer/explanation
  * KI-generierte verständliche Erklärung einer EDIFACT-Nachricht
+ * Nutzt die neue 6-Phasen-Architektur für optimale Ergebnisse
  */
 router.post('/explanation', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { message } = req.body;
     if (!message || typeof message !== 'string') {
         throw new errorHandler_1.AppError('Message content is required and must be a string.', 400);
     }
-    const prompt = `Erkläre mir den Inhalt folgender Marktmeldung aus der Energiewirtschaft. Gib eine verständliche und strukturierte Erklärung auf Deutsch:
-
-${message}
-
-Bitte erkläre:
-1. Was für eine Art von Nachricht das ist
-2. Die wichtigsten Inhalte und Bedeutung
-3. Welche Akteure betroffen sind
-4. Was die praktischen Auswirkungen sind
-5. Eventuell vorhandene Besonderheiten oder Auffälligkeiten`;
-    const explanation = await llmProvider_1.default.generateText(prompt);
+    // Use the full analysis pipeline for comprehensive explanation
+    const analysis = await messageAnalyzerService.analyze(message);
+    // The analysis.summary already contains the intelligent explanation
+    // from the 6-phase pipeline with knowledge base context
+    const explanation = `${analysis.summary}\n\n**Detaillierte Prüfungen:**\n${analysis.plausibilityChecks.map(check => `• ${check}`).join('\n')}`;
     res.status(200).json({
         success: true,
         data: {
             explanation,
+            messageType: analysis.format,
             success: true
         }
     });
@@ -58,6 +54,7 @@ Bitte erkläre:
 /**
  * POST /message-analyzer/chat
  * Interaktiver Chat über eine EDIFACT-Nachricht
+ * Nutzt die 6-Phasen-Analyse für besseren Kontext
  */
 router.post('/chat', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimiter)(), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { message, chatHistory, currentEdifactMessage } = req.body;
@@ -71,11 +68,24 @@ router.post('/chat', auth_1.authenticateToken, (0, rateLimiter_1.apiV2RateLimite
     const historyContext = chatHistory && Array.isArray(chatHistory)
         ? chatHistory.map((msg) => `${msg.role === 'user' ? 'Nutzer' : 'Assistent'}: ${msg.content}`).join('\n')
         : '';
+    // Get structured analysis for better context (only if not cached)
+    let contextualInfo = '';
+    try {
+        const analysis = await messageAnalyzerService.analyze(currentEdifactMessage);
+        // Add structured info to context if available
+        if (analysis.summary) {
+            contextualInfo = `\n**Nachrichtenanalyse:**\n${analysis.summary}\n`;
+        }
+    }
+    catch (error) {
+        console.warn('Could not get analysis context for chat:', error);
+        // Continue without analysis context
+    }
     const prompt = `Du bist ein Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft (edi@energy). 
     
 Aktuelle EDIFACT-Nachricht:
 ${currentEdifactMessage}
-
+${contextualInfo}
 ${historyContext ? `Bisheriger Gesprächsverlauf:\n${historyContext}\n` : ''}
 
 Benutzerfrage: ${message}
