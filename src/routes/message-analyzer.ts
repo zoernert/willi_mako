@@ -41,8 +41,8 @@ router.post(
       // Use the full 6-phase analysis pipeline for comprehensive explanation
       const analysis = await messageAnalyzerService.analyze(message);
       
-      // Format the explanation with summary and detailed checks
-      const explanation = `${analysis.summary}\n\n**Detaillierte Prüfungen:**\n${analysis.plausibilityChecks.map(check => `• ${check}`).join('\n')}`;
+      // Use the raw summary from Gemini (already contains formatted tables)
+      const explanation = analysis.summary;
       
       res.status(200).json({ 
         success: true, 
