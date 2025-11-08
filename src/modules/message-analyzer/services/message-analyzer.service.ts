@@ -159,13 +159,26 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
   private parseEdifactSimple(message: string): EdiSegment[] {
     const segments: EdiSegment[] = [];
-    const lines = message.split(/[\r\n]+/).filter(line => line.trim());
+    
+    // EDIFACT kann entweder durch Newlines ODER durch ' (Apostroph) getrennt sein
+    // Prüfe welches Format verwendet wird
+    let lines: string[];
+    if (message.includes("'")) {
+      // Format mit ' als Segment-Trennzeichen (z.B. UNH+...+...'UNT+...)
+      lines = message.split("'").filter(line => line.trim());
+    } else {
+      // Format mit Newlines als Trennzeichen
+      lines = message.split(/[\r\n]+/).filter(line => line.trim());
+    }
     
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       
-      const elements = trimmed.split(/[+:]/).map(e => e.trim());
+      // Entferne Release-Zeichen (?) vor Trennzeichen
+      const unescaped = trimmed.replace(/\?([+:'])/g, '$1');
+      
+      const elements = unescaped.split(/[+:]/).map(e => e.trim());
       const tag = elements.shift() || '';
       
       segments.push({
@@ -775,11 +788,22 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
     try {
       const trimmed = message.trim();
       
-      // Parse segments
+      // Parse segments (unterstützt beide Formate: Newline und ')
       const segments = this.parseEdifactSimple(trimmed);
       const segmentCount = segments.length;
       
-      // Detect message type
+      // Check if we got any segments
+      if (segmentCount === 0) {
+        errors.push('Keine gültigen EDIFACT-Segmente gefunden');
+        return {
+          isValid: false,
+          errors,
+          warnings,
+          segmentCount: 0
+        };
+      }
+      
+      // Detect message type from UNH segment
       let messageType: string | undefined;
       const unhSegment = segments.find(s => s.tag === 'UNH');
       if (unhSegment && unhSegment.elements.length > 1) {

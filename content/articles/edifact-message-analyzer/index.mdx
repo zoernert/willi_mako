@@ -1,0 +1,546 @@
+---
+title: "EDIFACT Message Analyzer: Interaktive KI-gestützte Nachrichtenanalyse für die Energiewirtschaft"
+date: "2025-11-08"
+excerpt: "Der neue EDIFACT Message Analyzer revolutioniert die Arbeit mit Marktkommunikations-Nachrichten: Interaktive Chat-Funktionalität, KI-gestützte Modifikation, Änderungsverfolgung und Echtzeit-Validierung. Ihr Must-Have-Tool für die Marktkommunikation."
+description: "EDIFACT-Nachrichten einfach verstehen, bearbeiten und validieren! 🚀 Neuer KI-gestützter Message Analyzer mit Chat-Funktion. Jetzt kostenlos testen!"
+tags: ["EDIFACT", "Message Analyzer", "KI", "Marktkommunikation", "MSCONS", "UTILMD", "Tool"]
+---
+
+import { CTATop, CTAMiddle, CTABottom } from '../../../components/ArticleCTA';
+
+# EDIFACT Message Analyzer: Ihr intelligenter Assistent für die Marktkommunikation [Praxis-Guide 2025]
+
+Die Arbeit mit EDIFACT-Nachrichten in der Energiewirtschaft war noch nie so einfach: Unser neuer **EDIFACT Message Analyzer** kombiniert KI-gestützte Analyse mit interaktiver Chat-Funktionalität, intelligenter Modifikation und visueller Änderungsverfolgung. Ein echtes Must-Have-Tool für jeden Mitarbeiter in der Marktkommunikation.
+
+<CTATop articleSlug="edifact-message-analyzer" processName="Message Analyzer" />
+
+## Was ist der EDIFACT Message Analyzer?
+
+Der EDIFACT Message Analyzer ist ein **KI-gestütztes Analyse-Tool**, das speziell für die Anforderungen der deutschen Energiewirtschaft entwickelt wurde. Es unterstützt Sie bei der Arbeit mit allen gängigen edi@energy-Formaten wie MSCONS, UTILMD, ORDERS, INVOIC und vielen mehr.
+
+### Die Herausforderung
+
+Jeder, der in der Marktkommunikation arbeitet, kennt diese Situationen:
+
+- **Komplexe EDIFACT-Syntax**: "Was bedeutet dieses NAD-Segment nochmal genau?"
+- **Fehlersuche**: "Warum wird meine MSCONS-Nachricht vom System abgelehnt?"
+- **Testdaten erstellen**: "Ich brauche eine UTILMD mit angepassten Verbrauchswerten für meinen Test"
+- **Schnelle Änderungen**: "Kann ich mal eben die Marktlokations-ID in dieser Nachricht ändern?"
+- **Dokumentation**: "Welche Marktpartner sind in dieser Nachricht eigentlich beteiligt?"
+
+### Die Lösung
+
+Der Message Analyzer bietet Ihnen **fünf zentrale Funktionen** in einem integrierten Tool:
+
+1. **🤖 KI-Analyse** – Verständliche Erklärung jeder EDIFACT-Nachricht
+2. **💬 Interaktiver Chat** – Fragen Sie die KI alles zur Nachricht
+3. **✏️ Intelligente Modifikation** – Ändern Sie Nachrichten per natürlicher Sprache
+4. **📊 Änderungsverfolgung** – Vollständige Version-History mit Undo/Redo
+5. **✅ Echtzeit-Validierung** – Strukturelle und semantische Prüfung
+
+## Feature-Überblick: Was kann der Message Analyzer?
+
+### 1. KI-gestützte Initiale Analyse
+
+Fügen Sie einfach Ihre EDIFACT-Nachricht ein und starten Sie die Analyse. Die KI erklärt Ihnen:
+
+- **Nachrichtentyp**: Was für eine Art von Nachricht ist das? (z.B. MSCONS, UTILMD)
+- **Hauptinhalt**: Was sind die wichtigsten Informationen?
+- **Beteiligte Akteure**: Welche Marktpartner kommunizieren hier?
+- **Praktische Bedeutung**: Was bedeutet diese Nachricht im Geschäftskontext?
+- **Besonderheiten**: Gibt es Auffälligkeiten oder Besonderheiten?
+
+**Beispiel:**
+
+```edifact
+UNH+00000000001111+MSCONS:D:11A:UN:2.6e
+BGM+E01+1234567890+9
+DTM+137:20251107:102
+NAD+MS+++9900123456789::293
+NAD+MR+++9900987654321::293
+LIN+1++DE0001234567890123456789012345::Z25
+QTY+220:1234.567:KWH
+DTM+163:202511010000:303
+DTM+164:202511010015:303
+UNT+9+00000000001111
+```
+
+**KI-Analyse:**
+
+> "Dies ist eine **MSCONS-Nachricht** (Verbrauchsdatennachricht) vom 7. November 2025. 
+> 
+> **Hauptinhalt:**
+> - Es handelt sich um eine E01-Nachricht (Messwertübermittlung)
+> - Messstellenbetreiber (MS): 9900123456789
+> - Messstellennutzer (MR): 9900987654321
+> - Marktlokation: DE0001234567890123456789012345
+> 
+> **Verbrauchsdaten:**
+> - Verbrauchswert: 1.234,567 kWh
+> - Zeitfenster: 01.11.2025 00:00 - 01.11.2025 00:15 (15-Minuten-Intervall)
+> 
+> **Bedeutung:** Der Messstellenbetreiber übermittelt Zählerstände für die angegebene Marktlokation an den Messstellennutzer."
+
+### 2. Interaktiver Chat – Stellen Sie der KI Fragen
+
+Die Chat-Funktion ist das Herzstück des Message Analyzers. Stellen Sie **beliebige Fragen** zur aktuellen Nachricht:
+
+**Beispiel-Fragen:**
+
+```
+📊 "In welchem Zeitfenster ist der Verbrauch am höchsten?"
+→ KI analysiert alle LIN-Segmente und identifiziert Spitzenlast
+
+🔍 "Was bedeutet das BGM-Segment?"
+→ KI erklärt: "BGM = Beginning of Message, E01 = Messwertübermittlung"
+
+👥 "Welche Marktpartner sind beteiligt?"
+→ KI listet alle NAD-Segmente mit aufgelösten Codes auf
+
+📅 "Für welchen Zeitraum gelten diese Daten?"
+→ KI extrahiert DTM-Segmente und erklärt den Gültigkeitszeitraum
+
+⚠️ "Gibt es Auffälligkeiten in dieser Nachricht?"
+→ KI prüft auf Plausibilität und ungewöhnliche Werte
+```
+
+### 3. Intelligente Modifikation – Ändern per natürlicher Sprache
+
+Keine mühsame manuelle Bearbeitung mehr! Geben Sie einfach an, **was** Sie ändern möchten:
+
+**Beispiel-Aufträge:**
+
+```
+✏️ "Erhöhe den Verbrauch in jedem Zeitfenster um 10%"
+→ KI berechnet neue Werte und passt alle QTY-Segmente an
+
+🔄 "Ändere die Marktlokation auf DE0009876543210123456789012345"
+→ KI ersetzt die MaLo-ID in allen relevanten Segmenten
+
+📆 "Setze das Datum auf den 15.11.2025"
+→ KI aktualisiert alle DTM-Segmente entsprechend
+
+🏢 "Ändere die Marktpartnerkennung des Absenders auf 9900111222333"
+→ KI modifiziert das entsprechende NAD-Segment
+
+📈 "Verdopple alle Verbrauchswerte"
+→ KI multipliziert alle QTY-Werte mit 2
+```
+
+**Das Besondere:** Die KI **erhält die EDIFACT-Struktur** vollständig bei und validiert die Änderungen automatisch!
+
+<CTAMiddle 
+  articleSlug="edifact-message-analyzer"
+  processName="EDIFACT Message Analyzer"
+  screenshotUrl="/screenshots/message-analyzer-demo.png"
+  screenshotAlt="Willi-Mako EDIFACT Message Analyzer Demo"
+/>
+
+### 4. Änderungsverfolgung & Version Control
+
+Jede Modifikation wird als **neue Version** gespeichert. Sie können:
+
+- **Undo/Redo** nutzen, um zwischen Versionen zu navigieren
+- **Diff-Ansicht** aktivieren, um Änderungen visuell zu sehen:
+  - 🟢 **Grün** = Hinzugefügte Zeilen/Werte
+  - 🔴 **Rot durchgestrichen** = Gelöschte Zeilen/Werte
+- **Versionszähler** sehen (z.B. "Version 3 von 5")
+- **Änderungsbeschreibung** für jede Version anzeigen
+
+**Beispiel Diff-Ansicht:**
+
+```diff
+  UNH+00000000001111+MSCONS:D:11A:UN:2.6e
+  BGM+E01+1234567890+9
+  DTM+137:20251107:102
+  NAD+MS+++9900123456789::293
+  NAD+MR+++9900987654321::293
+- LIN+1++DE0001234567890123456789012345::Z25
++ LIN+1++DE0009876543210123456789012345::Z25
+- QTY+220:1234.567:KWH
++ QTY+220:1358.023:KWH
+  DTM+163:202511010000:303
+  DTM+164:202511010015:303
+  UNT+9+00000000001111
+```
+
+### 5. Echtzeit-Validierung
+
+Bei jeder Änderung validiert der Analyzer Ihre Nachricht **automatisch**:
+
+**Strukturelle Prüfungen:**
+- ✅ Sind alle Pflichtsegmente vorhanden? (UNH, UNT)
+- ✅ Stimmt die Segmentanzahl im UNT?
+- ✅ Sind die EDIFACT-Trennzeichen korrekt?
+- ✅ Gibt es syntaktische Fehler?
+
+**Semantische Prüfungen (nachrichtentypspezifisch):**
+- ✅ **MSCONS**: Sind LIN-Segmente (Zählwerte) vorhanden?
+- ✅ **UTILMD**: Sind NAD-Segmente (Marktpartner) korrekt?
+- ✅ **ORDERS**: Ist ein BGM-Segment vorhanden?
+
+**Ergebnis-Anzeige:**
+
+```
+✅ Nachricht ist strukturell gültig
+
+📋 Nachrichtentyp: MSCONS
+📊 Segmentanzahl: 9 Segmente
+
+⚠️ Warnungen:
+- LIN-Segment sollte Zeitreihendaten enthalten
+```
+
+## Praktische Anwendungsfälle
+
+### Use Case 1: Fehleranalyse bei APERAK
+
+**Situation:** Sie erhalten eine APERAK-Fehlermeldung zu Ihrer MSCONS.
+
+**Workflow:**
+1. Ursprüngliche MSCONS im Analyzer einfügen
+2. KI-Analyse: "Welche Fehler könnten auftreten?"
+3. Chat-Frage: "Warum könnte ein Z17-Fehler auftreten?"
+4. KI erklärt mögliche Ursachen (falsche MaLo-ID, fehlende Segmente, etc.)
+5. Validierung zeigt konkrete Probleme
+
+### Use Case 2: Testdaten erstellen
+
+**Situation:** Sie brauchen UTILMD-Testdaten mit spezifischen Anpassungen.
+
+**Workflow:**
+1. Basis-UTILMD als Vorlage einfügen
+2. Modifikation: "Ändere alle Kundennamen auf 'Test GmbH'"
+3. Modifikation: "Setze das Einzugsdatum auf den 01.12.2025"
+4. Modifikation: "Erhöhe die Zählernummer um 1000"
+5. Copy-to-Clipboard → Einfügen in Testsystem
+
+### Use Case 3: Schulung neuer Mitarbeiter
+
+**Situation:** Neue Kollegin soll EDIFACT-Formate lernen.
+
+**Workflow:**
+1. Beispiel-MSCONS einfügen
+2. KI-Analyse lesen lassen
+3. Chat nutzen für Vertiefung:
+   - "Was ist der Unterschied zwischen MS und MR?"
+   - "Warum gibt es mehrere LIN-Segmente?"
+   - "Was bedeutet das DTM-Segment 163?"
+4. Hands-on: Eigene Modifikationen ausprobieren
+
+### Use Case 4: Produktions-Support
+
+**Situation:** Dringende Anpassung einer ORDERS-Nachricht nötig.
+
+**Workflow:**
+1. Produktions-ORDERS im Analyzer prüfen
+2. Chat: "Welche Auswirkung hat eine Änderung der Liefermenge?"
+3. Modifikation: "Reduziere die Menge in allen Positionen um 20%"
+4. Diff-Ansicht prüfen
+5. Validierung: ✅ Nachricht korrekt
+6. Kopieren & in Produktionssystem übernehmen
+
+## Technische Features im Detail
+
+### Unterstützte Nachrichtentypen
+
+Der Message Analyzer unterstützt **alle gängigen edi@energy-Formate**:
+
+| Format | Beschreibung | Hauptanwendung |
+|--------|--------------|----------------|
+| **MSCONS** | Verbrauchsdatennachricht | Zählerstände, Zeitreihen |
+| **UTILMD** | Stammdatennachricht | Lieferantenwechsel, Stammdaten |
+| **ORDERS** | Bestellung | Netznutzung, Lieferverträge |
+| **INVOIC** | Rechnung | Abrechnung |
+| **REMADV** | Zahlungsavis | Zahlungsverkehr |
+| **APERAK** | Anwendungsquittierung | Fehler-/Statusmeldungen |
+
+**Zusätzlich:** XML-Formate und allgemeine Textnachrichten
+
+### KI-Modell & Wissensarchiv
+
+Der Analyzer nutzt:
+
+- **LLM-Technologie** für Sprachverständnis und -generierung
+- **Willi-Mako MCP Wissensarchiv** mit:
+  - GPKE, WiM, GeLi Gas Prozesswissen
+  - EDIFACT/edi@energy Format-Spezifikationen
+  - BDEW MaKo-Richtlinien
+  - EnWG, StromNZV, EEG Regulierung
+  - Code-Listen (BDEW-Codes, EIC-Codes)
+
+### Sicherheit & Datenschutz
+
+- ✅ **Authentifizierung erforderlich** – Nur angemeldete Benutzer
+- ✅ **Keine Persistierung** – Nachrichten werden nicht dauerhaft gespeichert
+- ✅ **Session-basiert** – Daten nur für die aktuelle Sitzung
+- ✅ **GDPR-konform** – Keine personenbezogenen Daten erforderlich
+- ✅ **Rate-Limiting** – Schutz vor Missbrauch
+
+### Performance & Limits
+
+| Metrik | Wert |
+|--------|------|
+| Max. Nachrichtengröße | 500 KB |
+| Max. Versionen pro Session | Unbegrenzt |
+| Analyse-Zeit (Durchschnitt) | < 3 Sekunden |
+| Modifikations-Zeit | < 5 Sekunden |
+| Gleichzeitige Sessions | Unbegrenzt |
+
+## Anleitung: So nutzen Sie den Message Analyzer
+
+### Schritt 1: Zugriff
+
+Navigieren Sie zu: **https://stromhaltig.de/app/message-analyzer**
+
+Login erforderlich (kostenlos registrieren unter `/register`)
+
+### Schritt 2: Nachricht einfügen
+
+1. Kopieren Sie Ihre EDIFACT-Nachricht aus Ihrem System
+2. Fügen Sie sie in das Eingabefeld ein (links)
+3. Klicken Sie auf **"KI-Analyse starten"**
+
+### Schritt 3: Analyse verstehen
+
+- Lesen Sie die **KI-Analyse** im linken Panel
+- Prüfen Sie die **Validierungsergebnisse**:
+  - Grüner Haken = ✅ Gültig
+  - Rotes X = ❌ Fehler gefunden
+  - Warnungen werden gelb markiert
+
+### Schritt 4: Interaktiv arbeiten
+
+**Fragen stellen:**
+1. Geben Sie Ihre Frage im Chat-Feld (rechts) ein
+2. Drücken Sie Enter oder klicken Sie auf den Send-Button
+3. Die KI antwortet im Chat-Verlauf
+
+**Nachricht modifizieren:**
+1. Geben Sie Ihren Änderungswunsch im Chat ein
+   (z.B. "Erhöhe den Verbrauch um 15%")
+2. Die KI modifiziert die Nachricht automatisch
+3. Aktivieren Sie die **Diff-Ansicht** um Änderungen zu sehen
+4. Nutzen Sie **Undo**, falls nötig
+
+### Schritt 5: Nachricht exportieren
+
+1. Klicken Sie auf das **Kopier-Icon** 📋
+2. Die aktuelle Version ist nun in Ihrer Zwischenablage
+3. Fügen Sie sie in Ihr Zielsystem ein
+
+## Best Practices & Tipps
+
+### ✅ Do's
+
+- **Nutzen Sie präzise Formulierungen** bei Modifikationen
+  - ✅ "Ändere die MaLo-ID auf DE0009876543210123456789012345"
+  - ❌ "Ändere die ID"
+
+- **Prüfen Sie die Diff-Ansicht** nach jeder Modifikation
+  - Stellen Sie sicher, dass nur gewünschte Änderungen durchgeführt wurden
+
+- **Nutzen Sie Undo/Redo** zum Experimentieren
+  - Probieren Sie verschiedene Varianten aus
+
+- **Stellen Sie spezifische Fragen**
+  - ✅ "In welchem Zeitfenster ist der Verbrauch am höchsten?"
+  - ❌ "Erzähl mir was über die Nachricht"
+
+- **Validieren Sie nach jeder Änderung**
+  - Prüfen Sie Fehler und Warnungen
+
+### ❌ Don'ts
+
+- **Verwenden Sie keine sensiblen Produktionsdaten**
+  - Anonymisieren Sie Kundennamen, Adressen, etc.
+
+- **Verlassen Sie sich nicht blind auf die KI**
+  - Prüfen Sie kritische Änderungen manuell
+
+- **Ignorieren Sie keine Warnungen**
+  - Warnungen deuten oft auf potenzielle Probleme hin
+
+- **Ändern Sie nicht zu viel auf einmal**
+  - Kleine, inkrementelle Änderungen sind besser nachvollziehbar
+
+## Häufige Fragen (FAQ)
+
+### Welche EDIFACT-Formate werden unterstützt?
+
+Alle gängigen edi@energy-Formate: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK und viele mehr. Auch XML-Nachrichten werden erkannt.
+
+### Kann ich mehrere Nachrichten gleichzeitig analysieren?
+
+Aktuell können Sie eine Nachricht pro Session analysieren. Für Batch-Verarbeitung nutzen Sie bitte die API.
+
+### Werden meine Nachrichten gespeichert?
+
+Nein. Alle Daten sind **session-basiert** und werden nach dem Schließen des Browsers automatisch gelöscht.
+
+### Kann die KI auch komplexe EDIFACT-Strukturen verstehen?
+
+Ja! Die KI nutzt tiefes Wissen über edi@energy-Standards und kann auch verschachtelte Strukturen und Codelisten auflösen.
+
+### Was passiert bei einem Fehler in meiner Eingabe?
+
+Die Validierung zeigt Ihnen genau, wo der Fehler liegt. Die KI kann Ihnen außerdem erklären, was das Problem ist.
+
+### Kann ich den Analyzer über die API nutzen?
+
+Ja! Alle Funktionen sind auch über unsere **API V2** verfügbar:
+- `/api/v2/message-analyzer/analyze`
+- `/api/v2/message-analyzer/explanation`
+- `/api/v2/message-analyzer/chat`
+- `/api/v2/message-analyzer/modify`
+- `/api/v2/message-analyzer/validate`
+
+Siehe [API-Dokumentation](/docs/MESSAGE_ANALYZER_API_V2.md)
+
+### Wie oft kann ich den Analyzer nutzen?
+
+Es gibt ein **Rate-Limit** von 20 Anfragen pro Minute (API V2). Für höhere Limits kontaktieren Sie bitte den Support.
+
+### Unterstützt der Analyzer auch andere Sprachen als Deutsch?
+
+Aktuell ist die Benutzeroberfläche auf Deutsch optimiert. Die KI kann aber auch englische Anfragen verstehen.
+
+## Vergleich: Alt vs. Neu
+
+| Feature | **Klassische Analyse** | **Message Analyzer Enhanced** |
+|---------|------------------------|-------------------------------|
+| Strukturanalyse | ✅ Ja | ✅ Ja (verbessert) |
+| KI-Erklärung | ✅ Ja | ✅ Ja (detaillierter) |
+| **Interaktiver Chat** | ❌ Nein | ✅ **Neu!** |
+| **Modifikation** | ❌ Nein | ✅ **Neu!** |
+| **Änderungsverfolgung** | ❌ Nein | ✅ **Neu!** |
+| **Diff-Visualisierung** | ❌ Nein | ✅ **Neu!** |
+| **Echtzeit-Validierung** | ❌ Nein | ✅ **Neu!** |
+| Copy-to-Clipboard | ❌ Nein | ✅ **Neu!** |
+| Version Control | ❌ Nein | ✅ **Neu!** (Undo/Redo) |
+
+<CTABottom 
+  articleSlug="edifact-message-analyzer"
+  processName="EDIFACT Message Analyzer"
+/>
+
+## Roadmap: Kommende Features
+
+Wir arbeiten kontinuierlich an neuen Features:
+
+### Q1 2026
+
+- [ ] **Batch-Verarbeitung** – Mehrere Nachrichten auf einmal analysieren
+- [ ] **Template-Bibliothek** – Vorgefertigte EDIFACT-Templates
+- [ ] **Export-Funktionen** – Export als JSON, XML, CSV
+- [ ] **Nachrichtenvergleich** – Zwei Nachrichten direkt vergleichen
+
+### Q2 2026
+
+- [ ] **Automatische Anomalie-Erkennung** – KI warnt bei ungewöhnlichen Werten
+- [ ] **Bilateral Clarification Integration** – Direkt Klärfälle aus Nachrichten erstellen
+- [ ] **Kollaborative Features** – Nachrichten im Team kommentieren
+- [ ] **Erweiterte Statistiken** – Analysen über mehrere Nachrichten hinweg
+
+### Q3 2026
+
+- [ ] **Mobile App** – Message Analyzer für iOS und Android
+- [ ] **Offline-Modus** – Lokale Verarbeitung ohne Internet
+- [ ] **Custom Rules** – Eigene Validierungsregeln definieren
+
+## Technische Integration
+
+### REST API (V2)
+
+Nutzen Sie den Message Analyzer programmatisch:
+
+```bash
+# Token holen
+TOKEN=$(curl -X POST https://stromhaltig.de/api/v2/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}' \
+  | jq -r '.data.accessToken')
+
+# Nachricht analysieren
+curl -X POST https://stromhaltig.de/api/v2/message-analyzer/analyze \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"UNH+001+MSCONS:D:11A:UN:2.6e\n..."}' \
+  | jq '.'
+```
+
+### TypeScript SDK (in Arbeit)
+
+```typescript
+import { MessageAnalyzerClient } from '@willi-mako/sdk';
+
+const client = new MessageAnalyzerClient({
+  apiKey: process.env.WILLI_MAKO_API_KEY
+});
+
+// Analysieren
+const analysis = await client.analyze(edifactMessage);
+
+// Chat
+const response = await client.chat({
+  message: "Welche Marktpartner sind beteiligt?",
+  context: edifactMessage
+});
+
+// Modifizieren
+const modified = await client.modify({
+  instruction: "Erhöhe den Verbrauch um 10%",
+  message: edifactMessage
+});
+```
+
+## Support & Community
+
+### Hilfe benötigt?
+
+- **📧 E-Mail**: support@stromhaltig.de
+- **💬 Community Forum**: https://stromhaltig.de/app/community
+- **📚 Dokumentation**: https://stromhaltig.de/docs
+- **🎓 Schulungen**: Auf Anfrage verfügbar
+
+### Feedback & Feature-Requests
+
+Wir freuen uns über Ihr Feedback! Nutzen Sie:
+- **Community Hub** im Tool (`/app/community`)
+- **GitHub Issues** (für technische Bugs)
+- **Direktes Feedback** im Tool (Feedback-Button)
+
+## Fazit
+
+Der **EDIFACT Message Analyzer** ist mehr als nur ein Analyse-Tool – er ist Ihr **intelligenter Assistent** für die tägliche Arbeit mit Marktkommunikations-Nachrichten. 
+
+**Die wichtigsten Vorteile:**
+
+✅ **Zeitersparnis** – Keine mühsame manuelle Analyse mehr  
+✅ **Fehlerreduktion** – Echtzeit-Validierung verhindert Fehler  
+✅ **Wissenstransfer** – Perfekt für Schulung neuer Mitarbeiter  
+✅ **Flexibilität** – Testdaten erstellen in Sekunden  
+✅ **Nachvollziehbarkeit** – Vollständige Änderungshistorie  
+
+**Probieren Sie es jetzt aus:** [https://stromhaltig.de/app/message-analyzer](https://stromhaltig.de/app/message-analyzer)
+
+---
+
+## Über Willi-Mako
+
+Willi-Mako ist die führende KI-gestützte Plattform für Marktkommunikation in der deutschen Energiewirtschaft. Wir unterstützen Stadtwerke, Energieversorger und Dienstleister mit intelligenten Tools, umfassendem Wissen und einer aktiven Community.
+
+**Weitere Tools:**
+- **Chat-Assistent** – KI-basierte Beratung zu allen MaKo-Themen
+- **Code-Lookup** – BDEW- und EIC-Codes schnell finden
+- **Bilateral Clarifications** – Klärfall-Management
+- **Timeline-Dashboard** – Prozess-Tracking
+- **Community Hub** – Austausch mit Kollegen
+
+**Jetzt kostenlos registrieren:** [https://stromhaltig.de/app/register](https://stromhaltig.de/app/register)
+
+---
+
+*Letzte Aktualisierung: 8. November 2025*  
+*Version: 2.0 (Enhanced)*  
+*Autor: Willi-Mako Team*

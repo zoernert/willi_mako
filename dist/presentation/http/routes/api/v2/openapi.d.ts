@@ -684,6 +684,299 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/message-analyzer/analyze': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    message: {
+                                        type: string;
+                                        description: string;
+                                        example: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    '400': {
+                        description: string;
+                    };
+                };
+            };
+        };
+        '/message-analyzer/explanation': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    message: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                explanation: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                success: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/message-analyzer/chat': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    message: {
+                                        type: string;
+                                        description: string;
+                                        example: string;
+                                    };
+                                    chatHistory: {
+                                        type: string;
+                                        description: string;
+                                        items: {
+                                            type: string;
+                                            properties: {
+                                                role: {
+                                                    type: string;
+                                                    enum: string[];
+                                                };
+                                                content: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                    currentEdifactMessage: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                response: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                timestamp: {
+                                                    type: string;
+                                                    format: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/message-analyzer/modify': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    instruction: {
+                                        type: string;
+                                        description: string;
+                                        example: string;
+                                    };
+                                    currentMessage: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                modifiedMessage: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                isValid: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                timestamp: {
+                                                    type: string;
+                                                    format: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        '/message-analyzer/validate': {
+            post: {
+                summary: string;
+                description: string;
+                security: {
+                    bearerAuth: any[];
+                }[];
+                requestBody: {
+                    required: boolean;
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: string;
+                                required: string[];
+                                properties: {
+                                    message: {
+                                        type: string;
+                                        description: string;
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            $ref: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
         '/reasoning/generate': {
             post: {
                 summary: string;
@@ -2640,6 +2933,97 @@ export declare const apiV2OpenApiDocument: {
                     updated_at: {
                         type: string;
                         format: string;
+                    };
+                };
+            };
+            EdifactAnalysisResult: {
+                type: string;
+                properties: {
+                    summary: {
+                        type: string;
+                        description: string;
+                    };
+                    plausibilityChecks: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                        description: string;
+                    };
+                    structuredData: {
+                        type: string;
+                        properties: {
+                            segments: {
+                                type: string;
+                                items: {
+                                    type: string;
+                                    properties: {
+                                        tag: {
+                                            type: string;
+                                            description: string;
+                                        };
+                                        elements: {
+                                            type: string;
+                                            items: {
+                                                type: string;
+                                            };
+                                            description: string;
+                                        };
+                                        original: {
+                                            type: string;
+                                            description: string;
+                                        };
+                                        description: {
+                                            type: string;
+                                            description: string;
+                                        };
+                                        resolvedCodes: {
+                                            type: string;
+                                            additionalProperties: {
+                                                type: string;
+                                            };
+                                            description: string;
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    format: {
+                        type: string;
+                        enum: string[];
+                        description: string;
+                    };
+                };
+            };
+            EdifactValidationResult: {
+                type: string;
+                properties: {
+                    isValid: {
+                        type: string;
+                        description: string;
+                    };
+                    errors: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                        description: string;
+                    };
+                    warnings: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                        description: string;
+                    };
+                    messageType: {
+                        type: string;
+                        description: string;
+                    };
+                    segmentCount: {
+                        type: string;
+                        description: string;
                     };
                 };
             };

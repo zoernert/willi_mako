@@ -29,5 +29,19 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
     private detectEdifactPatterns;
     private getGeneralEdifactContext;
     private extractEdifactKeywords;
+    /**
+     * Validates basic EDIFACT structure
+     */
+    validateEdifactStructure(message: string): Promise<boolean>;
+    /**
+     * Validates EDIFACT message structure and semantics
+     */
+    validateEdifactMessage(message: string): Promise<{
+        isValid: boolean;
+        errors: string[];
+        warnings: string[];
+        messageType?: string;
+        segmentCount: number;
+    }>;
 }
 //# sourceMappingURL=message-analyzer.service.d.ts.map
