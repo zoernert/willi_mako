@@ -32,21 +32,15 @@ router.post('/ai-explanation', auth_1.requireAuth, async (req, res, next) => {
         return next(new errors_1.AppError('Message content is required and must be a string.', 400));
     }
     try {
-        const prompt = `Erkläre mir den Inhalt folgender Marktmeldung aus der Energiewirtschaft. Gib eine verständliche und strukturierte Erklärung auf Deutsch:
-
-${message}
-
-Bitte erkläre:
-1. Was für eine Art von Nachricht das ist
-2. Die wichtigsten Inhalte und Bedeutung
-3. Welche Akteure betroffen sind
-4. Was die praktischen Auswirkungen sind
-5. Eventuell vorhandene Besonderheiten oder Auffälligkeiten`;
-        const explanation = await llmProvider_1.default.generateText(prompt);
+        // Use the full 6-phase analysis pipeline for comprehensive explanation
+        const analysis = await messageAnalyzerService.analyze(message);
+        // Format the explanation with summary and detailed checks
+        const explanation = `${analysis.summary}\n\n**Detaillierte Prüfungen:**\n${analysis.plausibilityChecks.map(check => `• ${check}`).join('\n')}`;
         res.status(200).json({
             success: true,
             data: {
                 explanation,
+                messageType: analysis.format,
                 success: true
             }
         });
