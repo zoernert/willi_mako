@@ -8,6 +8,25 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
     private analyzeXml;
     private analyzeEdifact;
     private createFallbackAnalysis;
+    private createIntelligentFallbackAnalysis;
+    /**
+     * Phase 2: Identify message type from EDIFACT structure
+     * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, etc.
+     */
+    private identifyMessageType;
+    /**
+     * Phase 4: Get knowledge base context based on message type
+     */
+    private getKnowledgeBaseContext;
+    /**
+     * Phase 5: Extract structured information based on message type
+     * Universal structure extraction that works for all energy market EDIFACT types
+     */
+    private extractStructuredInfo;
+    /**
+     * Phase 6: Build intelligent analysis prompt based on message type and structure
+     */
+    private buildIntelligentAnalysisPrompt;
     private parseEdifactSimple;
     /**
      * Löst BDEW/EIC-Codes in den analysierten Segmenten auf

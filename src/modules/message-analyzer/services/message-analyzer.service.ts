@@ -91,24 +91,51 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
   private async analyzeEdifact(message: string): Promise<AnalysisResult> {
     try {
       console.log('🔍 Starting EDIFACT analysis...');
+      console.log('📋 Phase 1: Syntaktische Validierung und Parsing');
       
-      // Simple EDIFACT parsing without using the edifact library for now
+      // Phase 1: Parse and validate EDIFACT structure
       let segments: EdiSegment[] = this.parseEdifactSimple(message);
       console.log('✅ Parsed', segments.length, 'EDIFACT segments');
       
-      // Enrich segments with code lookup
+      if (segments.length === 0) {
+        throw new Error('Keine gültigen EDIFACT-Segmente gefunden');
+      }
+      
+      console.log('📋 Phase 2: Nachrichtentyp-Erkennung');
+      
+      // Phase 2: Identify message type from structure
+      const messageType = this.identifyMessageType(segments);
+      console.log('✅ Message type identified:', messageType);
+      
+      console.log('📋 Phase 3: Code-Auflösung und Segment-Anreicherung');
+      
+      // Phase 3: Enrich segments with code lookup
       segments = await this.enrichSegmentsWithCodeLookup(segments);
       console.log('✅ Enriched segments with code lookup');
       
       const parsedMessage: ParsedEdiMessage = { segments };
       
-      // Get enriched context from vector store
-      console.log('🔍 Getting enriched context...');
-      const enrichedContext = await this.getEnrichedAnalysisContext(parsedMessage);
-      console.log('✅ Retrieved context for message type:', enrichedContext.messageType);
-
-      console.log('🔍 Building analysis prompt...');
-      const prompt = this.buildEnrichedAnalysisPrompt(parsedMessage, enrichedContext);
+      console.log('📋 Phase 4: Wissensbasis-Kontext abrufen');
+      
+      // Phase 4: Get knowledge base context based on message type
+      const knowledgeContext = await this.getKnowledgeBaseContext(messageType, segments);
+      console.log('✅ Retrieved knowledge context for', messageType);
+      
+      console.log('📋 Phase 5: Strukturerkennung für intelligente Ausgabe');
+      
+      // Phase 5: Extract structured data based on message type
+      const structuredInfo = this.extractStructuredInfo(segments, messageType);
+      console.log('✅ Extracted structured info:', Object.keys(structuredInfo).join(', '));
+      
+      console.log('📋 Phase 6: KI-Analyse mit kontextspezifischem Prompt');
+      
+      // Phase 6: Build intelligent prompt and analyze
+      const prompt = this.buildIntelligentAnalysisPrompt(
+        parsedMessage, 
+        messageType, 
+        knowledgeContext, 
+        structuredInfo
+      );
       
       console.log('🔍 Calling Gemini API...');
       const rawAnalysis = await llm.generateText(prompt);
@@ -116,7 +143,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
       if (!rawAnalysis || rawAnalysis.trim().length === 0) {
         console.warn('⚠️ Empty response from Gemini API');
-        return this.createFallbackAnalysis(parsedMessage, enrichedContext);
+        return this.createIntelligentFallbackAnalysis(parsedMessage, messageType, structuredInfo);
       }
 
       const { summary, plausibilityChecks } = this.parseAnalysisResponse(rawAnalysis);
@@ -155,6 +182,391 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       structuredData: parsedMessage,
       format: 'EDIFACT',
     };
+  }
+
+  private createIntelligentFallbackAnalysis(
+    parsedMessage: ParsedEdiMessage, 
+    messageType: string, 
+    structuredInfo: any
+  ): AnalysisResult {
+    const segmentCount = parsedMessage.segments.length;
+    const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
+
+    // Build meaningful summary from structured info
+    let summary = `Dies ist eine ${messageType}-Nachricht`;
+    
+    if (structuredInfo.sender && structuredInfo.receiver) {
+      summary += ` von ${structuredInfo.sender} an ${structuredInfo.receiver}`;
+    }
+    
+    if (structuredInfo.purpose) {
+      summary += `. ${structuredInfo.purpose}`;
+    }
+    
+    summary += ` Die Nachricht enthält ${segmentCount} Segmente.`;
+
+    const checks: string[] = [
+      `Nachrichtentyp: ${messageType}`,
+      `Segmentanzahl: ${segmentCount} Segmente`,
+      `Segmenttypen: ${uniqueSegments.join(', ')}`
+    ];
+
+    if (structuredInfo.sender) checks.push(`Absender: ${structuredInfo.sender}`);
+    if (structuredInfo.receiver) checks.push(`Empfänger: ${structuredInfo.receiver}`);
+    if (structuredInfo.marketLocation) checks.push(`Marktlokation: ${structuredInfo.marketLocation}`);
+    if (structuredInfo.measurements?.length > 0) {
+      checks.push(`Messwerte: ${structuredInfo.measurements.length} Zeitreihen erkannt`);
+    }
+
+    return {
+      summary,
+      plausibilityChecks: checks,
+      structuredData: parsedMessage,
+      format: 'EDIFACT',
+    };
+  }
+
+  /**
+   * Phase 2: Identify message type from EDIFACT structure
+   * Supports all energy market message types: MSCONS, UTILMD, ORDERS, INVOIC, REMADV, APERAK, etc.
+   */
+  private identifyMessageType(segments: EdiSegment[]): string {
+    // First: Check UNH segment (Message Header)
+    const unhSegment = segments.find(s => s.tag === 'UNH');
+    if (unhSegment && unhSegment.elements.length > 1) {
+      // UNH+1+MSCONS:D:04B:UN:2.4c -> Extract MSCONS
+      const messageTypeField = unhSegment.elements[1];
+      if (messageTypeField && messageTypeField.includes(':')) {
+        const messageType = messageTypeField.split(':')[0].toUpperCase();
+        console.log('✅ Message type from UNH:', messageType);
+        return messageType;
+      }
+    }
+
+    // Fallback: Try to detect from other indicators
+    const hasLIN = segments.some(s => s.tag === 'LIN');
+    const hasQTY = segments.some(s => s.tag === 'QTY');
+    const hasIDE = segments.some(s => s.tag === 'IDE');
+    const hasCTA = segments.some(s => s.tag === 'CTA');
+    const hasMOA = segments.some(s => s.tag === 'MOA');
+
+    // MSCONS typically has LIN + QTY (consumption data)
+    if (hasLIN && hasQTY) {
+      console.log('✅ Message type inferred from structure: MSCONS');
+      return 'MSCONS';
+    }
+
+    // UTILMD typically has IDE (identification)
+    if (hasIDE || hasCTA) {
+      console.log('✅ Message type inferred from structure: UTILMD');
+      return 'UTILMD';
+    }
+
+    // INVOIC/REMADV typically has MOA (monetary amount)
+    if (hasMOA) {
+      console.log('✅ Message type inferred from structure: INVOIC/REMADV');
+      return 'INVOIC';
+    }
+
+    console.log('⚠️ Message type could not be determined, using EDIFACT');
+    return 'EDIFACT';
+  }
+
+  /**
+   * Phase 4: Get knowledge base context based on message type
+   */
+  private async getKnowledgeBaseContext(
+    messageType: string, 
+    segments: EdiSegment[]
+  ): Promise<{
+    messageTypeInfo: string;
+    segmentInfo: string;
+    processInfo: string;
+  }> {
+    try {
+      console.log('🔍 Querying knowledge base for:', messageType);
+      
+      // Query 1: Message type specific information
+      const messageTypeQuery = `${messageType} EDIFACT Nachrichtentyp Energiewirtschaft Bedeutung Verwendung Zweck`;
+      
+      // Query 2: Process context
+      const processQuery = `${messageType} Marktkommunikation Prozess GPKE WiM GeLi Gas Geschäftsprozess`;
+      
+      // Query 3: Segment-specific information
+      const uniqueSegments = [...new Set(segments.map(s => s.tag))].slice(0, 8);
+      const segmentQuery = `EDIFACT ${uniqueSegments.join(' ')} Segment Bedeutung ${messageType}`;
+
+      // Parallel queries for performance
+      const [messageTypeResults, processResults, segmentResults] = await Promise.all([
+        this.qdrantService.searchByText(messageTypeQuery, 2, 0.65),
+        this.qdrantService.searchByText(processQuery, 2, 0.60),
+        this.qdrantService.searchByText(segmentQuery, 3, 0.60)
+      ]);
+
+      const messageTypeInfo = messageTypeResults
+        .map((r: any) => r.payload?.text || '')
+        .join('\n\n')
+        .substring(0, 1000);
+
+      const processInfo = processResults
+        .map((r: any) => r.payload?.text || '')
+        .join('\n\n')
+        .substring(0, 800);
+
+      const segmentInfo = segmentResults
+        .map((r: any) => r.payload?.text || '')
+        .join('\n\n')
+        .substring(0, 1200);
+
+      console.log('✅ Knowledge base context retrieved');
+      console.log('   - Message type info:', messageTypeInfo.length, 'chars');
+      console.log('   - Process info:', processInfo.length, 'chars');
+      console.log('   - Segment info:', segmentInfo.length, 'chars');
+
+      return {
+        messageTypeInfo: messageTypeInfo || `${messageType} ist ein EDIFACT-Nachrichtentyp der Energiewirtschaft.`,
+        segmentInfo: segmentInfo || 'Keine spezifische Segment-Dokumentation verfügbar.',
+        processInfo: processInfo || 'Keine Prozess-Dokumentation verfügbar.'
+      };
+    } catch (error) {
+      console.warn('⚠️ Error getting knowledge base context:', error);
+      return {
+        messageTypeInfo: `${messageType} Nachrichtentyp`,
+        segmentInfo: 'Segment-Dokumentation nicht verfügbar',
+        processInfo: 'Prozess-Dokumentation nicht verfügbar'
+      };
+    }
+  }
+
+  /**
+   * Phase 5: Extract structured information based on message type
+   * Universal structure extraction that works for all energy market EDIFACT types
+   */
+  private extractStructuredInfo(segments: EdiSegment[], messageType: string): any {
+    const info: any = {
+      messageType,
+      sender: null,
+      receiver: null,
+      marketLocation: null,
+      meterNumber: null,
+      purpose: null,
+      timestamps: [],
+      measurements: [],
+      parties: [],
+      references: []
+    };
+
+    // Extract NAD segments (Name and Address) - Market participants
+    const nadSegments = segments.filter(s => s.tag === 'NAD');
+    for (const nad of nadSegments) {
+      if (nad.elements.length >= 3) {
+        const qualifier = nad.elements[0]; // MS, MR, DP, etc.
+        const code = nad.elements[2] || nad.elements[1];
+        const resolvedName = (nad as any).resolved_meta?.companyName || code;
+        
+        const party = { qualifier, code, name: resolvedName };
+        info.parties.push(party);
+        
+        // Map common qualifiers
+        if (qualifier === 'MS') info.sender = resolvedName;  // Messstellenbetreiber
+        if (qualifier === 'MR') info.receiver = resolvedName; // Messstellennutzer
+        if (qualifier === 'DP') info.deliveryPoint = resolvedName; // Delivery Point
+      }
+    }
+
+    // Extract LOC segments (Location) - Market location
+    const locSegment = segments.find(s => s.tag === 'LOC');
+    if (locSegment && locSegment.elements.length >= 2) {
+      const qualifier = locSegment.elements[0];
+      if (qualifier === '172') { // MaLo qualifier
+        info.marketLocation = locSegment.elements[1];
+      }
+    }
+
+    // Extract RFF segments (References)
+    const rffSegments = segments.filter(s => s.tag === 'RFF');
+    for (const rff of rffSegments) {
+      if (rff.elements.length >= 1) {
+        const refData = rff.elements[0];
+        const [refQualifier, refValue] = refData.split(':');
+        info.references.push({ qualifier: refQualifier, value: refValue });
+        
+        // MG = Meter number
+        if (refQualifier === 'MG') {
+          info.meterNumber = refValue;
+        }
+      }
+    }
+
+    // Extract BGM segment (Beginning of Message) - Purpose
+    const bgmSegment = segments.find(s => s.tag === 'BGM');
+    if (bgmSegment && bgmSegment.elements.length >= 1) {
+      const messageFunction = bgmSegment.elements[0];
+      info.messageFunction = messageFunction;
+      
+      // Map common message functions
+      const functionMap: { [key: string]: string } = {
+        'E01': 'Messwertübermittlung',
+        'E02': 'Stammdatenmitteilung',
+        'E03': 'Vertragsdaten',
+        '7': 'Stammdatenmitteilung',
+        '9': 'Original',
+        '220': 'Bestellung',
+        '380': 'Rechnung'
+      };
+      info.purpose = functionMap[messageFunction] || `Nachrichtenfunktion ${messageFunction}`;
+    }
+
+    // Extract DTM segments (Date/Time) - Timestamps
+    const dtmSegments = segments.filter(s => s.tag === 'DTM');
+    for (const dtm of dtmSegments) {
+      if (dtm.elements.length >= 1) {
+        const [qualifier, value, format] = dtm.elements[0].split(':');
+        info.timestamps.push({ qualifier, value, format });
+      }
+    }
+
+    // Extract LIN + QTY + DTM combinations (Measurement data) - MSCONS specific
+    if (messageType === 'MSCONS') {
+      const linSegments = segments.filter(s => s.tag === 'LIN');
+      for (let i = 0; i < linSegments.length; i++) {
+        const linIndex = segments.indexOf(linSegments[i]);
+        
+        // Get QTY and DTM after this LIN
+        const qtySegment = segments.slice(linIndex).find(s => s.tag === 'QTY');
+        const dtmSegment = segments.slice(linIndex).find(s => s.tag === 'DTM');
+        
+        if (qtySegment && qtySegment.elements.length >= 1) {
+          const [qualifier, value, unit] = qtySegment.elements[0].split(':');
+          const measurement: any = { qualifier, value, unit };
+          
+          if (dtmSegment && dtmSegment.elements.length >= 1) {
+            const [dtmQualifier, dtmValue] = dtmSegment.elements[0].split(':');
+            measurement.timestamp = dtmValue;
+            measurement.timestampQualifier = dtmQualifier;
+          }
+          
+          info.measurements.push(measurement);
+        }
+      }
+    }
+
+    // Extract CCI segments (Characteristic) - UTILMD specific
+    if (messageType === 'UTILMD') {
+      const cciSegments = segments.filter(s => s.tag === 'CCI');
+      info.characteristics = cciSegments.map(cci => ({
+        value: cci.elements.join(':')
+      }));
+    }
+
+    // Extract MOA segments (Monetary Amount) - INVOIC/REMADV specific
+    if (messageType === 'INVOIC' || messageType === 'REMADV') {
+      const moaSegments = segments.filter(s => s.tag === 'MOA');
+      info.monetaryAmounts = moaSegments.map(moa => {
+        if (moa.elements.length >= 1) {
+          const [qualifier, amount, currency] = moa.elements[0].split(':');
+          return { qualifier, amount, currency };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+
+    return info;
+  }
+
+  /**
+   * Phase 6: Build intelligent analysis prompt based on message type and structure
+   */
+  private buildIntelligentAnalysisPrompt(
+    parsedMessage: ParsedEdiMessage,
+    messageType: string,
+    knowledgeContext: any,
+    structuredInfo: any
+  ): string {
+    const segmentCount = parsedMessage.segments.length;
+    
+    // Build structured data overview
+    let dataOverview = '';
+    
+    if (structuredInfo.sender) {
+      dataOverview += `\n- Absender: ${structuredInfo.sender}`;
+    }
+    if (structuredInfo.receiver) {
+      dataOverview += `\n- Empfänger: ${structuredInfo.receiver}`;
+    }
+    if (structuredInfo.marketLocation) {
+      dataOverview += `\n- Marktlokation (MaLo): ${structuredInfo.marketLocation}`;
+    }
+    if (structuredInfo.meterNumber) {
+      dataOverview += `\n- Zählernummer: ${structuredInfo.meterNumber}`;
+    }
+    if (structuredInfo.purpose) {
+      dataOverview += `\n- Zweck: ${structuredInfo.purpose}`;
+    }
+    if (structuredInfo.measurements?.length > 0) {
+      dataOverview += `\n- Messwerte: ${structuredInfo.measurements.length} Zeitreihen`;
+      const firstMeasurement = structuredInfo.measurements[0];
+      if (firstMeasurement.value) {
+        dataOverview += ` (z.B. ${firstMeasurement.value} ${firstMeasurement.unit || ''})`;
+      }
+    }
+    if (structuredInfo.timestamps?.length > 0) {
+      dataOverview += `\n- Zeitstempel: ${structuredInfo.timestamps.length}`;
+    }
+    if (structuredInfo.references?.length > 0) {
+      dataOverview += `\n- Referenzen: ${structuredInfo.references.length}`;
+    }
+    if (structuredInfo.monetaryAmounts?.length > 0) {
+      dataOverview += `\n- Geldbeträge: ${structuredInfo.monetaryAmounts.length}`;
+    }
+    if (structuredInfo.parties?.length > 0) {
+      dataOverview += `\n- Beteiligte Parteien: ${structuredInfo.parties.length}`;
+    }
+
+    // Build segment list
+    const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
+    
+    return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht detailliert.
+
+**NACHRICHTENTYP:** ${messageType}
+**SEGMENTANZAHL:** ${segmentCount} Segmente
+**SEGMENTTYPEN:** ${uniqueSegments.join(', ')}
+
+**EXTRAHIERTE STRUKTURDATEN:**${dataOverview}
+
+**WISSENSBASIS - NACHRICHTENTYP:**
+${knowledgeContext.messageTypeInfo}
+
+**WISSENSBASIS - GESCHÄFTSPROZESS:**
+${knowledgeContext.processInfo}
+
+**WISSENSBASIS - SEGMENTE:**
+${knowledgeContext.segmentInfo}
+
+**VOLLSTÄNDIGE NACHRICHT:**
+${parsedMessage.segments.map(s => s.original).join('\n')}
+
+**AUFGABE:**
+Analysiere die Nachricht präzise und strukturiert für einen Fachnutzer in der Marktkommunikation.
+
+**ANTWORTE IM FOLGENDEN FORMAT (DEUTSCH):**
+
+ZUSAMMENFASSUNG: [2-3 Sätze: Was ist der geschäftliche Zweck? Wer kommuniziert mit wem? Was sind die Hauptinhalte?]
+
+PLAUSIBILITÄT:
+PRÜFUNG: [Strukturelle EDIFACT-Konformität - sind alle Pflichtsegmente vorhanden?]
+PRÜFUNG: [${messageType}-Spezifische Anforderungen - entspricht die Nachricht dem Schema?]
+PRÜFUNG: [Datenqualität - sind Zeitstempel, IDs, Werte plausibel?]
+PRÜFUNG: [Geschäftslogik - ergibt der Inhalt im Prozesskontext Sinn?]
+PRÜFUNG: [Vollständigkeit - fehlen wichtige Informationen?]
+
+**WICHTIG:**
+- Nutze die extrahierten Strukturdaten
+- Beziehe dich konkret auf die Segmente
+- Nenne spezifische Werte (MaLo, Zählernummer, Mengen, Zeitpunkte)
+- Erkläre den Ablesegrund falls erkennbar
+- Bewerte die Plausibilität fachlich
+- Antworte nur auf Deutsch`;
   }
 
   private parseEdifactSimple(message: string): EdiSegment[] {
