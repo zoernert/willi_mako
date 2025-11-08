@@ -348,6 +348,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       sender: null,
       receiver: null,
       marketLocation: null,
+      meteringLocation: null,
       meterNumber: null,
       purpose: null,
       timestamps: [],
@@ -374,12 +375,22 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       }
     }
 
-    // Extract LOC segments (Location) - Market location
+    // Extract LOC segments (Location) - Distinguish MaLo vs MeLo by format
     const locSegment = segments.find(s => s.tag === 'LOC');
     if (locSegment && locSegment.elements.length >= 2) {
       const qualifier = locSegment.elements[0];
-      if (qualifier === '172') { // MaLo qualifier
-        info.marketLocation = locSegment.elements[1];
+      if (qualifier === '172') { // MaLo/MeLo qualifier
+        const locationId = locSegment.elements[1];
+        // MeLo: starts with DE + 16 digits (total 18 chars or more)
+        // MaLo: 33 chars (DE + 31 digits)
+        if (locationId && locationId.startsWith('DE') && locationId.length >= 18 && locationId.length < 30) {
+          info.meteringLocation = locationId;
+        } else if (locationId && locationId.length >= 30) {
+          info.marketLocation = locationId;
+        } else {
+          // Fallback: store as marketLocation if unclear
+          info.marketLocation = locationId;
+        }
       }
     }
 
@@ -494,6 +505,9 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     if (structuredInfo.receiver) {
       dataOverview += `\n- Empfänger: ${structuredInfo.receiver}`;
     }
+    if (structuredInfo.meteringLocation) {
+      dataOverview += `\n- Messlokation (MeLo): ${structuredInfo.meteringLocation}`;
+    }
     if (structuredInfo.marketLocation) {
       dataOverview += `\n- Marktlokation (MaLo): ${structuredInfo.marketLocation}`;
     }
@@ -526,55 +540,76 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
     // Build segment list
     const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
     
-    return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht detailliert.
+    return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht.
 
-**NACHRICHTENTYP:** ${messageType}
-**SEGMENTANZAHL:** ${segmentCount} Segmente
-**SEGMENTTYPEN:** ${uniqueSegments.join(', ')}
+**EXTRAHIERTE STRUKTURDATEN (VERWENDE DIESE DIREKT):**${dataOverview}
 
-**EXTRAHIERTE STRUKTURDATEN (NUTZE DIESE KONKRET IN DEINER ANTWORT):**${dataOverview}
-
-**WISSENSBASIS - NACHRICHTENTYP:**
+**WISSENSBASIS:**
 ${knowledgeContext.messageTypeInfo}
-
-**WISSENSBASIS - GESCHÄFTSPROZESS:**
 ${knowledgeContext.processInfo}
 
-**WISSENSBASIS - SEGMENTE:**
-${knowledgeContext.segmentInfo}
-
-**VOLLSTÄNDIGE NACHRICHT (NUR ALS REFERENZ):**
+**VOLLSTÄNDIGE NACHRICHT (REFERENZ):**
 ${parsedMessage.segments.map(s => s.original).join('\n')}
 
-**AUFGABE:**
-Analysiere die Nachricht präzise und strukturiert für einen Fachnutzer in der Marktkommunikation.
+**AUFGABE FÜR SACHBEARBEITER IN DER MARKTKOMMUNIKATION:**
+Erstelle eine übersichtliche TABELLARISCHE Analyse mit konkreten Werten aus den extrahierten Daten.
 
-**KRITISCHE ANFORDERUNGEN:**
-1. VERWENDE AUSSCHLIESSLICH die oben extrahierten Strukturdaten (Absender, Empfänger, MaLo, Messwerte, etc.)
-2. NENNE KONKRETE WERTE: Firmennamen (nicht nur Codes), MaLo-IDs, Messwerte mit Einheiten, Zeitpunkte
-3. ERKLÄRE den Geschäftszweck basierend auf den extrahierten Daten
-4. ANALYSIERE die vorhandenen Segmente (QTY, STS, RFF, etc.) konkret
-5. IGNORIERE NICHT vorhandene Daten - wenn Messwerte da sind, NENNE sie!
+**AUSGABEFORMAT (ZWINGEND EINHALTEN):**
 
-**ANTWORTE IM FOLGENDEN FORMAT (DEUTSCH):**
+## Nachrichtendaten
 
-ZUSAMMENFASSUNG: [2-3 Sätze mit KONKRETEN WERTEN: Absender (NAME), Empfänger (NAME), Marktlokation (MaLo-ID), Messwerte (Wert + Einheit), Zeitpunkt, Zählernummer]
+| Feld | Wert |
+|------|------|
+| Nachrichtentyp | ${messageType} |
+| Absender | [Name aus extrahierten Daten] (Code: [Code]) |
+| Empfänger | [Name aus extrahierten Daten] (Code: [Code]) |
+| MaLo/MeLo | [ID mit Typ-Kennzeichnung: "MaLo:" oder "MeLo:"] |
+| Zählernummer | [Wert aus RFF+MG] |
+| Messwert | [Wert + Einheit] |
+| Zeitpunkt | [Formatiertes Datum/Zeit aus DTM] |
+| Zweck | [purpose aus extrahierten Daten] |
 
-PLAUSIBILITÄT:
-PRÜFUNG: [Strukturelle EDIFACT-Konformität - liste KONKRET vorhandene Pflichtsegmente auf]
-PRÜFUNG: [${messageType}-Spezifische Anforderungen - prüfe KONKRET: sind QTY, LIN, DTM, STS vorhanden?]
-PRÜFUNG: [Datenqualität - bewerte die KONKRETEN Werte: Zeitstempel-Format, MaLo-Format, Messwert-Plausibilität]
-PRÜFUNG: [Geschäftslogik - erkläre den Prozess basierend auf NAD-Qualifizierern und BGM-Code]
-PRÜFUNG: [Vollständigkeit - liste KONKRET fehlende oder vorhandene Informationen auf (z.B. STS-Codes für Ablesegrund)]
+## Prüfergebnisse
 
-**BEISPIEL GUTE ZUSAMMENFASSUNG:**
-"Dies ist eine MSCONS-Nachricht zur Übermittlung von Verbrauchsdaten. Der Messstellenbetreiber [FIRMENNAME] (Code: [CODE]) übermittelt an [FIRMENNAME] (Code: [CODE]) einen Messwert von [WERT] kWh für die Marktlokation [MALO-ID] (Zählernummer: [ZÄHLER-NR]) zum Zeitpunkt [DATUM ZEIT]."
+| Prüfung | Status | Details |
+|---------|--------|---------|
+| EDIFACT-Struktur | ✅/⚠️/❌ | [Pflichtsegmente vorhanden?] |
+| ${messageType}-Spezifisch | ✅/⚠️/❌ | [QTY, LIN, DTM, STS vorhanden?] |
+| Datenqualität | ✅/⚠️/❌ | [Zeitformat, ID-Format, Messwert plausibel?] |
+| Geschäftslogik | ✅/⚠️/❌ | [Prozess erkennbar? NAD-Qualifizierer korrekt?] |
+| Vollständigkeit | ✅/⚠️/❌ | [Alle relevanten Daten vorhanden?] |
+
+## Zusatzinformationen
+
+- [Weitere relevante Details aus STS-Codes, Referenzen, etc.]
+- [Besonderheiten oder Auffälligkeiten]
+
+**KRITISCHE REGELN:**
+1. TABELLEN-FORMAT verwenden (Markdown-Tabellen mit | Spalte | Spalte |)
+2. KONKRETE WERTE aus den extrahierten Daten einsetzen
+3. MaLo vs. MeLo KORREKT unterscheiden:
+   - MeLo: DE + 16 Ziffern (18 Zeichen, z.B. DE0071373163400000)
+   - MaLo: DE + 31 Ziffern (33 Zeichen)
+4. Firmennamen aus extrahierten Daten verwenden, NICHT nur Codes
+5. Status-Icons: ✅ (OK), ⚠️ (Warnung), ❌ (Fehler)
+6. KEINE vagen Aussagen - nur wenn Daten fehlen, dann Status ❌ mit "Fehlt: [Feld]"
+
+**BEISPIEL KORREKTE AUSGABE:**
+| Feld | Wert |
+|------|------|
+| Nachrichtentyp | MSCONS |
+| Absender | Stromnetz Berlin GmbH (Code: 9905766000008) |
+| Empfänger | Vattenfall Europe Sales GmbH (Code: 9903756000004) |
+| MeLo | DE0071373163400000 |
+| Zählernummer | 1LGZ0056829358 |
+| Messwert | 2729.000 kWh |
+| Zeitpunkt | 31.05.2025 22:00 Uhr |
 
 **VERMEIDE:**
-- Vage Aussagen wie "möglicherweise fehlen Angaben" wenn Daten VORHANDEN sind
-- Ignorieren von extrahierten Strukturdaten
-- Nur Codes statt aufgelöste Firmennamen nennen
-- Generische Antworten ohne konkrete Werte`;
+- Fließtext statt Tabellen
+- Codes ohne aufgelöste Namen
+- "möglicherweise fehlt" wenn Daten VORHANDEN sind
+- Falsche MaLo/MeLo-Zuordnung`;
   }
 
   private parseEdifactSimple(message: string): EdiSegment[] {

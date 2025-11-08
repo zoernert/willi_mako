@@ -285,6 +285,7 @@ class MessageAnalyzerService {
             sender: null,
             receiver: null,
             marketLocation: null,
+            meteringLocation: null,
             meterNumber: null,
             purpose: null,
             timestamps: [],
@@ -310,12 +311,24 @@ class MessageAnalyzerService {
                     info.deliveryPoint = resolvedName; // Delivery Point
             }
         }
-        // Extract LOC segments (Location) - Market location
+        // Extract LOC segments (Location) - Distinguish MaLo vs MeLo by format
         const locSegment = segments.find(s => s.tag === 'LOC');
         if (locSegment && locSegment.elements.length >= 2) {
             const qualifier = locSegment.elements[0];
-            if (qualifier === '172') { // MaLo qualifier
-                info.marketLocation = locSegment.elements[1];
+            if (qualifier === '172') { // MaLo/MeLo qualifier
+                const locationId = locSegment.elements[1];
+                // MeLo: starts with DE + 16 digits (total 18 chars or more)
+                // MaLo: 33 chars (DE + 31 digits)
+                if (locationId && locationId.startsWith('DE') && locationId.length >= 18 && locationId.length < 30) {
+                    info.meteringLocation = locationId;
+                }
+                else if (locationId && locationId.length >= 30) {
+                    info.marketLocation = locationId;
+                }
+                else {
+                    // Fallback: store as marketLocation if unclear
+                    info.marketLocation = locationId;
+                }
             }
         }
         // Extract RFF segments (References)
@@ -410,6 +423,9 @@ class MessageAnalyzerService {
         if (structuredInfo.receiver) {
             dataOverview += `\n- Empfänger: ${structuredInfo.receiver}`;
         }
+        if (structuredInfo.meteringLocation) {
+            dataOverview += `\n- Messlokation (MeLo): ${structuredInfo.meteringLocation}`;
+        }
         if (structuredInfo.marketLocation) {
             dataOverview += `\n- Marktlokation (MaLo): ${structuredInfo.marketLocation}`;
         }
@@ -440,47 +456,76 @@ class MessageAnalyzerService {
         }
         // Build segment list
         const uniqueSegments = [...new Set(parsedMessage.segments.map(s => s.tag))];
-        return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht detailliert.
+        return `Du bist Experte für EDIFACT-Nachrichten in der deutschen Energiewirtschaft. Analysiere diese ${messageType}-Nachricht.
 
-**NACHRICHTENTYP:** ${messageType}
-**SEGMENTANZAHL:** ${segmentCount} Segmente
-**SEGMENTTYPEN:** ${uniqueSegments.join(', ')}
+**EXTRAHIERTE STRUKTURDATEN (VERWENDE DIESE DIREKT):**${dataOverview}
 
-**EXTRAHIERTE STRUKTURDATEN:**${dataOverview}
-
-**WISSENSBASIS - NACHRICHTENTYP:**
+**WISSENSBASIS:**
 ${knowledgeContext.messageTypeInfo}
-
-**WISSENSBASIS - GESCHÄFTSPROZESS:**
 ${knowledgeContext.processInfo}
 
-**WISSENSBASIS - SEGMENTE:**
-${knowledgeContext.segmentInfo}
-
-**VOLLSTÄNDIGE NACHRICHT:**
+**VOLLSTÄNDIGE NACHRICHT (REFERENZ):**
 ${parsedMessage.segments.map(s => s.original).join('\n')}
 
-**AUFGABE:**
-Analysiere die Nachricht präzise und strukturiert für einen Fachnutzer in der Marktkommunikation.
+**AUFGABE FÜR SACHBEARBEITER IN DER MARKTKOMMUNIKATION:**
+Erstelle eine übersichtliche TABELLARISCHE Analyse mit konkreten Werten aus den extrahierten Daten.
 
-**ANTWORTE IM FOLGENDEN FORMAT (DEUTSCH):**
+**AUSGABEFORMAT (ZWINGEND EINHALTEN):**
 
-ZUSAMMENFASSUNG: [2-3 Sätze: Was ist der geschäftliche Zweck? Wer kommuniziert mit wem? Was sind die Hauptinhalte?]
+## Nachrichtendaten
 
-PLAUSIBILITÄT:
-PRÜFUNG: [Strukturelle EDIFACT-Konformität - sind alle Pflichtsegmente vorhanden?]
-PRÜFUNG: [${messageType}-Spezifische Anforderungen - entspricht die Nachricht dem Schema?]
-PRÜFUNG: [Datenqualität - sind Zeitstempel, IDs, Werte plausibel?]
-PRÜFUNG: [Geschäftslogik - ergibt der Inhalt im Prozesskontext Sinn?]
-PRÜFUNG: [Vollständigkeit - fehlen wichtige Informationen?]
+| Feld | Wert |
+|------|------|
+| Nachrichtentyp | ${messageType} |
+| Absender | [Name aus extrahierten Daten] (Code: [Code]) |
+| Empfänger | [Name aus extrahierten Daten] (Code: [Code]) |
+| MaLo/MeLo | [ID mit Typ-Kennzeichnung: "MaLo:" oder "MeLo:"] |
+| Zählernummer | [Wert aus RFF+MG] |
+| Messwert | [Wert + Einheit] |
+| Zeitpunkt | [Formatiertes Datum/Zeit aus DTM] |
+| Zweck | [purpose aus extrahierten Daten] |
 
-**WICHTIG:**
-- Nutze die extrahierten Strukturdaten
-- Beziehe dich konkret auf die Segmente
-- Nenne spezifische Werte (MaLo, Zählernummer, Mengen, Zeitpunkte)
-- Erkläre den Ablesegrund falls erkennbar
-- Bewerte die Plausibilität fachlich
-- Antworte nur auf Deutsch`;
+## Prüfergebnisse
+
+| Prüfung | Status | Details |
+|---------|--------|---------|
+| EDIFACT-Struktur | ✅/⚠️/❌ | [Pflichtsegmente vorhanden?] |
+| ${messageType}-Spezifisch | ✅/⚠️/❌ | [QTY, LIN, DTM, STS vorhanden?] |
+| Datenqualität | ✅/⚠️/❌ | [Zeitformat, ID-Format, Messwert plausibel?] |
+| Geschäftslogik | ✅/⚠️/❌ | [Prozess erkennbar? NAD-Qualifizierer korrekt?] |
+| Vollständigkeit | ✅/⚠️/❌ | [Alle relevanten Daten vorhanden?] |
+
+## Zusatzinformationen
+
+- [Weitere relevante Details aus STS-Codes, Referenzen, etc.]
+- [Besonderheiten oder Auffälligkeiten]
+
+**KRITISCHE REGELN:**
+1. TABELLEN-FORMAT verwenden (Markdown-Tabellen mit | Spalte | Spalte |)
+2. KONKRETE WERTE aus den extrahierten Daten einsetzen
+3. MaLo vs. MeLo KORREKT unterscheiden:
+   - MeLo: DE + 16 Ziffern (18 Zeichen, z.B. DE0071373163400000)
+   - MaLo: DE + 31 Ziffern (33 Zeichen)
+4. Firmennamen aus extrahierten Daten verwenden, NICHT nur Codes
+5. Status-Icons: ✅ (OK), ⚠️ (Warnung), ❌ (Fehler)
+6. KEINE vagen Aussagen - nur wenn Daten fehlen, dann Status ❌ mit "Fehlt: [Feld]"
+
+**BEISPIEL KORREKTE AUSGABE:**
+| Feld | Wert |
+|------|------|
+| Nachrichtentyp | MSCONS |
+| Absender | Stromnetz Berlin GmbH (Code: 9905766000008) |
+| Empfänger | Vattenfall Europe Sales GmbH (Code: 9903756000004) |
+| MeLo | DE0071373163400000 |
+| Zählernummer | 1LGZ0056829358 |
+| Messwert | 2729.000 kWh |
+| Zeitpunkt | 31.05.2025 22:00 Uhr |
+
+**VERMEIDE:**
+- Fließtext statt Tabellen
+- Codes ohne aufgelöste Namen
+- "möglicherweise fehlt" wenn Daten VORHANDEN sind
+- Falsche MaLo/MeLo-Zuordnung`;
     }
     parseEdifactSimple(message) {
         const segments = [];
