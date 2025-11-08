@@ -135,6 +135,24 @@ class MessageAnalyzerService {
                         .map(s => ({
                         code: s.elements[2] || s.elements[1],
                         name: s.resolved_meta.companyName
+                    })),
+                    resolvedBGM: segments
+                        .filter(s => { var _a; return s.tag === 'BGM' && ((_a = s.resolved_meta) === null || _a === void 0 ? void 0 : _a.codeDescription); })
+                        .map(s => ({
+                        code: s.elements[0],
+                        description: s.resolved_meta.codeDescription
+                    })),
+                    resolvedSTS: segments
+                        .filter(s => { var _a; return s.tag === 'STS' && ((_a = s.resolved_meta) === null || _a === void 0 ? void 0 : _a.codeDescription); })
+                        .map(s => ({
+                        code: s.elements[2] || s.elements[0],
+                        description: s.resolved_meta.codeDescription
+                    })),
+                    resolvedRFF: segments
+                        .filter(s => { var _a; return s.tag === 'RFF' && s.elements[0] === 'Z13' && ((_a = s.resolved_meta) === null || _a === void 0 ? void 0 : _a.processDescription); })
+                        .map(s => ({
+                        processId: s.elements[1],
+                        description: s.resolved_meta.processDescription
                     }))
                 },
                 phase4_knowledgeBase: {
@@ -554,7 +572,7 @@ class MessageAnalyzerService {
             'MR': 'Empfänger (Messstellennutzer)',
             'DP': 'Lieferadresse'
         };
-        // BGM code meanings
+        // BGM code meanings (basic + UTILMD specific)
         const bgmCodes = {
             '312': 'Status: Positiv',
             '313': 'Status: Negativ',
@@ -562,24 +580,112 @@ class MessageAnalyzerService {
             'E01': 'Messwerte',
             '7': 'Stammdaten',
             '220': 'Bestellung',
-            '380': 'Rechnung'
+            '380': 'Rechnung',
+            // UTILMD specific codes (hardcoded for performance)
+            'E02': 'Abmeldung/Kündigung',
+            'E03': 'Änderung',
+            'E04': 'Synchronisationsanfrage',
+            'E05': 'Stammdatenänderung',
+            'E06': 'Vertragsende',
+            'E07': 'Aufhebung',
+            'E08': 'Antwort',
+            'E09': 'Benachrichtigung',
+            'E10': 'Rückmeldung',
+            'E11': 'Anfrage',
+            'E12': 'Zusage',
+            'E13': 'Absage',
+            'E14': 'Bestätigung',
+            'E15': 'Fehler',
+            'E16': 'Wiedervorlage',
+            'E17': 'Storno',
+            'E18': 'Ersatz',
+            'E19': 'Duplikat',
+            'E20': 'Kopie',
+            'E35': 'Anfrage (UTILMD Stammdaten)'
+        };
+        // STS code meanings (UTILMD Status-Codes)
+        const stsCodes = {
+            'E01': 'Abgelehnt',
+            'E02': 'Akzeptiert',
+            'E03': 'Storniert',
+            'E04': 'In Bearbeitung',
+            'E05': 'Erledigt',
+            'E06': 'Fehler',
+            'E07': 'Teilweise erledigt',
+            'E08': 'Unterbrochen',
+            'E09': 'Zurückgestellt',
+            'E10': 'Weitergeleitet',
+            'E11': 'Warten auf Information',
+            'E12': 'Bestätigt',
+            'E13': 'Vorläufig',
+            'E14': 'Endgültig',
+            'E15': 'Cluster-Fehler',
+            '1': 'Aktiv',
+            '2': 'Inaktiv',
+            '3': 'Gesperrt',
+            '4': 'Gelöscht',
+            '5': 'Geplant',
+            '6': 'Testbetrieb',
+            '7': 'Außer Betrieb'
         };
         // RFF qualifier meanings
         const rffQualifiers = {
             'MG': 'Zählernummer',
             'Z13': 'Prozessreferenz'
         };
-        // Extract DAR from UNB segment (Datenaustausch-Referenz)
-        const unbSegment = segments.find(s => s.tag === 'UNB');
-        if (unbSegment && unbSegment.elements.length >= 5) {
-            const dar = unbSegment.elements[4]; // DAR ist typischerweise an Position 4
-            if (dar) {
+        // Common Process IDs (PIDs) for RFF+Z13 - most frequent ones
+        const commonPIDs = {
+            '44001': 'Anmeldung Belieferung - Einzug (GPKE 4.1)',
+            '44002': 'Anmeldung Belieferung - Einzug nach Kündigung (GPKE 4.2)',
+            '44003': 'Anmeldung Lieferbeginn - Umzug (GPKE 4.3)',
+            '44004': 'Anmeldung Lieferbeginn - Umzug nach Kündigung (GPKE 4.4)',
+            '44005': 'Anmeldung Lieferbeginn - Einzug Erstbelieferung (GPKE 4.5)',
+            '44006': 'Anmeldung Lieferunterbrechung - Auszug (GPKE 4.6)',
+            '44007': 'Anmeldung Lieferunterbrechung - Auszug nach Kündigung (GPKE 4.7)',
+            '44008': 'Anmeldung Belieferung ohne Lieferbeginn (GPKE 4.8)',
+            '44009': 'Kündigung einer Belieferung (GPKE 4.9)',
+            '44010': 'Anfrage Stammdaten (GPKE 4.10)',
+            '44011': 'Änderung Stammdaten (GPKE 4.11)',
+            '44012': 'Anmeldung Stilllegung/Wiederinbetriebnahme (GPKE 4.12)',
+            '44013': 'Netznutzungsabrechnung bei Ersatzversorgung (GPKE 4.13)',
+            '44014': 'Information über Änderung an Marktlokation (GPKE 4.14)',
+            '44015': 'Anmeldung bei vorzeitigem Lieferantenwechsel (GPKE 4.15)',
+            '44016': 'Ersatzversorgung Anfang/Ende (GPKE 4.16)',
+            '44017': 'Stammdatenänderung (GPKE 4.17)',
+            '55001': 'Lieferbeginn NB → LFN (WiM)',
+            '55002': 'Lieferbeginn LFN → NB (WiM)',
+            '55003': 'Lieferende NB → LFN (WiM)',
+            '55004': 'Lieferende LFN → NB (WiM)',
+            '55005': 'Lieferbeginn bei Umzug (WiM)',
+            '55006': 'Lieferende bei Auszug (WiM)',
+            '55007': 'Turnuswechsel (WiM)',
+            '55008': 'Stammdatenänderung NB → LFN (WiM)',
+            '55009': 'Stammdatenänderung LFN → NB (WiM)',
+            '55010': 'Ersatzversorgung (WiM)',
+            '55671': 'Änderung Stammdaten (WiM Strom)',
+            '55077': 'Stammdatenaktualisierung'
+        };
+        // Extract DAR from UNZ segment (Datenaustausch-Referenz)
+        // UNZ+Anzahl+DAR - viel einfacher als UNB zu parsen
+        const unzSegment = segments.find(s => s.tag === 'UNZ');
+        if (unzSegment && unzSegment.elements.length >= 2) {
+            const dar = unzSegment.elements[1]; // DAR ist an Position 1 (nach Anzahl)
+            if (dar && dar.length > 5) { // DAR ist typischerweise länger als 5 Zeichen
                 table.push({
-                    segment: 'UNB',
+                    segment: 'UNZ',
                     meaning: 'Datenaustausch-Referenz (DAR)',
                     value: dar
                 });
             }
+        }
+        // ========== BUSINESS PROCESS DETECTION (Geschäftsvorfall) ==========
+        const businessProcess = this.detectBusinessProcess(segments, messageType);
+        if (businessProcess) {
+            table.push({
+                segment: '📋 GESCHÄFTSVORFALL',
+                meaning: 'Erkannter Prozess',
+                value: businessProcess
+            });
         }
         for (const segment of segments) {
             // Skip envelope segments
@@ -592,19 +698,26 @@ class MessageAnalyzerService {
             switch (segment.tag) {
                 case 'BGM':
                     const bgmCode = segment.elements[0];
-                    // Use resolved description if available (from semantic search)
-                    if ((_a = segment.resolved_meta) === null || _a === void 0 ? void 0 : _a.codeDescription) {
+                    // Hybrid approach: hardcoded → semantic → fallback
+                    if (bgmCodes[bgmCode]) {
+                        value = `${bgmCode} (${bgmCodes[bgmCode]})`;
+                    }
+                    else if ((_a = segment.resolved_meta) === null || _a === void 0 ? void 0 : _a.codeDescription) {
                         value = `${bgmCode} (${segment.resolved_meta.codeDescription})`;
                     }
                     else {
-                        value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+                        value = `Code ${bgmCode}`;
                     }
                     break;
                 case 'STS':
                     // STS can have status codes at different positions
                     // STS+7++E01 → elements[0]=7, elements[1]="", elements[2]=E01
-                    if ((_b = segment.resolved_meta) === null || _b === void 0 ? void 0 : _b.codeDescription) {
-                        const stsCode = segment.elements[2] || segment.elements[0];
+                    const stsCode = segment.elements[2] || segment.elements[0]; // Prefer E-codes at position 2
+                    // Hybrid approach: hardcoded → semantic → raw
+                    if (stsCodes[stsCode]) {
+                        value = `${stsCode} (${stsCodes[stsCode]})`;
+                    }
+                    else if ((_b = segment.resolved_meta) === null || _b === void 0 ? void 0 : _b.codeDescription) {
                         value = `${stsCode} (${segment.resolved_meta.codeDescription})`;
                     }
                     else {
@@ -669,9 +782,17 @@ class MessageAnalyzerService {
                         if (rffValue) {
                             rffValue = rffValue.replace(/\?[+:.'?]/g, '');
                         }
-                        // Use resolved process description if available (from semantic search)
-                        if ((_d = segment.resolved_meta) === null || _d === void 0 ? void 0 : _d.processDescription) {
-                            value = `${rffValue} (${segment.resolved_meta.processDescription})`;
+                        // Hybrid approach for Z13 (PIDs): hardcoded → semantic → raw
+                        if (rffQualifier === 'Z13' && rffValue) {
+                            if (commonPIDs[rffValue]) {
+                                value = `${rffValue} (${commonPIDs[rffValue]})`;
+                            }
+                            else if ((_d = segment.resolved_meta) === null || _d === void 0 ? void 0 : _d.processDescription) {
+                                value = `${rffValue} (${segment.resolved_meta.processDescription})`;
+                            }
+                            else {
+                                value = rffValue;
+                            }
                         }
                         else {
                             value = rffValue || rffQualifier;
@@ -778,6 +899,165 @@ class MessageAnalyzerService {
             });
         }
         return table;
+    }
+    /**
+     * Detect business process (Geschäftsvorfall) based on segment combinations
+     * This provides immediate business context for the clerk analyzing the message
+     */
+    detectBusinessProcess(segments, messageType) {
+        var _a;
+        const bgm = segments.find(s => s.tag === 'BGM');
+        const bgmCode = bgm === null || bgm === void 0 ? void 0 : bgm.elements[0];
+        // UTILMD: Supplier switch, move-in/out, basic supply
+        if (messageType === 'UTILMD') {
+            const rff = segments.find(s => s.tag === 'RFF' && s.elements[0] === 'Z13');
+            const pid = (_a = rff === null || rff === void 0 ? void 0 : rff.elements[1]) === null || _a === void 0 ? void 0 : _a.replace(/\?[+:.'?]/g, '');
+            const nadMS = segments.find(s => s.tag === 'NAD' && s.elements[0] === 'MS');
+            const nadMR = segments.find(s => s.tag === 'NAD' && s.elements[0] === 'MR');
+            // Detailed process detection based on PID
+            if (pid) {
+                // GPKE processes (44xxx)
+                if (pid === '44001')
+                    return '🔄 Lieferantenwechsel - Einzug (GPKE 4.1)';
+                if (pid === '44002')
+                    return '🔄 Lieferantenwechsel - Einzug nach Kündigung (GPKE 4.2)';
+                if (pid === '44003')
+                    return '📦 Umzug - Lieferbeginn (GPKE 4.3)';
+                if (pid === '44004')
+                    return '📦 Umzug - Lieferbeginn nach Kündigung (GPKE 4.4)';
+                if (pid === '44005')
+                    return '🏠 Einzug - Erstbelieferung (GPKE 4.5)';
+                if (pid === '44006')
+                    return '📤 Auszug - Lieferunterbrechung (GPKE 4.6)';
+                if (pid === '44007')
+                    return '📤 Auszug - Lieferunterbrechung nach Kündigung (GPKE 4.7)';
+                if (pid === '44008')
+                    return '📋 Anmeldung ohne Lieferbeginn (GPKE 4.8)';
+                if (pid === '44009')
+                    return '✂️ Kündigung der Belieferung (GPKE 4.9)';
+                if (pid === '44010')
+                    return '❓ Stammdaten-Anfrage (GPKE 4.10)';
+                if (pid === '44011')
+                    return '📝 Stammdaten-Änderung (GPKE 4.11)';
+                if (pid === '44012')
+                    return '🔧 Stilllegung/Wiederinbetriebnahme (GPKE 4.12)';
+                if (pid === '44013')
+                    return '⚡ Netznutzungsabrechnung Ersatzversorgung (GPKE 4.13)';
+                if (pid === '44014')
+                    return '📢 Information Marktlokationsänderung (GPKE 4.14)';
+                if (pid === '44015')
+                    return '⚡ Vorzeitiger Lieferantenwechsel (GPKE 4.15)';
+                if (pid === '44016')
+                    return '🆘 Ersatzversorgung - Anfang/Ende (GPKE 4.16)';
+                if (pid === '44017')
+                    return '📝 Stammdatenänderung (GPKE 4.17)';
+                // WiM processes (55xxx)
+                if (pid === '55001')
+                    return '▶️ Lieferbeginn NB → LFN (WiM)';
+                if (pid === '55002')
+                    return '▶️ Lieferbeginn LFN → NB (WiM)';
+                if (pid === '55003')
+                    return '⏹️ Lieferende NB → LFN (WiM)';
+                if (pid === '55004')
+                    return '⏹️ Lieferende LFN → NB (WiM)';
+                if (pid === '55005')
+                    return '📦 Lieferbeginn bei Umzug (WiM)';
+                if (pid === '55006')
+                    return '📤 Lieferende bei Auszug (WiM)';
+                if (pid === '55007')
+                    return '🔄 Turnuswechsel (WiM)';
+                if (pid === '55008')
+                    return '📝 Stammdatenänderung NB → LFN (WiM)';
+                if (pid === '55009')
+                    return '📝 Stammdatenänderung LFN → NB (WiM)';
+                if (pid === '55010')
+                    return '🆘 Ersatzversorgung (WiM)';
+                if (pid === '55671')
+                    return '📝 Stammdaten-Änderung (WiM Strom)';
+                if (pid === '55077')
+                    return '🔄 Stammdatenaktualisierung';
+            }
+            // Fallback on BGM code if PID not recognized
+            if (bgmCode === 'E02')
+                return '✂️ Abmeldung/Kündigung';
+            if (bgmCode === 'E03')
+                return '📝 Änderung Stammdaten';
+            if (bgmCode === 'E35')
+                return '❓ Stammdaten-Anfrage';
+            if (bgmCode === 'E05')
+                return '📝 Stammdatenänderung';
+            return '📋 UTILMD Stammdatenprozess';
+        }
+        // MSCONS: Meter reading types
+        if (messageType === 'MSCONS') {
+            const dtm = segments.find(s => s.tag === 'DTM' && s.elements[0] === '163');
+            const qty = segments.filter(s => s.tag === 'QTY');
+            if (bgmCode === 'E01') {
+                // Check for different reading types
+                const hasMultipleReadings = qty.length > 4; // Turnusablesung hat typischerweise mehr Werte
+                if (dtm) {
+                    const readingType = dtm.elements[1];
+                    if ((readingType === null || readingType === void 0 ? void 0 : readingType.includes('2301')) || (readingType === null || readingType === void 0 ? void 0 : readingType.includes('2312'))) {
+                        return '📊 Turnusablesung (Jahresablesung)';
+                    }
+                }
+                if (hasMultipleReadings) {
+                    return '📊 Turnusablesung';
+                }
+                return '📈 Zwischenablesung';
+            }
+            if (bgmCode === '7')
+                return '📋 Stammdaten-Messwerte';
+            return '📊 Zählerstandsgangmessung';
+        }
+        // INVOIC/REMADV: Invoice types
+        if (messageType === 'INVOIC' || messageType === 'REMADV') {
+            const doc = segments.find(s => s.tag === 'DOC');
+            const docType = doc === null || doc === void 0 ? void 0 : doc.elements[0];
+            if (messageType === 'REMADV') {
+                if (docType === '380')
+                    return '💰 Zahlungsavis - Rechnung';
+                if (docType === '381' || docType === '457')
+                    return '💸 Zahlungsavis - Gutschrift';
+                return '💰 Zahlungsavis';
+            }
+            if (messageType === 'INVOIC') {
+                if (bgmCode === '380')
+                    return '🧾 Rechnung';
+                if (bgmCode === '381' || bgmCode === '457')
+                    return '💸 Gutschrift';
+                if (bgmCode === '383')
+                    return '⚠️ Mahnung';
+                return '🧾 Rechnungsdokument';
+            }
+        }
+        // ORDERS: Purchase orders
+        if (messageType === 'ORDERS') {
+            if (bgmCode === '220')
+                return '🛒 Bestellung';
+            if (bgmCode === '221')
+                return '🔄 Bestelländerung';
+            if (bgmCode === '222')
+                return '❌ Bestellstornierung';
+            return '🛒 Bestellprozess';
+        }
+        // QUOTES: Price quotes
+        if (messageType === 'QUOTES') {
+            if (bgmCode === '310')
+                return '💵 Preisangebot';
+            if (bgmCode === 'Z29')
+                return '❓ Preisanfrage';
+            return '💵 Preisanfrage/Angebot';
+        }
+        // APERAK/CONTRL: Acknowledgements
+        if (messageType === 'APERAK' || messageType === 'CONTRL') {
+            if (bgmCode === '312')
+                return '✅ Positive Bestätigung';
+            if (bgmCode === '313')
+                return '❌ Negative Bestätigung (Ablehnung)';
+            return '📨 Bestätigung/Quittierung';
+        }
+        return null; // No specific business process detected
     }
     /**
      * Phase 6: Build intelligent analysis prompt based on message type and structure

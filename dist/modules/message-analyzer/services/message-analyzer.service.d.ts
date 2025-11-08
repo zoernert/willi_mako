@@ -28,6 +28,11 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
      */
     private buildSegmentTable;
     /**
+     * Detect business process (Geschäftsvorfall) based on segment combinations
+     * This provides immediate business context for the clerk analyzing the message
+     */
+    private detectBusinessProcess;
+    /**
      * Phase 6: Build intelligent analysis prompt based on message type and structure
      */
     private buildIntelligentAnalysisPrompt;
