@@ -681,7 +681,23 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       switch (segment.tag) {
         case 'BGM':
           const bgmCode = segment.elements[0];
-          value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+          // Use resolved description if available (from semantic search)
+          if (segment.resolved_meta?.codeDescription) {
+            value = `${bgmCode} (${segment.resolved_meta.codeDescription})`;
+          } else {
+            value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+          }
+          break;
+
+        case 'STS':
+          // STS can have status codes at different positions
+          // STS+7++E01 → elements[0]=7, elements[1]="", elements[2]=E01
+          if (segment.resolved_meta?.codeDescription) {
+            const stsCode = segment.elements[2] || segment.elements[0];
+            value = `${stsCode} (${segment.resolved_meta.codeDescription})`;
+          } else {
+            value = segment.elements.slice(0, 3).filter(Boolean).join(' : ');
+          }
           break;
 
         case 'DTM':
@@ -1174,6 +1190,71 @@ ${markdownRows || '| - | - | - |'}
               }
             } catch (error) {
               console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
+            }
+          }
+        }
+        
+        // Behandle BGM-Codes mit semantischer Suche (UTILMD)
+        if (segment.tag === 'BGM' && segment.elements[0] && messageType === 'UTILMD') {
+          const bgmCode = segment.elements[0];
+          try {
+            const query = `UTILMD BGM ${bgmCode} Nachrichtenfunktion Geschäftsvorfall`;
+            const results = await this.qdrantService.searchByText(query, 1, 0.75);
+            
+            if (results && results.length > 0) {
+              const payload = results[0].payload as any;
+              const text = payload?.text || payload?.content || '';
+              
+              if (text) {
+                // Suche nach Beschreibung des BGM-Codes
+                const lines = text.split('\n');
+                for (const line of lines) {
+                  if (line.includes(bgmCode) && (line.includes('Anmeldung') || line.includes('Abmeldung') || line.includes('Änderung'))) {
+                    const desc = line.trim().substring(0, 80);
+                    if (!enrichedSegment.resolved_meta) {
+                      enrichedSegment.resolved_meta = {};
+                    }
+                    enrichedSegment.resolved_meta.codeDescription = desc;
+                    console.log(`✅ Resolved BGM code ${bgmCode} to: ${desc}`);
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Failed to resolve BGM code ${bgmCode}:`, error);
+          }
+        }
+        
+        // Behandle STS-Codes mit semantischer Suche (UTILMD)
+        if (segment.tag === 'STS' && messageType === 'UTILMD') {
+          const stsCode = segment.elements[2] || segment.elements[0]; // E01, E02, etc.
+          if (stsCode && stsCode.startsWith('E')) {
+            try {
+              const query = `UTILMD STS ${stsCode} Statusinformation Fehler Ablehnung`;
+              const results = await this.qdrantService.searchByText(query, 1, 0.75);
+              
+              if (results && results.length > 0) {
+                const payload = results[0].payload as any;
+                const text = payload?.text || payload?.content || '';
+                
+                if (text) {
+                  const lines = text.split('\n');
+                  for (const line of lines) {
+                    if (line.includes(stsCode)) {
+                      const desc = line.trim().substring(0, 80);
+                      if (!enrichedSegment.resolved_meta) {
+                        enrichedSegment.resolved_meta = {};
+                      }
+                      enrichedSegment.resolved_meta.codeDescription = desc;
+                      console.log(`✅ Resolved STS code ${stsCode} to: ${desc}`);
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to resolve STS code ${stsCode}:`, error);
             }
           }
         }
