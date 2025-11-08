@@ -679,9 +679,54 @@ class MessageAnalyzerService {
                     break;
                 case 'MOA':
                     meaning = 'Geldbetrag';
-                    if (segment.elements.length >= 1) {
-                        const [, amount, currency] = segment.elements[0].split(':');
-                        value = `${amount} ${currency || 'EUR'}`;
+                    if (segment.elements.length >= 2) {
+                        // Parser hat bereits nach + und : gesplittet
+                        // elements[0] = Qualifier (z.B. "9" oder "12")
+                        // elements[1] = Betrag (z.B. "-850.29")
+                        // elements[2] = Währung (optional, z.B. "EUR")
+                        const moaQualifier = segment.elements[0];
+                        const amount = segment.elements[1];
+                        const currency = segment.elements[2] || 'EUR';
+                        // MOA Qualifier meanings
+                        const moaQualifiers = {
+                            '9': 'Betrag zu zahlen',
+                            '12': 'Rechnungsbetrag',
+                            '52': 'Rabatt',
+                            '79': 'Gesamtbetrag',
+                            '125': 'Zu zahlender Betrag',
+                            '129': 'Gesamtbetrag der Rechnung'
+                        };
+                        meaning = moaQualifiers[moaQualifier] || `Geldbetrag (${moaQualifier})`;
+                        value = `${amount} ${currency}`;
+                    }
+                    break;
+                case 'DOC':
+                    meaning = 'Dokument';
+                    if (segment.elements.length >= 2) {
+                        // elements[0] = Dokumenttyp (z.B. "380" = Rechnung, "457" = Gutschrift)
+                        // elements[1] = Dokumentnummer
+                        const docType = segment.elements[0];
+                        const docNumber = segment.elements[1];
+                        const docTypes = {
+                            '380': 'Rechnung',
+                            '381': 'Gutschrift',
+                            '383': 'Lastschrift',
+                            '386': 'Vorauszahlung',
+                            '457': 'Gutschrift/Storno'
+                        };
+                        meaning = docTypes[docType] || `Dokument ${docType}`;
+                        value = docNumber;
+                    }
+                    break;
+                case 'CUX':
+                    meaning = 'Währung';
+                    if (segment.elements.length >= 2) {
+                        // elements[0] = Qualifier (z.B. "2")
+                        // elements[1] = Währungscode (z.B. "EUR")
+                        // elements[2] = Währungstyp (optional)
+                        const currencyCode = segment.elements[1];
+                        const currencyType = segment.elements[2];
+                        value = currencyType ? `${currencyCode} (${currencyType})` : currencyCode;
                     }
                     break;
                 case 'UNH':
@@ -1417,8 +1462,12 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
             const untSegment = segments.find(s => s.tag === 'UNT');
             if (untSegment && untSegment.elements.length > 0) {
                 const declaredCount = parseInt(untSegment.elements[0], 10);
-                if (!isNaN(declaredCount) && declaredCount !== segmentCount) {
-                    warnings.push(`Segmentanzahl in UNT (${declaredCount}) stimmt nicht mit tatsächlicher Anzahl (${segmentCount}) überein`);
+                // UNT count should include all segments from UNH to UNT (inclusive)
+                // Exclude interchange segments: UNA, UNB, UNZ
+                const messageSegments = segments.filter(s => s.tag !== 'UNA' && s.tag !== 'UNB' && s.tag !== 'UNZ');
+                const actualMessageSegmentCount = messageSegments.length;
+                if (!isNaN(declaredCount) && declaredCount !== actualMessageSegmentCount) {
+                    warnings.push(`Segmentanzahl in UNT (${declaredCount}) stimmt nicht mit tatsächlicher Anzahl (${actualMessageSegmentCount}) überein`);
                 }
             }
             // Check for empty segments

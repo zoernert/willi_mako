@@ -1067,9 +1067,9 @@ ${markdownRows || '| - | - | - |'}
         }
         
         // Behandle NAD-Segmente speziell (Name and Address)
-        if (segment.tag === 'NAD' && segment.elements.length >= 3) {
+        if (segment.tag === 'NAD' && segment.elements.length >= 2) {
           const partyQualifier = segment.elements[0]; // z.B. 'MR' für Marktpartner
-          const code = segment.elements[2]; // Der eigentliche Code
+          const code = segment.elements[2] || segment.elements[1]; // Code kann an Position 1 oder 2 sein
           
           if (this.isPotentialEnergyCode(code)) {
             try {
