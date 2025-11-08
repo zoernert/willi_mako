@@ -1148,7 +1148,18 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
         console.log('📄 Raw response (first 500 chars):', rawAnalysis.substring(0, 500));
         // Clean the response first
         let cleanedResponse = rawAnalysis.trim();
-        // Try German keywords first
+        // NEW: Check if response contains markdown tables (new format)
+        const hasMarkdownTables = cleanedResponse.includes('| Segment | Bedeutung | Wert |') ||
+            cleanedResponse.includes('| Prüfung | Status | Details |');
+        if (hasMarkdownTables) {
+            // New format: Return the complete markdown response as summary
+            console.log('✅ Detected markdown table format, returning full response');
+            return {
+                summary: cleanedResponse,
+                plausibilityChecks: [] // Checks are in the table
+            };
+        }
+        // OLD FORMAT: Try German keywords first
         let summaryMatch = cleanedResponse.match(/ZUSAMMENFASSUNG:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITÄT:|\n[A-Z]+:|$)/);
         if (!summaryMatch) {
             summaryMatch = cleanedResponse.match(/SUMMARY:\s*([\s\S]*?)(?:\n\n|\nPLAUSIBILITY:|\n[A-Z]+:|$)/);
