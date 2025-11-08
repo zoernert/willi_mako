@@ -672,9 +672,12 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
         case 'DTM':
           if (segment.elements.length >= 1) {
-            const dtmParts = segment.elements[0].split(':');
-            const qualifier = dtmParts[0];
-            let dtmValue = dtmParts[1];
+            // Parser hat bereits nach + und : gesplittet
+            // elements[0] = Qualifier (z.B. "137")
+            // elements[1] = Wert (z.B. "202509042320?+00")
+            // elements[2] = Format-Code (z.B. "303")
+            const qualifier = segment.elements[0];
+            let dtmValue = segment.elements[1];
             meaning = dtmQualifiers[qualifier] || `Zeitangabe ${qualifier}`;
             
             // Remove EDIFACT release characters (e.g. ?+)
@@ -716,9 +719,11 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
         case 'RFF':
           if (segment.elements.length >= 1) {
-            const rffParts = segment.elements[0].split(':');
-            const rffQualifier = rffParts[0];
-            let rffValue = rffParts[1];
+            // Parser hat bereits nach + und : gesplittet
+            // elements[0] = Qualifier (z.B. "Z13")
+            // elements[1] = Wert (z.B. "15002")
+            const rffQualifier = segment.elements[0];
+            let rffValue = segment.elements[1];
             meaning = rffQualifiers[rffQualifier] || `Referenz ${rffQualifier}`;
             // Remove release characters
             if (rffValue) {
@@ -730,19 +735,26 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 
         case 'QTY':
           meaning = 'Menge';
-          if (segment.elements.length >= 1) {
-            const [, qtyValue, unit] = segment.elements[0].split(':');
-            value = `${qtyValue} ${unit || ''}`.trim();
+          if (segment.elements.length >= 2) {
+            // elements[0] = Qualifier (z.B. "47")
+            // elements[1] = Wert (z.B. "1")
+            // elements[2] = Einheit (z.B. "H87")
+            const qtyValue = segment.elements[1];
+            const unit = segment.elements[2] || '';
+            value = `${qtyValue} ${unit}`.trim();
           }
           break;
 
         case 'PRI':
           meaning = 'Preis';
-          if (segment.elements.length >= 1) {
-            const priParts = segment.elements[0].split(':');
-            const priceValue = priParts[4] || priParts[1];
-            const priceUnit = priParts[5] || priParts[2];
-            value = `${priceValue} ${priceUnit || ''}`.trim();
+          if (segment.elements.length >= 2) {
+            // elements[0] = Qualifier (z.B. "CAL")
+            // elements[1] = Preis-Typ (optional)
+            // elements[2] = Preiswert
+            // elements[3] = weitere Details...
+            const priceValue = segment.elements[2] || segment.elements[1];
+            const priceUnit = segment.elements[3] || '';
+            value = `${priceValue} ${priceUnit}`.trim();
           }
           break;
 
