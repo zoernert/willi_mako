@@ -520,7 +520,7 @@ class MessageAnalyzerService {
      * Build comprehensive segment table with intelligent interpretation
      */
     buildSegmentTable(segments, messageType) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e, _f;
         const table = [];
         // Segment meaning mappings
         const segmentMeanings = {
@@ -592,7 +592,24 @@ class MessageAnalyzerService {
             switch (segment.tag) {
                 case 'BGM':
                     const bgmCode = segment.elements[0];
-                    value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+                    // Use resolved description if available (from semantic search)
+                    if ((_a = segment.resolved_meta) === null || _a === void 0 ? void 0 : _a.codeDescription) {
+                        value = `${bgmCode} (${segment.resolved_meta.codeDescription})`;
+                    }
+                    else {
+                        value = bgmCodes[bgmCode] || `Code ${bgmCode}`;
+                    }
+                    break;
+                case 'STS':
+                    // STS can have status codes at different positions
+                    // STS+7++E01 → elements[0]=7, elements[1]="", elements[2]=E01
+                    if ((_b = segment.resolved_meta) === null || _b === void 0 ? void 0 : _b.codeDescription) {
+                        const stsCode = segment.elements[2] || segment.elements[0];
+                        value = `${stsCode} (${segment.resolved_meta.codeDescription})`;
+                    }
+                    else {
+                        value = segment.elements.slice(0, 3).filter(Boolean).join(' : ');
+                    }
                     break;
                 case 'DTM':
                     if (segment.elements.length >= 1) {
@@ -627,7 +644,7 @@ class MessageAnalyzerService {
                     const nadQualifier = segment.elements[0];
                     meaning = nadQualifiers[nadQualifier] || `Partei ${nadQualifier}`;
                     const nadCode = segment.elements[2] || segment.elements[1];
-                    const resolvedName = (_a = segment.resolved_meta) === null || _a === void 0 ? void 0 : _a.companyName;
+                    const resolvedName = (_c = segment.resolved_meta) === null || _c === void 0 ? void 0 : _c.companyName;
                     value = resolvedName ? `${resolvedName} (${nadCode})` : nadCode;
                     break;
                 case 'LOC':
@@ -653,7 +670,7 @@ class MessageAnalyzerService {
                             rffValue = rffValue.replace(/\?[+:.'?]/g, '');
                         }
                         // Use resolved process description if available (from semantic search)
-                        if ((_b = segment.resolved_meta) === null || _b === void 0 ? void 0 : _b.processDescription) {
+                        if ((_d = segment.resolved_meta) === null || _d === void 0 ? void 0 : _d.processDescription) {
                             value = `${rffValue} (${segment.resolved_meta.processDescription})`;
                         }
                         else {
@@ -749,13 +766,13 @@ class MessageAnalyzerService {
                     break;
                 case 'UNH':
                     meaning = 'Nachrichtentyp';
-                    value = ((_c = segment.elements[1]) === null || _c === void 0 ? void 0 : _c.split(':')[0]) || 'EDIFACT';
+                    value = ((_e = segment.elements[1]) === null || _e === void 0 ? void 0 : _e.split(':')[0]) || 'EDIFACT';
                     break;
                 default:
                     value = segment.elements.join(' : ');
             }
             table.push({
-                segment: `${segment.tag}${((_d = segment.elements[0]) === null || _d === void 0 ? void 0 : _d.split(':')[0]) ? '+' + segment.elements[0].split(':')[0] : ''}`,
+                segment: `${segment.tag}${((_f = segment.elements[0]) === null || _f === void 0 ? void 0 : _f.split(':')[0]) ? '+' + segment.elements[0].split(':')[0] : ''}`,
                 meaning,
                 value
             });
@@ -1037,6 +1054,67 @@ ${markdownRows || '| - | - | - |'}
                     }
                     catch (error) {
                         console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
+                    }
+                }
+            }
+            // Behandle BGM-Codes mit semantischer Suche (UTILMD)
+            if (segment.tag === 'BGM' && segment.elements[0] && messageType === 'UTILMD') {
+                const bgmCode = segment.elements[0];
+                try {
+                    const query = `UTILMD BGM ${bgmCode} Nachrichtenfunktion Geschäftsvorfall`;
+                    const results = await this.qdrantService.searchByText(query, 1, 0.75);
+                    if (results && results.length > 0) {
+                        const payload = results[0].payload;
+                        const text = (payload === null || payload === void 0 ? void 0 : payload.text) || (payload === null || payload === void 0 ? void 0 : payload.content) || '';
+                        if (text) {
+                            // Suche nach Beschreibung des BGM-Codes
+                            const lines = text.split('\n');
+                            for (const line of lines) {
+                                if (line.includes(bgmCode) && (line.includes('Anmeldung') || line.includes('Abmeldung') || line.includes('Änderung'))) {
+                                    const desc = line.trim().substring(0, 80);
+                                    if (!enrichedSegment.resolved_meta) {
+                                        enrichedSegment.resolved_meta = {};
+                                    }
+                                    enrichedSegment.resolved_meta.codeDescription = desc;
+                                    console.log(`✅ Resolved BGM code ${bgmCode} to: ${desc}`);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (error) {
+                    console.warn(`⚠️ Failed to resolve BGM code ${bgmCode}:`, error);
+                }
+            }
+            // Behandle STS-Codes mit semantischer Suche (UTILMD)
+            if (segment.tag === 'STS' && messageType === 'UTILMD') {
+                const stsCode = segment.elements[2] || segment.elements[0]; // E01, E02, etc.
+                if (stsCode && stsCode.startsWith('E')) {
+                    try {
+                        const query = `UTILMD STS ${stsCode} Statusinformation Fehler Ablehnung`;
+                        const results = await this.qdrantService.searchByText(query, 1, 0.75);
+                        if (results && results.length > 0) {
+                            const payload = results[0].payload;
+                            const text = (payload === null || payload === void 0 ? void 0 : payload.text) || (payload === null || payload === void 0 ? void 0 : payload.content) || '';
+                            if (text) {
+                                const lines = text.split('\n');
+                                for (const line of lines) {
+                                    if (line.includes(stsCode)) {
+                                        const desc = line.trim().substring(0, 80);
+                                        if (!enrichedSegment.resolved_meta) {
+                                            enrichedSegment.resolved_meta = {};
+                                        }
+                                        enrichedSegment.resolved_meta.codeDescription = desc;
+                                        console.log(`✅ Resolved STS code ${stsCode} to: ${desc}`);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (error) {
+                        console.warn(`⚠️ Failed to resolve STS code ${stsCode}:`, error);
                     }
                 }
             }

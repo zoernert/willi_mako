@@ -14,6 +14,7 @@ export interface EdiSegment {
     resolved_meta?: {
         companyName?: string;
         processDescription?: string;
+        codeDescription?: string;
     };
 }
 export interface ParsedEdiMessage {

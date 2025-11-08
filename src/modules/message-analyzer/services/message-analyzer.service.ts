@@ -166,6 +166,24 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
             .map(s => ({
               code: s.elements[2] || s.elements[1],
               name: (s as any).resolved_meta.companyName
+            })),
+          resolvedBGM: segments
+            .filter(s => s.tag === 'BGM' && (s as any).resolved_meta?.codeDescription)
+            .map(s => ({
+              code: s.elements[0],
+              description: (s as any).resolved_meta.codeDescription
+            })),
+          resolvedSTS: segments
+            .filter(s => s.tag === 'STS' && (s as any).resolved_meta?.codeDescription)
+            .map(s => ({
+              code: s.elements[2] || s.elements[0],
+              description: (s as any).resolved_meta.codeDescription
+            })),
+          resolvedRFF: segments
+            .filter(s => s.tag === 'RFF' && s.elements[0] === 'Z13' && (s as any).resolved_meta?.processDescription)
+            .map(s => ({
+              processId: s.elements[1],
+              description: (s as any).resolved_meta.processDescription
             }))
         },
         phase4_knowledgeBase: {
@@ -655,13 +673,14 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'Z13': 'Prozessreferenz'
     };
 
-    // Extract DAR from UNB segment (Datenaustausch-Referenz)
-    const unbSegment = segments.find(s => s.tag === 'UNB');
-    if (unbSegment && unbSegment.elements.length >= 5) {
-      const dar = unbSegment.elements[4]; // DAR ist typischerweise an Position 4
-      if (dar) {
+    // Extract DAR from UNZ segment (Datenaustausch-Referenz)
+    // UNZ+Anzahl+DAR - viel einfacher als UNB zu parsen
+    const unzSegment = segments.find(s => s.tag === 'UNZ');
+    if (unzSegment && unzSegment.elements.length >= 2) {
+      const dar = unzSegment.elements[1]; // DAR ist an Position 1 (nach Anzahl)
+      if (dar && dar.length > 5) { // DAR ist typischerweise länger als 5 Zeichen
         table.push({
-          segment: 'UNB',
+          segment: 'UNZ',
           meaning: 'Datenaustausch-Referenz (DAR)',
           value: dar
         });
