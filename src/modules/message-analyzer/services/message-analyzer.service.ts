@@ -532,7 +532,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
 **SEGMENTANZAHL:** ${segmentCount} Segmente
 **SEGMENTTYPEN:** ${uniqueSegments.join(', ')}
 
-**EXTRAHIERTE STRUKTURDATEN:**${dataOverview}
+**EXTRAHIERTE STRUKTURDATEN (NUTZE DIESE KONKRET IN DEINER ANTWORT):**${dataOverview}
 
 **WISSENSBASIS - NACHRICHTENTYP:**
 ${knowledgeContext.messageTypeInfo}
@@ -543,30 +543,38 @@ ${knowledgeContext.processInfo}
 **WISSENSBASIS - SEGMENTE:**
 ${knowledgeContext.segmentInfo}
 
-**VOLLSTÄNDIGE NACHRICHT:**
+**VOLLSTÄNDIGE NACHRICHT (NUR ALS REFERENZ):**
 ${parsedMessage.segments.map(s => s.original).join('\n')}
 
 **AUFGABE:**
 Analysiere die Nachricht präzise und strukturiert für einen Fachnutzer in der Marktkommunikation.
 
+**KRITISCHE ANFORDERUNGEN:**
+1. VERWENDE AUSSCHLIESSLICH die oben extrahierten Strukturdaten (Absender, Empfänger, MaLo, Messwerte, etc.)
+2. NENNE KONKRETE WERTE: Firmennamen (nicht nur Codes), MaLo-IDs, Messwerte mit Einheiten, Zeitpunkte
+3. ERKLÄRE den Geschäftszweck basierend auf den extrahierten Daten
+4. ANALYSIERE die vorhandenen Segmente (QTY, STS, RFF, etc.) konkret
+5. IGNORIERE NICHT vorhandene Daten - wenn Messwerte da sind, NENNE sie!
+
 **ANTWORTE IM FOLGENDEN FORMAT (DEUTSCH):**
 
-ZUSAMMENFASSUNG: [2-3 Sätze: Was ist der geschäftliche Zweck? Wer kommuniziert mit wem? Was sind die Hauptinhalte?]
+ZUSAMMENFASSUNG: [2-3 Sätze mit KONKRETEN WERTEN: Absender (NAME), Empfänger (NAME), Marktlokation (MaLo-ID), Messwerte (Wert + Einheit), Zeitpunkt, Zählernummer]
 
 PLAUSIBILITÄT:
-PRÜFUNG: [Strukturelle EDIFACT-Konformität - sind alle Pflichtsegmente vorhanden?]
-PRÜFUNG: [${messageType}-Spezifische Anforderungen - entspricht die Nachricht dem Schema?]
-PRÜFUNG: [Datenqualität - sind Zeitstempel, IDs, Werte plausibel?]
-PRÜFUNG: [Geschäftslogik - ergibt der Inhalt im Prozesskontext Sinn?]
-PRÜFUNG: [Vollständigkeit - fehlen wichtige Informationen?]
+PRÜFUNG: [Strukturelle EDIFACT-Konformität - liste KONKRET vorhandene Pflichtsegmente auf]
+PRÜFUNG: [${messageType}-Spezifische Anforderungen - prüfe KONKRET: sind QTY, LIN, DTM, STS vorhanden?]
+PRÜFUNG: [Datenqualität - bewerte die KONKRETEN Werte: Zeitstempel-Format, MaLo-Format, Messwert-Plausibilität]
+PRÜFUNG: [Geschäftslogik - erkläre den Prozess basierend auf NAD-Qualifizierern und BGM-Code]
+PRÜFUNG: [Vollständigkeit - liste KONKRET fehlende oder vorhandene Informationen auf (z.B. STS-Codes für Ablesegrund)]
 
-**WICHTIG:**
-- Nutze die extrahierten Strukturdaten
-- Beziehe dich konkret auf die Segmente
-- Nenne spezifische Werte (MaLo, Zählernummer, Mengen, Zeitpunkte)
-- Erkläre den Ablesegrund falls erkennbar
-- Bewerte die Plausibilität fachlich
-- Antworte nur auf Deutsch`;
+**BEISPIEL GUTE ZUSAMMENFASSUNG:**
+"Dies ist eine MSCONS-Nachricht zur Übermittlung von Verbrauchsdaten. Der Messstellenbetreiber [FIRMENNAME] (Code: [CODE]) übermittelt an [FIRMENNAME] (Code: [CODE]) einen Messwert von [WERT] kWh für die Marktlokation [MALO-ID] (Zählernummer: [ZÄHLER-NR]) zum Zeitpunkt [DATUM ZEIT]."
+
+**VERMEIDE:**
+- Vage Aussagen wie "möglicherweise fehlen Angaben" wenn Daten VORHANDEN sind
+- Ignorieren von extrahierten Strukturdaten
+- Nur Codes statt aufgelöste Firmennamen nennen
+- Generische Antworten ohne konkrete Werte`;
   }
 
   private parseEdifactSimple(message: string): EdiSegment[] {
