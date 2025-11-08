@@ -737,4 +737,107 @@ Antworte nur auf Deutsch, präzise und fachlich.`;
     
     return [...new Set(keywords)]; // Remove duplicates
   }
+
+  /**
+   * Validates basic EDIFACT structure
+   */
+  public async validateEdifactStructure(message: string): Promise<boolean> {
+    try {
+      const trimmed = message.trim();
+      
+      // Basic EDIFACT structure checks
+      const hasSegments = /[A-Z]{2,3}\+/.test(trimmed);
+      const hasValidCharacters = /^[A-Za-z0-9+:'\-?.()/, \r\n]*$/.test(trimmed);
+      
+      // Check for required header segments
+      const hasHeader = /UNH\+/.test(trimmed) || /UNB\+/.test(trimmed);
+      
+      return hasSegments && hasValidCharacters && hasHeader;
+    } catch (error) {
+      console.error('Error validating EDIFACT structure:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Validates EDIFACT message structure and semantics
+   */
+  public async validateEdifactMessage(message: string): Promise<{
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    messageType?: string;
+    segmentCount: number;
+  }> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    try {
+      const trimmed = message.trim();
+      
+      // Parse segments
+      const segments = this.parseEdifactSimple(trimmed);
+      const segmentCount = segments.length;
+      
+      // Detect message type
+      let messageType: string | undefined;
+      const unhSegment = segments.find(s => s.tag === 'UNH');
+      if (unhSegment && unhSegment.elements.length > 1) {
+        const messageTypeField = unhSegment.elements[1];
+        messageType = messageTypeField.split(':')[0];
+      }
+      
+      // Check for required segments
+      if (!segments.some(s => s.tag === 'UNH')) {
+        errors.push('Fehlendes UNH-Segment (Message Header)');
+      }
+      if (!segments.some(s => s.tag === 'UNT')) {
+        errors.push('Fehlendes UNT-Segment (Message Trailer)');
+      }
+      
+      // Check segment count in UNT matches actual count
+      const untSegment = segments.find(s => s.tag === 'UNT');
+      if (untSegment && untSegment.elements.length > 0) {
+        const declaredCount = parseInt(untSegment.elements[0], 10);
+        if (!isNaN(declaredCount) && declaredCount !== segmentCount) {
+          warnings.push(`Segmentanzahl in UNT (${declaredCount}) stimmt nicht mit tatsächlicher Anzahl (${segmentCount}) überein`);
+        }
+      }
+      
+      // Check for empty segments
+      if (segments.some(s => s.elements.length === 0)) {
+        warnings.push('Einige Segmente haben keine Datenelemente');
+      }
+      
+      // Message type specific validations
+      if (messageType === 'MSCONS') {
+        if (!segments.some(s => s.tag === 'LIN')) {
+          warnings.push('MSCONS-Nachricht sollte LIN-Segmente (Zählwerte) enthalten');
+        }
+      } else if (messageType === 'UTILMD') {
+        if (!segments.some(s => s.tag === 'NAD')) {
+          warnings.push('UTILMD-Nachricht sollte NAD-Segmente (Marktpartner) enthalten');
+        }
+      }
+      
+      const isValid = errors.length === 0;
+      
+      return {
+        isValid,
+        errors,
+        warnings,
+        messageType,
+        segmentCount
+      };
+    } catch (error) {
+      console.error('Error validating EDIFACT message:', error);
+      return {
+        isValid: false,
+        errors: ['Technischer Fehler bei der Validierung: ' + (error as Error).message],
+        warnings: [],
+        segmentCount: 0
+      };
+    }
+  }
 }
+

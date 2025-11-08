@@ -2,8 +2,8 @@ export const apiV2OpenApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Willi-Mako API v2',
-  version: '0.6.0',
-  description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte). Version 0.6.0 fügt Endpunkte für die willi-netz Collection und kombinierte Collection-Suchen hinzu.'
+  version: '0.7.0',
+  description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte). Version 0.7.0 fügt Endpunkte für EDIFACT Message Analyzer (Analyse, Chat, Modifikation, Validierung) hinzu.'
   },
   servers: [
     {
@@ -489,6 +489,268 @@ export const apiV2OpenApiDocument = {
                       },
                       additionalProperties: true
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/message-analyzer/analyze': {
+      post: {
+        summary: 'EDIFACT-Nachricht strukturell analysieren',
+        description: 'Führt eine strukturelle Analyse einer EDIFACT-Nachricht durch, extrahiert Segmente und reichert sie mit Code-Lookup-Informationen an.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message'],
+                properties: {
+                  message: {
+                    type: 'string',
+                    description: 'Die zu analysierende EDIFACT-Nachricht',
+                    example: 'UNH+00000000001111+MSCONS:D:11A:UN:2.6e\\nBGM+E01+1234567890+9\\nUNT+3+00000000001111'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Analyseergebnis',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/EdifactAnalysisResult' }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Ungültige Anfrage'
+          }
+        }
+      }
+    },
+    '/message-analyzer/explanation': {
+      post: {
+        summary: 'KI-Erklärung einer EDIFACT-Nachricht generieren',
+        description: 'Generiert eine verständliche, strukturierte Erklärung einer EDIFACT-Nachricht unter Nutzung von LLM und Expertenwissen.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message'],
+                properties: {
+                  message: {
+                    type: 'string',
+                    description: 'Die zu erklärende EDIFACT-Nachricht'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'KI-generierte Erklärung',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        explanation: {
+                          type: 'string',
+                          description: 'Verständliche Erklärung der Nachricht'
+                        },
+                        success: { type: 'boolean' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/message-analyzer/chat': {
+      post: {
+        summary: 'Interaktiver Chat über EDIFACT-Nachricht',
+        description: 'Ermöglicht interaktive Fragen und Diskussionen über eine EDIFACT-Nachricht mit kontextbewusstem KI-Assistenten.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message', 'currentEdifactMessage'],
+                properties: {
+                  message: {
+                    type: 'string',
+                    description: 'Die Frage oder Nachricht des Benutzers',
+                    example: 'In welchem Zeitfenster ist der Verbrauch am höchsten?'
+                  },
+                  chatHistory: {
+                    type: 'array',
+                    description: 'Bisheriger Chat-Verlauf',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        role: { type: 'string', enum: ['user', 'assistant'] },
+                        content: { type: 'string' }
+                      }
+                    }
+                  },
+                  currentEdifactMessage: {
+                    type: 'string',
+                    description: 'Die aktuelle EDIFACT-Nachricht als Kontext'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Chat-Antwort',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        response: {
+                          type: 'string',
+                          description: 'KI-Antwort auf die Frage'
+                        },
+                        timestamp: {
+                          type: 'string',
+                          format: 'date-time'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/message-analyzer/modify': {
+      post: {
+        summary: 'EDIFACT-Nachricht modifizieren',
+        description: 'Modifiziert eine EDIFACT-Nachricht basierend auf natürlichsprachlicher Anweisung unter Beibehaltung der EDIFACT-Struktur.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['instruction', 'currentMessage'],
+                properties: {
+                  instruction: {
+                    type: 'string',
+                    description: 'Änderungsanweisung in natürlicher Sprache',
+                    example: 'Erhöhe den Verbrauch in jedem Zeitfenster um 10%'
+                  },
+                  currentMessage: {
+                    type: 'string',
+                    description: 'Die aktuelle EDIFACT-Nachricht'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Modifizierte Nachricht',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        modifiedMessage: {
+                          type: 'string',
+                          description: 'Die modifizierte EDIFACT-Nachricht'
+                        },
+                        isValid: {
+                          type: 'boolean',
+                          description: 'Basis-Validierung der modifizierten Nachricht'
+                        },
+                        timestamp: {
+                          type: 'string',
+                          format: 'date-time'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/message-analyzer/validate': {
+      post: {
+        summary: 'EDIFACT-Nachricht validieren',
+        description: 'Validiert eine EDIFACT-Nachricht strukturell und semantisch mit detaillierten Fehler- und Warnungslisten.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message'],
+                properties: {
+                  message: {
+                    type: 'string',
+                    description: 'Die zu validierende EDIFACT-Nachricht'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Validierungsergebnis',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/EdifactValidationResult' }
                   }
                 }
               }
@@ -1821,6 +2083,66 @@ export const apiV2OpenApiDocument = {
           vector_point_id: { type: 'string', nullable: true },
           created_at: { type: 'string', format: 'date-time' },
           updated_at: { type: 'string', format: 'date-time' }
+        }
+      },
+      EdifactAnalysisResult: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string', description: 'Zusammenfassung der Analyse' },
+          plausibilityChecks: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Liste der Plausibilitätsprüfungen'
+          },
+          structuredData: {
+            type: 'object',
+            properties: {
+              segments: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    tag: { type: 'string', description: 'Segment-Tag (z.B. UNH, BGM, NAD)' },
+                    elements: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      description: 'Datenelemente des Segments'
+                    },
+                    original: { type: 'string', description: 'Original-Segment-String' },
+                    description: { type: 'string', description: 'Beschreibung des Segments' },
+                    resolvedCodes: {
+                      type: 'object',
+                      additionalProperties: { type: 'string' },
+                      description: 'Aufgelöste BDEW/EIC-Codes'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          format: {
+            type: 'string',
+            enum: ['EDIFACT', 'XML', 'TEXT', 'UNKNOWN'],
+            description: 'Erkanntes Nachrichtenformat'
+          }
+        }
+      },
+      EdifactValidationResult: {
+        type: 'object',
+        properties: {
+          isValid: { type: 'boolean', description: 'Ist die Nachricht strukturell gültig?' },
+          errors: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Liste der Validierungsfehler'
+          },
+          warnings: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Liste der Warnungen'
+          },
+          messageType: { type: 'string', description: 'Erkannter Nachrichtentyp (z.B. MSCONS, UTILMD)' },
+          segmentCount: { type: 'integer', description: 'Anzahl der Segmente' }
         }
       }
     }

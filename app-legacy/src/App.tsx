@@ -18,6 +18,7 @@ import FAQList from './pages/FAQList';
 import FAQDetail from './pages/FAQDetail';
 import Workspace from './pages/Workspace';
 import MessageAnalyzerPage from './pages/MessageAnalyzer';
+import MessageAnalyzerEnhanced from './pages/MessageAnalyzerEnhanced';
 import CodeLookupPage from './pages/CodeLookup';
 import ScreenshotAnalysisPage from './pages/ScreenshotAnalysis';
 import ProcessesAndProcedures from './pages/ProcessesAndProcedures';
@@ -138,7 +139,8 @@ function App() {
                 <Route path="community/:id" element={<ProtectedRoute><CommunityThreadDetail /></ProtectedRoute>} />
                 <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="admin/*" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-                <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />
+                <Route path="message-analyzer" element={<ProtectedRoute><MessageAnalyzerEnhanced /></ProtectedRoute>} />
+                <Route path="message-analyzer-classic" element={<ProtectedRoute><MessageAnalyzerPage /></ProtectedRoute>} />
                 <Route path="code-lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />
                 <Route path="screenshot-analysis" element={<ProtectedRoute><ScreenshotAnalysisPage /></ProtectedRoute>} />
                 <Route path="lookup" element={<ProtectedRoute><CodeLookupPage /></ProtectedRoute>} />

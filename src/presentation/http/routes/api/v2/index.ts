@@ -13,6 +13,7 @@ import artifactsRoutes from './artifacts.routes';
 import documentsRoutes from './documents.routes';
 import williNetzRoutes from './willi-netz.routes';
 import combinedRoutes from './combined.routes';
+import messageAnalyzerRoutes from './message-analyzer.routes';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/artifacts', artifactsRoutes);
 router.use('/documents', documentsRoutes);
 router.use('/willi-netz', williNetzRoutes);
 router.use('/combined', combinedRoutes);
+router.use('/message-analyzer', messageAnalyzerRoutes);
 router.get('/metrics', apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
 	res.json(apiV2OpenApiDocument);
