@@ -15,6 +15,7 @@ export interface EdiSegment {
         companyName?: string;
         processDescription?: string;
         codeDescription?: string;
+        resolutionMethod?: 'hardcoded' | 'semantic' | 'database';
     };
 }
 export interface ParsedEdiMessage {

@@ -11,6 +11,7 @@ export interface EdiSegment {
     companyName?: string;
     processDescription?: string; // For RFF+Z13 process indicator resolution
     codeDescription?: string; // For BGM/STS code descriptions via semantic search
+    resolutionMethod?: 'hardcoded' | 'semantic' | 'database'; // Track how the code was resolved
   };
 }
 

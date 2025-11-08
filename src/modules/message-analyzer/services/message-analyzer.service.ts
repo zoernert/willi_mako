@@ -165,25 +165,29 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
             .filter(s => s.tag === 'NAD' && (s as any).resolved_meta?.companyName)
             .map(s => ({
               code: s.elements[2] || s.elements[1],
-              name: (s as any).resolved_meta.companyName
+              name: (s as any).resolved_meta.companyName,
+              method: (s as any).resolved_meta.resolutionMethod || 'database'
             })),
           resolvedBGM: segments
             .filter(s => s.tag === 'BGM' && (s as any).resolved_meta?.codeDescription)
             .map(s => ({
               code: s.elements[0],
-              description: (s as any).resolved_meta.codeDescription
+              description: (s as any).resolved_meta.codeDescription,
+              method: (s as any).resolved_meta.resolutionMethod || 'unknown'
             })),
           resolvedSTS: segments
             .filter(s => s.tag === 'STS' && (s as any).resolved_meta?.codeDescription)
             .map(s => ({
               code: s.elements[2] || s.elements[0],
-              description: (s as any).resolved_meta.codeDescription
+              description: (s as any).resolved_meta.codeDescription,
+              method: (s as any).resolved_meta.resolutionMethod || 'unknown'
             })),
           resolvedRFF: segments
             .filter(s => s.tag === 'RFF' && s.elements[0] === 'Z13' && (s as any).resolved_meta?.processDescription)
             .map(s => ({
               processId: s.elements[1],
-              description: (s as any).resolved_meta.processDescription
+              description: (s as any).resolved_meta.processDescription,
+              method: (s as any).resolved_meta.resolutionMethod || 'unknown'
             }))
         },
         phase4_knowledgeBase: {
@@ -656,16 +660,10 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'DP': 'Lieferadresse'
     };
 
-    // BGM code meanings (basic + UTILMD specific)
+    // BGM code meanings - comprehensive list for all EDIFACT message types
     const bgmCodes: { [key: string]: string } = {
-      '312': 'Status: Positiv',
-      '313': 'Status: Negativ',
-      'Z29': 'Preisanfrage',
+      // UTILMD specific codes (E-series)
       'E01': 'Messwerte',
-      '7': 'Stammdaten',
-      '220': 'Bestellung',
-      '380': 'Rechnung',
-      // UTILMD specific codes (hardcoded for performance)
       'E02': 'Abmeldung/Kündigung',
       'E03': 'Änderung',
       'E04': 'Synchronisationsanfrage',
@@ -685,11 +683,25 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'E18': 'Ersatz',
       'E19': 'Duplikat',
       'E20': 'Kopie',
-      'E35': 'Anfrage (UTILMD Stammdaten)'
+      'E35': 'Anfrage (UTILMD Stammdaten)',
+      // Standard document codes
+      '7': 'Stammdaten',
+      '220': 'Bestellung',
+      '221': 'Bestelländerung',
+      '222': 'Bestellstornierung',
+      '310': 'Preisangebot',
+      '312': 'Positive Bestätigung',
+      '313': 'Negative Bestätigung (Ablehnung)',
+      '380': 'Rechnung',
+      '381': 'Gutschrift',
+      '383': 'Mahnung',
+      '457': 'Gutschrift',
+      'Z29': 'Preisanfrage'
     };
 
-    // STS code meanings (UTILMD Status-Codes)
+    // STS code meanings - complete E-series and numeric codes
     const stsCodes: { [key: string]: string } = {
+      // E-series status codes
       'E01': 'Abgelehnt',
       'E02': 'Akzeptiert',
       'E03': 'Storniert',
@@ -705,13 +717,22 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'E13': 'Vorläufig',
       'E14': 'Endgültig',
       'E15': 'Cluster-Fehler',
+      'E16': 'Geprüft',
+      'E17': 'Abgeschlossen',
+      'E18': 'Offen',
+      'E19': 'Gesperrt',
+      'E20': 'Freigegeben',
+      // Numeric status codes
       '1': 'Aktiv',
       '2': 'Inaktiv',
       '3': 'Gesperrt',
       '4': 'Gelöscht',
       '5': 'Geplant',
       '6': 'Testbetrieb',
-      '7': 'Außer Betrieb'
+      '7': 'Außer Betrieb',
+      '8': 'In Wartung',
+      '9': 'Bereit',
+      '10': 'Nicht verfügbar'
     };
 
     // RFF qualifier meanings
@@ -720,8 +741,9 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'Z13': 'Prozessreferenz'
     };
 
-    // Common Process IDs (PIDs) for RFF+Z13 - most frequent ones
+    // Complete GPKE (44xxx) and WiM (55xxx) Process IDs
     const commonPIDs: { [key: string]: string } = {
+      // GPKE 44xxx processes
       '44001': 'Anmeldung Belieferung - Einzug (GPKE 4.1)',
       '44002': 'Anmeldung Belieferung - Einzug nach Kündigung (GPKE 4.2)',
       '44003': 'Anmeldung Lieferbeginn - Umzug (GPKE 4.3)',
@@ -739,6 +761,7 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       '44015': 'Anmeldung bei vorzeitigem Lieferantenwechsel (GPKE 4.15)',
       '44016': 'Ersatzversorgung Anfang/Ende (GPKE 4.16)',
       '44017': 'Stammdatenänderung (GPKE 4.17)',
+      // WiM 55xxx processes
       '55001': 'Lieferbeginn NB → LFN (WiM)',
       '55002': 'Lieferbeginn LFN → NB (WiM)',
       '55003': 'Lieferende NB → LFN (WiM)',
@@ -749,8 +772,18 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       '55008': 'Stammdatenänderung NB → LFN (WiM)',
       '55009': 'Stammdatenänderung LFN → NB (WiM)',
       '55010': 'Ersatzversorgung (WiM)',
+      '55011': 'Kapazitätsreservierung (WiM)',
+      '55012': 'Netznutzungsanmeldung (WiM)',
       '55671': 'Änderung Stammdaten (WiM Strom)',
-      '55077': 'Stammdatenaktualisierung'
+      '55077': 'Stammdatenaktualisierung',
+      // Additional common PIDs
+      '13001': 'Netzanschluss - Anfrage',
+      '13002': 'Netzanschluss - Angebot',
+      '13003': 'Netzanschluss - Beauftragung',
+      '13004': 'Netzanschluss - Ablehnung',
+      '17001': 'Messwertübermittlung',
+      '17002': 'Lastgangdaten',
+      '17003': 'Zählerstandsgangmessung'
     };
 
     // Extract DAR from UNZ segment (Datenaustausch-Referenz)
@@ -801,15 +834,39 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
           break;
 
         case 'STS':
-          // STS can have status codes at different positions
-          // STS+7++E01 → elements[0]=7, elements[1]="", elements[2]=E01
-          const stsCode = segment.elements[2] || segment.elements[0]; // Prefer E-codes at position 2
+          // STS has complex structure: STS+<Status1>+<Status2>+<Status3>
+          // Example: STS+7++E03 means Device Status 7 (Außer Betrieb) + Process Status E03 (Storniert)
+          // We need to interpret ALL present codes, not just one
+          const stsCode1 = segment.elements[0]; // Often device/location status (numeric)
+          const stsCode2 = segment.elements[1]; // Optional middle status
+          const stsCode3 = segment.elements[2]; // Often process status (E-codes)
           
-          // Hybrid approach: hardcoded → semantic → raw
-          if (stsCodes[stsCode]) {
-            value = `${stsCode} (${stsCodes[stsCode]})`;
-          } else if (segment.resolved_meta?.codeDescription) {
-            value = `${stsCode} (${segment.resolved_meta.codeDescription})`;
+          const interpretedParts: string[] = [];
+          
+          // Interpret each position
+          if (stsCode1 && stsCodes[stsCode1]) {
+            interpretedParts.push(`${stsCode1}=${stsCodes[stsCode1]}`);
+          } else if (stsCode1) {
+            interpretedParts.push(stsCode1);
+          }
+          
+          if (stsCode2 && stsCodes[stsCode2]) {
+            interpretedParts.push(`${stsCode2}=${stsCodes[stsCode2]}`);
+          } else if (stsCode2) {
+            interpretedParts.push(stsCode2);
+          }
+          
+          if (stsCode3 && stsCodes[stsCode3]) {
+            interpretedParts.push(`${stsCode3}=${stsCodes[stsCode3]}`);
+          } else if (stsCode3 && segment.resolved_meta?.codeDescription) {
+            interpretedParts.push(`${stsCode3}=${segment.resolved_meta.codeDescription}`);
+          } else if (stsCode3) {
+            interpretedParts.push(stsCode3);
+          }
+          
+          // Build combined interpretation
+          if (interpretedParts.length > 0) {
+            value = interpretedParts.join(' + ');
           } else {
             value = segment.elements.slice(0, 3).filter(Boolean).join(' : ');
           }
@@ -1333,6 +1390,126 @@ ${markdownRows || '| - | - | - |'}
     messageType?: string
   ): Promise<EdiSegment[]> {
     console.log('🔍 Enriching segments with code lookup...');
+    // Local hardcoded maps to mirror the hybrid lookup used when building the table
+    // Comprehensive BGM codes for all major EDIFACT message types
+    const bgmHardcoded: { [key: string]: string } = {
+      // UTILMD specific codes (E-series)
+      'E01': 'Messwerte',
+      'E02': 'Abmeldung/Kündigung',
+      'E03': 'Änderung',
+      'E04': 'Synchronisationsanfrage',
+      'E05': 'Stammdatenänderung',
+      'E06': 'Vertragsende',
+      'E07': 'Aufhebung',
+      'E08': 'Antwort',
+      'E09': 'Benachrichtigung',
+      'E10': 'Rückmeldung',
+      'E11': 'Anfrage',
+      'E12': 'Zusage',
+      'E13': 'Absage',
+      'E14': 'Bestätigung',
+      'E15': 'Fehler',
+      'E16': 'Wiedervorlage',
+      'E17': 'Storno',
+      'E18': 'Ersatz',
+      'E19': 'Duplikat',
+      'E20': 'Kopie',
+      'E35': 'Anfrage (UTILMD Stammdaten)',
+      // Standard document codes
+      '7': 'Stammdaten',
+      '220': 'Bestellung',
+      '221': 'Bestelländerung',
+      '222': 'Bestellstornierung',
+      '310': 'Preisangebot',
+      '312': 'Positive Bestätigung',
+      '313': 'Negative Bestätigung (Ablehnung)',
+      '380': 'Rechnung',
+      '381': 'Gutschrift',
+      '383': 'Mahnung',
+      '457': 'Gutschrift',
+      'Z29': 'Preisanfrage'
+    };
+
+    // UTILMD Status codes - complete E-series and numeric codes
+    const stsHardcoded: { [key: string]: string } = {
+      // E-series status codes
+      'E01': 'Abgelehnt',
+      'E02': 'Akzeptiert',
+      'E03': 'Storniert',
+      'E04': 'In Bearbeitung',
+      'E05': 'Erledigt',
+      'E06': 'Fehler',
+      'E07': 'Teilweise erledigt',
+      'E08': 'Unterbrochen',
+      'E09': 'Zurückgestellt',
+      'E10': 'Weitergeleitet',
+      'E11': 'Warten auf Information',
+      'E12': 'Bestätigt',
+      'E13': 'Vorläufig',
+      'E14': 'Endgültig',
+      'E15': 'Cluster-Fehler',
+      'E16': 'Geprüft',
+      'E17': 'Abgeschlossen',
+      'E18': 'Offen',
+      'E19': 'Gesperrt',
+      'E20': 'Freigegeben',
+      // Numeric status codes
+      '1': 'Aktiv',
+      '2': 'Inaktiv',
+      '3': 'Gesperrt',
+      '4': 'Gelöscht',
+      '5': 'Geplant',
+      '6': 'Testbetrieb',
+      '7': 'Außer Betrieb',
+      '8': 'In Wartung',
+      '9': 'Bereit',
+      '10': 'Nicht verfügbar'
+    };
+
+    // Complete GPKE (44xxx) and WiM (55xxx) Process IDs
+    const pidHardcoded: { [key: string]: string } = {
+      // GPKE 44xxx processes
+      '44001': 'Anmeldung Belieferung - Einzug (GPKE 4.1)',
+      '44002': 'Anmeldung Belieferung - Einzug nach Kündigung (GPKE 4.2)',
+      '44003': 'Anmeldung Lieferbeginn - Umzug (GPKE 4.3)',
+      '44004': 'Anmeldung Lieferbeginn - Umzug nach Kündigung (GPKE 4.4)',
+      '44005': 'Anmeldung Lieferbeginn - Einzug Erstbelieferung (GPKE 4.5)',
+      '44006': 'Anmeldung Lieferunterbrechung - Auszug (GPKE 4.6)',
+      '44007': 'Anmeldung Lieferunterbrechung - Auszug nach Kündigung (GPKE 4.7)',
+      '44008': 'Anmeldung Belieferung ohne Lieferbeginn (GPKE 4.8)',
+      '44009': 'Kündigung einer Belieferung (GPKE 4.9)',
+      '44010': 'Anfrage Stammdaten (GPKE 4.10)',
+      '44011': 'Änderung Stammdaten (GPKE 4.11)',
+      '44012': 'Anmeldung Stilllegung/Wiederinbetriebnahme (GPKE 4.12)',
+      '44013': 'Netznutzungsabrechnung bei Ersatzversorgung (GPKE 4.13)',
+      '44014': 'Information über Änderung an Marktlokation (GPKE 4.14)',
+      '44015': 'Anmeldung bei vorzeitigem Lieferantenwechsel (GPKE 4.15)',
+      '44016': 'Ersatzversorgung Anfang/Ende (GPKE 4.16)',
+      '44017': 'Stammdatenänderung (GPKE 4.17)',
+      // WiM 55xxx processes
+      '55001': 'Lieferbeginn NB → LFN (WiM)',
+      '55002': 'Lieferbeginn LFN → NB (WiM)',
+      '55003': 'Lieferende NB → LFN (WiM)',
+      '55004': 'Lieferende LFN → NB (WiM)',
+      '55005': 'Lieferbeginn bei Umzug (WiM)',
+      '55006': 'Lieferende bei Auszug (WiM)',
+      '55007': 'Turnuswechsel (WiM)',
+      '55008': 'Stammdatenänderung NB → LFN (WiM)',
+      '55009': 'Stammdatenänderung LFN → NB (WiM)',
+      '55010': 'Ersatzversorgung (WiM)',
+      '55011': 'Kapazitätsreservierung (WiM)',
+      '55012': 'Netznutzungsanmeldung (WiM)',
+      '55671': 'Änderung Stammdaten (WiM Strom)',
+      '55077': 'Stammdatenaktualisierung',
+      // Additional common PIDs
+      '13001': 'Netzanschluss - Anfrage',
+      '13002': 'Netzanschluss - Angebot',
+      '13003': 'Netzanschluss - Beauftragung',
+      '13004': 'Netzanschluss - Ablehnung',
+      '17001': 'Messwertübermittlung',
+      '17002': 'Lastgangdaten',
+      '17003': 'Zählerstandsgangmessung'
+    };
     
     const enrichedSegments = await Promise.all(
       segments.map(async (segment) => {
@@ -1384,6 +1561,7 @@ ${markdownRows || '| - | - | - |'}
                   enrichedSegment.resolved_meta = {};
                 }
                 enrichedSegment.resolved_meta.companyName = primary.companyName;
+                enrichedSegment.resolved_meta.resolutionMethod = 'database';
               }
             } catch (error) {
               console.warn(`⚠️ Failed to resolve NAD code ${code}:`, error);
@@ -1391,100 +1569,84 @@ ${markdownRows || '| - | - | - |'}
           }
         }
         
-        // Behandle RFF+Z13 Prozessreferenzen mit semantischer Suche
+        // Behandle RFF+Z13 Prozessreferenzen: Hybrid (hardcoded PIDs → semantic)
         if (segment.tag === 'RFF' && segment.elements[0] === 'Z13' && segment.elements[1]) {
           const processId = segment.elements[1];
           
           // Nur bei UTILMD-Nachrichten
           if (messageType === 'UTILMD') {
-            try {
-              const query = `UTILMD Prozessindikator ${processId} Prüfidentifikator PID Lieferbeginn Lieferende`;
-              const results = await this.qdrantService.searchByText(query, 1, 0.7);
-              
-              if (results && results.length > 0) {
-                const bestMatch = results[0];
-                // Extrahiere relevante Beschreibung aus dem Kontext
-                let processDesc = '';
+            // Hardcoded PID lookup first
+            if (pidHardcoded[processId]) {
+              enrichedSegment.resolved_meta = enrichedSegment.resolved_meta || {};
+              enrichedSegment.resolved_meta.processDescription = pidHardcoded[processId];
+              enrichedSegment.resolved_meta.resolutionMethod = 'hardcoded';
+              console.log(`🔧 PID ${processId} resolved from hardcoded map: ${pidHardcoded[processId]}`);
+            } else {
+              try {
+                const query = `UTILMD Prozessindikator ${processId} Prüfidentifikator PID Lieferbeginn Lieferende`;
+                const results = await this.qdrantService.searchByText(query, 1, 0.7);
                 
-                // Payload kann text oder content enthalten
-                const payload = bestMatch.payload as any;
-                const text = payload?.text || payload?.content || '';
-                
-                if (text) {
-                  const lines = text.split('\n');
+                if (results && results.length > 0) {
+                  const bestMatch = results[0];
+                  // Extrahiere relevante Beschreibung aus dem Kontext
+                  let processDesc = '';
                   
-                  // Versuche spezifische Muster zu erkennen
-                  for (const line of lines) {
-                    if (line.includes(processId) && (line.includes('Lieferbeginn') || line.includes('Lieferende'))) {
-                      processDesc = line.trim();
-                      break;
-                    }
-                  }
+                  // Payload kann text oder content enthalten
+                  const payload = bestMatch.payload as any;
+                  const text = payload?.text || payload?.content || '';
                   
-                  // Fallback: Verwende ersten relevanten Satz
-                  if (!processDesc) {
-                    const sentences = text.split(/[.!?]\s+/);
-                    for (const sentence of sentences) {
-                      if (sentence.includes(processId) || sentence.includes('Prozess')) {
-                        processDesc = sentence.substring(0, 100);
+                  if (text) {
+                    const lines = text.split('\n');
+                    
+                    // Versuche spezifische Muster zu erkennen
+                    for (const line of lines) {
+                      if (line.includes(processId) && (line.includes('Lieferbeginn') || line.includes('Lieferende'))) {
+                        processDesc = line.trim();
                         break;
                       }
                     }
+                    
+                    // Fallback: Verwende ersten relevanten Satz
+                    if (!processDesc) {
+                      const sentences = text.split(/[.!?]\s+/);
+                      for (const sentence of sentences) {
+                        if (sentence.includes(processId) || sentence.includes('Prozess')) {
+                          processDesc = sentence.substring(0, 100);
+                          break;
+                        }
+                      }
+                    }
                   }
-                }
-                
-                if (processDesc) {
-                  if (!enrichedSegment.resolved_meta) {
-                    enrichedSegment.resolved_meta = {};
-                  }
-                  enrichedSegment.resolved_meta.processDescription = processDesc;
-                  console.log(`✅ Resolved process reference Z13:${processId} to: ${processDesc}`);
-                }
-              }
-            } catch (error) {
-              console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
-            }
-          }
-        }
-        
-        // Behandle BGM-Codes mit semantischer Suche (UTILMD)
-        if (segment.tag === 'BGM' && segment.elements[0] && messageType === 'UTILMD') {
-          const bgmCode = segment.elements[0];
-          try {
-            const query = `UTILMD BGM ${bgmCode} Nachrichtenfunktion Geschäftsvorfall`;
-            const results = await this.qdrantService.searchByText(query, 1, 0.75);
-            
-            if (results && results.length > 0) {
-              const payload = results[0].payload as any;
-              const text = payload?.text || payload?.content || '';
-              
-              if (text) {
-                // Suche nach Beschreibung des BGM-Codes
-                const lines = text.split('\n');
-                for (const line of lines) {
-                  if (line.includes(bgmCode) && (line.includes('Anmeldung') || line.includes('Abmeldung') || line.includes('Änderung'))) {
-                    const desc = line.trim().substring(0, 80);
+                  
+                  if (processDesc) {
                     if (!enrichedSegment.resolved_meta) {
                       enrichedSegment.resolved_meta = {};
                     }
-                    enrichedSegment.resolved_meta.codeDescription = desc;
-                    console.log(`✅ Resolved BGM code ${bgmCode} to: ${desc}`);
-                    break;
+                    enrichedSegment.resolved_meta.processDescription = processDesc;
+                    enrichedSegment.resolved_meta.resolutionMethod = 'semantic';
+                    console.log(`✅ Resolved process reference Z13:${processId} to: ${processDesc}`);
                   }
                 }
+              } catch (error) {
+                console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
               }
             }
-          } catch (error) {
-            console.warn(`⚠️ Failed to resolve BGM code ${bgmCode}:`, error);
           }
         }
         
-        // Behandle STS-Codes mit semantischer Suche (UTILMD)
-        if (segment.tag === 'STS' && messageType === 'UTILMD') {
-          const stsCode = segment.elements[2] || segment.elements[0]; // E01, E02, etc.
-          if (stsCode && stsCode.startsWith('E')) {
+        // Behandle BGM-Codes: Hybrid (hardcoded → semantic)
+        if (segment.tag === 'BGM' && segment.elements[0] && messageType === 'UTILMD') {
+          const bgmCode = segment.elements[0];
+          // Hardcoded first
+          if (bgmHardcoded[bgmCode]) {
+            enrichedSegment.resolved_meta = enrichedSegment.resolved_meta || {};
+            enrichedSegment.resolved_meta.codeDescription = bgmHardcoded[bgmCode];
+            enrichedSegment.resolved_meta.resolutionMethod = 'hardcoded';
+            console.log(`🔧 BGM code ${bgmCode} resolved from hardcoded map: ${bgmHardcoded[bgmCode]}`);
+          } else {
+            // Semantic fallback
             try {
-              const query = `UTILMD STS ${stsCode} Statusinformation Fehler Ablehnung`;
+              const query = `UTILMD BGM ${bgmCode} Nachrichtenfunktion Geschäftsvorfall`;
               const results = await this.qdrantService.searchByText(query, 1, 0.75);
               
               if (results && results.length > 0) {
@@ -1492,22 +1654,62 @@ ${markdownRows || '| - | - | - |'}
                 const text = payload?.text || payload?.content || '';
                 
                 if (text) {
+                  // Suche nach Beschreibung des BGM-Codes
                   const lines = text.split('\n');
                   for (const line of lines) {
-                    if (line.includes(stsCode)) {
+                    if (line.includes(bgmCode) && (line.includes('Anmeldung') || line.includes('Abmeldung') || line.includes('Änderung'))) {
                       const desc = line.trim().substring(0, 80);
-                      if (!enrichedSegment.resolved_meta) {
-                        enrichedSegment.resolved_meta = {};
-                      }
+                      enrichedSegment.resolved_meta = enrichedSegment.resolved_meta || {};
                       enrichedSegment.resolved_meta.codeDescription = desc;
-                      console.log(`✅ Resolved STS code ${stsCode} to: ${desc}`);
+                      enrichedSegment.resolved_meta.resolutionMethod = 'semantic';
+                      console.log(`✅ Resolved BGM code ${bgmCode} to: ${desc}`);
                       break;
                     }
                   }
                 }
               }
             } catch (error) {
-              console.warn(`⚠️ Failed to resolve STS code ${stsCode}:`, error);
+              console.warn(`⚠️ Failed to resolve BGM code ${bgmCode}:`, error);
+            }
+          }
+        }
+        
+        // Behandle STS-Codes: Hybrid (hardcoded → semantic)
+        if (segment.tag === 'STS' && messageType === 'UTILMD') {
+          const stsCode = segment.elements[2] || segment.elements[0]; // E01, E02, etc.
+          if (stsCode) {
+            // Hardcoded first
+            if (stsHardcoded[stsCode]) {
+              enrichedSegment.resolved_meta = enrichedSegment.resolved_meta || {};
+              enrichedSegment.resolved_meta.codeDescription = stsHardcoded[stsCode];
+              enrichedSegment.resolved_meta.resolutionMethod = 'hardcoded';
+              console.log(`🔧 STS code ${stsCode} resolved from hardcoded map: ${stsHardcoded[stsCode]}`);
+            } else if (stsCode.startsWith('E')) {
+              try {
+                const query = `UTILMD STS ${stsCode} Statusinformation Fehler Ablehnung`;
+                const results = await this.qdrantService.searchByText(query, 1, 0.75);
+                
+                if (results && results.length > 0) {
+                  const payload = results[0].payload as any;
+                  const text = payload?.text || payload?.content || '';
+                  
+                  if (text) {
+                    const lines = text.split('\n');
+                    for (const line of lines) {
+                      if (line.includes(stsCode)) {
+                        const desc = line.trim().substring(0, 80);
+                        enrichedSegment.resolved_meta = enrichedSegment.resolved_meta || {};
+                        enrichedSegment.resolved_meta.codeDescription = desc;
+                        enrichedSegment.resolved_meta.resolutionMethod = 'semantic';
+                        console.log(`✅ Resolved STS code ${stsCode} to: ${desc}`);
+                        break;
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.warn(`⚠️ Failed to resolve STS code ${stsCode}:`, error);
+              }
             }
           }
         }
