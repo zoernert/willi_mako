@@ -655,6 +655,19 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
       'Z13': 'Prozessreferenz'
     };
 
+    // Extract DAR from UNB segment (Datenaustausch-Referenz)
+    const unbSegment = segments.find(s => s.tag === 'UNB');
+    if (unbSegment && unbSegment.elements.length >= 5) {
+      const dar = unbSegment.elements[4]; // DAR ist typischerweise an Position 4
+      if (dar) {
+        table.push({
+          segment: 'UNB',
+          meaning: 'Datenaustausch-Referenz (DAR)',
+          value: dar
+        });
+      }
+    }
+
     for (const segment of segments) {
       // Skip envelope segments
       if (['UNA', 'UNB', 'UNZ', 'UNT', 'UNS'].includes(segment.tag)) {

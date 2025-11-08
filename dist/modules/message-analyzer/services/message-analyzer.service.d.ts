@@ -34,6 +34,7 @@ export declare class MessageAnalyzerService implements IMessageAnalyzerService {
     private parseEdifactSimple;
     /**
      * Löst BDEW/EIC-Codes in den analysierten Segmenten auf
+     * Löst auch RFF+Z13 Prozessreferenzen über semantische Suche auf
      */
     private enrichSegmentsWithCodeLookup;
     private buildResolvedPartnersContext;

@@ -11,6 +11,10 @@ export interface EdiSegment {
     resolvedCodes?: {
         [key: string]: string;
     };
+    resolved_meta?: {
+        companyName?: string;
+        processDescription?: string;
+    };
 }
 export interface ParsedEdiMessage {
     segments: EdiSegment[];

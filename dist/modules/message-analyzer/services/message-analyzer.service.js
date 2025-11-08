@@ -94,8 +94,8 @@ class MessageAnalyzerService {
             const messageType = this.identifyMessageType(segments);
             console.log('✅ Message type identified:', messageType);
             console.log('📋 Phase 3: Code-Auflösung und Segment-Anreicherung');
-            // Phase 3: Enrich segments with code lookup
-            segments = await this.enrichSegmentsWithCodeLookup(segments);
+            // Phase 3: Enrich segments with code lookup and process references
+            segments = await this.enrichSegmentsWithCodeLookup(segments, messageType);
             console.log('✅ Enriched segments with code lookup');
             const parsedMessage = { segments };
             console.log('📋 Phase 4: Wissensbasis-Kontext abrufen');
@@ -520,7 +520,7 @@ class MessageAnalyzerService {
      * Build comprehensive segment table with intelligent interpretation
      */
     buildSegmentTable(segments, messageType) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         const table = [];
         // Segment meaning mappings
         const segmentMeanings = {
@@ -640,7 +640,13 @@ class MessageAnalyzerService {
                         if (rffValue) {
                             rffValue = rffValue.replace(/\?[+:.'?]/g, '');
                         }
-                        value = rffValue || rffQualifier;
+                        // Use resolved process description if available (from semantic search)
+                        if ((_b = segment.resolved_meta) === null || _b === void 0 ? void 0 : _b.processDescription) {
+                            value = `${rffValue} (${segment.resolved_meta.processDescription})`;
+                        }
+                        else {
+                            value = rffValue || rffQualifier;
+                        }
                     }
                     break;
                 case 'QTY':
@@ -731,13 +737,13 @@ class MessageAnalyzerService {
                     break;
                 case 'UNH':
                     meaning = 'Nachrichtentyp';
-                    value = ((_b = segment.elements[1]) === null || _b === void 0 ? void 0 : _b.split(':')[0]) || 'EDIFACT';
+                    value = ((_c = segment.elements[1]) === null || _c === void 0 ? void 0 : _c.split(':')[0]) || 'EDIFACT';
                     break;
                 default:
                     value = segment.elements.join(' : ');
             }
             table.push({
-                segment: `${segment.tag}${((_c = segment.elements[0]) === null || _c === void 0 ? void 0 : _c.split(':')[0]) ? '+' + segment.elements[0].split(':')[0] : ''}`,
+                segment: `${segment.tag}${((_d = segment.elements[0]) === null || _d === void 0 ? void 0 : _d.split(':')[0]) ? '+' + segment.elements[0].split(':')[0] : ''}`,
                 meaning,
                 value
             });
@@ -917,8 +923,9 @@ ${markdownRows || '| - | - | - |'}
     }
     /**
      * Löst BDEW/EIC-Codes in den analysierten Segmenten auf
+     * Löst auch RFF+Z13 Prozessreferenzen über semantische Suche auf
      */
-    async enrichSegmentsWithCodeLookup(segments) {
+    async enrichSegmentsWithCodeLookup(segments, messageType) {
         console.log('🔍 Enriching segments with code lookup...');
         const enrichedSegments = await Promise.all(segments.map(async (segment) => {
             const enrichedSegment = { ...segment };
@@ -961,18 +968,63 @@ ${markdownRows || '| - | - | - |'}
                             // Erweitere Beschreibung
                             enrichedSegment.description = `${segment.description} - ${partyQualifier}: ${primary.companyName} (${code})${roleText}`;
                             // Hänge aussagekräftige Hinweise an
-                            enrichedSegment.resolved_meta = {
-                                partyQualifier,
-                                code,
-                                companyName: primary.companyName,
-                                roles: uniqueRoles,
-                                contactSheetUrl: primary.contactSheetUrl,
-                                allSoftwareSystems: primary.allSoftwareSystems
-                            };
+                            if (!enrichedSegment.resolved_meta) {
+                                enrichedSegment.resolved_meta = {};
+                            }
+                            enrichedSegment.resolved_meta.companyName = primary.companyName;
                         }
                     }
                     catch (error) {
                         console.warn(`⚠️ Failed to resolve NAD code ${code}:`, error);
+                    }
+                }
+            }
+            // Behandle RFF+Z13 Prozessreferenzen mit semantischer Suche
+            if (segment.tag === 'RFF' && segment.elements[0] === 'Z13' && segment.elements[1]) {
+                const processId = segment.elements[1];
+                // Nur bei UTILMD-Nachrichten
+                if (messageType === 'UTILMD') {
+                    try {
+                        const query = `UTILMD Prozessindikator ${processId} Prüfidentifikator PID Lieferbeginn Lieferende`;
+                        const results = await this.qdrantService.searchByText(query, 1, 0.7);
+                        if (results && results.length > 0) {
+                            const bestMatch = results[0];
+                            // Extrahiere relevante Beschreibung aus dem Kontext
+                            let processDesc = '';
+                            // Payload kann text oder content enthalten
+                            const payload = bestMatch.payload;
+                            const text = (payload === null || payload === void 0 ? void 0 : payload.text) || (payload === null || payload === void 0 ? void 0 : payload.content) || '';
+                            if (text) {
+                                const lines = text.split('\n');
+                                // Versuche spezifische Muster zu erkennen
+                                for (const line of lines) {
+                                    if (line.includes(processId) && (line.includes('Lieferbeginn') || line.includes('Lieferende'))) {
+                                        processDesc = line.trim();
+                                        break;
+                                    }
+                                }
+                                // Fallback: Verwende ersten relevanten Satz
+                                if (!processDesc) {
+                                    const sentences = text.split(/[.!?]\s+/);
+                                    for (const sentence of sentences) {
+                                        if (sentence.includes(processId) || sentence.includes('Prozess')) {
+                                            processDesc = sentence.substring(0, 100);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (processDesc) {
+                                if (!enrichedSegment.resolved_meta) {
+                                    enrichedSegment.resolved_meta = {};
+                                }
+                                enrichedSegment.resolved_meta.processDescription = processDesc;
+                                console.log(`✅ Resolved process reference Z13:${processId} to: ${processDesc}`);
+                            }
+                        }
+                    }
+                    catch (error) {
+                        console.warn(`⚠️ Failed to resolve process reference ${processId}:`, error);
                     }
                 }
             }
