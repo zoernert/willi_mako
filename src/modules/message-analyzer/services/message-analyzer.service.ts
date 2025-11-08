@@ -190,7 +190,8 @@ export class MessageAnalyzerService implements IMessageAnalyzerService {
         },
         geminiResponse: {
           rawLength: rawAnalysis.length,
-          rawPreview: rawAnalysis.substring(0, 300)
+          rawPreview: rawAnalysis.substring(0, 1500),
+          rawFull: rawAnalysis  // Full response for debugging
         }
       };
 
