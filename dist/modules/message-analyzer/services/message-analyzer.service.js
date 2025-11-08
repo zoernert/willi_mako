@@ -574,12 +574,13 @@ class MessageAnalyzerService {
         const nadQualifiers = {
             'MS': 'Absender (MSB)',
             'MR': 'Empfänger (Messstellennutzer)',
-            'DP': 'Lieferadresse'
+            'DP': 'Lieferadresse',
+            'Z09': 'Anschlussnutzer'
         };
-        // BGM code meanings - comprehensive list for all EDIFACT message types
-        const bgmCodes = {
-            // UTILMD specific codes (E-series)
-            'E01': 'Messwerte',
+        // BGM code meanings - MESSAGE-TYPE SPECIFIC!
+        // E01 has different meanings in UTILMD vs MSCONS
+        const bgmCodesUTILMD = {
+            'E01': 'Anfragemeldung',
             'E02': 'Abmeldung/Kündigung',
             'E03': 'Änderung',
             'E04': 'Synchronisationsanfrage',
@@ -600,7 +601,15 @@ class MessageAnalyzerService {
             'E19': 'Duplikat',
             'E20': 'Kopie',
             'E35': 'Anfrage (UTILMD Stammdaten)',
-            // Standard document codes
+        };
+        const bgmCodesMSCONS = {
+            'E01': 'Messwerte',
+            'E02': 'Zählzeitwechsel',
+            'E03': 'Änderung',
+            'E04': 'Synchronisationsanfrage',
+        };
+        const bgmCodesGeneric = {
+            // Standard document codes (message-type-agnostic)
             '7': 'Stammdaten',
             '220': 'Bestellung',
             '221': 'Bestelländerung',
@@ -649,6 +658,10 @@ class MessageAnalyzerService {
             '9': 'Bereit',
             '10': 'Nicht verfügbar'
         };
+        // Select BGM codes based on message type
+        const bgmCodes = messageType === 'UTILMD' ? { ...bgmCodesUTILMD, ...bgmCodesGeneric } :
+            messageType === 'MSCONS' ? { ...bgmCodesMSCONS, ...bgmCodesGeneric } :
+                { ...bgmCodesUTILMD, ...bgmCodesMSCONS, ...bgmCodesGeneric }; // Fallback: merge all
         // RFF qualifier meanings
         const rffQualifiers = {
             'MG': 'Zählernummer',
@@ -812,9 +825,41 @@ class MessageAnalyzerService {
                 case 'NAD':
                     const nadQualifier = segment.elements[0];
                     meaning = nadQualifiers[nadQualifier] || `Partei ${nadQualifier}`;
+                    // NAD has complex structure for addresses:
+                    // NAD+qualifier+party_id_code+party_id_identification+name_and_address[...]+street[...]+city+postal+country
+                    // Example: NAD+DP++++Heinrich-Grüber-Str.::36:Kaulsdorf+Berlin++12621+DE
+                    // Example: NAD+Z09+++Winkler:Stephan::::Z01
                     const nadCode = segment.elements[2] || segment.elements[1];
                     const resolvedName = (_c = segment.resolved_meta) === null || _c === void 0 ? void 0 : _c.companyName;
-                    value = resolvedName ? `${resolvedName} (${nadCode})` : nadCode;
+                    // Check if this is a name segment (Z09 often has name in elements[3-6])
+                    // NAD+Z09+++Winkler:Stephan::::Z01
+                    // elements = ['Z09', '', '', '', 'Winkler', 'Stephan', '', '', '', 'Z01']
+                    const nameParts = segment.elements.slice(3, 7).filter(e => e && e !== '');
+                    // Check if this is an address segment (DP often has street/city/postal in later elements)
+                    // NAD+DP++++Heinrich-Grüber-Str.::36:Kaulsdorf+Berlin++12621+DE
+                    // After split by + and : we get: ['DP', '', '', '', '', 'Heinrich-Grüber-Str.', '', '36', 'Kaulsdorf', 'Berlin', '', '12621', 'DE']
+                    const streetParts = segment.elements.slice(4, 8).filter(e => e && e !== '');
+                    const cityIndex = segment.elements.findIndex((e, i) => i > 7 && e && e.length > 2);
+                    const postalIndex = segment.elements.findIndex((e, i) => i > cityIndex && e && /^\d{5}/.test(e));
+                    if (nameParts.length > 0) {
+                        // Name found (Z09 case)
+                        value = nameParts.join(', ');
+                    }
+                    else if (streetParts.length > 0 || cityIndex >= 0) {
+                        // Address found (DP case)
+                        const addressParts = [];
+                        if (streetParts.length > 0)
+                            addressParts.push(streetParts.join(' '));
+                        if (cityIndex >= 0 && segment.elements[cityIndex])
+                            addressParts.push(segment.elements[cityIndex]);
+                        if (postalIndex >= 0 && segment.elements[postalIndex])
+                            addressParts.push(segment.elements[postalIndex]);
+                        value = addressParts.join(', ');
+                    }
+                    else {
+                        // Fallback: company lookup or code
+                        value = resolvedName ? `${resolvedName} (${nadCode})` : nadCode;
+                    }
                     break;
                 case 'LOC':
                     const locValue = segment.elements[1];
@@ -1293,10 +1338,9 @@ ${markdownRows || '| - | - | - |'}
     async enrichSegmentsWithCodeLookup(segments, messageType) {
         console.log('🔍 Enriching segments with code lookup...');
         // Local hardcoded maps to mirror the hybrid lookup used when building the table
-        // Comprehensive BGM codes for all major EDIFACT message types
-        const bgmHardcoded = {
-            // UTILMD specific codes (E-series)
-            'E01': 'Messwerte',
+        // MESSAGE-TYPE SPECIFIC BGM codes (E01 differs between UTILMD and MSCONS!)
+        const bgmHardcodedUTILMD = {
+            'E01': 'Anfragemeldung',
             'E02': 'Abmeldung/Kündigung',
             'E03': 'Änderung',
             'E04': 'Synchronisationsanfrage',
@@ -1317,7 +1361,15 @@ ${markdownRows || '| - | - | - |'}
             'E19': 'Duplikat',
             'E20': 'Kopie',
             'E35': 'Anfrage (UTILMD Stammdaten)',
-            // Standard document codes
+        };
+        const bgmHardcodedMSCONS = {
+            'E01': 'Messwerte',
+            'E02': 'Zählzeitwechsel',
+            'E03': 'Änderung',
+            'E04': 'Synchronisationsanfrage',
+        };
+        const bgmHardcodedGeneric = {
+            // Standard document codes (message-type-agnostic)
             '7': 'Stammdaten',
             '220': 'Bestellung',
             '221': 'Bestelländerung',
@@ -1331,6 +1383,12 @@ ${markdownRows || '| - | - | - |'}
             '457': 'Gutschrift',
             'Z29': 'Preisanfrage'
         };
+        // Merge context-specific BGM codes
+        const bgmHardcoded = messageType === 'UTILMD'
+            ? { ...bgmHardcodedUTILMD, ...bgmHardcodedGeneric }
+            : messageType === 'MSCONS'
+                ? { ...bgmHardcodedMSCONS, ...bgmHardcodedGeneric }
+                : { ...bgmHardcodedUTILMD, ...bgmHardcodedMSCONS, ...bgmHardcodedGeneric }; // fallback: all
         // UTILMD Status codes - complete E-series and numeric codes
         const stsHardcoded = {
             // E-series status codes
