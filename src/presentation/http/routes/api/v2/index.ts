@@ -14,6 +14,7 @@ import documentsRoutes from './documents.routes';
 import williNetzRoutes from './willi-netz.routes';
 import combinedRoutes from './combined.routes';
 import messageAnalyzerRoutes from './message-analyzer.routes';
+import marketPartnersRoutes from './market-partners.routes';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use('/documents', documentsRoutes);
 router.use('/willi-netz', williNetzRoutes);
 router.use('/combined', combinedRoutes);
 router.use('/message-analyzer', messageAnalyzerRoutes);
+router.use('/market-partners', marketPartnersRoutes);
 router.get('/metrics', apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
 	res.json(apiV2OpenApiDocument);
