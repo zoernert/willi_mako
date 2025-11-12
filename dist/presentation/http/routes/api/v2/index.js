@@ -19,6 +19,7 @@ const documents_routes_1 = __importDefault(require("./documents.routes"));
 const willi_netz_routes_1 = __importDefault(require("./willi-netz.routes"));
 const combined_routes_1 = __importDefault(require("./combined.routes"));
 const message_analyzer_routes_1 = __importDefault(require("./message-analyzer.routes"));
+const market_partners_routes_1 = __importDefault(require("./market-partners.routes"));
 const router = (0, express_1.Router)();
 router.use(metrics_1.apiV2MetricsMiddleware);
 router.use('/auth', auth_routes_1.default);
@@ -34,6 +35,7 @@ router.use('/documents', documents_routes_1.default);
 router.use('/willi-netz', willi_netz_routes_1.default);
 router.use('/combined', combined_routes_1.default);
 router.use('/message-analyzer', message_analyzer_routes_1.default);
+router.use('/market-partners', market_partners_routes_1.default);
 router.get('/metrics', metrics_1.apiV2MetricsHandler);
 router.get('/openapi.json', (_req, res) => {
     res.json(openapi_1.apiV2OpenApiDocument);

@@ -5,8 +5,8 @@ exports.apiV2OpenApiDocument = {
     openapi: '3.1.0',
     info: {
         title: 'Willi-Mako API v2',
-        version: '0.7.0',
-        description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte). Version 0.7.0 fügt Endpunkte für EDIFACT Message Analyzer (Analyse, Chat, Modifikation, Validierung) hinzu.'
+        version: '0.7.1',
+        description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte). Version 0.7.1 fügt Market Partners Suche Endpunkt hinzu.'
     },
     servers: [
         {
@@ -754,6 +754,87 @@ exports.apiV2OpenApiDocument = {
                                     properties: {
                                         success: { type: 'boolean' },
                                         data: { $ref: '#/components/schemas/EdifactValidationResult' }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/market-partners/search': {
+            get: {
+                summary: 'Marktpartner suchen',
+                description: 'Suche nach Marktpartnern über BDEW/EIC-Codes. Öffentlicher Endpunkt ohne Authentifizierung.',
+                parameters: [
+                    {
+                        name: 'q',
+                        in: 'query',
+                        required: true,
+                        description: 'Suchbegriff (Code, Firmenname, Stadt, etc.)',
+                        schema: {
+                            type: 'string',
+                            minLength: 1
+                        }
+                    },
+                    {
+                        name: 'limit',
+                        in: 'query',
+                        required: false,
+                        description: 'Maximale Anzahl der Ergebnisse (1-20, Standard: 10)',
+                        schema: {
+                            type: 'integer',
+                            minimum: 1,
+                            maximum: 20,
+                            default: 10
+                        }
+                    }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Suchergebnisse',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        data: {
+                                            type: 'object',
+                                            properties: {
+                                                results: {
+                                                    type: 'array',
+                                                    items: { $ref: '#/components/schemas/MarketPartnerSearchResult' }
+                                                },
+                                                count: {
+                                                    type: 'integer',
+                                                    description: 'Anzahl der zurückgegebenen Ergebnisse'
+                                                },
+                                                query: {
+                                                    type: 'string',
+                                                    description: 'Verwendete Suchanfrage'
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    '400': {
+                        description: 'Ungültige Anfrage (fehlender oder leerer Suchbegriff)',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        success: { type: 'boolean' },
+                                        error: {
+                                            type: 'object',
+                                            properties: {
+                                                message: { type: 'string' }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2146,6 +2227,56 @@ exports.apiV2OpenApiDocument = {
                     },
                     messageType: { type: 'string', description: 'Erkannter Nachrichtentyp (z.B. MSCONS, UTILMD)' },
                     segmentCount: { type: 'integer', description: 'Anzahl der Segmente' }
+                }
+            },
+            MarketPartnerSearchResult: {
+                type: 'object',
+                properties: {
+                    code: { type: 'string', description: 'BDEW- oder EIC-Code' },
+                    companyName: { type: 'string', description: 'Firmenname' },
+                    codeType: { type: 'string', description: 'Code-Typ (z.B. BDEW, EIC)' },
+                    source: { type: 'string', enum: ['bdew', 'eic'], description: 'Datenquelle' },
+                    validFrom: { type: 'string', format: 'date', nullable: true, description: 'Gültig ab Datum' },
+                    validTo: { type: 'string', format: 'date', nullable: true, description: 'Gültig bis Datum' },
+                    bdewCodes: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        nullable: true,
+                        description: 'Liste aller BDEW-Codes des Unternehmens'
+                    },
+                    contacts: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                BdewCode: { type: 'string' },
+                                CompanyName: { type: 'string' },
+                                City: { type: 'string' },
+                                PostCode: { type: 'string' },
+                                Street: { type: 'string' },
+                                CodeContact: { type: 'string' },
+                                CodeContactPhone: { type: 'string' },
+                                CodeContactEmail: { type: 'string' }
+                            }
+                        },
+                        nullable: true,
+                        description: 'Kontaktinformationen'
+                    },
+                    contactSheetUrl: { type: 'string', nullable: true, description: 'URL zum Kontaktdatenblatt' },
+                    markdown: { type: 'string', nullable: true, description: 'Markdown-formatierte Informationen' },
+                    allSoftwareSystems: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: { type: 'string', description: 'Name des Software-Systems' },
+                                confidence: { type: 'string', enum: ['High', 'Medium', 'Low'], description: 'Konfidenz der Erkennung' },
+                                evidence_text: { type: 'string', description: 'Beweis-Text für die Erkennung' }
+                            }
+                        },
+                        nullable: true,
+                        description: 'Erkannte Software-Systeme'
+                    }
                 }
             }
         }

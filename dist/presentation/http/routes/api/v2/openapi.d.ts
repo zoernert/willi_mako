@@ -977,6 +977,96 @@ export declare const apiV2OpenApiDocument: {
                 };
             };
         };
+        '/market-partners/search': {
+            get: {
+                summary: string;
+                description: string;
+                parameters: ({
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    description: string;
+                    schema: {
+                        type: string;
+                        minLength: number;
+                        minimum?: undefined;
+                        maximum?: undefined;
+                        default?: undefined;
+                    };
+                } | {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    description: string;
+                    schema: {
+                        type: string;
+                        minimum: number;
+                        maximum: number;
+                        default: number;
+                        minLength?: undefined;
+                    };
+                })[];
+                responses: {
+                    '200': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        data: {
+                                            type: string;
+                                            properties: {
+                                                results: {
+                                                    type: string;
+                                                    items: {
+                                                        $ref: string;
+                                                    };
+                                                };
+                                                count: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                query: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    '400': {
+                        description: string;
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: string;
+                                    properties: {
+                                        success: {
+                                            type: string;
+                                        };
+                                        error: {
+                                            type: string;
+                                            properties: {
+                                                message: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
         '/reasoning/generate': {
             post: {
                 summary: string;
@@ -3023,6 +3113,115 @@ export declare const apiV2OpenApiDocument: {
                     };
                     segmentCount: {
                         type: string;
+                        description: string;
+                    };
+                };
+            };
+            MarketPartnerSearchResult: {
+                type: string;
+                properties: {
+                    code: {
+                        type: string;
+                        description: string;
+                    };
+                    companyName: {
+                        type: string;
+                        description: string;
+                    };
+                    codeType: {
+                        type: string;
+                        description: string;
+                    };
+                    source: {
+                        type: string;
+                        enum: string[];
+                        description: string;
+                    };
+                    validFrom: {
+                        type: string;
+                        format: string;
+                        nullable: boolean;
+                        description: string;
+                    };
+                    validTo: {
+                        type: string;
+                        format: string;
+                        nullable: boolean;
+                        description: string;
+                    };
+                    bdewCodes: {
+                        type: string;
+                        items: {
+                            type: string;
+                        };
+                        nullable: boolean;
+                        description: string;
+                    };
+                    contacts: {
+                        type: string;
+                        items: {
+                            type: string;
+                            properties: {
+                                BdewCode: {
+                                    type: string;
+                                };
+                                CompanyName: {
+                                    type: string;
+                                };
+                                City: {
+                                    type: string;
+                                };
+                                PostCode: {
+                                    type: string;
+                                };
+                                Street: {
+                                    type: string;
+                                };
+                                CodeContact: {
+                                    type: string;
+                                };
+                                CodeContactPhone: {
+                                    type: string;
+                                };
+                                CodeContactEmail: {
+                                    type: string;
+                                };
+                            };
+                        };
+                        nullable: boolean;
+                        description: string;
+                    };
+                    contactSheetUrl: {
+                        type: string;
+                        nullable: boolean;
+                        description: string;
+                    };
+                    markdown: {
+                        type: string;
+                        nullable: boolean;
+                        description: string;
+                    };
+                    allSoftwareSystems: {
+                        type: string;
+                        items: {
+                            type: string;
+                            properties: {
+                                name: {
+                                    type: string;
+                                    description: string;
+                                };
+                                confidence: {
+                                    type: string;
+                                    enum: string[];
+                                    description: string;
+                                };
+                                evidence_text: {
+                                    type: string;
+                                    description: string;
+                                };
+                            };
+                        };
+                        nullable: boolean;
                         description: string;
                     };
                 };
