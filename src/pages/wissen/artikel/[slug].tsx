@@ -10,9 +10,11 @@ import { getWhitepaperBySlug } from '../../../lib/content/whitepapers';
 import Layout from '../../../components/Layout';
 import { ArticleSEO } from '../../../components/ArticleSEO';
 import { CTATop, CTAMiddle, CTABottom } from '../../../components/ArticleCTA';
+import RelatedArticles from '../../../components/RelatedArticles';
 
 interface ArticleDetailProps {
 	article: Article;
+	allArticles: Article[];
 	whitepaperTitle?: string | null;
 }
 
@@ -103,7 +105,7 @@ function parseContentWithCTAs(content: string): { sections: string[]; ctas: CTAM
 	return { sections: cleanSections, ctas };
 }
 
-const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTitle }) => {
+const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, allArticles, whitepaperTitle }) => {
 	const router = useRouter();
 	
 	if (!article) {
@@ -197,6 +199,16 @@ const ArticleDetailPage: React.FC<ArticleDetailProps> = ({ article, whitepaperTi
 							</Link>
 						</Box>
 					)}
+					
+					{/* Related Articles Section */}
+					<Box sx={{ mt: 6, mb: 4 }}>
+						<RelatedArticles
+							currentArticleSlug={article.slug}
+							currentArticleTags={article.tags || []}
+							allArticles={allArticles}
+							maxArticles={3}
+						/>
+					</Box>
 				</Box>
 			</Container>
 		</Layout>
@@ -216,6 +228,9 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 		return { notFound: true };
 	}
 	
+	// Get all articles for related articles component
+	const allArticles = getAllArticles();
+	
 	// Serialisiere alle Date-Objekte zu ISO-Strings
 	const serializedArticle: any = { ...article };
 	['date', 'publishedDate', 'modifiedDate'].forEach(field => {
@@ -224,7 +239,21 @@ export const getStaticProps: GetStaticProps = async ({ params }) => {
 		}
 	});
 	
-	const props: { article: any; whitepaperTitle?: string | null } = { article: serializedArticle };
+	// Serialize all articles
+	const serializedAllArticles = allArticles.map((a: any) => {
+		const serialized = { ...a };
+		['date', 'publishedDate', 'modifiedDate'].forEach(field => {
+			if (serialized[field] instanceof Date) {
+				serialized[field] = serialized[field].toISOString();
+			}
+		});
+		return serialized;
+	});
+	
+	const props: { article: any; allArticles: any[]; whitepaperTitle?: string | null } = { 
+		article: serializedArticle,
+		allArticles: serializedAllArticles
+	};
 	if (article.whitepaperSlug) {
 		const wp = getWhitepaperBySlug(article.whitepaperSlug);
 		props.whitepaperTitle = wp?.title || null;
