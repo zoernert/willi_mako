@@ -37,16 +37,6 @@ const nextConfig = {
       // Rewrites applied after checking filesystem and pages
       // Ensures that Next page /data/[slug] is NOT overridden by this rule
       afterFiles: [
-        // SEO-friendly URL: /articles -> /wissen/artikel
-        {
-          source: '/articles',
-          destination: '/wissen/artikel',
-        },
-        // SEO-friendly URL: /articles/[slug] -> /wissen/artikel/[slug]
-        {
-          source: '/articles/:slug',
-          destination: '/wissen/artikel/:slug',
-        },
         // Only rewrite actual data files (avoid hijacking /data/:slug page)
         {
           source: '/data/:slug/:file((?:[^/]+)\\.(?:json|csv))',
@@ -68,6 +58,17 @@ const nextConfig = {
   // Redirects für alte Pfade
   async redirects() {
     return [
+      // Redirect legacy /articles URLs to canonical /wissen/artikel (SEO)
+      {
+        source: '/articles',
+        destination: '/wissen/artikel',
+        permanent: true, // 301 redirect
+      },
+      {
+        source: '/articles/:slug',
+        destination: '/wissen/artikel/:slug',
+        permanent: true, // 301 redirect
+      },
       {
         source: '/client/:path*',
         destination: '/app/:path*',

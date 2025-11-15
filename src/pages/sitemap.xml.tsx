@@ -78,7 +78,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
 
   <!-- Artikel Overview -->
   <url>
-    <loc>https://stromhaltig.de/articles</loc>
+    <loc>https://stromhaltig.de/wissen/artikel</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -177,7 +177,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     const priority = a.tags && a.tags.length > 3 ? 0.75 : 0.7; // Higher priority for comprehensive articles
     return `
   <url>
-    <loc>https://stromhaltig.de/articles/${a.slug}</loc>
+    <loc>https://stromhaltig.de/wissen/artikel/${a.slug}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>${priority}</priority>

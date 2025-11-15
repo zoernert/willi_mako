@@ -20,8 +20,8 @@
 ```
 https://stromhaltig.de/wissen/artikel/eog-energierichtungsangabe
 ```
-- [ ] URL eingeben → "Prüfen"
-- [ ] Status notieren:
+- [X] URL eingeben → "Prüfen"
+- [X] Status notieren: URL ist nicht auf Google
   - ✅ "URL ist bei Google" → Gut! Abwarten.
   - ⏳ "URL wird gecrawlt" → Warte 2-3 Tage
   - ❌ "URL ist nicht bei Google" → **"Indexierung beantragen" klicken!**
@@ -30,7 +30,7 @@ https://stromhaltig.de/wissen/artikel/eog-energierichtungsangabe
 ```
 https://stromhaltig.de/wissen/artikel/aperak-z20-fehler
 ```
-- [ ] Gleiche Schritte wie bei EOG
+- [X] Gleiche Schritte wie bei EOG
 
 **B) Aktualisierte Artikel stichprobenartig prüfen:**
 
