@@ -17,7 +17,7 @@ function decodeEntities(input) {
         .trim();
 }
 function extractTag(block, tag) {
-    const match = block.match(new RegExp(`<${tag}>([\s\S]*?)<\\/${tag}>`, 'i'));
+    const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
     return match ? decodeEntities(match[1]) : '';
 }
 function extractEnclosure(block) {

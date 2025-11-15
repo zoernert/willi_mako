@@ -23,7 +23,7 @@ function decodeEntities(input: string): string {
 }
 
 function extractTag(block: string, tag: string): string {
-  const match = block.match(new RegExp(`<${tag}>([\s\S]*?)<\\/${tag}>`, 'i'));
+  const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
   return match ? decodeEntities(match[1]) : '';
 }
 
