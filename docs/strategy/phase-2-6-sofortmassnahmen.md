@@ -32,6 +32,8 @@ https://stromhaltig.de/wissen/artikel/aperak-z20-fehler
 ```
 - [X] Gleiche Schritte wie bei EOG
 
+**Hinweis:** Die korrekte URL ist `/wissen/artikel/` (nicht `/articles/`). Alte `/articles/` URLs werden automatisch auf `/wissen/artikel/` redirected (301/308).
+
 **B) Aktualisierte Artikel stichprobenartig prüfen:**
 
 ```
