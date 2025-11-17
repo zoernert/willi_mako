@@ -204,6 +204,56 @@ export class QdrantService {
     return this.semanticSearchGuidedByCollection(query, options, QDRANT_COLLECTION_NAME);
   }
 
+  /**
+   * Combined semantic search across both willi_mako and willi-netz collections
+   * Queries both collections in parallel and merges results by score
+   * @param query - Search query
+   * @param options - Search options (limit, alpha, outlineScoping, excludeVisual)
+   * @returns Merged and sorted results with sourceCollection marker
+   */
+  static async semanticSearchCombined(
+    query: string,
+    options?: { limit?: number; alpha?: number; outlineScoping?: boolean; excludeVisual?: boolean; }
+  ): Promise<any[]> {
+    const limit = options?.limit ?? 20;
+    
+    try {
+      // Query both collections in parallel for performance
+      const [resultsWilliMako, resultsWilliNetz] = await Promise.all([
+        this.semanticSearchGuidedByCollection(query, options, 'willi_mako'),
+        this.semanticSearchGuidedByCollection(query, options, 'willi-netz')
+      ]);
+
+      // Mark source collection for each result
+      const markedWilliMako = resultsWilliMako.map(r => ({
+        ...r,
+        sourceCollection: 'willi_mako',
+        payload: { ...r.payload, sourceCollection: 'willi_mako' }
+      }));
+
+      const markedWilliNetz = resultsWilliNetz.map(r => ({
+        ...r,
+        sourceCollection: 'willi-netz',
+        payload: { ...r.payload, sourceCollection: 'willi-netz' }
+      }));
+
+      // Combine and sort by score (merged_score takes precedence)
+      const combined = [...markedWilliMako, ...markedWilliNetz];
+      combined.sort((a, b) => {
+        const scoreA = a.merged_score ?? a.score ?? 0;
+        const scoreB = b.merged_score ?? b.score ?? 0;
+        return scoreB - scoreA;
+      });
+
+      // Return top results up to limit
+      return combined.slice(0, limit);
+    } catch (error) {
+      console.error('Error in semanticSearchCombined:', error);
+      // Fallback to willi_mako only
+      return this.semanticSearchGuidedByCollection(query, options, QDRANT_COLLECTION_NAME);
+    }
+  }
+
   static async semanticSearchGuidedByCollection(
     query: string, 
     options?: { limit?: number; alpha?: number; outlineScoping?: boolean; excludeVisual?: boolean; },

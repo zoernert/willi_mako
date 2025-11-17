@@ -439,12 +439,21 @@ class AdvancedRetrieval {
     limit: number = 10
   ): Promise<any[]> {
     try {
-      // 1. Optimierte geführte Suche mit Outline-Scoping und Chunk-Type-Boosting
-      const guidedResults = await QdrantService.semanticSearchGuided(query, {
-        limit: limit * 2,
-        outlineScoping: true,
-        excludeVisual: true
-      });
+      // 1. Multi-Collection Search: Combined or Single (Feature Flag)
+      // ENABLE_COMBINED_SEARCH=true enables willi_mako + willi-netz combined search
+      const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+      
+      const guidedResults = useCombinedSearch
+        ? await QdrantService.semanticSearchCombined(query, {
+            limit: limit * 2,
+            outlineScoping: true,
+            excludeVisual: true
+          })
+        : await QdrantService.semanticSearchGuided(query, {
+            limit: limit * 2,
+            outlineScoping: true,
+            excludeVisual: true
+          });
 
       if (guidedResults.length === 0) {
         // Fallback: einfache Suche über generierte Suchbegriffe
