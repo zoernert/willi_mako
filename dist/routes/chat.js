@@ -381,12 +381,20 @@ class AdvancedRetrieval {
     async getContextualCompressedResults(query, userPreferences, // userPreferences is kept for interface consistency, but not used in the new flow
     limit = 10) {
         try {
-            // 1. Optimierte geführte Suche mit Outline-Scoping und Chunk-Type-Boosting
-            const guidedResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
-                limit: limit * 2,
-                outlineScoping: true,
-                excludeVisual: true
-            });
+            // 1. Multi-Collection Search: Combined or Single (Feature Flag)
+            // ENABLE_COMBINED_SEARCH=true enables willi_mako + willi-netz combined search
+            const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+            const guidedResults = useCombinedSearch
+                ? await qdrant_1.QdrantService.semanticSearchCombined(query, {
+                    limit: limit * 2,
+                    outlineScoping: true,
+                    excludeVisual: true
+                })
+                : await qdrant_1.QdrantService.semanticSearchGuided(query, {
+                    limit: limit * 2,
+                    outlineScoping: true,
+                    excludeVisual: true
+                });
             if (guidedResults.length === 0) {
                 // Fallback: einfache Suche über generierte Suchbegriffe
                 const searchQueries = await llmProvider_1.default.generateSearchQueries(query);

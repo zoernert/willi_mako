@@ -39,6 +39,7 @@ export const AnalyticsEvents = {
   
   // Conversions
   WHITEPAPER_DOWNLOAD: 'whitepaper_download',
+  WHITEPAPER_LEAD_QUALIFIED: 'whitepaper_lead_qualified',
   LEAD_MAGNET_DOWNLOAD: 'lead_magnet_download',
   APP_TRIAL_STARTED: 'app_trial_started',
   CONTACT_FORM_SUBMITTED: 'contact_form_submitted',

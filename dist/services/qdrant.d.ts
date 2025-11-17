@@ -37,6 +37,19 @@ export declare class QdrantService {
         outlineScoping?: boolean;
         excludeVisual?: boolean;
     }): Promise<any[]>;
+    /**
+     * Combined semantic search across both willi_mako and willi-netz collections
+     * Queries both collections in parallel and merges results by score
+     * @param query - Search query
+     * @param options - Search options (limit, alpha, outlineScoping, excludeVisual)
+     * @returns Merged and sorted results with sourceCollection marker
+     */
+    static semanticSearchCombined(query: string, options?: {
+        limit?: number;
+        alpha?: number;
+        outlineScoping?: boolean;
+        excludeVisual?: boolean;
+    }): Promise<any[]>;
     static semanticSearchGuidedByCollection(query: string, options?: {
         limit?: number;
         alpha?: number;

@@ -2,13 +2,32 @@ import React, { useState } from 'react';
 import { GetStaticPaths, GetStaticProps } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, Button, TextField, Alert, CircularProgress, Paper } from '@mui/material';
+import { 
+	Container, 
+	Typography, 
+	Box, 
+	Button, 
+	TextField, 
+	Alert, 
+	CircularProgress, 
+	Paper,
+	FormGroup,
+	FormControlLabel,
+	Checkbox,
+	Radio,
+	RadioGroup,
+	FormControl,
+	FormLabel,
+	FormHelperText
+} from '@mui/material';
 import Link from 'next/link';
 import { ArrowBack as BackIcon } from '@mui/icons-material';
 import MarkdownRenderer from '../../components/MarkdownRenderer';
 import { getAllWhitepapers, getWhitepaperBySlug, getWhitepaperSlugs, Whitepaper as WP } from '../../lib/content/whitepapers';
 import { getArticlesByWhitepaperSlug, Article } from '../../lib/content/articles';
 import Layout from '../../components/Layout';
+import { trackEvent, AnalyticsEvents } from '../../lib/analytics';
+import type { DownloadReason, UsagePurpose, ContactPreference } from '../../types/whitepaper-lead';
 
 interface WhitepaperDetailProps {
 	whitepaper: WP;
@@ -18,15 +37,74 @@ interface WhitepaperDetailProps {
 const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, articles }) => {
 	const router = useRouter();
 	const [email, setEmail] = useState<string>('');
+	const [downloadReasons, setDownloadReasons] = useState<DownloadReason[]>([]);
+	const [usagePurpose, setUsagePurpose] = useState<UsagePurpose | ''>('');
+	const [contactPreferences, setContactPreferences] = useState<ContactPreference[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 	const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
+	const downloadReasonOptions: DownloadReason[] = [
+		'Anderes Interesse',
+		'Unternehmensentwicklung',
+		'Energieforschung',
+		'Strategieberatung',
+		'Softwareentwicklung',
+		'Medienmeldung',
+		'Wissensmanagement'
+	];
+
+	const usagePurposeOptions: UsagePurpose[] = [
+		'Persönliches Lesen',
+		'Aufbereitung in Studie/Forschung',
+		'Evaluation',
+		'Verteilung an Kollegen/Peers',
+		'Forschung und Lehre'
+	];
+
+	const contactPreferenceOptions: ContactPreference[] = [
+		'Newsletter (ca. 1x/Monat)',
+		'Bilaterale Email Beratung/Schulung',
+		'Bilaterale Evaluation Whitepaper'
+	];
+
+	const handleDownloadReasonChange = (reason: DownloadReason) => {
+		setDownloadReasons(prev => 
+			prev.includes(reason) 
+				? prev.filter(r => r !== reason)
+				: [...prev, reason]
+		);
+	};
+
+	const handleContactPreferenceChange = (preference: ContactPreference) => {
+		setContactPreferences(prev => 
+			prev.includes(preference) 
+				? prev.filter(p => p !== preference)
+				: [...prev, preference]
+		);
+	};
+
 	const handleDownloadRequest = async (e: React.FormEvent) => {
 		e.preventDefault();
+		
+		// Validation
+		if (downloadReasons.length === 0) {
+			setMessage({ type: 'error', text: 'Bitte wählen Sie mindestens einen Grund für den Download aus.' });
+			return;
+		}
+		if (!usagePurpose) {
+			setMessage({ type: 'error', text: 'Bitte wählen Sie den Zweck der Nutzung aus.' });
+			return;
+		}
+		if (contactPreferences.length === 0) {
+			setMessage({ type: 'error', text: 'Bitte wählen Sie mindestens eine Kontaktpräferenz aus.' });
+			return;
+		}
+
 		setLoading(true);
 		setMessage(null);
 		setDownloadUrl(null);
+		
 		try {
 			const response = await fetch('/api/send-whitepaper', {
 				method: 'POST',
@@ -37,22 +115,29 @@ const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, art
 					email,
 					whitepaperTitle: whitepaper.title,
 					whitepaperPdfUrl: whitepaper.pdfPath,
+					downloadReasons,
+					usagePurpose,
+					contactPreferences,
 				}),
 			});
 			const data = await response.json();
-					if (response.ok) {
-				setMessage({ type: 'success', text: data.message || 'Danke! Der Lead wurde übermittelt.' });
+			
+			if (response.ok) {
+				setMessage({ type: 'success', text: 'Vielen Dank! Sie erhalten in Kürze eine E-Mail mit dem Download-Link.' });
 				setDownloadUrl(whitepaper.pdfPath);
 				setEmail('');
-						// Optional analytics hook (no-op if dataLayer not present)
-						try {
-							// @ts-ignore
-							window.dataLayer?.push({
-								event: 'whitepaper_lead_submitted',
-								whitepaper_slug: whitepaper.slug,
-								whitepaper_title: whitepaper.title,
-							});
-						} catch {}
+				setDownloadReasons([]);
+				setUsagePurpose('');
+				setContactPreferences([]);
+				
+				// Track qualified lead event
+				trackEvent(AnalyticsEvents.WHITEPAPER_LEAD_QUALIFIED, {
+					whitepaper_slug: whitepaper.slug,
+					whitepaper_title: whitepaper.title,
+					download_reasons: downloadReasons.join(', '),
+					usage_purpose: usagePurpose,
+					contact_preferences: contactPreferences.join(', '),
+				});
 			} else {
 				setMessage({ type: 'error', text: data.error || 'Fehler beim Senden des Whitepapers.' });
 			}
@@ -107,10 +192,21 @@ const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, art
 					<Typography variant="h5" component="h2" gutterBottom fontWeight="bold">
 						Whitepaper herunterladen
 					</Typography>
+					
+					<Alert severity="info" sx={{ mb: 3 }}>
+						<Typography variant="body2">
+							<strong>Hinweis:</strong> Dieses Whitepaper ist für Gewerbekunden (B2B) konzipiert. 
+							Privatpersonen bitten wir, eine E-Mail an <a href="mailto:kontakt@stromdao.com" style={{ color: '#147a50' }}>kontakt@stromdao.com</a> zu senden, 
+							wenn Sie eine Kopie des Whitepapers wünschen.
+						</Typography>
+					</Alert>
+
 					<Typography variant="body1" paragraph>
-						Geben Sie Ihre E-Mail-Adresse ein. Nach dem Absenden können Sie das PDF direkt herunterladen.
+						Bitte füllen Sie die folgenden Angaben aus, um das Whitepaper herunterzuladen. 
+						Sie erhalten anschließend eine E-Mail mit dem Download-Link.
 					</Typography>
-					<Box component="form" onSubmit={handleDownloadRequest} sx={{ mt: 2 }}>
+
+					<Box component="form" onSubmit={handleDownloadRequest} sx={{ mt: 3 }}>
 						<TextField
 							label="Ihre E-Mail-Adresse"
 							type="email"
@@ -118,8 +214,92 @@ const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, art
 							required
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
-							sx={{ mb: 2 }}
+							sx={{ mb: 3 }}
 						/>
+
+						<FormControl component="fieldset" required sx={{ mb: 3, width: '100%' }}>
+							<FormLabel component="legend" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
+								Warum möchten Sie dieses Whitepaper herunterladen? (Mehrfachauswahl möglich)
+							</FormLabel>
+							<FormGroup>
+								{downloadReasonOptions.map((reason) => (
+									<FormControlLabel
+										key={reason}
+										control={
+											<Checkbox
+												checked={downloadReasons.includes(reason)}
+												onChange={() => handleDownloadReasonChange(reason)}
+												sx={{ 
+													color: '#147a50',
+													'&.Mui-checked': { color: '#147a50' }
+												}}
+											/>
+										}
+										label={reason}
+									/>
+								))}
+							</FormGroup>
+							{downloadReasons.length === 0 && (
+								<FormHelperText>Bitte wählen Sie mindestens eine Option aus.</FormHelperText>
+							)}
+						</FormControl>
+
+						<FormControl component="fieldset" required sx={{ mb: 3, width: '100%' }}>
+							<FormLabel component="legend" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
+								Für welchen Zweck werden Sie das Whitepaper nutzen?
+							</FormLabel>
+							<RadioGroup
+								value={usagePurpose}
+								onChange={(e) => setUsagePurpose(e.target.value as UsagePurpose)}
+							>
+								{usagePurposeOptions.map((purpose) => (
+									<FormControlLabel
+										key={purpose}
+										value={purpose}
+										control={
+											<Radio 
+												sx={{ 
+													color: '#147a50',
+													'&.Mui-checked': { color: '#147a50' }
+												}}
+											/>
+										}
+										label={purpose}
+									/>
+								))}
+							</RadioGroup>
+							{!usagePurpose && (
+								<FormHelperText>Bitte wählen Sie eine Option aus.</FormHelperText>
+							)}
+						</FormControl>
+
+						<FormControl component="fieldset" required sx={{ mb: 3, width: '100%' }}>
+							<FormLabel component="legend" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
+								Wie möchten Sie von der STROMDAO GmbH kontaktiert werden? (Mehrfachauswahl möglich)
+							</FormLabel>
+							<FormGroup>
+								{contactPreferenceOptions.map((preference) => (
+									<FormControlLabel
+										key={preference}
+										control={
+											<Checkbox
+												checked={contactPreferences.includes(preference)}
+												onChange={() => handleContactPreferenceChange(preference)}
+												sx={{ 
+													color: '#147a50',
+													'&.Mui-checked': { color: '#147a50' }
+												}}
+											/>
+										}
+										label={preference}
+									/>
+								))}
+							</FormGroup>
+							{contactPreferences.length === 0 && (
+								<FormHelperText>Bitte wählen Sie mindestens eine Option aus.</FormHelperText>
+							)}
+						</FormControl>
+
 						<Button
 							type="submit"
 							variant="contained"
@@ -127,8 +307,9 @@ const WhitepaperDetailPage: React.FC<WhitepaperDetailProps> = ({ whitepaper, art
 							startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
 							sx={{ backgroundColor: '#147a50', '&:hover': { backgroundColor: '#0d5538' } }}
 						>
-							{loading ? 'Sende...' : 'Lead senden'}
+							{loading ? 'Wird gesendet...' : 'Whitepaper anfordern'}
 						</Button>
+
 						{message && (
 							<Alert severity={message.type} sx={{ mt: 2 }}>
 								{message.text}
