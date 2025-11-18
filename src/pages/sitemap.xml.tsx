@@ -7,6 +7,24 @@ import { calculateSitemapPriority, calculateChangeFreq } from '../../lib/seo-uti
 import { parseManualSections, getManualMarkdown } from '../../lib/content/manual';
 import { getAtlasDiagrams, getAtlasElements, getAtlasProcesses } from '../../lib/atlas/data';
 
+// Hilfsfunktion zur sicheren Datumsformatierung für Sitemap
+const formatDateForSitemap = (value: Date | string | null | undefined): string => {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
+};
+
 export default function Sitemap() {
   return null;
 }
@@ -130,7 +148,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${faqs.map(faq => `
   <url>
     <loc>https://stromhaltig.de/wissen/${faq.slug}</loc>
-    <lastmod>${faq.updated_at}</lastmod>
+    <lastmod>${formatDateForSitemap(faq.updated_at)}</lastmod>
     <changefreq>${calculateChangeFreq(faq.view_count)}</changefreq>
     <priority>${calculateSitemapPriority(faq.view_count, faq.tags)}</priority>
   </url>`).join('')}
@@ -139,7 +157,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${atlasElements.map(element => `
   <url>
     <loc>https://stromhaltig.de/daten-atlas/datenelemente/${element.slug}</loc>
-    <lastmod>${element.updatedAt || new Date().toISOString()}</lastmod>
+    <lastmod>${formatDateForSitemap(element.updatedAt)}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`).join('')}
@@ -148,7 +166,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${atlasProcesses.map(process => `
   <url>
     <loc>https://stromhaltig.de/daten-atlas/prozesse/${process.slug}</loc>
-    <lastmod>${process.updatedAt || new Date().toISOString()}</lastmod>
+    <lastmod>${formatDateForSitemap(process.updatedAt)}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`).join('')}
@@ -157,7 +175,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${atlasDiagrams.map(diagram => `
   <url>
     <loc>https://stromhaltig.de/daten-atlas/visualisierungen/${diagram.slug}</loc>
-    <lastmod>${diagram.updatedAt || new Date().toISOString()}</lastmod>
+    <lastmod>${formatDateForSitemap(diagram.updatedAt)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>`).join('')}
@@ -166,14 +184,14 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${whitepapers.map(wp => `
   <url>
     <loc>https://stromhaltig.de/whitepaper/${wp.slug}</loc>
-    <lastmod>${wp.publishedDate}</lastmod>
+    <lastmod>${formatDateForSitemap(wp.publishedDate)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`).join('')}
 
   <!-- Artikel Pages -->
   ${articles.map(a => {
-    const lastmod = (a as any).date || a.publishedDate || new Date().toISOString();
+    const lastmod = formatDateForSitemap((a as any).date || a.publishedDate);
     const priority = a.tags && a.tags.length > 3 ? 0.75 : 0.7; // Higher priority for comprehensive articles
     return `
   <url>
@@ -187,7 +205,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   <!-- Dataset Pages -->
   ${datasets.map(d => {
     const url = d.url || '';
-    const lastmod = d.dateModified || d.datePublished || new Date().toISOString();
+    const lastmod = formatDateForSitemap(d.dateModified || d.datePublished);
     return `\n  <url>\n    <loc>${url}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`;
   }).join('')}
 
@@ -203,7 +221,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${publicThreads.map((t: any) => `
   <url>
     <loc>https://stromhaltig.de/community/public/${t.slug}</loc>
-    <lastmod>${t.published_at || new Date().toISOString()}</lastmod>
+    <lastmod>${formatDateForSitemap(t.published_at)}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>`).join('')}
@@ -212,7 +230,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   ${submissions.map((s: any) => `
   <url>
     <loc>https://stromhaltig.de/konsultation/mitteilung-53/rueckmeldung/${s.id}</loc>
-    <lastmod>${s.createdAt}</lastmod>
+    <lastmod>${formatDateForSitemap(s.createdAt)}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>`).join('')}
