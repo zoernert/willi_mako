@@ -199,12 +199,19 @@ class AdvancedReasoningService {
       // Step 2: Quick Context Retrieval
       const retrievalStart = Date.now();
       
-      // Simple search first for speed (use optimized guided search)
-      const quickResults = await QdrantService.semanticSearchGuided(query, {
-        limit: 24,
-        outlineScoping: true,
-        excludeVisual: true
-      });
+      // Use combined search to query both willi_mako and willi-netz collections
+      const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+      const quickResults = useCombinedSearch
+        ? await QdrantService.semanticSearchCombined(query, {
+            limit: 24,
+            outlineScoping: true,
+            excludeVisual: true
+          })
+        : await QdrantService.semanticSearchGuided(query, {
+            limit: 24,
+            outlineScoping: true,
+            excludeVisual: true
+          });
       
       if (quickResults.length === 0) {
         // If no results, try one enhanced search
@@ -384,7 +391,10 @@ class AdvancedReasoningService {
       
       // Fast fallback: Simple response generation
       try {
-  const fallbackResults = await QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
+        const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+        const fallbackResults = useCombinedSearch
+          ? await QdrantService.semanticSearchCombined(query, { limit: 16, outlineScoping: true, excludeVisual: true })
+          : await QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
         const contextText = fallbackResults.map(r => r.payload?.text || '').join('\n');
         const fallbackResponse = await llm.generateResponse(
           previousMessages,
@@ -723,10 +733,15 @@ Antwort:`;
 
   private async performParallelSearch(queries: string[], userId?: string, teamId?: string): Promise<any[]> {
     try {
-      // Perform searches using optimized guided retrieval
+      // Perform searches using optimized guided retrieval (combined if enabled)
       console.log(`🔍 Performing parallel guided searches for ${queries.length} queries`);
       
-  const searchPromises = queries.map(q => QdrantService.semanticSearchGuided(q, { limit: 20, outlineScoping: true, excludeVisual: true }));
+      const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+      const searchPromises = queries.map(q => 
+        useCombinedSearch
+          ? QdrantService.semanticSearchCombined(q, { limit: 20, outlineScoping: true, excludeVisual: true })
+          : QdrantService.semanticSearchGuided(q, { limit: 20, outlineScoping: true, excludeVisual: true })
+      );
       const searchResults = await Promise.all(searchPromises);
       
       // Flatten and process results
@@ -753,7 +768,12 @@ Antwort:`;
       console.error('❌ Error in parallel guided search:', error);
       
       // Fallback to most basic search if all else fails
-  const fallbackPromises = queries.map(q => QdrantService.semanticSearchGuided(q, { limit: 20 }));
+      const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+      const fallbackPromises = queries.map(q => 
+        useCombinedSearch
+          ? QdrantService.semanticSearchCombined(q, { limit: 20 })
+          : QdrantService.semanticSearchGuided(q, { limit: 20 })
+      );
       const fallbackResults = await Promise.all(fallbackPromises);
       const flattenedResults = fallbackResults.flat();
       

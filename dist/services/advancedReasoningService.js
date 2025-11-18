@@ -128,12 +128,19 @@ class AdvancedReasoningService {
             }
             // Step 2: Quick Context Retrieval
             const retrievalStart = Date.now();
-            // Simple search first for speed (use optimized guided search)
-            const quickResults = await qdrant_1.QdrantService.semanticSearchGuided(query, {
-                limit: 24,
-                outlineScoping: true,
-                excludeVisual: true
-            });
+            // Use combined search to query both willi_mako and willi-netz collections
+            const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+            const quickResults = useCombinedSearch
+                ? await qdrant_1.QdrantService.semanticSearchCombined(query, {
+                    limit: 24,
+                    outlineScoping: true,
+                    excludeVisual: true
+                })
+                : await qdrant_1.QdrantService.semanticSearchGuided(query, {
+                    limit: 24,
+                    outlineScoping: true,
+                    excludeVisual: true
+                });
             if (quickResults.length === 0) {
                 // If no results, try one enhanced search
                 const searchQueries = await this.generateOptimalSearchQueries(query, userPreferences);
@@ -252,7 +259,10 @@ class AdvancedReasoningService {
             console.error('❌ Error in advanced reasoning:', error);
             // Fast fallback: Simple response generation
             try {
-                const fallbackResults = await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
+                const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+                const fallbackResults = useCombinedSearch
+                    ? await qdrant_1.QdrantService.semanticSearchCombined(query, { limit: 16, outlineScoping: true, excludeVisual: true })
+                    : await qdrant_1.QdrantService.semanticSearchGuided(query, { limit: 16, outlineScoping: true, excludeVisual: true });
                 const contextText = fallbackResults.map(r => { var _a; return ((_a = r.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; }).join('\n');
                 const fallbackResponse = await llmProvider_1.default.generateResponse(previousMessages, contextText, userPreferences);
                 console.log('✅ Fallback response generated successfully');
@@ -539,9 +549,12 @@ Antwort:`;
     }
     async performParallelSearch(queries, userId, teamId) {
         try {
-            // Perform searches using optimized guided retrieval
+            // Perform searches using optimized guided retrieval (combined if enabled)
             console.log(`🔍 Performing parallel guided searches for ${queries.length} queries`);
-            const searchPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20, outlineScoping: true, excludeVisual: true }));
+            const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+            const searchPromises = queries.map(q => useCombinedSearch
+                ? qdrant_1.QdrantService.semanticSearchCombined(q, { limit: 20, outlineScoping: true, excludeVisual: true })
+                : qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20, outlineScoping: true, excludeVisual: true }));
             const searchResults = await Promise.all(searchPromises);
             // Flatten and process results
             let allResults = [];
@@ -565,7 +578,10 @@ Antwort:`;
         catch (error) {
             console.error('❌ Error in parallel guided search:', error);
             // Fallback to most basic search if all else fails
-            const fallbackPromises = queries.map(q => qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20 }));
+            const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
+            const fallbackPromises = queries.map(q => useCombinedSearch
+                ? qdrant_1.QdrantService.semanticSearchCombined(q, { limit: 20 })
+                : qdrant_1.QdrantService.semanticSearchGuided(q, { limit: 20 }));
             const fallbackResults = await Promise.all(fallbackPromises);
             const flattenedResults = fallbackResults.flat();
             // Remove duplicates
