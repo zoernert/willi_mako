@@ -63,19 +63,19 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
   };
 
   return (
-    <Layout title="Willi-Mako | Professionelle Marktkommunikation">
+    <Layout title="Willi-Mako | Professionelle Energiewirtschafts-Expertise">
       <Head>
-        <title>Willi-Mako | Marktkommunikation auf neuem Level - Effizienz, Sicherheit, Erfolg</title>
+        <title>Willi-Mako | KI-gestützte Expertise für die Energiewirtschaft - Marktkommunikation, Regulierung & Netzbetrieb</title>
         <meta 
           name="description" 
-          content="Marktkommunikation (MaKo) erklärt: Prozesse, EDIFACT & Best Practices 2025. ✅ Mit KI-Tool kostenlos testen! Jetzt starten."
+          content="Energiewirtschaft ganzheitlich: Marktkommunikation (EDIFACT, GPKE, WiM), Regulierung (BNetzA, §14a EnWG), Netzbetrieb (TAB, SAIDI) & wissenschaftliche Studien. ✅ KI-gestützt, täglich aktualisiert."
         />
-        <meta name="keywords" content="Energiewirtschaft, Marktkommunikation, BDEW, EIC, Bilanzkreise, Effizienz, Compliance, Zeitersparnis" />
+        <meta name="keywords" content="Energiewirtschaft, Marktkommunikation, Regulierung, BNetzA, Netzbetrieb, TAB, EDIFACT, BDEW, EIC, Compliance, Versorgungsqualität, Energiestudien" />
         <link rel="canonical" href="https://stromhaltig.de" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Willi-Mako | Marktkommunikation auf neuem Level" />
-        <meta property="og:description" content="Steigern Sie Effizienz, minimieren Sie Risiken und sichern Sie Ihren Vorsprung in der Energiewirtschaft." />
+        <meta property="og:title" content="Willi-Mako | KI-gestützte Expertise für die Energiewirtschaft" />
+        <meta property="og:description" content="Ganzheitliche Plattform für Marktkommunikation, Regulierung, Netzbetrieb und strategische Themen der Energiewirtschaft." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://stromhaltig.de" />
         <meta property="og:site_name" content="Willi-Mako" />
@@ -93,7 +93,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
               "@context": "https://schema.org",
               "@type": "WebSite",
               "name": "Willi-Mako",
-              "description": "Expertensystem für Marktkommunikation in der Energiewirtschaft",
+              "description": "KI-gestützte Wissensplattform für die Energiewirtschaft: Marktkommunikation, Regulierung, Netzbetrieb und wissenschaftliche Studien",
               "url": "https://stromhaltig.de",
               "publisher": {
                 "@type": "Organization",
@@ -155,7 +155,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             color: '#ee7f4b',
             mb: 3
           }}>
-            Marktkommunikation auf neuem Niveau
+            Ihre KI-gestützte Wissensplattform für die Energiewirtschaft
           </Typography>
           <Typography variant="h5" paragraph sx={{ 
             maxWidth: 800, 
@@ -163,7 +163,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             mb: 2,
             fontWeight: 500
           }}>
-            Moderne Energiewirtschaft erfordert neue Lösungen: Bewältigen Sie komplexe Massenprozesse mit höchster Präzision und Effizienz
+            Von Marktkommunikation über Regulierung bis Netzbetrieb: Komplexe Prozesse meistern, regulatorische Anforderungen erfüllen, strategische Entscheidungen fundiert treffen
           </Typography>
           <Typography variant="h6" paragraph sx={{ 
             maxWidth: 700, 
@@ -171,8 +171,8 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             color: 'rgba(255,255,255,0.9)',
             mb: 4
           }}>
-            Expertise-Mangel, hoher Standardisierungsgrad und strenge Prozessdisziplin fordern professionelle Tools.<br />
-            Für Sachbearbeiter: Fehlerfreie Lösungen. Für Führungskräfte: Kontrollierte Effizienz.
+            EDIFACT-Prozesse, BNetzA-Vorgaben, technische Anschlussregeln (TAB), Versorgungsqualität und wissenschaftliche Studien – alles an einem Ort.<br />
+            Für Sachbearbeiter: Fehlerfreie Lösungen. Für Führungskräfte: Strategische Transparenz.
           </Typography>
           
           <Box sx={{ mt: 4, display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -358,10 +358,10 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
       <Container maxWidth="lg" sx={{ mb: 8 }}>
         <Box sx={{ textAlign: 'center', mb: 6 }}>
           <Typography variant="h3" component="h2" gutterBottom sx={{ fontWeight: 700 }}>
-            Warum die Energiewirtschaft neue Tools braucht
+            Ganzheitliche Expertise für die Energiewirtschaft
           </Typography>
           <Typography variant="h6" color="text.secondary" paragraph>
-            Komplexe Massenprozesse fordern innovative Lösungen für höchste Effizienz und Präzision
+            Marktkommunikation, Regulierung, Netzbetrieb und strategische Themen – professionell aufbereitet
           </Typography>
         </Box>
 
@@ -374,12 +374,12 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             <Box>
               <SecurityIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Hohe Prozessdisziplin
+                Marktkommunikation & Prozesse
               </Typography>
             </Box>
             <Typography variant="body1" color="text.secondary">
-              Hoher Standardisierungsgrad erfordert absolute Präzision. 
-              Kleine Fehler können enorme Ressourcen verschlingen - Compliance ist entscheidend.
+              EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS: 
+              Hoher Standardisierungsgrad erfordert absolute Präzision. Compliance ist entscheidend.
             </Typography>
           </Card>
           
@@ -387,12 +387,12 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             <Box>
               <TimerIcon sx={{ fontSize: 60, color: '#ee7f4b', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Massenprozess-Effizienz
+                Regulierung & Compliance
               </Typography>
             </Box>
             <Typography variant="body1" color="text.secondary">
-              Tausende Transaktionen täglich verlangen automatisierte, fehlerfreie Abläufe. 
-              Manuelle Prozesse sind nicht mehr zeitgemäß.
+              BNetzA-Vorgaben, EnWG, StromNEV, ARegV, §14a EnWG: 
+              Regulatorische Anforderungen verstehen und umsetzen. Rechtssicherheit gewährleisten.
             </Typography>
           </Card>
           
@@ -400,12 +400,12 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
             <Box>
               <TransparencyIcon sx={{ fontSize: 60, color: '#147a50', mb: 2 }} />
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 600 }}>
-                Expertenwissen rund um die Uhr
+                Netzbetrieb & Studien
               </Typography>
             </Box>
             <Typography variant="body1" color="text.secondary">
-              Breites, spezialisiertes Wissen muss strukturiert verfügbar sein. 
-              Expertise-Mangel darf keine Operationen gefährden.
+              TAB, VDE-FNN, SAIDI/SAIFI, wissenschaftliche Studien: 
+              Technische Standards, Versorgungsqualität und strategische Marktentwicklungen.
             </Typography>
           </Card>
         </Box>
@@ -453,11 +453,11 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600, color: 'white' }}>
-              Von Experten kuratiert, täglich aktualisiert
+              Von Experten kuratiert, KI-gestützt, täglich aktualisiert
             </Typography>
-            <Typography variant="body1" paragraph sx={{ maxWidth: 600, mx: 'auto', color: 'rgba(255,255,255,0.9)' }}>
-              Ein Expertenteam, das täglich mit den Herausforderungen der Branche arbeitet, 
-              kuratiert und aktualisiert unsere Wissensplattform. Kein Algorithmus - echte Branchenerfahrung.
+            <Typography variant="body1" paragraph sx={{ maxWidth: 700, mx: 'auto', color: 'rgba(255,255,255,0.9)' }}>
+              Unser Expertenteam kuratiert täglich Inhalte aus Marktkommunikation, Regulierung, Netzbetrieb und aktuellen Studien. 
+              KI-gestützte Analyse kombiniert mit echter Branchenerfahrung – für präzise Antworten auf komplexe Fragen.
             </Typography>
           </Box>
           
@@ -495,7 +495,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
           Häufig gestellte Fragen
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          Die wichtigsten Antworten zu Themen der Energiewirtschaft
+          Die wichtigsten Antworten zu Marktkommunikation, Regulierung, Netzbetrieb und strategischen Themen der Energiewirtschaft
         </Typography>
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 3, mt: 2 }}>

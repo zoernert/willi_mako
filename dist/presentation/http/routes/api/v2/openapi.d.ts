@@ -227,6 +227,7 @@ export declare const apiV2OpenApiDocument: {
         '/retrieval/semantic-search': {
             post: {
                 summary: string;
+                description: string;
                 security: {
                     bearerAuth: any[];
                 }[];

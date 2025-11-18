@@ -157,7 +157,7 @@ const Dashboard: React.FC = () => {
           Willkommen zurück, {state.user?.name}!
         </Typography>
         <Typography variant="subtitle1" color="text.secondary">
-          Ihr persönlicher AI-Coach für digitale Energieinfrastruktur
+          Ihre KI-gestützte Wissensplattform für Marktkommunikation, Regulierung, Netzbetrieb und strategische Energiewirtschafts-Themen
         </Typography>
       </Box>
 
@@ -172,10 +172,10 @@ const Dashboard: React.FC = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="h6" gutterBottom>
-                    Mako Willi - Dein Coach des Energiemarktes
+                    Mako Willi - Ihr KI-Coach für die Energiewirtschaft
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    Fragen Sie mich alles über Marktkommunikation, Regulierung und Energiewirtschaft
+                    Marktkommunikation (EDIFACT, GPKE, WiM), Regulierung (BNetzA, EnWG, §14a), Netzbetrieb (TAB, SAIDI/SAIFI) und wissenschaftliche Studien
                   </Typography>
                   <Button
                     variant="contained"

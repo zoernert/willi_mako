@@ -134,10 +134,10 @@ const Login: React.FC = () => {
                     </Typography>
                   </Box>
                   <Typography variant="h4" component="h2" sx={{ mb: 2, opacity: 0.9 }}>
-                    Ihr täglicher KI-Experte für Marktkommunikation in der Energiewirtschaft
+                    Ihre KI-gestützte Wissensplattform für die Energiewirtschaft
                   </Typography>
                   <Typography variant="h6" sx={{ mb: 3, opacity: 0.85, fontWeight: 400, lineHeight: 1.4 }}>
-                    Sofortiges Fachwissen zu MaKo – speziell für Sachbearbeiter, die keine Zeit für lange Schulungen haben. Inklusive KI-Chat und umfassender FAQ-Sammlung.
+                    Von Marktkommunikation über Regulierung bis Netzbetrieb: Fachwissen zu EDIFACT, BNetzA-Vorgaben, TAB, Versorgungsqualität und aktuellen Energiestudien – speziell für Sachbearbeiter und Führungskräfte.
                   </Typography>
                   <Typography variant="h6" sx={{ mb: 4, opacity: 0.8, fontWeight: 300 }}>
                     Powered by Mako Willi - Ihr intelligenter AI-Coach
@@ -291,7 +291,7 @@ const Login: React.FC = () => {
                 Punktuelles Wissen sofort verfügbar
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Täglich andere Fragen zur Marktkommunikation? Erhalten Sie schnelle und präzise Antworten auf alle MaKo-Themen - ohne langes Suchen oder Nachfragen.
+                Komplexe Fragen zur Marktkommunikation, Regulierung oder Netzbetrieb? Erhalten Sie schnelle und präzise Antworten zu EDIFACT, BNetzA-Vorgaben, TAB und strategischen Themen - ohne langes Suchen.
               </Typography>
             </CardContent>
           </Card>
@@ -315,7 +315,7 @@ const Login: React.FC = () => {
                 KI-gestützte Antworten
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Mako Willi liefert präzise, kontextbezogene Antworten auf Ihre spezifischen Fragen - basierend auf aktuellen Regelwerken und Praxiserfahrungen.
+                Mako Willi liefert präzise, kontextbezogene Antworten auf Ihre spezifischen Fragen - von Marktkommunikation über Regulierung bis Netzbetrieb, basierend auf aktuellen Regelwerken und wissenschaftlichen Studien.
               </Typography>
             </CardContent>
           </Card>
@@ -379,7 +379,7 @@ const Login: React.FC = () => {
           </Typography>
           <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ mb: 6, maxWidth: 800, mx: 'auto', lineHeight: 1.6 }}>
             Sie erhalten einen Vorgeschmack auf die Tiefe und Breite des Wissens, das unser KI-Chat für Sie bereithält. 
-            Jede FAQ zeigt exemplarisch, wie präzise und praxisnah Mako Willi Ihre Fragen zur Marktkommunikation beantwortet.
+            Jede FAQ zeigt exemplarisch, wie präzise und praxisnah Mako Willi Ihre Fragen zu Marktkommunikation, Regulierung, Netzbetrieb und strategischen Themen beantwortet.
           </Typography>
           
           {faqLoading ? (
@@ -497,7 +497,7 @@ const Login: React.FC = () => {
               </ListItemIcon>
               <ListItemText
                 primary="Sofortige Expertise"
-                secondary="24/7 Zugriff auf spezialisiertes Wissen zur Energiewirtschaft, Regulierung und Marktkommunikation."
+                secondary="24/7 Zugriff auf spezialisiertes Wissen: Marktkommunikation (EDIFACT, GPKE), Regulierung (BNetzA, EnWG), Netzbetrieb (TAB, SAIDI) und wissenschaftliche Studien."
               />
             </ListItem>
             <ListItem>

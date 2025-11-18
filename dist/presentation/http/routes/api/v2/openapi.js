@@ -5,8 +5,8 @@ exports.apiV2OpenApiDocument = {
     openapi: '3.1.0',
     info: {
         title: 'Willi-Mako API v2',
-        version: '0.7.1',
-        description: 'Spezifikation für die API v2 (Phasen 1 bis 3 – Tooling & Artefakte). Version 0.7.1 fügt Market Partners Suche Endpunkt hinzu.'
+        version: '0.8.0',
+        description: 'KI-gestützte Wissensplattform für die deutsche Energiewirtschaft. Umfasst Marktkommunikation (EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS), Regulierung (BNetzA, EnWG, StromNEV, ARegV, §14a EnWG), Netzbetrieb (TAB, VDE-FNN, SAIDI/SAIFI) und wissenschaftliche Studien. API v2 bietet Tooling, Artefakt-Management und mehrstufige Reasoning-Pipelines. Version 0.8.0 erweitert Positionierung: Von Marktkommunikation zu ganzheitlicher Energiewirtschafts-Expertise.'
     },
     servers: [
         {
@@ -191,7 +191,8 @@ exports.apiV2OpenApiDocument = {
         },
         '/retrieval/semantic-search': {
             post: {
-                summary: 'Semantische Suche ausführen',
+                summary: 'Semantische Suche über willi_mako Collection (Marktkommunikation)',
+                description: 'Durchsucht die willi_mako Collection mit Fokus auf Marktkommunikation: EDIFACT-Standards, GPKE (Geschäftsprozesse zur Kundenbelieferung mit Elektrizität), WiM (Wechselprozesse im Messstellenbetrieb), GeLi Gas, UTILMD (Stammdaten- und Prozessmeldungen), MSCONS (Messwertübermittlung), ORDERS, PRICAT, INVOIC, BDEW-Prüfkataloge. Ideal für operative Marktkommunikationsfragen, Lieferantenwechsel, Bilanzkreismanagement.',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
@@ -260,8 +261,8 @@ exports.apiV2OpenApiDocument = {
         },
         '/willi-netz/semantic-search': {
             post: {
-                summary: 'Semantische Suche dediziert über die willi-netz Collection',
-                description: 'Durchsucht die willi-netz Collection, die spezialisiert ist auf kaufmännisches Netzmanagement und Asset Management bei Verteilnetzbetreibern. Enthält: Energierecht (EnWG, StromNEV, ARegV), BNetzA-Festlegungen & Monitoringberichte, TAB von Netzbetreibern (Westnetz, Netze BW, etc.), BDEW-Leitfäden, VDE-FNN Hinweise, Asset Management (ISO 55000). Typische Anfragen: Erlösobergrenzen, §14a EnWG, SAIDI/SAIFI, TAB-Anforderungen, Netzentgelte.',
+                summary: 'Semantische Suche über willi-netz Collection (Regulierung & Netzbetrieb)',
+                description: 'Durchsucht die willi-netz Collection, spezialisiert auf kaufmännisches Netzmanagement, Regulierung und Asset Management bei Verteilnetzbetreibern. Enthält: Energierecht (EnWG, StromNEV, ARegV), BNetzA-Festlegungen & Monitoringberichte, TAB von Netzbetreibern (Westnetz, Netze BW, etc.), BDEW-Leitfäden, VDE-FNN Hinweise, Asset Management (ISO 55000), wissenschaftliche Studien zur Energiewirtschaft. Typische Anfragen: Erlösobergrenzen, §14a EnWG, SAIDI/SAIFI, TAB-Anforderungen, Netzentgelte, Tagungsbände.',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
@@ -331,8 +332,8 @@ exports.apiV2OpenApiDocument = {
         },
         '/willi-netz/chat': {
             post: {
-                summary: 'Chat dediziert über die willi-netz Collection',
-                description: 'Chat-Interaktion basierend auf der willi-netz Collection (Netzmanagement, Regulierung, TAB, Asset Management). Ideal für Fragen zu: BNetzA-Regulierung, Anreizregulierung (ARegV), Technische Anschlussbedingungen, §14a EnWG, Smart Meter, E-Mobilität, Speicher, NEST-Projekt, Versorgungsqualität (SAIDI/SAIFI).',
+                summary: 'Chat über willi-netz Collection (Regulierung & Netzbetrieb)',
+                description: 'Chat-Interaktion basierend auf der willi-netz Collection (Netzmanagement, Regulierung, TAB, Asset Management, wissenschaftliche Studien). Ideal für Fragen zu: BNetzA-Regulierung, Anreizregulierung (ARegV), Technische Anschlussbedingungen, §14a EnWG, Smart Meter, E-Mobilität, Speicher, NEST-Projekt, Versorgungsqualität (SAIDI/SAIFI), Tagungsbände und wissenschaftliche Veröffentlichungen.',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
@@ -378,7 +379,7 @@ exports.apiV2OpenApiDocument = {
         '/combined/semantic-search': {
             post: {
                 summary: 'Semantische Suche übergreifend über willi_mako und willi-netz Collections',
-                description: 'Durchsucht parallel beide Collections und vereint die Ergebnisse. willi_mako: EDIFACT, Marktkommunikation (GPKE, WiM, GeLi Gas), UTILMD, MSCONS, ORDERS, Prüfkataloge. willi-netz: Netzmanagement, BNetzA-Regulierung, TAB, Asset Management, EnWG/ARegV. Ergebnisse enthalten sourceCollection-Information im Payload. Ideal für übergreifende Recherchen, die sowohl Marktprozesse als auch regulatorische/technische Netzthemen betreffen.',
+                description: 'Durchsucht parallel beide Collections und vereint die Ergebnisse. willi_mako: EDIFACT, Marktkommunikation (GPKE, WiM, GeLi Gas), UTILMD, MSCONS, ORDERS, Prüfkataloge. willi-netz: Netzmanagement, BNetzA-Regulierung, TAB, Asset Management, EnWG/ARegV, wissenschaftliche Studien. Ergebnisse enthalten sourceCollection-Information im Payload. Ideal für übergreifende Recherchen, die sowohl Marktprozesse als auch regulatorische/technische Netzthemen und strategische Studien betreffen.',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
@@ -453,7 +454,7 @@ exports.apiV2OpenApiDocument = {
         '/combined/chat': {
             post: {
                 summary: 'Chat übergreifend über willi_mako und willi-netz Collections',
-                description: 'Chat-Interaktion mit Zugriff auf beide Collections. Nutzt automatisch die relevanteste Collection basierend auf der Anfrage. Ideal für komplexe Fragen, die sowohl Marktkommunikations-Aspekte (EDIFACT, Lieferantenwechsel) als auch regulatorische/technische Netzthemen (Netzentgelte, TAB, §14a EnWG) betreffen.',
+                description: 'Chat-Interaktion mit Zugriff auf beide Collections. Nutzt automatisch die relevanteste Collection basierend auf der Anfrage. Ideal für komplexe Fragen, die sowohl Marktkommunikations-Aspekte (EDIFACT, Lieferantenwechsel) als auch regulatorische/technische Netzthemen (Netzentgelte, TAB, §14a EnWG) oder wissenschaftliche Studien und Veröffentlichungen betreffen.',
                 security: [{ bearerAuth: [] }],
                 requestBody: {
                     required: true,
