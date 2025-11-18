@@ -206,7 +206,7 @@ class MistralService {
         const mode = contextMode || 'standard';
         const prefs = userPreferences || {};
         const systemParts = [
-            'Du bist ein hilfreicher Assistent für Marktkommunikation in der Energiewirtschaft. Antworte auf Deutsch.',
+            'Du bist ein hilfreicher Assistent für die deutsche Energiewirtschaft. Dein Fachgebiet umfasst Marktkommunikation (EDIFACT, GPKE, WiM, UTILMD, MSCONS), Netzbetrieb, Regulierung (EnWG, StromNEV, ARegV, BNetzA), technische Anschlussregeln (TAB), Anlagenverwaltung sowie wissenschaftliche Studien und Veröffentlichungen zur Energiewirtschaft. Antworte auf Deutsch.',
             `Kontextmodus: ${mode}`,
         ];
         if (context)
