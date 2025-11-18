@@ -217,12 +217,16 @@ export class QdrantService {
   ): Promise<any[]> {
     const limit = options?.limit ?? 20;
     
+    console.log(`🔍 Combined Search: Query="${query}", limit=${limit}`);
+    
     try {
       // Query both collections in parallel for performance
       const [resultsWilliMako, resultsWilliNetz] = await Promise.all([
         this.semanticSearchGuidedByCollection(query, options, 'willi_mako'),
         this.semanticSearchGuidedByCollection(query, options, 'willi-netz')
       ]);
+
+      console.log(`📊 Results: willi_mako=${resultsWilliMako.length}, willi-netz=${resultsWilliNetz.length}`);
 
       // Mark source collection for each result
       const markedWilliMako = resultsWilliMako.map(r => ({
@@ -245,8 +249,16 @@ export class QdrantService {
         return scoreB - scoreA;
       });
 
+      const topResults = combined.slice(0, limit);
+      console.log(`✅ Combined Search: Returning ${topResults.length} results`);
+      
+      // Log top 3 results with scores and sources
+      topResults.slice(0, 3).forEach((r, i) => {
+        console.log(`   ${i+1}. [${r.sourceCollection}] score=${(r.merged_score ?? r.score ?? 0).toFixed(3)}`);
+      });
+
       // Return top results up to limit
-      return combined.slice(0, limit);
+      return topResults;
     } catch (error) {
       console.error('Error in semanticSearchCombined:', error);
       // Fallback to willi_mako only

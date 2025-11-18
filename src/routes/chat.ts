@@ -443,6 +443,8 @@ class AdvancedRetrieval {
       // ENABLE_COMBINED_SEARCH=true enables willi_mako + willi-netz combined search
       const useCombinedSearch = process.env.ENABLE_COMBINED_SEARCH !== 'false';
       
+      console.log(`🔎 AdvancedRetrieval: useCombinedSearch=${useCombinedSearch}, query="${query}"`);
+      
       const guidedResults = useCombinedSearch
         ? await QdrantService.semanticSearchCombined(query, {
             limit: limit * 2,
@@ -454,6 +456,8 @@ class AdvancedRetrieval {
             outlineScoping: true,
             excludeVisual: true
           });
+
+      console.log(`📦 AdvancedRetrieval: Retrieved ${guidedResults.length} results`);
 
       if (guidedResults.length === 0) {
         // Fallback: einfache Suche über generierte Suchbegriffe

@@ -204,12 +204,14 @@ class QdrantService {
     static async semanticSearchCombined(query, options) {
         var _b;
         const limit = (_b = options === null || options === void 0 ? void 0 : options.limit) !== null && _b !== void 0 ? _b : 20;
+        console.log(`🔍 Combined Search: Query="${query}", limit=${limit}`);
         try {
             // Query both collections in parallel for performance
             const [resultsWilliMako, resultsWilliNetz] = await Promise.all([
                 this.semanticSearchGuidedByCollection(query, options, 'willi_mako'),
                 this.semanticSearchGuidedByCollection(query, options, 'willi-netz')
             ]);
+            console.log(`📊 Results: willi_mako=${resultsWilliMako.length}, willi-netz=${resultsWilliNetz.length}`);
             // Mark source collection for each result
             const markedWilliMako = resultsWilliMako.map(r => ({
                 ...r,
@@ -229,8 +231,15 @@ class QdrantService {
                 const scoreB = (_e = (_d = b.merged_score) !== null && _d !== void 0 ? _d : b.score) !== null && _e !== void 0 ? _e : 0;
                 return scoreB - scoreA;
             });
+            const topResults = combined.slice(0, limit);
+            console.log(`✅ Combined Search: Returning ${topResults.length} results`);
+            // Log top 3 results with scores and sources
+            topResults.slice(0, 3).forEach((r, i) => {
+                var _b, _c;
+                console.log(`   ${i + 1}. [${r.sourceCollection}] score=${((_c = (_b = r.merged_score) !== null && _b !== void 0 ? _b : r.score) !== null && _c !== void 0 ? _c : 0).toFixed(3)}`);
+            });
             // Return top results up to limit
-            return combined.slice(0, limit);
+            return topResults;
         }
         catch (error) {
             console.error('Error in semanticSearchCombined:', error);
