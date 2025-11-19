@@ -32,19 +32,30 @@ if grep -q "GEMINI_API_KEY" .env; then
   
   # Setze Modellkonfigurationen, falls nicht vorhanden
   if ! grep -q "GEMINI_MODEL" .env; then
-    echo "GEMINI_MODEL=gemini-2.5-flash" >> .env
+    echo "GEMINI_MODEL=gemini-3-pro-preview" >> .env
     echo "✅ GEMINI_MODEL hinzugefügt"
   else
-    sed -i "s/GEMINI_MODEL=.*/GEMINI_MODEL=gemini-2.5-flash/" .env
+    sed -i "s/GEMINI_MODEL=.*/GEMINI_MODEL=gemini-3-pro-preview/" .env
     echo "✅ GEMINI_MODEL aktualisiert"
   fi
   
   if ! grep -q "GEMINI_VISION_MODEL" .env; then
-    echo "GEMINI_VISION_MODEL=gemini-2.5-flash" >> .env
+    echo "GEMINI_VISION_MODEL=gemini-3-pro-preview" >> .env
     echo "✅ GEMINI_VISION_MODEL hinzugefügt"
   else
-    sed -i "s/GEMINI_VISION_MODEL=.*/GEMINI_VISION_MODEL=gemini-2.5-flash/" .env
+    sed -i "s/GEMINI_VISION_MODEL=.*/GEMINI_VISION_MODEL=gemini-3-pro-preview/" .env
     echo "✅ GEMINI_VISION_MODEL aktualisiert"
+  fi
+  
+  # Setze Gemini 3.0 spezifische Konfigurationen
+  if ! grep -q "GEMINI_THINKING_LEVEL" .env; then
+    echo "GEMINI_THINKING_LEVEL=high" >> .env
+    echo "✅ GEMINI_THINKING_LEVEL hinzugefügt"
+  fi
+  
+  if ! grep -q "LLM_TEMPERATURE" .env; then
+    echo "LLM_TEMPERATURE=1.0" >> .env
+    echo "✅ LLM_TEMPERATURE hinzugefügt (Gemini 3.0 empfiehlt 1.0)"
   fi
   
   echo "📋 Neue Gemini Konfiguration:"
