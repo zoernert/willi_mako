@@ -160,7 +160,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     try {
       const document = await documentsApi.getDocument(documentId);
       
-      if (document.processed) {
+      if (document.is_processed || document.processed) {
         updateFileStatus({ 
           status: 'completed', 
           progress: 100 
