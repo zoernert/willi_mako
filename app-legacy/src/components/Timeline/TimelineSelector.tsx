@@ -22,15 +22,7 @@ import {
   Check as CheckIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-
-interface Timeline {
-  id: string;
-  name: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { timelineService, Timeline } from '../../services/timelineService';
 
 interface TimelineSelectorProps {
   className?: string;
@@ -67,22 +59,13 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
   const fetchTimelines = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/timelines', {
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTimelines(data);
-        
-        // Wenn keine aktive Timeline gesetzt ist, aber Timelines existieren
-        if (!state.activeTimelineId && data.length > 0) {
-          const activeTimeline = data.find((t: Timeline) => t.is_active) || data[0];
-          setActiveTimeline(activeTimeline.id);
-        }
+      const data = await timelineService.getTimelines();
+      setTimelines(data);
+      
+      // Wenn keine aktive Timeline gesetzt ist, aber Timelines existieren
+      if (!state.activeTimelineId && data.length > 0) {
+        const activeTimeline = data.find((t: Timeline) => t.is_active) || data[0];
+        setActiveTimeline(activeTimeline.id);
       }
     } catch (error) {
       console.error('Error fetching timelines:', error);
@@ -102,21 +85,12 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
   const handleTimelineSelect = async (timeline: Timeline) => {
     try {
       // Timeline als aktiv setzen
-      const response = await fetch(`/api/timelines/${timeline.id}/activate`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        setActiveTimeline(timeline.id);
-        setActiveTimelineLocal(timeline);
-        
-        // Timelines neu laden um Status zu aktualisieren
-        await fetchTimelines();
-      }
+      await timelineService.activateTimeline(timeline.id);
+      setActiveTimeline(timeline.id);
+      setActiveTimelineLocal(timeline);
+      
+      // Timelines neu laden um Status zu aktualisieren
+      await fetchTimelines();
     } catch (error) {
       console.error('Error activating timeline:', error);
     }
@@ -130,41 +104,24 @@ const TimelineSelector: React.FC<TimelineSelectorProps> = ({ className = '' }) =
     try {
       setLoading(true);
 
-      const response = await fetch('/api/timelines', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newTimelineName.trim(),
-          description: newTimelineDescription.trim() || null
-        })
+      const newTimeline = await timelineService.createTimeline({
+        name: newTimelineName.trim(),
+        description: newTimelineDescription.trim() || undefined
       });
+      
+      // Timeline als aktiv setzen
+      await timelineService.activateTimeline(newTimeline.id);
 
-      if (response.ok) {
-        const newTimeline = await response.json();
-        
-        // Timeline als aktiv setzen
-        await fetch(`/api/timelines/${newTimeline.id}/activate`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${state.token}`,
-            'Content-Type': 'application/json',
-          }
-        });
-
-        // Dialoge schließen und zurücksetzen
-        setCreateDialogOpen(false);
-        setNewTimelineName('');
-        setNewTimelineDescription('');
-        
-        // Timeline als aktiv setzen
-        setActiveTimeline(newTimeline.id);
-        
-        // Timelines neu laden
-        await fetchTimelines();
-      }
+      // Dialoge schließen und zurücksetzen
+      setCreateDialogOpen(false);
+      setNewTimelineName('');
+      setNewTimelineDescription('');
+      
+      // Timeline als aktiv setzen
+      setActiveTimeline(newTimeline.id);
+      
+      // Timelines neu laden
+      await fetchTimelines();
     } catch (error) {
       console.error('Error creating timeline:', error);
     } finally {

@@ -210,7 +210,7 @@ const ContextIndicator: React.FC<ContextIndicatorProps> = ({
             {contextInfo?.contextReason && (
               <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>Context Decision:</strong> {contextInfo.contextReason}
+                  <strong>Kontext-Entscheidung:</strong> {contextInfo.contextReason}
                 </Typography>
               </Box>
             )}

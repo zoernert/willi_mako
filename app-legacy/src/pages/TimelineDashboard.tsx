@@ -21,6 +21,7 @@ import {
 import { TimelineOverviewWidget } from '../components/Timeline/TimelineOverviewWidget';
 import { TimelineDetailView } from '../components/Timeline/TimelineDetailView';
 import { useAuth } from '../contexts/AuthContext';
+import { timelineService } from '../services/timelineService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -60,32 +61,13 @@ const TimelineDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/timelines', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newTimelineName.trim(),
-          description: newTimelineDescription.trim() || null
-        })
+      const newTimeline = await timelineService.createTimeline({
+        name: newTimelineName.trim(),
+        description: newTimelineDescription.trim() || undefined
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create timeline');
-      }
-
-      const newTimeline = await response.json();
       
       // Timeline als aktiv setzen
-      await fetch(`/api/timelines/${newTimeline.id}/activate`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'Content-Type': 'application/json',
-        }
-      });
+      await timelineService.activateTimeline(newTimeline.id);
 
       // Dialog schließen und zurücksetzen
       setCreateDialogOpen(false);

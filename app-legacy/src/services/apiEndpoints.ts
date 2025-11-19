@@ -114,15 +114,19 @@ export const API_ENDPOINTS = {
     update: (timelineId: string) => `/timelines/${timelineId}`,
     delete: (timelineId: string) => `/timelines/${timelineId}`,
     activate: (timelineId: string) => `/timelines/${timelineId}/activate`,
+    archive: (timelineId: string) => `/timelines/${timelineId}/archive`,
+    export: (timelineId: string, format: 'pdf' | 'json') => `/timelines/${timelineId}/export?format=${format}`,
     activities: (timelineId: string) => `/timelines/${timelineId}/activities`,
-    stats: '/timeline/stats',
+    stats: '/timeline-stats',
     
     // Activity Management
     activity: {
       capture: '/timeline-activity/capture',
+      retry: (activityId: string) => `/timeline-activity/${activityId}/retry`,
+      detail: (activityId: string) => `/timeline-activity/${activityId}`,
       status: (activityId: string) => `/timeline-activity/${activityId}/status`,
       update: (activityId: string) => `/activities/${activityId}`,
-      delete: (activityId: string) => `/activities/${activityId}`,
+      delete: (activityId: string) => `/timeline-activity/${activityId}`,
     },
     
     // Sharing (planned)

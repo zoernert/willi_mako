@@ -38,6 +38,19 @@ export class ContextManager {
   }
 
   /**
+   * Translate priority level to German
+   */
+  private translatePriority(priority: string): string {
+    const translations: Record<string, string> = {
+      'high': 'Hoch',
+      'medium': 'Mittel',
+      'low': 'Niedrig',
+      'disabled': 'Deaktiviert'
+    };
+    return translations[priority] || priority;
+  }
+
+  /**
    * Determine optimal context for a chat query with custom context settings
    */
   async determineOptimalContext(
@@ -162,7 +175,7 @@ export class ContextManager {
           useUserContext: false,
           includeDocuments: false,
           includeNotes: false,
-          reason: 'Workspace context disabled by user'
+          reason: 'Workspace-Kontext vom Benutzer deaktiviert'
         };
       }
 
@@ -207,11 +220,11 @@ export class ContextManager {
         includeDocuments: useUserContext && (contextSettings?.includeUserDocuments ?? (aiAnalysis.documentsRelevant || hasPersonalKeywords)),
         includeNotes: useUserContext && (contextSettings?.includeUserNotes ?? (aiAnalysis.notesRelevant || hasPersonalKeywords)),
         reason: contextSettings ? 
-          `Context priority: ${contextSettings.workspacePriority}, ${aiAnalysis.reason || 'applied user settings'}` :
+          `Kontext-Priorität: ${this.translatePriority(contextSettings.workspacePriority)}, ${aiAnalysis.reason || 'Benutzereinstellungen angewendet'}` :
           (aiAnalysis.reason || 
-           (hasPersonalKeywords ? 'Query contains personal keywords' : 
-            recentPersonalMentions ? 'Recent conversation mentions personal content' : 
-            'Query appears general, using public context only'))
+           (hasPersonalKeywords ? 'Anfrage enthält persönliche Schlagwörter' : 
+            recentPersonalMentions ? 'Konversation erwähnt persönliche Inhalte' : 
+            'Anfrage erscheint allgemein, verwende nur öffentlichen Kontext'))
       };
 
     } catch (error) {
@@ -220,7 +233,7 @@ export class ContextManager {
         useUserContext: false,
         includeDocuments: false,
         includeNotes: false,
-        reason: 'Error analyzing context relevance'
+        reason: 'Fehler bei der Kontextanalyse'
       };
     }
   }
@@ -239,26 +252,26 @@ export class ContextManager {
   }> {
     try {
       const prompt = `
-Analyze this user query to determine if it would benefit from personal context (user's documents and notes):
+Analysiere diese Benutzeranfrage, um festzustellen, ob sie von persönlichem Kontext (Dokumente und Notizen des Benutzers) profitieren würde:
 
-Query: "${query}"
+Anfrage: "${query}"
 
-Recent chat history:
+Aktueller Chat-Verlauf:
 ${chatHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-IMPORTANT: Respond with valid JSON only, no markdown formatting or code blocks.
+WICHTIG: Antworte nur mit gültigem JSON, ohne Markdown-Formatierung oder Code-Blöcke.
 
 {
   "relevant": boolean,
   "documentsRelevant": boolean,
   "notesRelevant": boolean,
-  "reason": "explanation"
+  "reason": "Erklärung in 1-2 Sätzen, warum persönlicher Kontext relevant oder nicht relevant ist"
 }
 
-Consider:
-- Does the query reference personal content, documents, or notes?
-- Would personal documents or notes likely contain relevant information?
-- Is this a general question that wouldn't benefit from personal context?
+Beachte:
+- Erwähnt die Anfrage persönliche Inhalte, Dokumente oder Notizen?
+- Würden persönliche Dokumente oder Notizen wahrscheinlich relevante Informationen enthalten?
+- Ist dies eine allgemeine Frage, die nicht von persönlichem Kontext profitieren würde?
 `;
 
       const response = await llm.generateResponse(
@@ -275,14 +288,14 @@ Consider:
           relevant: analysis.relevant || false,
           documentsRelevant: analysis.documentsRelevant || false,
           notesRelevant: analysis.notesRelevant || false,
-          reason: analysis.reason || 'AI analysis completed'
+          reason: analysis.reason || 'KI-Analyse abgeschlossen'
         };
       } else {
         return {
           relevant: false,
           documentsRelevant: false,
           notesRelevant: false,
-          reason: 'Error parsing AI analysis'
+          reason: 'Fehler beim Parsen der KI-Analyse'
         };
       }
 
@@ -292,7 +305,7 @@ Consider:
         relevant: false,
         documentsRelevant: false,
         notesRelevant: false,
-        reason: 'Error in AI analysis'
+        reason: 'Fehler bei der KI-Analyse'
       };
     }
   }

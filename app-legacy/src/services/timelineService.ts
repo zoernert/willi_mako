@@ -100,17 +100,41 @@ class TimelineService {
     return apiClient.put<Timeline>(API_ENDPOINTS.timeline.activate(timelineId));
   }
 
+  async archiveTimeline(timelineId: string): Promise<Timeline> {
+    return apiClient.post<Timeline>(API_ENDPOINTS.timeline.archive(timelineId));
+  }
+
+  async exportTimeline(timelineId: string, format: 'pdf' | 'json' = 'pdf'): Promise<Blob> {
+    return apiClient.get<Blob>(
+      API_ENDPOINTS.timeline.export(timelineId, format),
+      { responseType: 'blob' }
+    );
+  }
+
   /**
    * Timeline Activities
    */
   async getTimelineActivities(
     timelineId: string, 
-    page: number = 1, 
-    limit: number = 20
+    options: {
+      page?: number;
+      limit?: number;
+      offset?: number;
+      status?: string;
+    } = {}
   ): Promise<TimelineActivitiesResponse> {
-    return apiClient.get<TimelineActivitiesResponse>(
-      `${API_ENDPOINTS.timeline.activities(timelineId)}?page=${page}&limit=${limit}`
-    );
+    const params = new URLSearchParams();
+    if (options.page) params.append('page', options.page.toString());
+    if (options.limit) params.append('limit', options.limit.toString());
+    if (options.offset) params.append('offset', options.offset.toString());
+    if (options.status) params.append('status', options.status);
+    
+    const url = `${API_ENDPOINTS.timeline.activities(timelineId)}${params.toString() ? '?' + params.toString() : ''}`;
+    return apiClient.get<TimelineActivitiesResponse>(url);
+  }
+
+  async retryActivity(activityId: string): Promise<any> {
+    return apiClient.post<any>(API_ENDPOINTS.timeline.activity.retry(activityId));
   }
 
   /**
@@ -179,7 +203,7 @@ class TimelineService {
    */
   async fetchTimelineActivities(timelineId: string, page: number = 1): Promise<TimelineActivitiesResponse> {
     console.warn('[DEPRECATED] Use timelineService.getTimelineActivities() instead of fetchTimelineActivities()');
-    return this.getTimelineActivities(timelineId, page);
+    return this.getTimelineActivities(timelineId, { page });
   }
 }
 

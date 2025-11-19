@@ -50,6 +50,11 @@ class ApiClient {
         return response;
       },
       (error: AxiosError<ApiResponse>) => {
+        // Rate Limit Detection & Tracking
+        if (error.response?.status === 429) {
+          this.trackRateLimit(error);
+        }
+
         if (error.response?.status === 401) {
           // Handle unauthorized - redirect to login
           this.clearAuth();
@@ -71,6 +76,39 @@ class ApiClient {
         return Promise.reject(this.formatError(error));
       }
     );
+  }
+
+  /**
+   * Track Rate Limit events to Plausible Analytics
+   * Provides visibility into when users hit API rate limits
+   */
+  private trackRateLimit(error: AxiosError<ApiResponse>): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Check if Plausible is loaded
+      if ((window as any).plausible) {
+        (window as any).plausible('rate_limit_exceeded', {
+          props: {
+            endpoint: error.config?.url || 'unknown',
+            method: (error.config?.method || 'unknown').toUpperCase(),
+            timestamp: new Date().toISOString(),
+          }
+        });
+      }
+
+      // Also log to console in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[API Rate Limit]', {
+          endpoint: error.config?.url,
+          method: error.config?.method,
+          message: 'Rate limit exceeded',
+        });
+      }
+    } catch (trackingError) {
+      // Silently fail tracking - don't break the application
+      console.error('Failed to track rate limit event:', trackingError);
+    }
   }
 
   public getBaseURL(): string {

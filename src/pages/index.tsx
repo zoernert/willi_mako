@@ -326,15 +326,18 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
                                 fontWeight: isActive ? 700 : 600,
                                 color: isActive ? 'primary.main' : 'text.primary'
                               }}
+                              secondaryTypographyProps={{
+                                component: 'div'
+                              }}
                               secondary={
                                 <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
                                   {dateLabel && (
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                    <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block', mb: 0.5 }}>
                                       {dateLabel}
                                     </Typography>
                                   )}
                                   {shorten(episode.description, 140) && (
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography variant="body2" color="text.secondary" component="span">
                                       {shorten(episode.description, 140)}
                                     </Typography>
                                   )}
