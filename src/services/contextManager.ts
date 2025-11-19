@@ -352,11 +352,13 @@ Beachte:
         }
       }
 
-      // Generate context summary
+      // Generate context summary with document details
       const contextSummary = this.generateContextSummary(
         userDocuments.length,
         userNotes.length,
-        contextDecision
+        contextDecision,
+        suggestedDocuments.slice(0, 3),  // Pass top 3 documents for detailed summary
+        relatedNotes.slice(0, 3)
       );
 
       return {
@@ -385,23 +387,67 @@ Beachte:
   private generateContextSummary(
     documentCount: number,
     noteCount: number,
-    contextDecision: ContextDecision
+    contextDecision: ContextDecision,
+    documents: Array<{title?: string; score?: number; relevance_score?: number}> = [],
+    notes: Array<{title?: string; content?: string; score?: number}> = []
   ): string {
-    const parts: string[] = [];
-    
-    if (documentCount > 0) {
-      parts.push(`${documentCount} ${documentCount > 1 ? 'Dokumente' : 'Dokument'}`);
-    }
-    
-    if (noteCount > 0) {
-      parts.push(`${noteCount} ${noteCount > 1 ? 'Notizen' : 'Notiz'}`);
-    }
-
-    if (parts.length === 0) {
+    if (documentCount === 0 && noteCount === 0) {
       return `Keine persönlichen Inhalte gefunden. ${contextDecision.reason}`;
     }
 
-    return `Verwende ${parts.join(' und ')} aus deinem Workspace. ${contextDecision.reason}`;
+    const parts: string[] = [];
+    
+    // Generate document details
+    if (documentCount > 0 && documents.length > 0) {
+      const docParts: string[] = [];
+      documents.forEach((doc, index) => {
+        const score = doc.relevance_score || doc.score;
+        const title = doc.title || `Dokument ${index + 1}`;
+        const scorePercent = score ? Math.round(score * 100) : undefined;
+        
+        if (index === 0) {
+          // Primary document
+          if (scorePercent) {
+            docParts.push(`hauptsächlich "${title}" (Relevanz: ${scorePercent}%)`);
+          } else {
+            docParts.push(`hauptsächlich "${title}"`);
+          }
+        } else if (index === 1 && documents.length > 1) {
+          // Secondary document
+          if (scorePercent) {
+            docParts.push(`ergänzt durch "${title}" (${scorePercent}%)`);
+          } else {
+            docParts.push(`ergänzt durch "${title}"`);
+          }
+        } else if (index > 1) {
+          // Additional documents - just add to count
+          if (scorePercent) {
+            docParts.push(`"${title}" (${scorePercent}%)`);
+          } else {
+            docParts.push(`"${title}"`);
+          }
+        }
+      });
+      
+      parts.push(`Verwende ${docParts.join(', ')}`);
+    } else if (documentCount > 0) {
+      // Fallback if no document objects available
+      parts.push(`Verwende ${documentCount} ${documentCount > 1 ? 'Dokumente' : 'Dokument'}`);
+    }
+    
+    // Generate note details
+    if (noteCount > 0 && notes.length > 0) {
+      const noteTitles = notes.map(n => n.title || n.content?.substring(0, 30)).filter(Boolean);
+      if (noteTitles.length > 0) {
+        const noteText = `und ${noteCount} ${noteCount > 1 ? 'Notizen' : 'Notiz'}`;
+        parts.push(noteText);
+      }
+    } else if (noteCount > 0) {
+      parts.push(`und ${noteCount} ${noteCount > 1 ? 'Notizen' : 'Notiz'}`);
+    }
+
+    const summary = parts.join(' ');
+    return `${summary} aus deinem Workspace. ${contextDecision.reason}`;
   }
 
   /**
