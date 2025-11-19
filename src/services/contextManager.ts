@@ -390,18 +390,18 @@ Beachte:
     const parts: string[] = [];
     
     if (documentCount > 0) {
-      parts.push(`${documentCount} personal document${documentCount > 1 ? 's' : ''}`);
+      parts.push(`${documentCount} ${documentCount > 1 ? 'Dokumente' : 'Dokument'}`);
     }
     
     if (noteCount > 0) {
-      parts.push(`${noteCount} personal note${noteCount > 1 ? 's' : ''}`);
+      parts.push(`${noteCount} ${noteCount > 1 ? 'Notizen' : 'Notiz'}`);
     }
 
     if (parts.length === 0) {
-      return `No personal context found. ${contextDecision.reason}`;
+      return `Keine persönlichen Inhalte gefunden. ${contextDecision.reason}`;
     }
 
-    return `Using ${parts.join(' and ')} from your workspace. ${contextDecision.reason}`;
+    return `Verwende ${parts.join(' und ')} aus deinem Workspace. ${contextDecision.reason}`;
   }
 
   /**
