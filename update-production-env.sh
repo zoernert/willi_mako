@@ -20,6 +20,12 @@ cd /opt/willi_mako
 # Backup der aktuellen .env
 cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
 
+# Aktualisiere globales Rate Limit von 100 auf 200
+if grep -q "RATE_LIMIT_MAX=100" .env; then
+    sed -i 's/RATE_LIMIT_MAX=100/RATE_LIMIT_MAX=200/g' .env
+    echo "✅ Globales Rate Limit von 100 auf 200 erhöht"
+fi
+
 # Füge die neuen Document Upload Rate Limiting Variablen hinzu, falls sie fehlen
 if ! grep -q "DOCUMENT_UPLOAD_RATE_WINDOW" .env; then
     echo "" >> .env

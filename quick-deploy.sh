@@ -274,7 +274,7 @@ MAX_FILE_SIZE=50MB
 
 # Rate Limiting
 RATE_LIMIT_WINDOW=15
-RATE_LIMIT_MAX=100
+RATE_LIMIT_MAX=200
 
 # Document Upload Rate Limiting
 # Separate limits for document uploads to support batch operations

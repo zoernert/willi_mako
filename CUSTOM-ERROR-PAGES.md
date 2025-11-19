@@ -37,7 +37,26 @@ Erstellt eine allgemeine Error-Seite für andere Fehlerszenarien:
 - Erklärende Nachricht
 - Zwei CTA-Buttons (Startseite + Login)
 - Footer mit Hinweis auf Login für alte Links
+- Plausible Analytics Tracking für Nutzerfreundlichkeit
 ```
+
+### Analytics Tracking
+Die 404-Seite trackt automatisch:
+
+**Event: `404_error`**
+- `path`: Der angeforderte Pfad (z.B. `/chat/invalid-id`)
+- `referrer`: Von welcher Seite der Nutzer kam
+- `timestamp`: Zeitstempel des Fehlers
+
+**Event: `404_navigation`**
+- `destination`: Wohin der Nutzer navigiert (`home` oder `login`)
+- `path`: Der ursprüngliche 404-Pfad
+
+**Verwendung in Plausible:**
+1. Dashboard → Goals → "404_error" und "404_navigation" erscheinen automatisch
+2. Analyse: Welche URLs führen zu 404-Fehlern?
+3. Nutzerverhalten: Klicken User eher auf "Startseite" oder "Login"?
+4. Optimierung: Häufige 404s durch Redirects beheben
 
 ### Error Page Features
 ```tsx

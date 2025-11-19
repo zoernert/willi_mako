@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { 
   Box, 
   Typography, 
@@ -15,8 +16,34 @@ import {
   Login as LoginIcon
 } from '@mui/icons-material';
 import Layout from '../components/Layout';
+import { trackEvent } from '../lib/analytics';
 
 export default function Custom404() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Track 404 error with context information
+    trackEvent('404_error', {
+      path: router.asPath,
+      referrer: typeof document !== 'undefined' ? document.referrer : '',
+      timestamp: new Date().toISOString(),
+    });
+  }, [router.asPath]);
+
+  const handleHomeClick = () => {
+    trackEvent('404_navigation', {
+      destination: 'home',
+      path: router.asPath,
+    });
+  };
+
+  const handleLoginClick = () => {
+    trackEvent('404_navigation', {
+      destination: 'login',
+      path: router.asPath,
+    });
+  };
+
   return (
     <>
       <Head>
@@ -95,6 +122,7 @@ export default function Custom404() {
                   variant="contained"
                   size="large"
                   startIcon={<HomeIcon />}
+                  onClick={handleHomeClick}
                   sx={{
                     minWidth: 200
                   }}
@@ -108,6 +136,7 @@ export default function Custom404() {
                   variant="outlined"
                   size="large"
                   startIcon={<LoginIcon />}
+                  onClick={handleLoginClick}
                   sx={{
                     minWidth: 200
                   }}
