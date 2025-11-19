@@ -136,12 +136,26 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     }
   };
 
-  const pollProcessingStatus = async (fileId: string, documentId: string) => {
+  const pollProcessingStatus = async (
+    fileId: string, 
+    documentId: string, 
+    attempt: number = 0,
+    maxAttempts: number = 60 // Max 5 Minuten (60 * 5s = 300s)
+  ) => {
     const updateFileStatus = (updates: Partial<UploadFile>) => {
       setUploadFiles(prev => prev.map(f => 
         f.id === fileId ? { ...f, ...updates } : f
       ));
     };
+
+    // Stop polling after max attempts
+    if (attempt >= maxAttempts) {
+      updateFileStatus({ 
+        status: 'error', 
+        error: 'Processing timeout - please refresh the page'
+      });
+      return;
+    }
 
     try {
       const document = await documentsApi.getDocument(documentId);
@@ -157,15 +171,27 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
           onUploadComplete(documentId);
         }
       } else {
-        // Continue polling
-        updateFileStatus({ progress: 90 });
-        setTimeout(() => pollProcessingStatus(fileId, documentId), 2000);
+        // Continue polling with exponential backoff
+        // Start: 5s, then 7s, 10s, max 15s
+        const baseDelay = 5000;
+        const backoffFactor = Math.min(1 + (attempt * 0.2), 3); // Max 3x
+        const delay = Math.min(baseDelay * backoffFactor, 15000); // Max 15s
+        
+        updateFileStatus({ progress: Math.min(90, 60 + attempt) });
+        setTimeout(() => pollProcessingStatus(fileId, documentId, attempt + 1, maxAttempts), delay);
       }
     } catch (error) {
-      updateFileStatus({ 
-        status: 'error', 
-        error: 'Processing status check failed'
-      });
+      // Bei Rate Limit Error: längere Pause
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+        console.warn(`Rate limit hit while polling document ${documentId}, retrying in 20s...`);
+        setTimeout(() => pollProcessingStatus(fileId, documentId, attempt + 1, maxAttempts), 20000);
+      } else {
+        updateFileStatus({ 
+          status: 'error', 
+          error: 'Processing status check failed'
+        });
+      }
     }
   };
 

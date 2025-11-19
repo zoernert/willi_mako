@@ -24,6 +24,10 @@ export declare class ContextManager {
     private notesService;
     constructor();
     /**
+     * Translate priority level to German
+     */
+    private translatePriority;
+    /**
      * Determine optimal context for a chat query with custom context settings
      */
     determineOptimalContext(query: string, userId: string, chatHistory?: any[], contextSettings?: ContextSettings): Promise<{
