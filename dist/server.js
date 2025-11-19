@@ -77,7 +77,12 @@ app.use((0, cors_1.default)({
 // Rate limiting
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX || '100') // limit each IP to 100 requests per windowMs
+    max: parseInt(process.env.RATE_LIMIT_MAX || '100'), // limit each IP to 100 requests per windowMs
+    skip: (req) => {
+        // Exclude document upload routes from global rate limiting
+        // These routes have their own handling to support multiple file uploads
+        return req.path.includes('/workspace/documents/upload');
+    }
 });
 app.use('/api/', limiter);
 // Body parsing middleware with error handling

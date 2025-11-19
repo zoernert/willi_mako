@@ -10,6 +10,7 @@ const auth_1 = require("../../../../../middleware/auth");
 const errorHandler_1 = require("../../../../../middleware/errorHandler");
 const documentService_1 = require("../../../../../services/documentService");
 const workspaceService_1 = require("../../../../../services/workspaceService");
+const documentUploadLimiter_1 = require("../../../../../middleware/documentUploadLimiter");
 const router = (0, express_1.Router)();
 const documentService = new documentService_1.DocumentService();
 const workspaceService = new workspaceService_1.WorkspaceService();
@@ -52,7 +53,7 @@ const upload = (0, multer_1.default)({
  * POST /api/v2/documents/upload
  * Upload a single document
  */
-router.post('/upload', auth_1.authenticateToken, upload.single('file'), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post('/upload', auth_1.authenticateToken, documentUploadLimiter_1.singleDocumentUploadLimiter, upload.single('file'), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
     if (!userId) {
@@ -95,7 +96,7 @@ router.post('/upload', auth_1.authenticateToken, upload.single('file'), (0, erro
  * POST /api/v2/documents/upload-multiple
  * Upload multiple documents
  */
-router.post('/upload-multiple', auth_1.authenticateToken, upload.array('files', 10), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post('/upload-multiple', auth_1.authenticateToken, documentUploadLimiter_1.batchDocumentUploadLimiter, upload.array('files', 10), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
     if (!userId) {

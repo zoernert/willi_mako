@@ -8,6 +8,7 @@ const multer_1 = __importDefault(require("multer"));
 const auth_1 = require("../middleware/auth");
 const documentService_1 = require("../services/documentService");
 const workspaceService_1 = require("../services/workspaceService");
+const documentUploadLimiter_1 = require("../middleware/documentUploadLimiter");
 const path_1 = __importDefault(require("path"));
 const router = express_1.default.Router();
 const documentService = new documentService_1.DocumentService();
@@ -22,7 +23,7 @@ router.use(auth_1.authenticateToken);
  * POST /api/workspace/documents/upload
  * Upload a single document
  */
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', documentUploadLimiter_1.singleDocumentUploadLimiter, upload.single('file'), async (req, res) => {
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
@@ -56,7 +57,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
  * POST /api/workspace/documents/upload-multiple
  * Upload multiple documents
  */
-router.post('/upload-multiple', upload.array('files', 10), async (req, res) => {
+router.post('/upload-multiple', documentUploadLimiter_1.batchDocumentUploadLimiter, upload.array('files', 10), async (req, res) => {
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
