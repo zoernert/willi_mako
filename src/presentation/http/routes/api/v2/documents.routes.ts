@@ -5,6 +5,7 @@ import { authenticateToken, AuthenticatedRequest } from '../../../../../middlewa
 import { asyncHandler, AppError } from '../../../../../middleware/errorHandler';
 import { DocumentService } from '../../../../../services/documentService';
 import { WorkspaceService } from '../../../../../services/workspaceService';
+import { singleDocumentUploadLimiter, batchDocumentUploadLimiter } from '../../../../../middleware/documentUploadLimiter';
 
 const router = Router();
 const documentService = new DocumentService();
@@ -55,6 +56,7 @@ const upload = multer({
 router.post(
   '/upload',
   authenticateToken,
+  singleDocumentUploadLimiter,
   upload.single('file'),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id;
@@ -108,6 +110,7 @@ router.post(
 router.post(
   '/upload-multiple',
   authenticateToken,
+  batchDocumentUploadLimiter,
   upload.array('files', 10),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.id;

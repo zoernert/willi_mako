@@ -54,10 +54,12 @@ class GeminiService {
         this.currentModelIndex = 0;
         this.modelUsageCount = new Map();
         this.lastUsedModelName = null; // Track last selected model
-        // Initialize multiple models for load balancing (no lite models for better quality)
+        // Initialize multiple models for load balancing
+        // Gemini 3.0 Pro is the most capable model for complex reasoning
         const modelConfigs = [
-            'gemini-2.0-flash', // 15 RPM
-            'gemini-2.5-flash' // 10 RPM
+            'gemini-3-pro-preview', // 5 RPM - most capable, for complex tasks
+            'gemini-2.5-flash', // 10 RPM - fast fallback
+            'gemini-2.0-flash' // 15 RPM - fastest fallback
         ];
         // Initialize with empty array that will be populated asynchronously
         this.models = [];
@@ -75,18 +77,24 @@ class GeminiService {
     }
     /**
      * Resolve generation config from environment with safe defaults.
-     * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7).
+     * For Gemini 3.0, temperature 1.0 is strongly recommended.
+     * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7 for older models).
      */
-    getGenerationConfig() {
+    getGenerationConfig(options) {
         const toNum = (v, d) => {
             const n = v ? Number(v) : NaN;
             return Number.isFinite(n) ? n : d;
         };
-        // Defaults: temperature 0.7, topP 0.95, maxOutputTokens 8192 (can be overridden via env)
-        const temperature = toNum(process.env.LLM_TEMPERATURE, 0.7);
+        // Defaults: temperature 1.0 (recommended for Gemini 3.0), topP 0.95, maxOutputTokens 8192 (can be overridden via env)
+        const temperature = toNum(process.env.LLM_TEMPERATURE, 1.0);
         const topP = toNum(process.env.LLM_TOP_P, 0.95);
         const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 8192);
-        return { temperature, topP, maxOutputTokens };
+        const config = { temperature, topP, maxOutputTokens };
+        // Add thinking_level if specified (Gemini 3.0 feature)
+        if (options === null || options === void 0 ? void 0 : options.thinkingLevel) {
+            config.thinkingLevel = options.thinkingLevel;
+        }
+        return config;
     }
     /**
      * Get the last used Gemini model name (for diagnostics/metrics)
@@ -231,6 +239,7 @@ class GeminiService {
     }
     getRpmLimit(modelName) {
         const limits = {
+            'gemini-3-pro-preview': 5, // Most capable, conservative limit
             'gemini-2.0-flash': 15,
             'gemini-2.5-flash': 10,
             'gemini-2.5-pro': 5
@@ -1651,9 +1660,9 @@ Antworte nun auf die Nutzerfrage und liste die verwendeten Quellen am Ende auf.`
         if (!this.models || this.models.length === 0 || !this.models[0].instance) {
             console.log('Models not initialized yet, initializing now...');
             const modelConfigs = [
-                'gemini-2.0-flash',
+                'gemini-3-pro-preview',
                 'gemini-2.5-flash',
-                'gemini-2.5-pro'
+                'gemini-2.0-flash'
             ];
             await this.initializeModels(modelConfigs);
         }

@@ -3,6 +3,7 @@ import multer from 'multer';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
 import { DocumentService } from '../services/documentService';
 import { WorkspaceService } from '../services/workspaceService';
+import { singleDocumentUploadLimiter, batchDocumentUploadLimiter } from '../middleware/documentUploadLimiter';
 import path from 'path';
 
 const router = express.Router();
@@ -21,7 +22,7 @@ router.use(authenticateToken);
  * POST /api/workspace/documents/upload
  * Upload a single document
  */
-router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, res): Promise<any> => {
+router.post('/upload', singleDocumentUploadLimiter, upload.single('file'), async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -59,7 +60,7 @@ router.post('/upload', upload.single('file'), async (req: AuthenticatedRequest, 
  * POST /api/workspace/documents/upload-multiple
  * Upload multiple documents
  */
-router.post('/upload-multiple', upload.array('files', 10), async (req: AuthenticatedRequest, res): Promise<any> => {
+router.post('/upload-multiple', batchDocumentUploadLimiter, upload.array('files', 10), async (req: AuthenticatedRequest, res): Promise<any> => {
   try {
     const userId = req.user?.id;
     if (!userId) {

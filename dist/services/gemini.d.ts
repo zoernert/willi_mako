@@ -12,7 +12,8 @@ export declare class GeminiService {
     constructor();
     /**
      * Resolve generation config from environment with safe defaults.
-     * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7).
+     * For Gemini 3.0, temperature 1.0 is strongly recommended.
+     * Defaults are chosen to encourage fuller answers similar to AnythingLLM (temp ~0.7 for older models).
      */
     private getGenerationConfig;
     /**
