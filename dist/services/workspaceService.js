@@ -545,11 +545,13 @@ class WorkspaceService {
                     });
                 });
                 // Then search document content using Qdrant vector search
+                // Fetch more chunks (30-50) to get better coverage across documents
                 try {
-                    const qdrantResults = await this.qdrantService.search(userId, query, Math.min(limit, 10));
-                    // Get document metadata for each Qdrant result
+                    const qdrantLimit = Math.max(30, limit * 3); // At least 30 chunks, or 3x the requested limit
+                    const qdrantResults = await this.qdrantService.search(userId, query, qdrantLimit);
+                    // Group chunks by document and take the best chunks per document
                     if (qdrantResults.length > 0) {
-                        const documentIds = qdrantResults.map(r => { var _a; return (_a = r.payload) === null || _a === void 0 ? void 0 : _a.document_id; }).filter(Boolean);
+                        const documentIds = [...new Set(qdrantResults.map(r => { var _a; return (_a = r.payload) === null || _a === void 0 ? void 0 : _a.document_id; }).filter(Boolean))];
                         if (documentIds.length > 0) {
                             const docMetadataQuery = `
                 SELECT id, title, original_name, file_size, mime_type, created_at, tags
@@ -558,40 +560,64 @@ class WorkspaceService {
               `;
                             const metadataResult = await client.query(docMetadataQuery, [userId, documentIds]);
                             const metadataMap = new Map(metadataResult.rows.map(row => [row.id, row]));
-                            // Add Qdrant results with metadata
-                            qdrantResults.forEach(qdrantResult => {
+                            // Group chunks by document ID
+                            const chunksByDocument = new Map();
+                            qdrantResults.forEach(chunk => {
+                                var _a;
+                                const docId = (_a = chunk.payload) === null || _a === void 0 ? void 0 : _a.document_id;
+                                if (docId && typeof docId === 'string') {
+                                    if (!chunksByDocument.has(docId)) {
+                                        chunksByDocument.set(docId, []);
+                                    }
+                                    chunksByDocument.get(docId).push(chunk);
+                                }
+                            });
+                            // For each document, take the best 2-3 chunks and combine their content
+                            chunksByDocument.forEach((chunks, docId) => {
                                 var _a, _b, _c;
-                                if ((_a = qdrantResult.payload) === null || _a === void 0 ? void 0 : _a.document_id) {
-                                    const text = ((_b = qdrantResult.payload) === null || _b === void 0 ? void 0 : _b.text) || ((_c = qdrantResult.payload) === null || _c === void 0 ? void 0 : _c.text_content_sample) || '';
-                                    if (text) {
-                                        const metadata = metadataMap.get(qdrantResult.payload.document_id);
-                                        if (metadata) {
-                                            // Check if we already have this document from metadata search
-                                            const existingIndex = results.findIndex(r => { var _a; return r.id === ((_a = qdrantResult.payload) === null || _a === void 0 ? void 0 : _a.document_id); });
-                                            if (existingIndex >= 0) {
-                                                // Update existing result with better content from Qdrant
-                                                results[existingIndex].content = text;
-                                                results[existingIndex].score = Math.max(results[existingIndex].score, qdrantResult.score || 0.5);
+                                const metadata = metadataMap.get(docId);
+                                if (!metadata)
+                                    return;
+                                // Sort chunks by score descending
+                                chunks.sort((a, b) => (b.score || 0) - (a.score || 0));
+                                // Take top 3 chunks for this document
+                                const topChunks = chunks.slice(0, 3);
+                                // Calculate average score for this document
+                                const avgScore = topChunks.reduce((sum, chunk) => sum + (chunk.score || 0), 0) / topChunks.length;
+                                // Combine text from top chunks
+                                const combinedText = topChunks
+                                    .map(chunk => { var _a; return ((_a = chunk.payload) === null || _a === void 0 ? void 0 : _a.text) || ''; })
+                                    .filter(text => text.length > 0)
+                                    .join('\n\n[...]\n\n');
+                                if (combinedText) {
+                                    // Check if we already have this document from metadata search
+                                    const existingIndex = results.findIndex(r => r.id === docId);
+                                    if (existingIndex >= 0) {
+                                        // Update existing result with better content from Qdrant
+                                        results[existingIndex].content = combinedText;
+                                        results[existingIndex].score = Math.max(results[existingIndex].score, avgScore);
+                                        results[existingIndex].relevance_score = avgScore; // Add relevance score for threshold filtering
+                                    }
+                                    else {
+                                        // Add new result from Qdrant
+                                        results.push({
+                                            id: docId,
+                                            type: 'document',
+                                            title: metadata.title || ((_b = (_a = topChunks[0]) === null || _a === void 0 ? void 0 : _a.payload) === null || _b === void 0 ? void 0 : _b.title) || 'Untitled Document',
+                                            content: combinedText,
+                                            snippet: this.truncateText(combinedText, 200),
+                                            highlights: [query],
+                                            score: avgScore,
+                                            relevance_score: avgScore, // Add relevance score for threshold filtering
+                                            metadata: {
+                                                created_at: metadata.created_at,
+                                                file_size: metadata.file_size,
+                                                mime_type: metadata.mime_type,
+                                                tags: metadata.tags || [],
+                                                chunks_used: topChunks.length,
+                                                best_chunk_score: ((_c = topChunks[0]) === null || _c === void 0 ? void 0 : _c.score) || 0
                                             }
-                                            else {
-                                                // Add new result from Qdrant
-                                                results.push({
-                                                    id: qdrantResult.payload.document_id,
-                                                    type: 'document',
-                                                    title: metadata.title || qdrantResult.payload.title || 'Untitled Document',
-                                                    content: text,
-                                                    snippet: this.truncateText(String(text), 200),
-                                                    highlights: [query],
-                                                    score: qdrantResult.score || 0.5,
-                                                    metadata: {
-                                                        created_at: metadata.created_at,
-                                                        file_size: metadata.file_size,
-                                                        mime_type: metadata.mime_type,
-                                                        tags: metadata.tags || []
-                                                    }
-                                                });
-                                            }
-                                        }
+                                        });
                                     }
                                 }
                             });
