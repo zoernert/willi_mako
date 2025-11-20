@@ -192,6 +192,7 @@ app.use('/api', faq_1.default); // Some FAQ routes are public
 app.use('/api/workspace', workspace_1.default);
 app.use('/api/notes', notes_1.default);
 app.use('/api/workspace/documents', documents_1.default); // Legacy documents under /workspace/documents
+app.use('/api/documents', documents_1.default); // Alias for dashboard compatibility
 app.use('/api/message-analyzer', auth_2.authenticateToken, message_analyzer_1.messageAnalyzerRoutes);
 app.use('/api/v1/codes', auth_2.authenticateToken, codes_1.default);
 app.use('/api', m2cRoles_1.default);
