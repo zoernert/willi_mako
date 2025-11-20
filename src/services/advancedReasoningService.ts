@@ -526,7 +526,7 @@ Antwort:`;
     });
     // Auto-continuation: if the answer looks truncated, request a short continuation
     try {
-  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '32000');
       const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
       const trimmed = (response || '').trim();
       const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;
@@ -624,7 +624,7 @@ Antwort:`;
     // Bei nur einer Iteration: ggf. Auto-Continuation und dann direkt zurückgeben
     if (pipelineDecisions.maxIterations <= 1) {
       try {
-  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '8192');
+  const maxTokens = Number(process.env.LLM_MAX_TOKENS || '32000');
         const approxMaxChars = Math.max(1000, Math.floor(maxTokens * 4));
         const trimmed = (initialResponse || '').trim();
         const looksTruncated = /(:|\-|\*|•)\s*$/.test(trimmed) || /\b(Fristen|Hinweise|Aufgaben|Schritte)\s*:\s*$/i.test(trimmed) || trimmed.length > approxMaxChars * 0.8;

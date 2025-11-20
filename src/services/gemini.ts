@@ -64,10 +64,10 @@ export class GeminiService {
       const n = v ? Number(v) : NaN;
       return Number.isFinite(n) ? n : d;
     };
-    // Defaults: temperature 1.0 (recommended for Gemini 3.0), topP 0.95, maxOutputTokens 8192 (can be overridden via env)
+    // Defaults: temperature 1.0 (recommended for Gemini 3.0), topP 0.95, maxOutputTokens 32000 (can be overridden via env)
     const temperature = toNum(process.env.LLM_TEMPERATURE, 1.0);
     const topP = toNum(process.env.LLM_TOP_P, 0.95);
-    const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 8192);
+    const maxOutputTokens = toNum(process.env.LLM_MAX_TOKENS, 32000);
     
     const config: any = { temperature, topP, maxOutputTokens };
     
