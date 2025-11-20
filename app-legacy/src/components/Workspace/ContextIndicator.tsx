@@ -78,12 +78,12 @@ const ContextIndicator: React.FC<ContextIndicatorProps> = ({
     if (hasUserContent) {
       const parts = [];
       if (contextInfo.userDocumentsUsed > 0) {
-        parts.push(`${contextInfo.userDocumentsUsed} document${contextInfo.userDocumentsUsed > 1 ? 's' : ''}`);
+        parts.push(`${contextInfo.userDocumentsUsed} Dokument${contextInfo.userDocumentsUsed > 1 ? 'e' : ''}`);
       }
       if (contextInfo.userNotesUsed > 0) {
-        parts.push(`${contextInfo.userNotesUsed} note${contextInfo.userNotesUsed > 1 ? 's' : ''}`);
+        parts.push(`${contextInfo.userNotesUsed} Notiz${contextInfo.userNotesUsed > 1 ? 'en' : ''}`);
       }
-      return `Using ${parts.join(' + ')}`;
+      return `Nutze ${parts.join(' + ')}`;
     }
     return 'Public context only';
   };
@@ -107,6 +107,15 @@ const ContextIndicator: React.FC<ContextIndicatorProps> = ({
             size="small"
             variant={hasUserContent ? 'filled' : 'outlined'}
             icon={hasUserContent ? <VisibilityIcon /> : <VisibilityOffIcon />}
+            sx={hasUserContent ? {
+              '& .MuiChip-label': {
+                color: 'white',
+                fontWeight: 500
+              },
+              '& .MuiChip-icon': {
+                color: 'white'
+              }
+            } : {}}
           />
 
           {onContextToggle && (
