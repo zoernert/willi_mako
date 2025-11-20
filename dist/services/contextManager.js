@@ -254,7 +254,8 @@ Beachte:
             // Search user's workspace if context is relevant
             if (contextDecision.includeDocuments || contextDecision.includeNotes) {
                 // Enhanced search: try original query first, then extract dates/codes for fallback
-                let searchResults = await this.workspaceService.searchWorkspaceContent(userId, query, 'all', 10);
+                // Request more results to get better coverage (20 instead of 10)
+                let searchResults = await this.workspaceService.searchWorkspaceContent(userId, query, 'all', 20);
                 // If no good results, try extracting specific terms (dates, codes, keywords)
                 const hasRelevantResults = searchResults.some(r => {
                     const score = r.relevance_score || r.score || 0;
@@ -275,7 +276,7 @@ Beachte:
                     }
                     // Try fallback searches
                     for (const fallbackQuery of fallbackQueries) {
-                        const fallbackResults = await this.workspaceService.searchWorkspaceContent(userId, fallbackQuery, 'all', 10);
+                        const fallbackResults = await this.workspaceService.searchWorkspaceContent(userId, fallbackQuery, 'all', 20);
                         // Merge results, keeping best scores
                         for (const result of fallbackResults) {
                             const existingIndex = searchResults.findIndex(r => r.id === result.id);
@@ -301,14 +302,17 @@ Beachte:
                 }
                 // Process document results with relevance threshold
                 if (contextDecision.includeDocuments) {
-                    const RELEVANCE_THRESHOLD = 0.65; // 65% minimum relevance
+                    // Lower threshold to 55% to catch more relevant documents
+                    // Multi-chunk retrieval means documents with multiple relevant chunks will have better average scores
+                    const RELEVANCE_THRESHOLD = 0.55; // 55% minimum relevance (lowered from 65%)
                     const documentResults = searchResults
                         .filter(r => r.type === 'document')
                         .filter(doc => {
                         const score = doc.relevance_score || doc.score || 0;
                         return score >= RELEVANCE_THRESHOLD;
                     });
-                    for (const doc of documentResults.slice(0, 3)) {
+                    // Take top 5 documents instead of 3 to provide more context
+                    for (const doc of documentResults.slice(0, 5)) {
                         userDocuments.push(`Document: ${doc.title}\n${doc.content.substring(0, 500)}...`);
                     }
                     suggestedDocuments = documentResults;
