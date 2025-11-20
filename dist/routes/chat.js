@@ -710,7 +710,7 @@ router.post('/chats', (0, errorHandler_1.asyncHandler)(async (req, res) => {
 }));
 // Send message in chat
 router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const { chatId } = req.params;
     const { content, contextSettings, timelineId } = req.body;
     const userId = req.user.id;
@@ -852,6 +852,13 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         }
     }
     let aiResponse = reasoningResult.response;
+    // Check if there's a better response in the reasoning steps (direct_response step)
+    // The direct_response step often contains a more detailed answer
+    const directResponseStep = (_a = reasoningResult.reasoningSteps) === null || _a === void 0 ? void 0 : _a.find((step) => { var _a; return step.step === 'direct_response' && ((_a = step.result) === null || _a === void 0 ? void 0 : _a.response); });
+    if (((_b = directResponseStep === null || directResponseStep === void 0 ? void 0 : directResponseStep.result) === null || _b === void 0 ? void 0 : _b.response) && directResponseStep.result.response.length > aiResponse.length * 1.2) {
+        console.log(`📝 Using detailed response from direct_response step (${directResponseStep.result.response.length} chars vs ${aiResponse.length} chars)`);
+        aiResponse = directResponseStep.result.response;
+    }
     let responseMetadata = {
         contextSources: reasoningResult.reasoningSteps.filter((step) => step.step === 'context_analysis').length,
         userContextUsed: false,
@@ -862,7 +869,7 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
         iterationsUsed: reasoningResult.iterationsUsed,
         qdrantQueries: reasoningResult.reasoningSteps.reduce((sum, step) => { var _a; return sum + (((_a = step.qdrantQueries) === null || _a === void 0 ? void 0 : _a.length) || 0); }, 0),
         qdrantResults: reasoningResult.reasoningSteps.reduce((sum, step) => sum + (step.qdrantResults || 0), 0),
-        semanticClusters: ((_a = reasoningResult.contextAnalysis.semanticClusters) === null || _a === void 0 ? void 0 : _a.length) || 0,
+        semanticClusters: ((_c = reasoningResult.contextAnalysis.semanticClusters) === null || _c === void 0 ? void 0 : _c.length) || 0,
         pipelineDecisions: reasoningResult.pipelineDecisions,
         qaAnalysis: reasoningResult.qaAnalysis,
         contextAnalysis: reasoningResult.contextAnalysis,
@@ -986,14 +993,14 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     console.log(`📊 Chat response completed in ${totalResponseTime}ms (API calls: ${reasoningResult.apiCallsUsed || 'unknown'})`);
     // CR-CS30: Check if user has cs30 access and generate additional response
     const userQuery = await database_1.default.query('SELECT can_access_cs30 FROM users WHERE id = $1', [userId]);
-    const userHasCs30Access = ((_b = userQuery.rows[0]) === null || _b === void 0 ? void 0 : _b.can_access_cs30) || false;
+    const userHasCs30Access = ((_d = userQuery.rows[0]) === null || _d === void 0 ? void 0 : _d.can_access_cs30) || false;
     console.log(`🔍 CS30 Access Check: User ${userId} has cs30 access: ${userHasCs30Access}`);
     // Generate CS30 additional response asynchronously (don't block primary response)
     let cs30ResponsePromise = null;
     if (userHasCs30Access) {
         // Only include CS30 additional response on the first user turn in a chat to avoid duplicate answers on follow-ups
         const userTurnCountRes = await database_1.default.query('SELECT COUNT(*) FROM messages WHERE chat_id = $1 AND role = $2', [chatId, 'user']);
-        const userTurnCount = parseInt(((_c = userTurnCountRes.rows[0]) === null || _c === void 0 ? void 0 : _c.count) || '0', 10);
+        const userTurnCount = parseInt(((_e = userTurnCountRes.rows[0]) === null || _e === void 0 ? void 0 : _e.count) || '0', 10);
         if (userTurnCount === 1) {
             console.log(`🔍 Starting CS30 search for initial query: "${content}"`);
             cs30ResponsePromise = generateCs30AdditionalResponse(content, userHasCs30Access, userId);
@@ -1018,9 +1025,9 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                 const cs30Message = await database_1.default.query('INSERT INTO messages (chat_id, role, content, metadata) VALUES ($1, $2, $3, $4) RETURNING id, role, content, metadata, created_at', [chatId, 'assistant', cs30Result.cs30Response, JSON.stringify({
                         type: 'cs30_additional',
                         sources: cs30Result.cs30Sources,
-                        sourceCount: ((_d = cs30Result.cs30Sources) === null || _d === void 0 ? void 0 : _d.length) || 0
+                        sourceCount: ((_f = cs30Result.cs30Sources) === null || _f === void 0 ? void 0 : _f.length) || 0
                     })]);
-                console.log(`✅ Added CS30 additional response with ${((_e = cs30Result.cs30Sources) === null || _e === void 0 ? void 0 : _e.length) || 0} sources`);
+                console.log(`✅ Added CS30 additional response with ${((_g = cs30Result.cs30Sources) === null || _g === void 0 ? void 0 : _g.length) || 0} sources`);
                 // Timeline-Integration (falls timelineId übergeben)
                 if (timelineId) {
                     try {
@@ -1088,8 +1095,8 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
                     assistant_response: aiResponse,
                     cs30_additional: false,
                     first_turn_coaching_applied: Boolean(firstTurnRewrite),
-                    first_turn_follow_up: (_f = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.followUpQuestion) !== null && _f !== void 0 ? _f : null,
-                    first_turn_short_answer: (_g = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.shortAnswer) !== null && _g !== void 0 ? _g : null,
+                    first_turn_follow_up: (_h = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.followUpQuestion) !== null && _h !== void 0 ? _h : null,
+                    first_turn_short_answer: (_j = firstTurnRewrite === null || firstTurnRewrite === void 0 ? void 0 : firstTurnRewrite.shortAnswer) !== null && _j !== void 0 ? _j : null,
                     coaching_prompts: allCoachingPrompts.map(prompt => {
                         var _a;
                         return ({

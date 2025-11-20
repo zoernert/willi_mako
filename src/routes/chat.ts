@@ -1022,6 +1022,18 @@ router.post('/chats/:chatId/messages', asyncHandler(async (req: AuthenticatedReq
   }
 
   let aiResponse = reasoningResult.response;
+  
+  // Check if there's a better response in the reasoning steps (direct_response step)
+  // The direct_response step often contains a more detailed answer
+  const directResponseStep = reasoningResult.reasoningSteps?.find(
+    (step: any) => step.step === 'direct_response' && step.result?.response
+  );
+  
+  if (directResponseStep?.result?.response && directResponseStep.result.response.length > aiResponse.length * 1.2) {
+    console.log(`📝 Using detailed response from direct_response step (${directResponseStep.result.response.length} chars vs ${aiResponse.length} chars)`);
+    aiResponse = directResponseStep.result.response;
+  }
+  
   let responseMetadata: {
     contextSources: number;
     userContextUsed: boolean;
