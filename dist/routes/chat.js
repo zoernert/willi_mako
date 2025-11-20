@@ -875,7 +875,12 @@ router.post('/chats/:chatId/messages', (0, errorHandler_1.asyncHandler)(async (r
     };
     // Check if we need to enhance with user context (fallback to existing logic if needed)
     let userContext = null;
-    if ((contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.includeUserDocuments) || (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.includeUserNotes)) {
+    // Always check user context unless explicitly disabled
+    // Default to includeUserDocuments=true if not specified (user uploaded documents should be used)
+    const shouldCheckUserContext = (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.includeUserDocuments) !== false ||
+        (contextSettings === null || contextSettings === void 0 ? void 0 : contextSettings.includeUserNotes) !== false ||
+        !contextSettings; // If no settings provided, check by default
+    if (shouldCheckUserContext) {
         const contextResult = await contextManager_1.default.determineOptimalContext(content, userId, previousMessages.rows.slice(-5), contextSettings);
         userContext = contextResult.userContext;
         const contextDecision = contextResult.contextDecision;

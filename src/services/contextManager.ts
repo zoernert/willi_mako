@@ -71,8 +71,8 @@ export class ContextManager {
       const effectiveSettings = contextSettings || {
         useWorkspaceOnly: false,
         workspacePriority: 'medium',
-        includeUserDocuments: settings.ai_context_enabled,
-        includeUserNotes: settings.ai_context_enabled,
+        includeUserDocuments: settings.ai_context_enabled, // Default: enabled if AI context is on
+        includeUserNotes: settings.ai_context_enabled,     // Default: enabled if AI context is on
         includeSystemKnowledge: true,
         includeM2CRoles: false,
       };
@@ -185,8 +185,19 @@ export class ContextManager {
         'document', 'dokument', 'notiz', 'note', 'aufgeschrieben',
         'gespeichert', 'hochgeladen', 'datei', 'file'
       ];
+      
+      // Industry-specific keywords that suggest uploaded documents might be relevant
+      const industryKeywords = [
+        'VBEW', 'BDEW', 'BKZ', 'Baukostenzuschuss', 'systemdienlich',
+        'Netzanschluss', 'Speicher', 'VNB', 'ÜNB', 'EnWG', 'StromNEV',
+        'TAB', 'Marktkommunikation', 'UTILMD', 'MSCONS', 'GPKE', 'WiM'
+      ];
 
       const hasPersonalKeywords = personalKeywords.some(keyword => 
+        query.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      const hasIndustryKeywords = industryKeywords.some(keyword => 
         query.toLowerCase().includes(keyword.toLowerCase())
       );
 
@@ -201,7 +212,7 @@ export class ContextManager {
       const aiAnalysis = await this.aiAnalyzeContextRelevance(query, chatHistory);
 
       // Apply priority settings
-      let useUserContext = hasPersonalKeywords || recentPersonalMentions || aiAnalysis.relevant;
+      let useUserContext = hasPersonalKeywords || hasIndustryKeywords || recentPersonalMentions || aiAnalysis.relevant;
       
       if (contextSettings) {
         // High priority: always use workspace context
@@ -217,12 +228,13 @@ export class ContextManager {
       
       return {
         useUserContext,
-        includeDocuments: useUserContext && (contextSettings?.includeUserDocuments ?? (aiAnalysis.documentsRelevant || hasPersonalKeywords)),
+        includeDocuments: useUserContext && (contextSettings?.includeUserDocuments ?? (aiAnalysis.documentsRelevant || hasPersonalKeywords || hasIndustryKeywords)),
         includeNotes: useUserContext && (contextSettings?.includeUserNotes ?? (aiAnalysis.notesRelevant || hasPersonalKeywords)),
         reason: contextSettings ? 
           `Kontext-Priorität: ${this.translatePriority(contextSettings.workspacePriority)}, ${aiAnalysis.reason || 'Benutzereinstellungen angewendet'}` :
           (aiAnalysis.reason || 
            (hasPersonalKeywords ? 'Anfrage enthält persönliche Schlagwörter' : 
+            hasIndustryKeywords ? 'Anfrage enthält Fachbegriffe - prüfe Workspace-Dokumente' :
             recentPersonalMentions ? 'Konversation erwähnt persönliche Inhalte' : 
             'Anfrage erscheint allgemein, verwende nur öffentlichen Kontext'))
       };
