@@ -376,6 +376,23 @@ EOF
         cp next.config.js "$TEMP_DIR/"
     fi
     
+    # src/ Verzeichnis kopieren (benötigt für Next.js ISR und dynamische Seiten)
+    if [ -d "src" ]; then
+        cp -r src "$TEMP_DIR/"
+        echo "✅ src/ Verzeichnis für Next.js ISR kopiert"
+    else
+        echo "❌ src/ Verzeichnis nicht gefunden - Next.js kann keine dynamischen Seiten generieren!"
+        exit 1
+    fi
+    
+    # lib/ Verzeichnis kopieren (benötigt für Laufzeit-Module)
+    if [ -d "lib" ]; then
+        cp -r lib "$TEMP_DIR/"
+        echo "✅ lib/ Verzeichnis für Laufzeit-Module kopiert"
+    else
+        echo "⚠️  lib/ Verzeichnis nicht gefunden - möglicherweise nur in src/lib vorhanden"
+    fi
+    
     # .env.production erstellen (für Next.js Runtime) mit Feature Flags und INTERNAL_API_BASE_URL
     cat > "$TEMP_DIR/.env.production" << EOF
 NODE_ENV=production
