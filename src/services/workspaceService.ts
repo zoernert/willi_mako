@@ -302,7 +302,7 @@ export class WorkspaceService {
       
       for (const doc of orphanedResult.rows) {
         // Delete document chunks
-        await this.documentProcessor.deleteDocumentVectors(doc.id);
+        await this.documentProcessor.deleteDocumentVectors(doc.id, userId);
         
         // Delete document record
         await client.query('DELETE FROM user_documents WHERE id = $1', [doc.id]);
@@ -384,8 +384,12 @@ export class WorkspaceService {
       
       // Delete vector data for all documents
       for (const doc of documentsResult.rows) {
-        await this.documentProcessor.deleteDocumentVectors(doc.id);
+        await this.documentProcessor.deleteDocumentVectors(doc.id, userId);
       }
+      
+      // Delete entire user collection from Qdrant (more efficient than deleting individual docs)
+      const QdrantServiceClass = this.qdrantService.constructor as typeof import('./qdrant').QdrantService;
+      await QdrantServiceClass.deleteUserCollection(userId);
       
       // Delete all user data (cascading will handle related tables)
       await client.query('DELETE FROM user_notes WHERE user_id = $1', [userId]);
@@ -558,7 +562,7 @@ export class WorkspaceService {
       const fileSize = docResult.rows[0].file_size;
       
       // Delete vector data first
-      await this.documentProcessor.deleteDocumentVectors(documentId);
+      await this.documentProcessor.deleteDocumentVectors(documentId, userId);
       
       // Delete document (cascade will handle chunks)
       await client.query(

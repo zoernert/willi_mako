@@ -1,4 +1,5 @@
 import { UserDocument } from '../types/workspace';
+export declare function getUserCollectionName(userId: string): string;
 export declare class QdrantService {
     private client;
     private abbreviationIndex;
@@ -8,6 +9,8 @@ export declare class QdrantService {
     private static maxCacheEntries;
     private static getEmbeddingCached;
     static createCollection(): Promise<void>;
+    static ensureUserCollection(userId: string): Promise<string>;
+    static deleteUserCollection(userId: string): Promise<void>;
     static searchByText(query: string, limit?: number, scoreThreshold?: number): Promise<{
         id: string | number;
         version: number;
@@ -58,8 +61,17 @@ export declare class QdrantService {
     }, collectionName?: string): Promise<any[]>;
     private ensureCollection;
     private ensureCs30Collection;
+    /**
+     * @deprecated Use storeUserDocumentChunk() with proper chunking instead.
+     * This method stores documents in the global collection without proper chunking.
+     * Legacy method - kept for backwards compatibility only.
+     */
     upsertDocument(document: UserDocument, text: string): Promise<void>;
-    deleteDocument(documentId: string): Promise<void>;
+    /**
+     * @deprecated Use deleteDocumentVectors(documentId, userId) instead.
+     * This method deletes from global collection - use user-specific collection delete.
+     */
+    deleteDocument(documentId: string, userId?: string): Promise<void>;
     search(userId: string, queryText: string, limit?: number): Promise<{
         id: string | number;
         version: number;
@@ -93,7 +105,8 @@ export declare class QdrantService {
         order_value?: number | Record<string, unknown> | null | undefined;
     }[]>;
     storeUserDocumentChunk(vectorId: string, text: string, documentId: string, userId: string, title: string, chunkIndex: number): Promise<void>;
-    deleteVector(vectorId: string): Promise<void>;
+    deleteVector(vectorId: string, userId: string): Promise<void>;
+    deleteDocumentVectors(documentId: string, userId: string): Promise<void>;
     /**
      * Initialisiert den In-Memory-Index für Abkürzungen
      */

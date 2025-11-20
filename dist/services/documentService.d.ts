@@ -10,6 +10,10 @@ export declare class DocumentService {
         is_ai_context_enabled?: boolean;
     }): Promise<UserDocument>;
     processAndIndexDocument(documentId: string, userId: string): Promise<void>;
+    /**
+     * Split text into chunks with overlap for better context preservation
+     */
+    private chunkText;
     getUserDocuments(userId: string, options: {
         page: number;
         limit: number;

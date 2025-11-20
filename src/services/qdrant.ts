@@ -15,6 +15,13 @@ const EMBEDDING_PROVIDER = getEmbeddingProvider();
 // CR-CS30: Add cs30 collection constant (unchanged)
 const CS30_COLLECTION_NAME = process.env.CS30_COLLECTION || 'cs30';
 
+// Helper function to get user-specific collection name
+export function getUserCollectionName(userId: string): string {
+  // Sanitize userId to be safe for collection names (alphanumeric + underscores only)
+  const sanitizedUserId = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `${BASE_COLLECTION}_user_${sanitizedUserId}`;
+}
+
 export class QdrantService {
   private client: QdrantClient;
   private abbreviationIndex: Map<string, string> = new Map();
@@ -77,6 +84,55 @@ export class QdrantService {
       }
     } catch (error) {
       console.error('Error creating Qdrant collection:', error);
+    }
+  }
+
+  // Static method to ensure user-specific collection exists
+  static async ensureUserCollection(userId: string): Promise<string> {
+    const client = new QdrantClient({ 
+      url: QDRANT_URL,
+      apiKey: QDRANT_API_KEY,
+      checkCompatibility: false
+    });
+    
+    const collectionName = getUserCollectionName(userId);
+    
+    try {
+      const result = await client.getCollections();
+      const collectionExists = result.collections.some(
+        (collection: any) => collection.name === collectionName
+      );
+
+      if (!collectionExists) {
+        await client.createCollection(collectionName, {
+          vectors: { size: COLLECTION_EMBED_DIM, distance: 'Cosine' },
+        });
+        console.log(`User collection ${collectionName} created for user ${userId}`);
+      }
+      
+      return collectionName;
+    } catch (error) {
+      console.error(`Error ensuring user collection for ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  // Static method to delete user collection (e.g., when user account is deleted)
+  static async deleteUserCollection(userId: string): Promise<void> {
+    const client = new QdrantClient({ 
+      url: QDRANT_URL,
+      apiKey: QDRANT_API_KEY,
+      checkCompatibility: false
+    });
+    
+    const collectionName = getUserCollectionName(userId);
+    
+    try {
+      await client.deleteCollection(collectionName);
+      console.log(`User collection ${collectionName} deleted for user ${userId}`);
+    } catch (error) {
+      console.error(`Error deleting user collection for ${userId}:`, error);
+      throw error;
     }
   }
 
@@ -417,6 +473,11 @@ export class QdrantService {
     }
   }
 
+  /**
+   * @deprecated Use storeUserDocumentChunk() with proper chunking instead.
+   * This method stores documents in the global collection without proper chunking.
+   * Legacy method - kept for backwards compatibility only.
+   */
   async upsertDocument(document: UserDocument, text: string) {
   const embedding = await QdrantService.getEmbeddingCached(text);
 
@@ -447,28 +508,32 @@ export class QdrantService {
     });
   }
 
-  async deleteDocument(documentId: string) {
-    await this.client.delete(QDRANT_COLLECTION_NAME, {
-      points: [documentId],
-    });
+  /**
+   * @deprecated Use deleteDocumentVectors(documentId, userId) instead.
+   * This method deletes from global collection - use user-specific collection delete.
+   */
+  async deleteDocument(documentId: string, userId?: string) {
+    if (userId) {
+      // New way: delete from user collection
+      await this.deleteDocumentVectors(documentId, userId);
+    } else {
+      // Legacy: delete from global collection
+      await this.client.delete(QDRANT_COLLECTION_NAME, {
+        points: [documentId],
+      });
+    }
   }
 
   async search(userId: string, queryText: string, limit: number = 10) {
-  const queryVector = await QdrantService.getEmbeddingCached(queryText);
+    const queryVector = await QdrantService.getEmbeddingCached(queryText);
+    
+    // Ensure user collection exists
+    const userCollection = await QdrantService.ensureUserCollection(userId);
 
-    const results = await this.client.search(QDRANT_COLLECTION_NAME, {
+    // Search in user-specific collection (no filter needed - entire collection belongs to user)
+    const results = await this.client.search(userCollection, {
       vector: queryVector,
       limit,
-      filter: {
-        must: [
-          {
-            key: 'user_id',
-            match: {
-              value: userId,
-            },
-          },
-        ],
-      },
     });
 
     return results;
@@ -500,8 +565,11 @@ export class QdrantService {
     chunkIndex: number
   ) {
     try {
-  const embedding = await QdrantService.getEmbeddingCached(text);
-      await this.client.upsert(QDRANT_COLLECTION_NAME, {
+      // Ensure user collection exists
+      const userCollection = await QdrantService.ensureUserCollection(userId);
+      
+      const embedding = await QdrantService.getEmbeddingCached(text);
+      await this.client.upsert(userCollection, {
         wait: true,
         points: [
           {
@@ -524,13 +592,36 @@ export class QdrantService {
   }
 
   // Method for deleting a vector by ID
-  async deleteVector(vectorId: string) {
+  async deleteVector(vectorId: string, userId: string) {
     try {
-      await this.client.delete(QDRANT_COLLECTION_NAME, {
+      const userCollection = getUserCollectionName(userId);
+      await this.client.delete(userCollection, {
         points: [vectorId],
       });
     } catch (error) {
       console.error('Error deleting vector:', error);
+      throw error;
+    }
+  }
+
+  // Method for deleting all vectors for a document
+  async deleteDocumentVectors(documentId: string, userId: string) {
+    try {
+      const userCollection = getUserCollectionName(userId);
+      await this.client.delete(userCollection, {
+        filter: {
+          must: [
+            {
+              key: 'document_id',
+              match: {
+                value: documentId,
+              },
+            },
+          ],
+        },
+      });
+    } catch (error) {
+      console.error('Error deleting document vectors:', error);
       throw error;
     }
   }

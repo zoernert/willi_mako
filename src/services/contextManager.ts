@@ -326,25 +326,94 @@ Beachte:
     try {
       // Search user's workspace if context is relevant
       if (contextDecision.includeDocuments || contextDecision.includeNotes) {
-        const searchResults = await this.workspaceService.searchWorkspaceContent(
+        // Enhanced search: try original query first, then extract dates/codes for fallback
+        let searchResults = await this.workspaceService.searchWorkspaceContent(
           userId,
           query,
           'all',
           10
         );
+        
+        // If no good results, try extracting specific terms (dates, codes, keywords)
+        const hasRelevantResults = searchResults.some(r => {
+          const score = r.relevance_score || r.score || 0;
+          return score >= 0.65;
+        });
+        
+        if (!hasRelevantResults) {
+          // Extract potential search terms (dates like "15. Juli 2025", codes like "EnVR 1/24")
+          const dateMatch = query.match(/(\d{1,2}\.\s*\w+\s*\d{4})/);
+          const codeMatch = query.match(/([A-Z]{2,}[A-Z\d\s\/\-]+)/);
+          
+          const fallbackQueries: string[] = [];
+          if (dateMatch) {
+            // Convert "15. Juli 2025" to "20250715" or "2025-07-15"
+            const dateStr = dateMatch[1];
+            fallbackQueries.push(dateStr);
+          }
+          if (codeMatch) {
+            fallbackQueries.push(codeMatch[1]);
+          }
+          
+          // Try fallback searches
+          for (const fallbackQuery of fallbackQueries) {
+            const fallbackResults = await this.workspaceService.searchWorkspaceContent(
+              userId,
+              fallbackQuery,
+              'all',
+              10
+            );
+            
+            // Merge results, keeping best scores
+            for (const result of fallbackResults) {
+              const existingIndex = searchResults.findIndex(r => r.id === result.id);
+              if (existingIndex === -1) {
+                searchResults.push(result);
+              } else {
+                // Keep the one with better score
+                const existingScore = searchResults[existingIndex].relevance_score || searchResults[existingIndex].score || 0;
+                const newScore = result.relevance_score || result.score || 0;
+                if (newScore > existingScore) {
+                  searchResults[existingIndex] = result;
+                }
+              }
+            }
+          }
+          
+          // Re-sort by score
+          searchResults.sort((a, b) => {
+            const scoreA = a.relevance_score || a.score || 0;
+            const scoreB = b.relevance_score || b.score || 0;
+            return scoreB - scoreA;
+          });
+        }
 
-        // Process document results
+        // Process document results with relevance threshold
         if (contextDecision.includeDocuments) {
-          const documentResults = searchResults.filter(r => r.type === 'document');
+          const RELEVANCE_THRESHOLD = 0.65; // 65% minimum relevance
+          const documentResults = searchResults
+            .filter(r => r.type === 'document')
+            .filter(doc => {
+              const score = doc.relevance_score || doc.score || 0;
+              return score >= RELEVANCE_THRESHOLD;
+            });
+          
           for (const doc of documentResults.slice(0, 3)) {
             userDocuments.push(`Document: ${doc.title}\n${doc.content.substring(0, 500)}...`);
           }
           suggestedDocuments = documentResults;
         }
 
-        // Process note results
+        // Process note results with relevance threshold
         if (contextDecision.includeNotes) {
-          const noteResults = searchResults.filter(r => r.type === 'note');
+          const RELEVANCE_THRESHOLD = 0.65; // 65% minimum relevance
+          const noteResults = searchResults
+            .filter(r => r.type === 'note')
+            .filter(note => {
+              const score = note.relevance_score || note.score || 0;
+              return score >= RELEVANCE_THRESHOLD;
+            });
+          
           for (const note of noteResults.slice(0, 5)) {
             userNotes.push(`Note: ${note.title || 'Untitled'}\n${note.content.substring(0, 300)}...`);
           }
@@ -391,6 +460,14 @@ Beachte:
     documents: Array<{title?: string; score?: number; relevance_score?: number}> = [],
     notes: Array<{title?: string; content?: string; score?: number}> = []
   ): string {
+    // Check if context decision wanted documents but none were relevant enough
+    const wantedDocuments = contextDecision.includeDocuments;
+    const noRelevantDocs = wantedDocuments && documentCount === 0 && documents.length === 0;
+    
+    if (noRelevantDocs) {
+      return `Keine ausreichend relevanten Dokumente gefunden (Mindest-Relevanz: 65%). ${contextDecision.reason} Möglicherweise findest du die gesuchten Informationen in einem anderen Dokument in deinem Workspace.`;
+    }
+    
     if (documentCount === 0 && noteCount === 0) {
       return `Keine persönlichen Inhalte gefunden. ${contextDecision.reason}`;
     }

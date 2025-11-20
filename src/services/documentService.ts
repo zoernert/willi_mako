@@ -76,14 +76,37 @@ export class DocumentService {
         return;
       }
       
-      // For simplicity, we'll index the entire document text as one vector.
-      // In a real-world scenario, you would chunk the text into smaller pieces.
-      await this.qdrantService.upsertDocument(doc, text);
+      // NEW: Chunk the text into smaller pieces for better semantic search
+      const chunks = this.chunkText(text, 500, 50); // 500 words per chunk, 50 word overlap
+      
+      console.log(`Processing document ${documentId}: ${chunks.length} chunks`);
+      
+      // Ensure user collection exists
+      await QdrantService.ensureUserCollection(userId);
+      
+      // Store each chunk in user-specific collection
+      for (let i = 0; i < chunks.length; i++) {
+        // Generate a UUID for the vector ID (Qdrant requires UUID format)
+        const { v5: uuidv5 } = await import('uuid');
+        const NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace
+        const vectorId = uuidv5(`${documentId}_chunk_${i}`, NAMESPACE);
+        
+        await this.qdrantService.storeUserDocumentChunk(
+          vectorId,
+          chunks[i],
+          documentId,
+          userId,
+          doc.title || doc.original_name || 'Untitled',
+          i
+        );
+      }
 
       await this.updateDocument(documentId, userId, { 
         is_processed: true,
         processing_error: null
       });
+      
+      console.log(`✅ Document ${documentId} indexed with ${chunks.length} chunks`);
 
     } catch (error) {
       console.error(`Failed to process and index document ${documentId}:`, error);
@@ -92,6 +115,29 @@ export class DocumentService {
         processing_error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
+  }
+
+  /**
+   * Split text into chunks with overlap for better context preservation
+   */
+  private chunkText(text: string, wordsPerChunk: number, overlapWords: number): string[] {
+    const words = text.split(/\s+/);
+    const chunks: string[] = [];
+    
+    if (words.length <= wordsPerChunk) {
+      return [text]; // Document is small enough, return as single chunk
+    }
+    
+    let i = 0;
+    while (i < words.length) {
+      const chunk = words.slice(i, i + wordsPerChunk).join(' ');
+      chunks.push(chunk);
+      
+      // Move forward, but overlap by overlapWords
+      i += (wordsPerChunk - overlapWords);
+    }
+    
+    return chunks;
   }
 
   async getUserDocuments(userId: string, options: {

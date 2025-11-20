@@ -105,7 +105,7 @@ class DocumentProcessorService {
         const client = await database_1.default.connect();
         try {
             // Delete existing chunks
-            await this.deleteDocumentVectors(documentId);
+            await this.deleteDocumentVectors(documentId, userId);
             // Create new chunks
             for (let i = 0; i < chunks.length; i++) {
                 const chunkText = chunks[i];
@@ -141,17 +141,11 @@ class DocumentProcessorService {
     /**
      * Delete document vectors from vector database
      */
-    async deleteDocumentVectors(documentId) {
+    async deleteDocumentVectors(documentId, userId) {
         const client = await database_1.default.connect();
         try {
-            // Get all vector IDs for this document
-            const chunksResult = await client.query('SELECT vector_id FROM user_document_chunks WHERE document_id = $1', [documentId]);
-            // Delete from vector database
-            for (const chunk of chunksResult.rows) {
-                if (chunk.vector_id) {
-                    await this.qdrantService.deleteVector(chunk.vector_id);
-                }
-            }
+            // Delete from Qdrant user collection (new: uses user-specific collection)
+            await this.qdrantService.deleteDocumentVectors(documentId, userId);
             // Delete from PostgreSQL
             await client.query('DELETE FROM user_document_chunks WHERE document_id = $1', [documentId]);
         }

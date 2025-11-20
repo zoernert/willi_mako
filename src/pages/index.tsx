@@ -313,7 +313,7 @@ export default function Home({ featuredFAQs, popularTags, totalFAQCount, podcast
                     const dateLabel = formatDate(episode.pubDate);
                     return (
                       <Box component="li" key={episode.guid || `${episode.title}-${index}` } sx={{ listStyle: 'none' }}>
-                        <ListItem disablePadding>
+                        <ListItem disablePadding component="div">
                           <ListItemButton
                             selected={isActive}
                             onClick={() => setSelectedEpisode(episode)}

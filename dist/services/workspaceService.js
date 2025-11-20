@@ -219,7 +219,7 @@ class WorkspaceService {
             let freedMb = 0;
             for (const doc of orphanedResult.rows) {
                 // Delete document chunks
-                await this.documentProcessor.deleteDocumentVectors(doc.id);
+                await this.documentProcessor.deleteDocumentVectors(doc.id, userId);
                 // Delete document record
                 await client.query('DELETE FROM user_documents WHERE id = $1', [doc.id]);
                 cleanedFiles++;
@@ -272,8 +272,11 @@ class WorkspaceService {
             const documentsResult = await client.query('SELECT id FROM user_documents WHERE user_id = $1', [userId]);
             // Delete vector data for all documents
             for (const doc of documentsResult.rows) {
-                await this.documentProcessor.deleteDocumentVectors(doc.id);
+                await this.documentProcessor.deleteDocumentVectors(doc.id, userId);
             }
+            // Delete entire user collection from Qdrant (more efficient than deleting individual docs)
+            const QdrantServiceClass = this.qdrantService.constructor;
+            await QdrantServiceClass.deleteUserCollection(userId);
             // Delete all user data (cascading will handle related tables)
             await client.query('DELETE FROM user_notes WHERE user_id = $1', [userId]);
             await client.query('DELETE FROM user_documents WHERE user_id = $1', [userId]);
@@ -399,7 +402,7 @@ class WorkspaceService {
             }
             const fileSize = docResult.rows[0].file_size;
             // Delete vector data first
-            await this.documentProcessor.deleteDocumentVectors(documentId);
+            await this.documentProcessor.deleteDocumentVectors(documentId, userId);
             // Delete document (cascade will handle chunks)
             await client.query('DELETE FROM user_documents WHERE id = $1 AND user_id = $2', [documentId, userId]);
             // Update storage usage

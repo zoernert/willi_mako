@@ -27,7 +27,7 @@ export declare class DocumentProcessorService {
     /**
      * Delete document vectors from vector database
      */
-    deleteDocumentVectors(documentId: string): Promise<void>;
+    deleteDocumentVectors(documentId: string, userId: string): Promise<void>;
     /**
      * Generate consistent vector ID
      */
