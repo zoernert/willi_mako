@@ -1,11 +1,11 @@
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
-import { CodeSearchResult, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
+import { CodeSearchResult, DetailedCodeResult, SearchFilters, SearchOptions } from '../interfaces/codelookup.interface';
 export declare class CodeLookupService {
     private repository;
     constructor(repository: CodeLookupRepository);
-    searchCodes(query?: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
-    searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
-    searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
+    searchCodes(query?: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
+    searchBDEWCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
+    searchEICCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
     /**
      * Sucht nach einem spezifischen Code und gibt das erste Ergebnis zurück
      * Nützlich für die KI-Integration

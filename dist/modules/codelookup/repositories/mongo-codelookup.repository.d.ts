@@ -1,5 +1,5 @@
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
-import { CodeSearchResult, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
+import { CodeSearchResult, DetailedCodeResult, SearchFilters, SearchOptions } from '../interfaces/codelookup.interface';
 export declare class MongoCodeLookupRepository implements CodeLookupRepository {
     private db;
     private collection;
@@ -9,9 +9,9 @@ export declare class MongoCodeLookupRepository implements CodeLookupRepository {
     private ensureConnection;
     private transformDocumentToResult;
     private buildSearchQuery;
-    searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
-    searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
-    searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
+    searchCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
+    searchBDEWCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
+    searchEICCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]>;
     getCodeDetails(code: string): Promise<DetailedCodeResult | null>;
     getAvailableSoftwareSystems(): Promise<string[]>;
     getAvailableCities(): Promise<string[]>;

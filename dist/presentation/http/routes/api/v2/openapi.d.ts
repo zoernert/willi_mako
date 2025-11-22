@@ -1066,6 +1066,10 @@ export declare const apiV2OpenApiDocument: {
                                                     type: string;
                                                     description: string;
                                                 };
+                                                limit: {
+                                                    type: string;
+                                                    description: string;
+                                                };
                                             };
                                         };
                                     };

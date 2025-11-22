@@ -69,6 +69,9 @@ export interface SearchFilters {
     confidence?: ('High' | 'Medium' | 'Low')[];
     marketRole?: string;
 }
+export interface SearchOptions {
+    limit?: number;
+}
 export interface DetailedCodeResult extends CodeSearchResult {
     findings: MarketPartnerFinding[];
 }

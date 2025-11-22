@@ -5,7 +5,7 @@ class CodeLookupService {
     constructor(repository) {
         this.repository = repository;
     }
-    async searchCodes(query, filters) {
+    async searchCodes(query, filters, options) {
         const hasQuery = typeof query === 'string' && query.trim().length > 0;
         const hasFilters = !!(filters && Object.keys(filters).length > 0);
         if (!hasQuery && !hasFilters) {
@@ -13,7 +13,7 @@ class CodeLookupService {
         }
         const trimmedQuery = hasQuery ? query.trim() : '';
         try {
-            const results = await this.repository.searchCodes(trimmedQuery, filters);
+            const results = await this.repository.searchCodes(trimmedQuery, filters, options);
             return results;
         }
         catch (error) {
@@ -21,13 +21,13 @@ class CodeLookupService {
             throw new Error('Failed to search codes');
         }
     }
-    async searchBDEWCodes(query, filters) {
+    async searchBDEWCodes(query, filters, options) {
         if (!query || query.trim().length === 0) {
             return [];
         }
         const trimmedQuery = query.trim();
         try {
-            const results = await this.repository.searchBDEWCodes(trimmedQuery, filters);
+            const results = await this.repository.searchBDEWCodes(trimmedQuery, filters, options);
             return results;
         }
         catch (error) {
@@ -35,13 +35,13 @@ class CodeLookupService {
             throw new Error('Failed to search BDEW codes');
         }
     }
-    async searchEICCodes(query, filters) {
+    async searchEICCodes(query, filters, options) {
         if (!query || query.trim().length === 0) {
             return [];
         }
         const trimmedQuery = query.trim();
         try {
-            const results = await this.repository.searchEICCodes(trimmedQuery, filters);
+            const results = await this.repository.searchEICCodes(trimmedQuery, filters, options);
             return results;
         }
         catch (error) {

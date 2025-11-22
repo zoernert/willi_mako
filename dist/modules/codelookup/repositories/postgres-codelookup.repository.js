@@ -2,29 +2,37 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresCodeLookupRepository = void 0;
 const market_role_util_1 = require("../utils/market-role.util");
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 2000;
 class PostgresCodeLookupRepository {
     constructor(pool) {
         this.pool = pool;
     }
-    async searchCodes(query, filters) {
+    async searchCodes(query, filters, options) {
+        const requestedLimit = (options === null || options === void 0 ? void 0 : options.limit) && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+        const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
         const [bdewResults, eicResults] = await Promise.all([
-            this.searchBDEWCodes(query, filters),
-            this.searchEICCodes(query, filters)
+            this.searchBDEWCodes(query, filters, { limit: effectiveLimit }),
+            this.searchEICCodes(query, filters, { limit: effectiveLimit })
         ]);
         // Kombiniere und sortiere die Ergebnisse
         const combinedResults = [...bdewResults, ...eicResults];
         // Sortiere nach Relevanz (exakte Matches zuerst, dann alphabetisch)
-        return combinedResults.sort((a, b) => {
+        return combinedResults
+            .sort((a, b) => {
             const aExact = a.code.toLowerCase() === query.toLowerCase() ? 0 : 1;
             const bExact = b.code.toLowerCase() === query.toLowerCase() ? 0 : 1;
             if (aExact !== bExact) {
                 return aExact - bExact;
             }
             return a.companyName.localeCompare(b.companyName);
-        });
+        })
+            .slice(0, effectiveLimit);
     }
-    async searchBDEWCodes(query, filters) {
+    async searchBDEWCodes(query, filters, options) {
         const client = await this.pool.connect();
+        const requestedLimit = (options === null || options === void 0 ? void 0 : options.limit) && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+        const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
         try {
             // Bereite die Suchanfrage für PostgreSQL vor
             const searchQuery = query.trim().replace(/\s+/g, ' & ');
@@ -56,7 +64,7 @@ class PostgresCodeLookupRepository {
                ELSE 4
           END,
           company_name
-        LIMIT 50
+        LIMIT ${effectiveLimit}
       `, params);
             return result.rows.map(row => ({
                 code: row.code,
@@ -71,8 +79,10 @@ class PostgresCodeLookupRepository {
             client.release();
         }
     }
-    async searchEICCodes(query, filters) {
+    async searchEICCodes(query, filters, options) {
         const client = await this.pool.connect();
+        const requestedLimit = (options === null || options === void 0 ? void 0 : options.limit) && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+        const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
         try {
             // Bereite die Suchanfrage für PostgreSQL vor
             const searchQuery = query.trim().replace(/\s+/g, ' & ');
@@ -91,7 +101,7 @@ class PostgresCodeLookupRepository {
                ELSE 4
           END,
           COALESCE(display_name, eic_long_name)
-        LIMIT 50
+        LIMIT ${effectiveLimit}
       `, [searchQuery, `%${query}%`, query, `${query}%`]);
             return result.rows.map(row => ({
                 code: row.eic_code,

@@ -767,6 +767,120 @@
         "type": "mongo",
         "collection": "discovery_results"
       }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Marktpartner – Lieferanten (LF) – November 2025",
+      "alternateName": "marktpartner-lf-2025-11.csv",
+      "identifier": "marktpartner_lf_2025_11",
+      "description": "Aktueller Auszug der BDEW-Marktpartnerdaten für die Rolle Lieferant (LF) mit Code, Unternehmen, Ort, Postleitzahl, Kontaktadresse sowie optionalen Kontaktblättern. Der Datensatz wurde am 2025-11-22 mit dem Open Source Tool \"Willi Mako Client\" (https://github.com/energychain/willi-mako-client) erstellt.",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/marktpartner-lf-2025-11",
+      "datePublished": "2025-11-22",
+      "keywords": [
+        "Marktpartner",
+        "BDEW",
+        "Lieferant",
+        "LF",
+        "2025"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "lf.csv",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-lf-2025-11/lf.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-lf-2025-11/tables.json",
+          "encodingFormat": "application/json"
+        }
+      ],
+      "_source": {
+        "generator": "Willi Mako Client",
+        "generatorUrl": "https://github.com/energychain/willi-mako-client",
+        "api": "https://stromhaltig.de/api/v2/market-partners/search?role=LF"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Marktpartner – Messstellenbetreiber (MSB) – November 2025",
+      "alternateName": "marktpartner-msb-2025-11.csv",
+      "identifier": "marktpartner_msb_2025_11",
+      "description": "Aktueller Auszug der BDEW-Marktpartnerdaten für die Rolle Messstellenbetreiber (MSB) inklusive Kontaktdaten und optionaler Kontaktblätter. Der Datensatz wurde am 2025-11-22 mit dem Open Source Tool \"Willi Mako Client\" (https://github.com/energychain/willi-mako-client) erstellt.",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/marktpartner-msb-2025-11",
+      "datePublished": "2025-11-22",
+      "keywords": [
+        "Marktpartner",
+        "BDEW",
+        "Messstellenbetreiber",
+        "MSB",
+        "2025"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "msb.csv",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-msb-2025-11/msb.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-msb-2025-11/tables.json",
+          "encodingFormat": "application/json"
+        }
+      ],
+      "_source": {
+        "generator": "Willi Mako Client",
+        "generatorUrl": "https://github.com/energychain/willi-mako-client",
+        "api": "https://stromhaltig.de/api/v2/market-partners/search?role=MSB"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "Marktpartner – Verteilnetzbetreiber (VNB) – November 2025",
+      "alternateName": "marktpartner-vnb-2025-11.csv",
+      "identifier": "marktpartner_vnb_2025_11",
+      "description": "Aktueller Auszug der BDEW-Marktpartnerdaten für die Rolle Verteilnetzbetreiber (VNB) inklusive Kontaktdaten und optionaler Kontaktblätter. Der Datensatz wurde am 2025-11-22 mit dem Open Source Tool \"Willi Mako Client\" (https://github.com/energychain/willi-mako-client) erstellt.",
+      "inLanguage": "de",
+      "isAccessibleForFree": true,
+      "url": "https://stromhaltig.de/data/marktpartner-vnb-2025-11",
+      "datePublished": "2025-11-22",
+      "keywords": [
+        "Marktpartner",
+        "BDEW",
+        "Verteilnetzbetreiber",
+        "VNB",
+        "2025"
+      ],
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "vnb.csv",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-vnb-2025-11/vnb.csv",
+          "encodingFormat": "text/csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "tables.json",
+          "contentUrl": "https://stromhaltig.de/data/marktpartner-vnb-2025-11/tables.json",
+          "encodingFormat": "application/json"
+        }
+      ],
+      "_source": {
+        "generator": "Willi Mako Client",
+        "generatorUrl": "https://github.com/energychain/willi-mako-client",
+        "api": "https://stromhaltig.de/api/v2/market-partners/search?role=VNB"
+      }
     }
   ]
 }

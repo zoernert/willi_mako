@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MongoCodeLookupRepository = void 0;
 const mongodb_1 = require("mongodb");
 const market_role_util_1 = require("../utils/market-role.util");
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 2000;
 class MongoCodeLookupRepository {
     constructor() {
         this.db = null;
@@ -183,15 +185,17 @@ class MongoCodeLookupRepository {
         }
         return searchConditions.length > 0 ? { $and: searchConditions } : {};
     }
-    async searchCodes(query, filters) {
+    async searchCodes(query, filters, options) {
         try {
             await this.ensureConnection();
             if (!this.collection)
                 throw new Error('MongoDB collection not available');
             const searchQuery = this.buildSearchQuery(query, filters);
+            const requestedLimit = (options === null || options === void 0 ? void 0 : options.limit) && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+            const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
             const docs = await this.collection
                 .find(searchQuery)
-                .limit(50)
+                .limit(effectiveLimit)
                 .toArray();
             const results = docs.map(doc => this.transformDocumentToResult(doc));
             // Sortiere nach Relevanz
@@ -202,11 +206,11 @@ class MongoCodeLookupRepository {
             throw new Error('Failed to search codes');
         }
     }
-    async searchBDEWCodes(query, filters) {
+    async searchBDEWCodes(query, filters, options) {
         // Für MongoDB sind alle Codes BDEW-Codes, daher gleiche Implementierung
-        return this.searchCodes(query, filters);
+        return this.searchCodes(query, filters, options);
     }
-    async searchEICCodes(query, filters) {
+    async searchEICCodes(query, filters, options) {
         // MongoDB enthält primär BDEW-Codes, EIC-Codes würden separat behandelt
         // Für jetzt geben wir leeres Array zurück
         return [];
