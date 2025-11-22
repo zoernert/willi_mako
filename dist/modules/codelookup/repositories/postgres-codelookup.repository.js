@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresCodeLookupRepository = void 0;
+const market_role_util_1 = require("../utils/market-role.util");
 class PostgresCodeLookupRepository {
     constructor(pool) {
         this.pool = pool;
@@ -37,9 +38,12 @@ class PostgresCodeLookupRepository {
             let paramIndex = 5; // Next available parameter index
             // Add marketRole filter if provided
             if (filters === null || filters === void 0 ? void 0 : filters.marketRole) {
-                whereClause += ` AND code_type ILIKE $${paramIndex}`;
-                params.push(`%${filters.marketRole}%`);
-                paramIndex++;
+                const roleVariants = (0, market_role_util_1.getMarketRoleVariants)(filters.marketRole);
+                if (roleVariants.length > 0) {
+                    whereClause += ` AND code_type ILIKE ANY($${paramIndex})`;
+                    params.push(roleVariants.map(variant => `%${variant}%`));
+                    paramIndex++;
+                }
             }
             const result = await client.query(`
         SELECT code, company_name, code_type, valid_from, valid_to

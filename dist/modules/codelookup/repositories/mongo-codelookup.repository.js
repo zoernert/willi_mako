@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MongoCodeLookupRepository = void 0;
 const mongodb_1 = require("mongodb");
+const market_role_util_1 = require("../utils/market-role.util");
 class MongoCodeLookupRepository {
     constructor() {
         this.db = null;
@@ -164,12 +165,15 @@ class MongoCodeLookupRepository {
                 });
             }
             if (filters.marketRole) {
-                searchConditions.push({
-                    $or: [
-                        { 'partner.BdewCodeFunction': new RegExp(filters.marketRole, 'i') },
-                        { 'contacts.BdewCodeFunction': new RegExp(filters.marketRole, 'i') }
-                    ]
-                });
+                const roleRegex = (0, market_role_util_1.buildMarketRoleRegex)(filters.marketRole);
+                if (roleRegex) {
+                    searchConditions.push({
+                        $or: [
+                            { 'partner.BdewCodeFunction': roleRegex },
+                            { 'contacts.BdewCodeFunction': roleRegex }
+                        ]
+                    });
+                }
             }
             if (filters.confidence && filters.confidence.length > 0) {
                 searchConditions.push({

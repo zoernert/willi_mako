@@ -1,22 +1,29 @@
 import { Pool } from 'pg';
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
-import { CodeSearchResult, BDEWCode, EICCode, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
+import { CodeSearchResult, BDEWCode, EICCode, DetailedCodeResult, SearchFilters, SearchOptions } from '../interfaces/codelookup.interface';
 import { getMarketRoleVariants } from '../utils/market-role.util';
+
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 2000;
 
 export class PostgresCodeLookupRepository implements CodeLookupRepository {
   constructor(private pool: Pool) {}
 
-  async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
+    const requestedLimit = options?.limit && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+    const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
+
     const [bdewResults, eicResults] = await Promise.all([
-      this.searchBDEWCodes(query, filters),
-      this.searchEICCodes(query, filters)
+      this.searchBDEWCodes(query, filters, { limit: effectiveLimit }),
+      this.searchEICCodes(query, filters, { limit: effectiveLimit })
     ]);
 
     // Kombiniere und sortiere die Ergebnisse
     const combinedResults = [...bdewResults, ...eicResults];
     
     // Sortiere nach Relevanz (exakte Matches zuerst, dann alphabetisch)
-    return combinedResults.sort((a, b) => {
+    return combinedResults
+      .sort((a, b) => {
       const aExact = a.code.toLowerCase() === query.toLowerCase() ? 0 : 1;
       const bExact = b.code.toLowerCase() === query.toLowerCase() ? 0 : 1;
       
@@ -25,11 +32,14 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
       }
       
       return a.companyName.localeCompare(b.companyName);
-    });
+      })
+      .slice(0, effectiveLimit);
   }
 
-  async searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchBDEWCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     const client = await this.pool.connect();
+    const requestedLimit = options?.limit && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+    const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
     
     try {
       // Bereite die Suchanfrage für PostgreSQL vor
@@ -65,7 +75,7 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
                ELSE 4
           END,
           company_name
-        LIMIT 50
+        LIMIT ${effectiveLimit}
       `, params);
 
       return result.rows.map(row => ({
@@ -81,8 +91,10 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
     }
   }
 
-  async searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchEICCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     const client = await this.pool.connect();
+    const requestedLimit = options?.limit && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+    const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
     
     try {
       // Bereite die Suchanfrage für PostgreSQL vor
@@ -103,7 +115,7 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
                ELSE 4
           END,
           COALESCE(display_name, eic_long_name)
-        LIMIT 50
+        LIMIT ${effectiveLimit}
       `, [searchQuery, `%${query}%`, query, `${query}%`]);
 
       return result.rows.map(row => ({

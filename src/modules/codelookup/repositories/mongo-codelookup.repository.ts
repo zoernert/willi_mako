@@ -5,9 +5,13 @@ import {
   DetailedCodeResult, 
   SearchFilters, 
   MarketPartnerDocument,
-  SoftwareSystem 
+  SoftwareSystem,
+  SearchOptions 
 } from '../interfaces/codelookup.interface';
 import { buildMarketRoleRegex } from '../utils/market-role.util';
+
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 2000;
 
 export class MongoCodeLookupRepository implements CodeLookupRepository {
   private db: Db | null = null;
@@ -210,16 +214,18 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
     return searchConditions.length > 0 ? { $and: searchConditions } : {};
   }
 
-  async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     try {
       await this.ensureConnection();
       if (!this.collection) throw new Error('MongoDB collection not available');
       
       const searchQuery = this.buildSearchQuery(query, filters);
+      const requestedLimit = options?.limit && options.limit > 0 ? options.limit : DEFAULT_LIMIT;
+      const effectiveLimit = Math.min(requestedLimit, MAX_LIMIT);
       
       const docs = await this.collection
         .find(searchQuery)
-        .limit(50)
+        .limit(effectiveLimit)
         .toArray();
 
       const results = docs.map(doc => this.transformDocumentToResult(doc));
@@ -232,12 +238,12 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
     }
   }
 
-  async searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchBDEWCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     // Für MongoDB sind alle Codes BDEW-Codes, daher gleiche Implementierung
-    return this.searchCodes(query, filters);
+    return this.searchCodes(query, filters, options);
   }
 
-  async searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchEICCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     // MongoDB enthält primär BDEW-Codes, EIC-Codes würden separat behandelt
     // Für jetzt geben wir leeres Array zurück
     return [];

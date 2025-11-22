@@ -35,19 +35,25 @@ initializeService();
  * 
  * Query Parameters:
  * - q: Search query (optional)
- * - limit: Maximum number of results (1-20, default 10)
+ * - limit: Maximum number of results (1-2000, default 50; filter-only requests default to 500)
  * - role: Filter by market role (optional), e.g. 'VNB', 'LF', 'MSB', 'UNB'
  * 
  * @public No authentication required
  */
+const DEFAULT_QUERY_LIMIT = 50;
+const DEFAULT_FILTER_LIMIT = 500;
+const MAX_LIMIT = 2000;
+
 router.get('/search', asyncHandler(async (req: Request, res: Response) => {
   const { q, role } = req.query;
   let { limit } = req.query as { limit?: string };
 
   const searchQuery = typeof q === 'string' && q.trim().length > 0 ? q : undefined;
 
-  // Clamp limit between 1 and 20 (default 10)
-  const parsedLimit = Math.min(20, Math.max(1, parseInt(limit || '10', 10) || 10));
+  const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : NaN;
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
+    ? Math.min(parsedLimit, MAX_LIMIT)
+    : (searchQuery ? DEFAULT_QUERY_LIMIT : DEFAULT_FILTER_LIMIT);
 
   // Build filters object
   const filters: any = {};
@@ -59,10 +65,10 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Provide either a search query or at least one filter (e.g. role)', 400);
   }
 
-  const results = await codeLookupService.searchCodes(searchQuery, filters);
+  const results = await codeLookupService.searchCodes(searchQuery, filters, { limit: sanitizedLimit });
 
   // Return richer public shape with available metadata from discovery
-  const enriched = results.slice(0, parsedLimit).map(r => ({
+  const enriched = results.map(r => ({
     code: r.code,
     companyName: r.companyName,
     codeType: r.codeType,
@@ -82,6 +88,7 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
       results: enriched,
       count: enriched.length,
       query: searchQuery || null,
+      limit: sanitizedLimit,
     }
   });
 }));

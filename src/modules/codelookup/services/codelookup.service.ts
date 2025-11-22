@@ -1,10 +1,10 @@
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
-import { CodeSearchResult, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
+import { CodeSearchResult, DetailedCodeResult, SearchFilters, SearchOptions } from '../interfaces/codelookup.interface';
 
 export class CodeLookupService {
   constructor(private repository: CodeLookupRepository) {}
 
-  async searchCodes(query?: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchCodes(query?: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     const hasQuery = typeof query === 'string' && query.trim().length > 0;
     const hasFilters = !!(filters && Object.keys(filters).length > 0);
 
@@ -15,7 +15,7 @@ export class CodeLookupService {
     const trimmedQuery = hasQuery ? query!.trim() : '';
     
     try {
-      const results = await this.repository.searchCodes(trimmedQuery, filters);
+      const results = await this.repository.searchCodes(trimmedQuery, filters, options);
       return results;
     } catch (error) {
       console.error('Error searching codes:', error);
@@ -23,7 +23,7 @@ export class CodeLookupService {
     }
   }
 
-  async searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchBDEWCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     if (!query || query.trim().length === 0) {
       return [];
     }
@@ -31,7 +31,7 @@ export class CodeLookupService {
     const trimmedQuery = query.trim();
     
     try {
-      const results = await this.repository.searchBDEWCodes(trimmedQuery, filters);
+      const results = await this.repository.searchBDEWCodes(trimmedQuery, filters, options);
       return results;
     } catch (error) {
       console.error('Error searching BDEW codes:', error);
@@ -39,7 +39,7 @@ export class CodeLookupService {
     }
   }
 
-  async searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+  async searchEICCodes(query: string, filters?: SearchFilters, options?: SearchOptions): Promise<CodeSearchResult[]> {
     if (!query || query.trim().length === 0) {
       return [];
     }
@@ -47,7 +47,7 @@ export class CodeLookupService {
     const trimmedQuery = query.trim();
     
     try {
-      const results = await this.repository.searchEICCodes(trimmedQuery, filters);
+      const results = await this.repository.searchEICCodes(trimmedQuery, filters, options);
       return results;
     } catch (error) {
       console.error('Error searching EIC codes:', error);
@@ -60,7 +60,7 @@ export class CodeLookupService {
    * Nützlich für die KI-Integration
    */
   async lookupSingleCode(code: string): Promise<CodeSearchResult | null> {
-    const results = await this.searchCodes(code);
+  const results = await this.searchCodes(code);
     return results.length > 0 ? results[0] : null;
   }
 

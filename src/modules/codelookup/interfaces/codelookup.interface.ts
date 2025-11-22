@@ -81,6 +81,10 @@ export interface SearchFilters {
   marketRole?: string; // Filter nach Marktrolle (BdewCodeFunction), z.B. 'VNB', 'LF', 'MSB'
 }
 
+export interface SearchOptions {
+  limit?: number;
+}
+
 export interface DetailedCodeResult extends CodeSearchResult {
   findings: MarketPartnerFinding[];
 }

@@ -26,9 +26,11 @@ Sowohl die Abkürzungen als auch die vollständigen deutschen Bezeichnungen kön
 **Endpunkt:** `GET /api/v2/market-partners/search`
 
 **Query-Parameter:**
-- `q` (erforderlich): Suchbegriff (Code, Firmenname, Stadt, etc.)
-- `limit` (optional): Maximale Anzahl der Ergebnisse (1-20, Standard: 10)
+- `q` (optional): Suchbegriff (Code, Firmenname, Stadt, etc.)
+- `limit` (optional): Maximale Anzahl der Ergebnisse (1-2000, Standard: 50 mit Query, 500 bei reiner Filter-Suche)
 - `role` (optional): Filter nach Marktrolle (z.B. "VNB", "LF", "MSB")
+
+> **Hinweis:** Für vollständige Exporte (z.B. alle Netzbetreiber) kann `limit` auf bis zu `2000` gesetzt werden. Wird kein Wert übergeben, nutzt die API automatisch 50 Ergebnisse bei einer klassischen Textsuche bzw. 500 Ergebnisse, wenn nur Filter (z.B. `role=VNB`) gesetzt werden.
 
 **Beispiele:**
 

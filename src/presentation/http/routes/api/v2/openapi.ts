@@ -2,8 +2,8 @@ export const apiV2OpenApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Willi-Mako API v2',
-    version: '0.9.0',
-    description: 'KI-gestützte Wissensplattform für die deutsche Energiewirtschaft. Umfasst Marktkommunikation (EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS), Regulierung (BNetzA, EnWG, StromNEV, ARegV, §14a EnWG), Netzbetrieb (TAB, VDE-FNN, SAIDI/SAIFI) und wissenschaftliche Studien. API v2 bietet Tooling, Artefakt-Management und mehrstufige Reasoning-Pipelines. Version 0.9.0 erweitert die Marktpartnersuche um Marktrollenfilter (VNB, LF, MSB, UNB) für gezielte Suche nach Verteilnetzbetreibern, Lieferanten und anderen Marktteilnehmern.'
+    version: '0.9.1',
+    description: 'KI-gestützte Wissensplattform für die deutsche Energiewirtschaft. Umfasst Marktkommunikation (EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS), Regulierung (BNetzA, EnWG, StromNEV, ARegV, §14a EnWG), Netzbetrieb (TAB, VDE-FNN, SAIDI/SAIFI) und wissenschaftliche Studien. API v2 bietet Tooling, Artefakt-Management und mehrstufige Reasoning-Pipelines. Version 0.9.1 hebt das 20er-Limit der Marktpartnersuche auf, erlaubt Filter-Exporte bis zu 2000 Ergebnissen und dokumentiert das automatische Standard-Limit (50 bei Textsuche, 500 bei reiner Filterung).' 
   },
   servers: [
     {
@@ -768,8 +768,8 @@ export const apiV2OpenApiDocument = {
           {
             name: 'q',
             in: 'query',
-            required: true,
-            description: 'Suchbegriff (Code, Firmenname, Stadt, etc.)',
+            required: false,
+            description: 'Suchbegriff (Code, Firmenname, Stadt, etc.). Optional, sofern Filter wie role gesetzt sind.',
             schema: {
               type: 'string',
               minLength: 1
@@ -779,12 +779,12 @@ export const apiV2OpenApiDocument = {
             name: 'limit',
             in: 'query',
             required: false,
-            description: 'Maximale Anzahl der Ergebnisse (1-20, Standard: 10)',
+            description: 'Maximale Anzahl der Ergebnisse (1-2000). Standard: 50 mit Query, 500 bei reiner Filtersuche.',
             schema: {
               type: 'integer',
               minimum: 1,
-              maximum: 20,
-              default: 10
+              maximum: 2000,
+              default: 50
             }
           },
           {
@@ -835,6 +835,10 @@ export const apiV2OpenApiDocument = {
                         query: {
                           type: 'string',
                           description: 'Verwendete Suchanfrage'
+                        },
+                        limit: {
+                          type: 'integer',
+                          description: 'Angewendetes Limit nach Clamping (max. 2000)'
                         }
                       }
                     }
