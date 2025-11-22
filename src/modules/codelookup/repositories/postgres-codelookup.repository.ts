@@ -7,8 +7,8 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
 
   async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
     const [bdewResults, eicResults] = await Promise.all([
-      this.searchBDEWCodes(query),
-      this.searchEICCodes(query)
+      this.searchBDEWCodes(query, filters),
+      this.searchEICCodes(query, filters)
     ]);
 
     // Kombiniere und sortiere die Ergebnisse
@@ -34,12 +34,26 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
       // Bereite die Suchanfrage für PostgreSQL vor
       const searchQuery = query.trim().replace(/\s+/g, ' & ');
       
+      // Build dynamic WHERE clause for filters
+      let whereClause = `
+        WHERE (search_vector @@ to_tsquery('german', $1)
+           OR code ILIKE $2
+           OR company_name ILIKE $2)
+      `;
+      const params: any[] = [searchQuery, `%${query}%`, query, `${query}%`];
+      let paramIndex = 5; // Next available parameter index
+      
+      // Add marketRole filter if provided
+      if (filters?.marketRole) {
+        whereClause += ` AND code_type ILIKE $${paramIndex}`;
+        params.push(`%${filters.marketRole}%`);
+        paramIndex++;
+      }
+      
       const result = await client.query<BDEWCode>(`
         SELECT code, company_name, code_type, valid_from, valid_to
         FROM bdewcodes
-        WHERE search_vector @@ to_tsquery('german', $1)
-           OR code ILIKE $2
-           OR company_name ILIKE $2
+        ${whereClause}
         ORDER BY 
           CASE WHEN code = $3 THEN 1
                WHEN code ILIKE $4 THEN 2
@@ -48,7 +62,7 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
           END,
           company_name
         LIMIT 50
-      `, [searchQuery, `%${query}%`, query, `${query}%`]);
+      `, params);
 
       return result.rows.map(row => ({
         code: row.code,

@@ -36,11 +36,12 @@ initializeService();
  * Query Parameters:
  * - q: Search query (required)
  * - limit: Maximum number of results (1-20, default 10)
+ * - role: Filter by market role (optional), e.g. 'VNB', 'LF', 'MSB', 'UNB'
  * 
  * @public No authentication required
  */
 router.get('/search', asyncHandler(async (req: Request, res: Response) => {
-  const { q } = req.query;
+  const { q, role } = req.query;
   let { limit } = req.query as { limit?: string };
 
   if (!q || typeof q !== 'string' || q.trim().length === 0) {
@@ -50,7 +51,13 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
   // Clamp limit between 1 and 20 (default 10)
   const parsedLimit = Math.min(20, Math.max(1, parseInt(limit || '10', 10) || 10));
 
-  const results = await codeLookupService.searchCodes(q);
+  // Build filters object
+  const filters: any = {};
+  if (role && typeof role === 'string' && role.trim().length > 0) {
+    filters.marketRole = role.trim();
+  }
+
+  const results = await codeLookupService.searchCodes(q, filters);
 
   // Return richer public shape with available metadata from discovery
   const enriched = results.slice(0, parsedLimit).map(r => ({

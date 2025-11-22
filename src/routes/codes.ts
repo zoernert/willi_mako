@@ -38,7 +38,7 @@ const buildFilters = (query: any): SearchFilters => {
     if (typeof query.softwareSystems === 'string') {
       filters.softwareSystems = [query.softwareSystems];
     } else if (Array.isArray(query.softwareSystems)) {
-      filters.softwareSystems = query.softwareSystems.filter(s => typeof s === 'string');
+      filters.softwareSystems = query.softwareSystems.filter((s: any) => typeof s === 'string');
     }
   }
 
@@ -54,11 +54,15 @@ const buildFilters = (query: any): SearchFilters => {
     filters.codeFunction = query.codeFunction;
   }
 
+  if (query.role && typeof query.role === 'string') {
+    filters.marketRole = query.role;
+  }
+
   if (query.confidence) {
     if (typeof query.confidence === 'string') {
       filters.confidence = [query.confidence as 'High' | 'Medium' | 'Low'];
     } else if (Array.isArray(query.confidence)) {
-      filters.confidence = query.confidence.filter(c => 
+      filters.confidence = query.confidence.filter((c: any) => 
         typeof c === 'string' && ['High', 'Medium', 'Low'].includes(c)
       ) as ('High' | 'Medium' | 'Low')[];
     }

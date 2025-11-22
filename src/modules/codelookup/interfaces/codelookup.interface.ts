@@ -78,6 +78,7 @@ export interface SearchFilters {
   city?: string;
   codeFunction?: string;
   confidence?: ('High' | 'Medium' | 'Low')[];
+  marketRole?: string; // Filter nach Marktrolle (BdewCodeFunction), z.B. 'VNB', 'LF', 'MSB'
 }
 
 export interface DetailedCodeResult extends CodeSearchResult {

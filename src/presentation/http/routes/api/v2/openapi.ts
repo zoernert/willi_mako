@@ -2,8 +2,8 @@ export const apiV2OpenApiDocument = {
   openapi: '3.1.0',
   info: {
     title: 'Willi-Mako API v2',
-  version: '0.8.0',
-  description: 'KI-gestützte Wissensplattform für die deutsche Energiewirtschaft. Umfasst Marktkommunikation (EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS), Regulierung (BNetzA, EnWG, StromNEV, ARegV, §14a EnWG), Netzbetrieb (TAB, VDE-FNN, SAIDI/SAIFI) und wissenschaftliche Studien. API v2 bietet Tooling, Artefakt-Management und mehrstufige Reasoning-Pipelines. Version 0.8.0 erweitert Positionierung: Von Marktkommunikation zu ganzheitlicher Energiewirtschafts-Expertise.'
+    version: '0.9.0',
+    description: 'KI-gestützte Wissensplattform für die deutsche Energiewirtschaft. Umfasst Marktkommunikation (EDIFACT, GPKE, WiM, GeLi Gas, UTILMD, MSCONS), Regulierung (BNetzA, EnWG, StromNEV, ARegV, §14a EnWG), Netzbetrieb (TAB, VDE-FNN, SAIDI/SAIFI) und wissenschaftliche Studien. API v2 bietet Tooling, Artefakt-Management und mehrstufige Reasoning-Pipelines. Version 0.9.0 erweitert die Marktpartnersuche um Marktrollenfilter (VNB, LF, MSB, UNB) für gezielte Suche nach Verteilnetzbetreibern, Lieferanten und anderen Marktteilnehmern.'
   },
   servers: [
     {
@@ -785,6 +785,30 @@ export const apiV2OpenApiDocument = {
               minimum: 1,
               maximum: 20,
               default: 10
+            }
+          },
+          {
+            name: 'role',
+            in: 'query',
+            required: false,
+            description: 'Filter nach Marktrolle (z.B. "VNB" für Verteilnetzbetreiber, "LF" für Lieferant, "MSB" für Messstellenbetreiber, "UNB" für Übertragungsnetzbetreiber)',
+            schema: {
+              type: 'string',
+              enum: ['VNB', 'LF', 'MSB', 'UNB', 'ÜNB', 'LIEFERANT', 'VERTEILNETZBETREIBER', 'MESSSTELLENBETREIBER', 'ÜBERTRAGUNGSNETZBETREIBER']
+            },
+            examples: {
+              vnb: {
+                value: 'VNB',
+                summary: 'Verteilnetzbetreiber'
+              },
+              lf: {
+                value: 'LF',
+                summary: 'Lieferant'
+              },
+              msb: {
+                value: 'MSB',
+                summary: 'Messstellenbetreiber'
+              }
             }
           }
         ],

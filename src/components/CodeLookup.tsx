@@ -107,6 +107,7 @@ interface SearchFilters {
   city?: string;
   codeFunction?: string;
   confidence?: ('High' | 'Medium' | 'Low')[];
+  marketRole?: string; // Neuer Filter für Marktrolle
 }
 
 const CodeLookupComponent: React.FC = () => {
@@ -184,6 +185,9 @@ const CodeLookupComponent: React.FC = () => {
       }
       if (searchFilters.codeFunction) {
         params.append('codeFunction', searchFilters.codeFunction);
+      }
+      if (searchFilters.marketRole) {
+        params.append('role', searchFilters.marketRole);
       }
       if (searchFilters.confidence?.length) {
         searchFilters.confidence.forEach(conf => 
@@ -359,9 +363,32 @@ const CodeLookupComponent: React.FC = () => {
                   value={filters.codeFunction || ''}
                   onChange={(_, value) => setFilters(prev => ({ ...prev, codeFunction: value || undefined }))}
                   renderInput={(params) => (
-                    <TextField {...params} label="Marktrolle" size="small" />
+                    <TextField {...params} label="Code-Funktion" size="small" />
                   )}
                 />
+              </Box>
+              
+              <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Marktrolle</InputLabel>
+                  <Select
+                    value={filters.marketRole || ''}
+                    onChange={(e) => setFilters(prev => ({ 
+                      ...prev, 
+                      marketRole: e.target.value || undefined
+                    }))}
+                    label="Marktrolle"
+                  >
+                    <MenuItem value="">
+                      <em>Alle</em>
+                    </MenuItem>
+                    <MenuItem value="VNB">Verteilnetzbetreiber (VNB)</MenuItem>
+                    <MenuItem value="LF">Lieferant (LF)</MenuItem>
+                    <MenuItem value="MSB">Messstellenbetreiber (MSB)</MenuItem>
+                    <MenuItem value="UNB">Übertragungsnetzbetreiber (UNB)</MenuItem>
+                    <MenuItem value="ÜNB">Übertragungsnetzbetreiber (ÜNB)</MenuItem>
+                  </Select>
+                </FormControl>
               </Box>
               
               <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 4' } }}>
