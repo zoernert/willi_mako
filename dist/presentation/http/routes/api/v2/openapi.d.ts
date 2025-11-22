@@ -993,7 +993,9 @@ export declare const apiV2OpenApiDocument: {
                         minimum?: undefined;
                         maximum?: undefined;
                         default?: undefined;
+                        enum?: undefined;
                     };
+                    examples?: undefined;
                 } | {
                     name: string;
                     in: string;
@@ -1005,6 +1007,35 @@ export declare const apiV2OpenApiDocument: {
                         maximum: number;
                         default: number;
                         minLength?: undefined;
+                        enum?: undefined;
+                    };
+                    examples?: undefined;
+                } | {
+                    name: string;
+                    in: string;
+                    required: boolean;
+                    description: string;
+                    schema: {
+                        type: string;
+                        enum: string[];
+                        minLength?: undefined;
+                        minimum?: undefined;
+                        maximum?: undefined;
+                        default?: undefined;
+                    };
+                    examples: {
+                        vnb: {
+                            value: string;
+                            summary: string;
+                        };
+                        lf: {
+                            value: string;
+                            summary: string;
+                        };
+                        msb: {
+                            value: string;
+                            summary: string;
+                        };
                     };
                 })[];
                 responses: {

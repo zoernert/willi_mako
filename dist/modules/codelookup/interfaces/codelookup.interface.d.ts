@@ -67,6 +67,7 @@ export interface SearchFilters {
     city?: string;
     codeFunction?: string;
     confidence?: ('High' | 'Medium' | 'Low')[];
+    marketRole?: string;
 }
 export interface DetailedCodeResult extends CodeSearchResult {
     findings: MarketPartnerFinding[];

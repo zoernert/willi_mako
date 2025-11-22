@@ -7,8 +7,8 @@ class PostgresCodeLookupRepository {
     }
     async searchCodes(query, filters) {
         const [bdewResults, eicResults] = await Promise.all([
-            this.searchBDEWCodes(query),
-            this.searchEICCodes(query)
+            this.searchBDEWCodes(query, filters),
+            this.searchEICCodes(query, filters)
         ]);
         // Kombiniere und sortiere die Ergebnisse
         const combinedResults = [...bdewResults, ...eicResults];
@@ -27,12 +27,24 @@ class PostgresCodeLookupRepository {
         try {
             // Bereite die Suchanfrage für PostgreSQL vor
             const searchQuery = query.trim().replace(/\s+/g, ' & ');
+            // Build dynamic WHERE clause for filters
+            let whereClause = `
+        WHERE (search_vector @@ to_tsquery('german', $1)
+           OR code ILIKE $2
+           OR company_name ILIKE $2)
+      `;
+            const params = [searchQuery, `%${query}%`, query, `${query}%`];
+            let paramIndex = 5; // Next available parameter index
+            // Add marketRole filter if provided
+            if (filters === null || filters === void 0 ? void 0 : filters.marketRole) {
+                whereClause += ` AND code_type ILIKE $${paramIndex}`;
+                params.push(`%${filters.marketRole}%`);
+                paramIndex++;
+            }
             const result = await client.query(`
         SELECT code, company_name, code_type, valid_from, valid_to
         FROM bdewcodes
-        WHERE search_vector @@ to_tsquery('german', $1)
-           OR code ILIKE $2
-           OR company_name ILIKE $2
+        ${whereClause}
         ORDER BY 
           CASE WHEN code = $3 THEN 1
                WHEN code ILIKE $4 THEN 2
@@ -41,7 +53,7 @@ class PostgresCodeLookupRepository {
           END,
           company_name
         LIMIT 50
-      `, [searchQuery, `%${query}%`, query, `${query}%`]);
+      `, params);
             return result.rows.map(row => ({
                 code: row.code,
                 companyName: row.company_name,

@@ -28,18 +28,23 @@ const initializeService = async () => {
 };
 initializeService();
 /**
- * GET /api/public/market-partners/search?q=...
+ * GET /api/public/market-partners/search?q=...&role=...
  * Public market partner search. Returns a compact, privacy-conscious payload.
  */
 router.get('/search', (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { q } = req.query;
+    const { q, role } = req.query;
     let { limit } = req.query;
     if (!q || typeof q !== 'string' || q.trim().length === 0) {
         throw new errorHandler_1.AppError('Query parameter "q" is required', 400);
     }
     // Clamp limit between 1 and 20 (default 10)
     const parsedLimit = Math.min(20, Math.max(1, parseInt(limit || '10', 10) || 10));
-    const results = await codeLookupService.searchCodes(q);
+    // Build filters object
+    const filters = {};
+    if (role && typeof role === 'string' && role.trim().length > 0) {
+        filters.marketRole = role.trim();
+    }
+    const results = await codeLookupService.searchCodes(q, filters);
     // Return richer public shape with available metadata from discovery
     const enriched = results.slice(0, parsedLimit).map(r => ({
         code: r.code,

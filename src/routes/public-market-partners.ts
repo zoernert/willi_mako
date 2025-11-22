@@ -34,9 +34,7 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
   const { q, role } = req.query;
   let { limit } = req.query as { limit?: string };
 
-  if (!q || typeof q !== 'string' || q.trim().length === 0) {
-    throw new AppError('Query parameter "q" is required', 400);
-  }
+  const searchQuery = typeof q === 'string' && q.trim().length > 0 ? q : undefined;
 
   // Clamp limit between 1 and 20 (default 10)
   const parsedLimit = Math.min(20, Math.max(1, parseInt(limit || '10', 10) || 10));
@@ -47,7 +45,11 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
     filters.marketRole = role.trim();
   }
 
-  const results = await codeLookupService.searchCodes(q, filters);
+  if (!searchQuery && Object.keys(filters).length === 0) {
+    throw new AppError('Provide either a search query or at least one filter (e.g. role)', 400);
+  }
+
+  const results = await codeLookupService.searchCodes(searchQuery, filters);
 
   // Return richer public shape with available metadata from discovery
   const enriched = results.slice(0, parsedLimit).map(r => ({
@@ -69,7 +71,7 @@ router.get('/search', asyncHandler(async (req: Request, res: Response) => {
     data: {
       results: enriched,
       count: enriched.length,
-      query: q,
+      query: searchQuery || null,
     }
   });
 }));

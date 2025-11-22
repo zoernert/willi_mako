@@ -163,6 +163,14 @@ class MongoCodeLookupRepository {
                     'partner.BdewCodeFunction': new RegExp(filters.codeFunction, 'i')
                 });
             }
+            if (filters.marketRole) {
+                searchConditions.push({
+                    $or: [
+                        { 'partner.BdewCodeFunction': new RegExp(filters.marketRole, 'i') },
+                        { 'contacts.BdewCodeFunction': new RegExp(filters.marketRole, 'i') }
+                    ]
+                });
+            }
             if (filters.confidence && filters.confidence.length > 0) {
                 searchConditions.push({
                     'findings.software_systems.confidence': { $in: filters.confidence }

@@ -4,12 +4,15 @@ import { CodeSearchResult, DetailedCodeResult, SearchFilters } from '../interfac
 export class CodeLookupService {
   constructor(private repository: CodeLookupRepository) {}
 
-  async searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
-    if (!query || query.trim().length === 0) {
+  async searchCodes(query?: string, filters?: SearchFilters): Promise<CodeSearchResult[]> {
+    const hasQuery = typeof query === 'string' && query.trim().length > 0;
+    const hasFilters = !!(filters && Object.keys(filters).length > 0);
+
+    if (!hasQuery && !hasFilters) {
       return [];
     }
 
-    const trimmedQuery = query.trim();
+    const trimmedQuery = hasQuery ? query!.trim() : '';
     
     try {
       const results = await this.repository.searchCodes(trimmedQuery, filters);
