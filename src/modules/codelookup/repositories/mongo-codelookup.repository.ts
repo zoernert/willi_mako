@@ -7,6 +7,7 @@ import {
   MarketPartnerDocument,
   SoftwareSystem 
 } from '../interfaces/codelookup.interface';
+import { buildMarketRoleRegex } from '../utils/market-role.util';
 
 export class MongoCodeLookupRepository implements CodeLookupRepository {
   private db: Db | null = null;
@@ -188,12 +189,15 @@ export class MongoCodeLookupRepository implements CodeLookupRepository {
       }
 
       if (filters.marketRole) {
-        searchConditions.push({
-          $or: [
-            { 'partner.BdewCodeFunction': new RegExp(filters.marketRole, 'i') },
-            { 'contacts.BdewCodeFunction': new RegExp(filters.marketRole, 'i') }
-          ]
-        });
+        const roleRegex = buildMarketRoleRegex(filters.marketRole);
+        if (roleRegex) {
+          searchConditions.push({
+            $or: [
+              { 'partner.BdewCodeFunction': roleRegex },
+              { 'contacts.BdewCodeFunction': roleRegex }
+            ]
+          });
+        }
       }
 
       if (filters.confidence && filters.confidence.length > 0) {

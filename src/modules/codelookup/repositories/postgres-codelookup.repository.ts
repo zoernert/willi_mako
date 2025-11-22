@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { CodeLookupRepository } from '../interfaces/codelookup.repository.interface';
 import { CodeSearchResult, BDEWCode, EICCode, DetailedCodeResult, SearchFilters } from '../interfaces/codelookup.interface';
+import { getMarketRoleVariants } from '../utils/market-role.util';
 
 export class PostgresCodeLookupRepository implements CodeLookupRepository {
   constructor(private pool: Pool) {}
@@ -45,9 +46,12 @@ export class PostgresCodeLookupRepository implements CodeLookupRepository {
       
       // Add marketRole filter if provided
       if (filters?.marketRole) {
-        whereClause += ` AND code_type ILIKE $${paramIndex}`;
-        params.push(`%${filters.marketRole}%`);
-        paramIndex++;
+        const roleVariants = getMarketRoleVariants(filters.marketRole);
+        if (roleVariants.length > 0) {
+          whereClause += ` AND code_type ILIKE ANY($${paramIndex})`;
+          params.push(roleVariants.map(variant => `%${variant}%`));
+          paramIndex++;
+        }
       }
       
       const result = await client.query<BDEWCode>(`

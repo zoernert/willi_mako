@@ -3,7 +3,7 @@ import { CodeSearchResult, DetailedCodeResult, SearchFilters } from '../interfac
 export declare class CodeLookupService {
     private repository;
     constructor(repository: CodeLookupRepository);
-    searchCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
+    searchCodes(query?: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
     searchBDEWCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
     searchEICCodes(query: string, filters?: SearchFilters): Promise<CodeSearchResult[]>;
     /**

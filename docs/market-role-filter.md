@@ -13,6 +13,10 @@ Die folgenden Marktrollenwerte werden unterstützt:
 - **MSB** - Messstellenbetreiber
 - **UNB** / **ÜNB** - Übertragungsnetzbetreiber
 
+### Abkürzungen & Synonyme
+
+Seit November 2025 akzeptiert der Filter sowohl die gängigen Kürzel als auch die ausgeschriebenen Rollenbezeichnungen. Eine Anfrage wie `role=VNB` matcht deshalb automatisch auch Datensätze mit `Netzbetreiber` oder `Verteilnetzbetreiber` als BDEW-Funktion. Gleiches gilt für `LF` (→ `Lieferant`), `MSB` (→ `Messstellenbetreiber`) sowie `UNB`/`ÜNB` (→ `Übertragungsnetzbetreiber`).
+
 Sowohl die Abkürzungen als auch die vollständigen deutschen Bezeichnungen können verwendet werden (z.B. "VNB" oder "VERTEILNETZBETREIBER").
 
 ## API-Endpunkte

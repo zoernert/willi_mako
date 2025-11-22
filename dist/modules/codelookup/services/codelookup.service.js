@@ -6,10 +6,12 @@ class CodeLookupService {
         this.repository = repository;
     }
     async searchCodes(query, filters) {
-        if (!query || query.trim().length === 0) {
+        const hasQuery = typeof query === 'string' && query.trim().length > 0;
+        const hasFilters = !!(filters && Object.keys(filters).length > 0);
+        if (!hasQuery && !hasFilters) {
             return [];
         }
-        const trimmedQuery = query.trim();
+        const trimmedQuery = hasQuery ? query.trim() : '';
         try {
             const results = await this.repository.searchCodes(trimmedQuery, filters);
             return results;
